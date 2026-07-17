@@ -261,6 +261,7 @@ export async function createMediaItem(
       storageKey,
       mimeType: file.type,
       storageBackend: storage.backend,
+      sizeBytes: file.size,
       sortOrder: await nextItemSortOrder(pillarId),
     },
   });

@@ -90,6 +90,21 @@ appliquée à l'ensemble du site :
   Actions) ; format QuickTime (`.mov`) ajouté aux formats vidéo acceptés en
   plus de MP4/WebM, pour corriger un rejet d'upload signalé sur le pilier
   Vidéo Aftermovies.
+- Signalement (2026-07-17, en production) : après le correctif ci-dessus,
+  une vidéo réellement uploadée par le client sur le pilier Motion Design
+  affichait toujours une icône de lecture barrée sur mobile (Safari iOS) —
+  cause distincte du problème `muted` déjà corrigé. `/api/portfolio-media/
+  items/[itemId]` chargeait le fichier entier en mémoire et ne répondait
+  jamais aux requêtes `Range` ; or Safari mobile refuse purement et
+  simplement de lire une vidéo si le serveur ne répond pas en `206 Partial
+  Content` à ce type de requête (contrairement aux navigateurs desktop, plus
+  tolérants). Corrigé en alignant cette route sur `/api/fichiers/
+  livrables/[id]` (déjà réparée le 2026-07-16 pour la même raison) :
+  streaming + support `Range`. Nouveau champ `sizeBytes` sur
+  `PortfolioMediaItem` (absent à la création du modèle), renseigné pour les
+  nouveaux envois et rétro-rempli automatiquement à la première requête pour
+  les médias déjà en ligne (dont la vidéo signalée), sans ré-upload
+  nécessaire côté client.
 
 ## 2. Espace client
 
@@ -356,3 +371,4 @@ Le client a explicitement délégué ces choix :
 | 2026-07-17 | Premier retour d'expérience (7 points) : formulaire de contact → email admin ; aperçus vidéo motion en autoplay ; limite 50 Mo vidéo à retirer + bug d'upload signalé sur Aftermovie ; vue calendrier par date d'évènement (admin) ; section "demande d'amélioration interface" ; chat de commentaires par tâche ; email de confirmation à la validation d'un BAT | Livré (les 7) : voir sections "Portfolio public" et "Espace client" ci-dessus pour le détail de chaque point |
 | 2026-07-17 | Ajouter la vue calendrier (par date d'évènement) côté espace client, pas seulement admin | Livré : nouvel onglet "Calendrier" sur `/espace-client/calendrier`, réutilisant `TaskCalendarView` généralisé — voir section "Espace client" |
 | 2026-07-17 | Pointage du domaine mikkovisuel.fr | Livré : CNAME `www.mikkovisuel.fr` → Scalingo, redirection `mikkovisuel.fr` → `www.` déjà en place côté OVH, SSL automatique — site accessible sur son vrai domaine |
+| 2026-07-17 | Signalement : sur mobile, la vidéo réellement en ligne sur le pilier Motion Design affiche toujours une icône de lecture barrée malgré le correctif autoplay | Corrigé : `/api/portfolio-media/items/[itemId]` ne supportait pas les requêtes `Range`, requises par Safari mobile pour lire une vidéo — voir section "Portfolio public" |

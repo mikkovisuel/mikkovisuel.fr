@@ -255,6 +255,7 @@ model PortfolioMediaItem {
   storageKey     String?
   mimeType       String?
   storageBackend String?
+  sizeBytes      Int?
   sortOrder      Int             @default(0)
   createdAt      DateTime        @default(now())
 }
