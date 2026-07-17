@@ -16,10 +16,14 @@ import {
 } from "@/lib/validation/portfolio";
 
 const MAX_IMAGE_SIZE = 20 * 1024 * 1024;
+// La limite de 50 Mo avait été retirée le 2026-07-17, mais l'upload charge
+// actuellement le fichier entier en mémoire (pas de streaming) — sur le
+// conteneur de production (~1 Go de RAM), une vidéo de plusieurs centaines
+// de Mo fait planter le serveur (OOM kill, confirmé en prod le 2026-07-17).
+// 200 Mo reste une limite calibrée pour ne jamais dépasser cette mémoire,
+// en attendant un éventuel passage en upload streaming.
+const MAX_VIDEO_SIZE = 200 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
-// Pas de limite de taille pour les vidéos (au-delà de la limite technique
-// globale des Server Actions, voir bodySizeLimit dans next.config.ts) : les
-// aftermovies/motion design dépassent régulièrement 50 Mo.
 const ALLOWED_VIDEO_TYPES = new Set([
   "video/mp4",
   "video/webm",
@@ -230,6 +234,7 @@ export async function createMediaItem(
   const isVideo = file.type.startsWith("video/");
   const isImage = file.type.startsWith("image/");
   if (isVideo) {
+    if (file.size > MAX_VIDEO_SIZE) return { error: "Vidéo trop volumineuse (200 Mo maximum)." };
     if (!ALLOWED_VIDEO_TYPES.has(file.type)) {
       return { error: "Format vidéo non autorisé (MP4, WebM ou MOV)." };
     }

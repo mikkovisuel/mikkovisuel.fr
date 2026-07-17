@@ -60,7 +60,7 @@ export function MediaItemUploadForm({
       )}
       <p className="w-full text-xs text-ink-muted">
         Format à choisir pour une photo (3:4 ou 9:16). Les vidéos sont
-        automatiquement au format 9:16.
+        automatiquement au format 9:16, 200 Mo maximum.
       </p>
     </form>
   );

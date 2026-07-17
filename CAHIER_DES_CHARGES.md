@@ -86,10 +86,10 @@ appliquée à l'ensemble du site :
   (muet, en boucle, `playsInline`) piloté par IntersectionObserver pour ne
   jouer que les vidéos réellement visibles à l'écran. Limite de 50 Mo par
   vidéo (`src/lib/actions/portfolio.ts`) supprimée à la demande du client
-  (plus de plafond, hors limite technique globale de 2 Go des Server
-  Actions) ; format QuickTime (`.mov`) ajouté aux formats vidéo acceptés en
-  plus de MP4/WebM, pour corriger un rejet d'upload signalé sur le pilier
-  Vidéo Aftermovies.
+  (voir plus bas pour la suite : ce point a été révisé le jour même après un
+  incident en production) ; format QuickTime (`.mov`) ajouté aux formats
+  vidéo acceptés en plus de MP4/WebM, pour corriger un rejet d'upload
+  signalé sur le pilier Vidéo Aftermovies.
 - Signalement (2026-07-17, en production) : après le correctif ci-dessus,
   une vidéo réellement uploadée par le client sur le pilier Motion Design
   affichait toujours une icône de lecture barrée sur mobile (Safari iOS) —
@@ -105,6 +105,21 @@ appliquée à l'ensemble du site :
   nouveaux envois et rétro-rempli automatiquement à la première requête pour
   les médias déjà en ligne (dont la vidéo signalée), sans ré-upload
   nécessaire côté client.
+- Signalement (2026-07-17, en production) : tentative d'upload d'une vidéo
+  sur le pilier Vidéo Aftermovies renvoyant "This page couldn't load"
+  (erreur générique navigateur). Diagnostiqué via les logs serveur
+  (`scalingo logs`) : le conteneur de production a été tué par manque de
+  mémoire (`Killed`, redémarrage automatique) au moment de l'upload.
+  Cause : l'upload charge actuellement le fichier entier en mémoire (pas de
+  streaming), et la suppression de la limite de 50 Mo plus tôt dans la
+  journée a supprimé le seul garde-fou empêchant ça sur un conteneur
+  d'environ 1 Go de RAM. Le client a choisi, parmi 3 options proposées
+  (upload en streaming, conteneur plus gros, plafond recalibré), de
+  réintroduire un plafond, plus généreux qu'avant : **200 Mo maximum par
+  vidéo** (`MAX_VIDEO_SIZE` dans `src/lib/actions/portfolio.ts`). Le passage
+  en upload streaming (vraiment "sans limite", sans risque mémoire) reste
+  une amélioration possible plus tard si le besoin de vidéos plus lourdes se
+  confirme — voir "Points encore ouverts".
 
 ## 2. Espace client
 
@@ -337,6 +352,13 @@ Le client a explicitement délégué ces choix :
   seedé avec des placeholders Picsum, à remplacer via l'admin (y compris,
   depuis le 2026-07-16, les 2 photos du Hero — voir section "Portfolio
   public").
+- Upload vidéo en streaming (2026-07-17) : la limite de 200 Mo par vidéo est
+  un plafond calibré pour la RAM du conteneur actuel, pas une limite
+  définitive — repasser en upload streaming (jamais tout le fichier en
+  mémoire) permettrait de la lever sans risque si des vidéos plus lourdes
+  deviennent nécessaires. Non fait par choix du client (option "plafond"
+  retenue plutôt que "streaming" ou "conteneur plus gros").
+
 ## Journal des modifications demandées
 
 | Date | Demande | Traitement |
@@ -372,3 +394,4 @@ Le client a explicitement délégué ces choix :
 | 2026-07-17 | Ajouter la vue calendrier (par date d'évènement) côté espace client, pas seulement admin | Livré : nouvel onglet "Calendrier" sur `/espace-client/calendrier`, réutilisant `TaskCalendarView` généralisé — voir section "Espace client" |
 | 2026-07-17 | Pointage du domaine mikkovisuel.fr | Livré : CNAME `www.mikkovisuel.fr` → Scalingo, redirection `mikkovisuel.fr` → `www.` déjà en place côté OVH, SSL automatique — site accessible sur son vrai domaine |
 | 2026-07-17 | Signalement : sur mobile, la vidéo réellement en ligne sur le pilier Motion Design affiche toujours une icône de lecture barrée malgré le correctif autoplay | Corrigé : `/api/portfolio-media/items/[itemId]` ne supportait pas les requêtes `Range`, requises par Safari mobile pour lire une vidéo — voir section "Portfolio public" |
+| 2026-07-17 | Signalement : upload d'une vidéo sur le pilier Vidéo Aftermovies en échec ("This page couldn't load") | Corrigé : conteneur de production tombé à court de mémoire (upload sans streaming + limite retirée plus tôt dans la journée) ; client a choisi de réintroduire un plafond (200 Mo, contre 3 options proposées) plutôt que le streaming ou un conteneur plus gros — voir section "Portfolio public" |
