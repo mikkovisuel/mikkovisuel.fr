@@ -40,5 +40,12 @@ export async function adminLogin(
 
   await createSession("ADMIN", admin.id);
   await setThemeCookie(admin.themePreference === "dark" ? "dark" : "light");
+  // `previousLoginAt` becomes the cursor the dashboard's "depuis votre
+  // dernière connexion" panel compares against — captured here, before
+  // `lastLoginAt` gets overwritten with this session's login time.
+  await db.admin.update({
+    where: { id: admin.id },
+    data: { previousLoginAt: admin.lastLoginAt, lastLoginAt: new Date() },
+  });
   redirect("/admin");
 }

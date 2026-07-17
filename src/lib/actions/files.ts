@@ -9,6 +9,7 @@ import { sendEmail } from "@/lib/email/service";
 
 const MAX_DOCUMENT_SIZE = 20 * 1024 * 1024;
 const MAX_DELIVERABLE_SIZE = 500 * 1024 * 1024;
+const MAX_ATTACHMENT_SIZE = 20 * 1024 * 1024;
 
 const ALLOWED_DELIVERABLE_TYPES = new Set([
   "application/pdf",
@@ -19,6 +20,12 @@ const ALLOWED_DELIVERABLE_TYPES = new Set([
   "video/mp4",
 ]);
 const ALLOWED_DOCUMENT_TYPES = new Set(["application/pdf"]);
+const ALLOWED_ATTACHMENT_TYPES = new Set([
+  "image/png",
+  "image/jpeg",
+  "image/webp",
+  "application/pdf",
+]);
 
 export type FileUploadState = { error?: string } | undefined;
 
@@ -100,6 +107,54 @@ export async function deleteDeliverable(deliverableId: string) {
   revalidatePath(`/admin/clients/${deliverable.task.clientId}`);
   revalidatePath(`/admin/taches/${deliverable.taskId}`);
   revalidatePath("/espace-client/livrables");
+}
+
+// Miroir de `uploadDeliverable`, mais pour les pièces jointes de référence
+// (moodboard, logo...) — jusqu'ici uniquement déposables par le client à la
+// création d'une tâche ; l'admin peut désormais aussi en ajouter après coup.
+export async function uploadAttachment(
+  taskId: string,
+  _prev: FileUploadState,
+  formData: FormData,
+): Promise<FileUploadState> {
+  await verifyAdminSession();
+
+  const files = formData.getAll("file").filter((f): f is File => f instanceof File && f.size > 0);
+  if (files.length === 0) {
+    return { error: "Choisissez au moins un fichier." };
+  }
+  for (const file of files) {
+    if (file.size > MAX_ATTACHMENT_SIZE) {
+      return { error: `"${file.name}" est trop volumineux (20 Mo maximum).` };
+    }
+    if (!ALLOWED_ATTACHMENT_TYPES.has(file.type)) {
+      return { error: `"${file.name}" : type de fichier non autorisé.` };
+    }
+  }
+
+  const task = await db.task.findUnique({ where: { id: taskId } });
+  if (!task) return { error: "Tâche introuvable." };
+
+  const storage = getStorageAdapter();
+  for (const file of files) {
+    const storageKey = `attachments/${randomUUID()}`;
+    const buffer = Buffer.from(await file.arrayBuffer());
+    await storage.save(storageKey, buffer);
+
+    await db.attachment.create({
+      data: {
+        taskId,
+        fileName: file.name,
+        storageKey,
+        mimeType: file.type,
+        sizeBytes: file.size,
+        storageBackend: storage.backend,
+      },
+    });
+  }
+
+  revalidatePath(`/admin/taches/${taskId}`);
+  return undefined;
 }
 
 // Miroir de `deleteDeliverable` — admin uniquement, le client ne supprime

@@ -7,10 +7,16 @@ import { db } from "@/lib/db";
 import { TaskEditForm } from "@/components/admin/task-edit-form";
 import { DeleteButton } from "@/components/admin/delete-button";
 import { DeliverableUploadForm } from "@/components/admin/deliverable-upload-form";
+import { AttachmentUploadForm } from "@/components/admin/attachment-upload-form";
 import { FileGrid } from "@/components/file-grid";
 import { TaskCommentThread } from "@/components/task-comment-thread";
 import { updateTask, archiveTask, unarchiveTask, deleteTask } from "@/lib/actions/tasks";
-import { uploadDeliverable, deleteDeliverable, deleteAttachment } from "@/lib/actions/files";
+import {
+  uploadDeliverable,
+  deleteDeliverable,
+  uploadAttachment,
+  deleteAttachment,
+} from "@/lib/actions/files";
 import { postAdminComment } from "@/lib/actions/comments";
 import { TASK_TYPE_LIST_KEY, TASK_FORMAT_LIST_KEY } from "@/lib/dropdown-lists";
 import { taskDateFormatter } from "@/lib/tasks";
@@ -141,11 +147,12 @@ export default async function TaskDetailPage({
         </div>
       </section>
 
-      {task.attachments.length > 0 && (
-        <section className="mt-12">
-          <h2 className="text-sm font-medium text-ink-muted">
-            Pièces jointes du client ({task.attachments.length})
-          </h2>
+      <section className="mt-12">
+        <h2 className="text-sm font-medium text-ink-muted">
+          Pièces jointes ({task.attachments.length})
+        </h2>
+
+        {task.attachments.length > 0 && (
           <div className="mt-4">
             <FileGrid
               files={task.attachments}
@@ -153,8 +160,12 @@ export default async function TaskDetailPage({
               deleteAction={deleteAttachment}
             />
           </div>
-        </section>
-      )}
+        )}
+
+        <div className="mt-4">
+          <AttachmentUploadForm action={uploadAttachment.bind(null, task.id)} />
+        </div>
+      </section>
 
       <section className="mt-12">
         <h2 className="text-sm font-medium text-ink-muted">

@@ -236,7 +236,7 @@ export async function updateTask(
   });
 
   revalidateTaskPaths(task.clientId);
-  redirect(`/admin/clients/${task.clientId}`);
+  redirect("/admin/taches");
 }
 
 async function notifyClientUsersOfNewTaskToValidate(taskId: string) {
@@ -342,7 +342,7 @@ export async function refuseTask(
   const statusId = await getStatusId(TASK_STATUS.A_MODIFIER);
   await db.task.update({
     where: { id: taskId },
-    data: { statusId, refusalReason: parsed.data.reason },
+    data: { statusId, refusalReason: parsed.data.reason, refusedAt: new Date() },
   });
 
   await sendEmail({

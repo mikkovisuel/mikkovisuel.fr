@@ -343,6 +343,29 @@ appliquée à l'ensemble du site :
   la création d'une tâche (admin et formulaire de demande client), affichés
   dans la gestion des tâches admin. Listes ouvertes, extensibles depuis
   `/admin/listes`.
+- Retour à la liste après modification d'une tâche (2026-07-17) : le
+  formulaire d'édition sur `/admin/taches/[taskId]` ("Enregistrer")
+  renvoyait vers la fiche client, ce qui cassait le fil "je scanne la liste,
+  je modifie une tâche, je reviens à la liste" — redirige désormais vers
+  `/admin/taches`.
+- Pièces jointes ajoutables côté admin (2026-07-17) : jusqu'ici seul le
+  client pouvait déposer des pièces jointes de référence (à la création
+  d'une demande) ; l'admin ne pouvait que les consulter/supprimer.
+  `uploadAttachment` (miroir de `uploadDeliverable`) permet désormais à
+  l'admin d'en ajouter directement depuis la fiche tâche, section
+  "Pièces jointes" (toujours affichée, plus seulement quand il y en a déjà).
+- Résumé d'activité "depuis votre dernière connexion" (2026-07-17) : le
+  tableau de bord (`/admin`) affiche désormais, sous les compteurs
+  existants, ce qui s'est passé depuis la dernière connexion admin — BAT
+  validés, refus (avec motif), nouvelles demandes clients, nouveaux
+  commentaires clients (les 4 catégories retenues sur 5 proposées). Chaque
+  entrée pointe vers la tâche concernée. Nécessite le suivi de connexion
+  admin (nouveaux champs `Admin.lastLoginAt`/`previousLoginAt`, ce dernier
+  étant le curseur de comparaison — capturé à la connexion, avant d'être
+  écrasé par l'heure de la session en cours) et un nouveau champ précis
+  `Task.refusedAt` (miroir de `batValidatedAt`, jusqu'ici seul le champ
+  `updatedAt`, trop générique, existait pour dater un refus). Rien ne
+  s'affiche à la toute première connexion (pas de point de comparaison).
 
 ## Décisions techniques déléguées à Claude Code
 
@@ -429,3 +452,6 @@ Le client a explicitement délégué ces choix :
 | 2026-07-17 | Faire tourner les deux images du Hero en 3D | Livré : entrée en rotation 3D (`rotateY` miroir + zoom léger) au chargement, remplace l'ancien fondu/glissement — voir section "Portfolio public" |
 | 2026-07-17 | Ajouter un mouvement perpétuel type balancement sur les images du Hero | Livré : léger balancement en boucle (`rotate` ±2-2,5°) après l'entrée 3D, désactivé si "réduire les animations" — voir section "Portfolio public" |
 | 2026-07-17 | Isoler les tâches terminées en dessous dans la vue Liste + couleur verte pour le statut "Terminé" | Livré : vue `Liste` en deux tableaux (actives puis "Terminées (n)"), couleur du statut passée de violet à `emerald` — voir section "Espace client" |
+| 2026-07-17 | Après modification d'une tâche, retour à la liste des tâches plutôt qu'à la fiche client | Livré : redirection changée sur `updateTask` — voir section "Backend interne" |
+| 2026-07-17 | Pouvoir ajouter des pièces jointes à une tâche côté admin | Livré : nouvelle action `uploadAttachment` + formulaire sur la fiche tâche — voir section "Backend interne" |
+| 2026-07-17 | Suggestions pour un résumé d'activité "depuis ma dernière connexion" sur le tableau de bord (ex. BAT validés, refus + motif) | Livré (4 des 5 catégories proposées retenues) : BAT validés, refus, nouvelles demandes clients, nouveaux commentaires clients — voir section "Backend interne" |
