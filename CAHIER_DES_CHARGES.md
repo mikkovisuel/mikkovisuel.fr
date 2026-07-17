@@ -378,6 +378,19 @@ appliquée à l'ensemble du site :
   (`/admin/clients/[clientId]`) : envoie le même email de réinitialisation
   que le formulaire public, sans que l'admin ait à ressaisir l'email du
   client.
+- **Incident de sécurité, découvert et corrigé le 2026-07-17** : pour
+  propager le changement de couleur du statut "Terminé" (ci-dessus) en
+  production, `prisma/seed.ts` a été relancé sur la base réelle — son
+  commentaire affirmait qu'un garde-fou empêchait la création du compte de
+  démonstration hors développement local, mais ce garde-fou n'existait pas
+  réellement. Conséquence : un compte `demo@client.test` / `demo-password`
+  (identifiants publics, présents dans le code source) a été créé sur la
+  base de production, à côté des vrais clients, pendant environ 10 minutes.
+  Repéré immédiatement après l'exécution du script, sans tâche ni document
+  créé sur ce compte entre-temps. Corrigé dans la foulée : compte supprimé
+  de la production, garde-fou réel ajouté à `seedDemoClient()` (ce script
+  refuse maintenant de s'exécuter si `DATABASE_URL` n'est pas du SQLite
+  local). Aucune action nécessaire de votre côté.
 
 ## Décisions techniques déléguées à Claude Code
 
@@ -468,3 +481,4 @@ Le client a explicitement délégué ces choix :
 | 2026-07-17 | Pouvoir ajouter des pièces jointes à une tâche côté admin | Livré : nouvelle action `uploadAttachment` + formulaire sur la fiche tâche — voir section "Backend interne" |
 | 2026-07-17 | Suggestions pour un résumé d'activité "depuis ma dernière connexion" sur le tableau de bord (ex. BAT validés, refus + motif) | Livré (4 des 5 catégories proposées retenues) : BAT validés, refus, nouvelles demandes clients, nouveaux commentaires clients — voir section "Backend interne" |
 | 2026-07-17 | Modification de mot de passe pour les clients (avec pop-up de confirmation) + bouton de réinitialisation admin en face de chaque profil client | Livré : `/espace-client/compte` (changement avec mot de passe actuel + pop-up), bouton "Réinitialiser le mot de passe" sur la fiche client admin (envoie l'email de réinitialisation existant) — voir section "Backend interne" |
+| 2026-07-17 | (Incident interne, pas une demande client) Relance du script de seed en production pour la couleur du statut "Terminé" | Corrigé le jour même : compte de démonstration créé par erreur sur la prod, supprimé, garde-fou ajouté à `seedDemoClient()` — voir section "Backend interne" |
