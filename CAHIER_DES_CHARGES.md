@@ -253,7 +253,11 @@ Le client a explicitement délégué ces choix :
   disque éphémère). Fournisseur retenu : **OVH Object Storage**
   (conteneur `marked-reines`, région Gravelines/GRA, 1-AZ Standard) —
   Scalingo n'a pas d'addon de stockage natif, et le client avait déjà un
-  compte OVH pour le nom de domaine.
+  compte OVH pour le nom de domaine. Correctif du 2026-07-17 : les envois
+  de fichiers échouaient en production (`SignatureDoesNotMatch`) à cause
+  d'une incompatibilité connue entre les versions récentes du SDK AWS S3
+  et l'implémentation d'OVH ; `@aws-sdk/client-s3` fixé à la version
+  3.726.1 (la dernière compatible d'après OVH), vérifié par un envoi réel.
 - **Base de données** : bascule de SQLite (dev initial) vers PostgreSQL
   effectuée le 2026-07-17 pour la mise en ligne (voir migration
   `20260717000000_init_postgres`). Le dev local tourne désormais aussi sur
@@ -301,4 +305,5 @@ Le client a explicitement délégué ces choix :
 | 2026-07-16 | Suggestions expérience client : page d'accueil, compteurs sur les onglets, onglet actif surligné, timeline de statut visuelle (les 4 retenues) | Livré : nouvelle page `/espace-client` (redirection après connexion), badges sur "À valider"/"Administratif", nav active via `ClientNavTabs`, composant `TaskStatusTimeline` sur "Suivi" et l'accueil — voir section "Espace client" |
 | 2026-07-16 | Contrôle admin pour les 2 photos du Hero (page d'accueil) + dimensions pixel des visuels homepage à fournir | Livré : modèle `HomepageHero`, upload dans `/admin/portfolio` ("Page d'accueil"), fallback propre sur les placeholders Picsum tant que rien n'est uploadé — voir section "Portfolio public" |
 | 2026-07-17 | Mise en ligne du site | Livré : hébergement Scalingo + PostgreSQL, stockage OVH Object Storage, bascule SQLite→Postgres, dépôt git initialisé, site en ligne sur `https://mikkovisuel.osc-fr1.scalingo.io` |
+| 2026-07-17 | Signalement : échec de l'upload d'image (page d'accueil) en production, erreur serveur générique | Corrigé : incompatibilité `@aws-sdk/client-s3` récent vs OVH Object Storage (`SignatureDoesNotMatch`), SDK fixé à la version 3.726.1 — voir "Décisions techniques déléguées" |
 | 2026-07-17 | Pointage du domaine mikkovisuel.fr | Livré : CNAME `www.mikkovisuel.fr` → Scalingo, redirection `mikkovisuel.fr` → `www.` déjà en place côté OVH, SSL automatique — site accessible sur son vrai domaine |
