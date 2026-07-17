@@ -31,6 +31,15 @@ export function createS3Storage(): StorageAdapter {
     endpoint,
     region,
     credentials: { accessKeyId, secretAccessKey },
+    // AWS SDK v3 adds a CRC32 checksum header to every S3 request by
+    // default (`WHEN_SUPPORTED`). OVH's S3-compatible gateway doesn't
+    // handle that header correctly when verifying the request signature,
+    // causing every upload to fail with "SignatureDoesNotMatch" (403) —
+    // found by reading Scalingo's production logs after a real upload
+    // failed. `WHEN_REQUIRED` only adds a checksum when the S3 API
+    // actually mandates one, which fixes the signature mismatch.
+    requestChecksumCalculation: "WHEN_REQUIRED",
+    responseChecksumValidation: "WHEN_REQUIRED",
   });
 
   return {
