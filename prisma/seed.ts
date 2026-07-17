@@ -89,9 +89,18 @@ async function seedAdmin() {
 }
 
 // Dev-only demo client, so the client login can be tested locally without
-// going through the admin UI first. Never runs outside local SQLite (see the
-// guard at the top of this file).
+// going through the admin UI first. The guard below is the actual
+// enforcement — a prior version of this comment claimed one existed
+// elsewhere in the file, but it didn't, and running this seed against
+// production (2026-07-17) created demo@client.test / demo-password (both
+// public in this source file) on the live database. Never again: bail out
+// unless DATABASE_URL is local SQLite.
 async function seedDemoClient() {
+  if (!url!.startsWith("file:")) {
+    console.log("Not local SQLite — skipping demo client seed.");
+    return;
+  }
+
   const email = "demo@client.test";
   const existing = await prisma.clientUser.findUnique({ where: { email } });
   if (existing) {
