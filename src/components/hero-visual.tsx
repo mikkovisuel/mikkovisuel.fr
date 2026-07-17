@@ -13,9 +13,10 @@ export function HeroVisual({ mainSrc, detailSrc }: { mainSrc: string; detailSrc:
         className="absolute -right-10 -top-10 -z-10 h-56 w-56 rounded-full bg-brand-orange/30 blur-3xl"
       />
       <motion.div
-        initial={reduce ? false : { opacity: 0, y: 24 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
+        initial={reduce ? false : { opacity: 0, y: 20, rotateY: -32, scale: 0.94 }}
+        animate={{ opacity: 1, y: 0, rotateY: 0, scale: 1 }}
+        transition={{ duration: 0.9, ease: [0.16, 1, 0.3, 1] }}
+        style={{ transformPerspective: 1400 }}
         className="absolute inset-0 overflow-hidden rounded-2xl border border-line"
       >
         <Image
@@ -28,9 +29,10 @@ export function HeroVisual({ mainSrc, detailSrc }: { mainSrc: string; detailSrc:
         />
       </motion.div>
       <motion.div
-        initial={reduce ? false : { opacity: 0, y: 24 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.7, delay: 0.15, ease: [0.16, 1, 0.3, 1] }}
+        initial={reduce ? false : { opacity: 0, y: 20, rotateY: 32, scale: 0.94 }}
+        animate={{ opacity: 1, y: 0, rotateY: 0, scale: 1 }}
+        transition={{ duration: 0.9, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+        style={{ transformPerspective: 1400 }}
         className="absolute -bottom-8 -left-6 aspect-[3/4] w-2/5 overflow-hidden rounded-2xl border border-line shadow-xl sm:-left-10"
       >
         <Image

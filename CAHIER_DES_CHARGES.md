@@ -87,6 +87,14 @@ appliquée à l'ensemble du site :
   restaure le texte par défaut d'origine (pas de page cassée). Les titres/
   descriptions de chaque pilier restaient déjà modifiables (voir plus haut) —
   ce point ne couvrait que les deux blocs de titre de la page d'accueil.
+- Entrée en rotation 3D des visuels du Hero (2026-07-17) : les deux images
+  sous le bouton "Voir le travail" (`HeroVisual`) jouaient un simple fondu +
+  glissement vertical à l'affichage — remplacé par une entrée en rotation
+  3D (`rotateY` + léger zoom, via Motion), chaque image pivotant depuis un
+  angle opposé à l'autre (effet miroir) jusqu'à se stabiliser bien en face.
+  Animation unique au chargement, pas de rotation permanente ; respecte
+  toujours la préférence système "réduire les animations"
+  (`useReducedMotion`, déjà en place).
 - Aperçus vidéo autoplay + limite de taille retirée (2026-07-17) : sur la
   page de détail d'un pilier (`/portfolio/[slug]`), les vidéos uploadées ne
   se lançaient pas automatiquement (attribut `muted` manquant, bloqué par
@@ -404,3 +412,4 @@ Le client a explicitement délégué ces choix :
 | 2026-07-17 | Signalement : sur mobile, la vidéo réellement en ligne sur le pilier Motion Design affiche toujours une icône de lecture barrée malgré le correctif autoplay | Corrigé : `/api/portfolio-media/items/[itemId]` ne supportait pas les requêtes `Range`, requises par Safari mobile pour lire une vidéo — voir section "Portfolio public" |
 | 2026-07-17 | Signalement : upload d'une vidéo sur le pilier Vidéo Aftermovies en échec ("This page couldn't load") | Corrigé : conteneur de production tombé à court de mémoire (upload sans streaming + limite retirée plus tôt dans la journée) ; client a choisi de réintroduire un plafond (200 Mo, contre 3 options proposées) plutôt que le streaming ou un conteneur plus gros — voir section "Portfolio public" |
 | 2026-07-17 | Rendre modifiables depuis l'admin le titre/sous-titre/bouton du Hero et le titre/sous-titre de la section portfolio | Livré : nouveau modèle `HomepageContent`, formulaire "Textes de l'accueil" dans `/admin/portfolio` — voir section "Portfolio public" |
+| 2026-07-17 | Faire tourner les deux images du Hero en 3D | Livré : entrée en rotation 3D (`rotateY` miroir + zoom léger) au chargement, remplace l'ancien fondu/glissement — voir section "Portfolio public" |
