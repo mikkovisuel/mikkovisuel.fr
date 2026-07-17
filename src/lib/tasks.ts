@@ -26,19 +26,20 @@ export function dueDateKey(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 }
 
-// Vue "Calendrier" (par échéance, comme la vue Notion du client). Les tâches
-// sans échéance sont gardées à part plutôt que masquées, pour ne pas les
-// perdre de vue.
-export function groupTasksByDueDate<T extends { dueDate: Date | null }>(tasks: T[]) {
+// Vue "Calendrier" (par date d'événement — la date du mariage/soirée/tournage
+// du client, pas l'échéance interne de livraison — pour avoir une vue globale
+// des demandes sur un calendrier). Les tâches sans date d'événement sont
+// gardées à part plutôt que masquées, pour ne pas les perdre de vue.
+export function groupTasksByEventDate<T extends { eventDate: Date | null }>(tasks: T[]) {
   const byDay = new Map<string, T[]>();
   const undated: T[] = [];
 
   for (const task of tasks) {
-    if (!task.dueDate) {
+    if (!task.eventDate) {
       undated.push(task);
       continue;
     }
-    const key = dueDateKey(task.dueDate);
+    const key = dueDateKey(task.eventDate);
     const list = byDay.get(key);
     if (list) list.push(task);
     else byDay.set(key, [task]);

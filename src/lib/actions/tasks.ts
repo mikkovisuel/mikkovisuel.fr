@@ -5,9 +5,9 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { verifyAdminSession, verifyClientSession } from "@/lib/dal";
-import { sendEmail } from "@/lib/email/service";
+import { sendEmail, getAdminEmail } from "@/lib/email/service";
 import { getStorageAdapter } from "@/lib/storage";
-import { isTaskOverdue } from "@/lib/tasks";
+import { isTaskOverdue, taskDateFormatter } from "@/lib/tasks";
 
 const MAX_ATTACHMENT_SIZE = 20 * 1024 * 1024;
 const ALLOWED_ATTACHMENT_TYPES = new Set([
@@ -274,16 +274,52 @@ export async function setTaskStatus(taskId: string, statusSlug: TaskStatusSlug) 
 export async function validateTask(taskId: string) {
   const clientUser = await verifyClientSession();
 
-  const task = await db.task.findUnique({ where: { id: taskId } });
+  const task = await db.task.findUnique({ where: { id: taskId }, include: { deliverables: true } });
   if (!task || task.clientId !== clientUser.clientId) return;
 
   const statusId = await getStatusId(TASK_STATUS.BAT_VALIDE);
+  const validatedAt = new Date();
   await db.task.update({
     where: { id: taskId },
-    data: { statusId, batValidatedAt: new Date() },
+    data: { statusId, batValidatedAt: validatedAt },
   });
 
+  await notifyBatValidated(task.title, task.deliverables.map((d) => d.fileName), validatedAt, clientUser);
+
   revalidateTaskPaths(clientUser.clientId);
+}
+
+async function notifyBatValidated(
+  taskTitle: string,
+  deliverableNames: string[],
+  validatedAt: Date,
+  clientUser: { name: string; email: string },
+) {
+  const adminEmail = await getAdminEmail();
+  const validatedAtLabel = taskDateFormatter.format(validatedAt);
+  const deliverablesHtml =
+    deliverableNames.length > 0
+      ? `<ul>${deliverableNames.map((name) => `<li>${name}</li>`).join("")}</ul>`
+      : "<p>Aucun livrable associé.</p>";
+  const html = `
+    <p>Le BAT de la tâche "${taskTitle}" a été validé.</p>
+    <p><strong>Date :</strong> ${validatedAtLabel}</p>
+    <p><strong>Validé par :</strong> ${clientUser.name} (${clientUser.email})</p>
+    <p><strong>Livrables validés :</strong></p>
+    ${deliverablesHtml}
+  `;
+
+  const recipients = [adminEmail, clientUser.email].filter(
+    (email): email is string => Boolean(email),
+  );
+  for (const to of recipients) {
+    await sendEmail({
+      trigger: "bat_validated",
+      to,
+      subject: "Validation du BAT faite !",
+      html,
+    });
+  }
 }
 
 export async function refuseTask(

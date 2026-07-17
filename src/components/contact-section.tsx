@@ -1,22 +1,11 @@
 "use client";
 
-import { useState, type FormEvent } from "react";
+import { useActionState } from "react";
 import { CheckCircle, WarningCircle } from "@phosphor-icons/react/dist/ssr";
-
-type Status = "idle" | "submitting" | "success" | "error";
+import { submitContactForm } from "@/lib/actions/contact";
 
 export function ContactSection() {
-  const [status, setStatus] = useState<Status>("idle");
-
-  async function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setStatus("submitting");
-
-    // TODO: brancher sur une vraie route API (envoi email / création de tâche "Nouveau")
-    // une fois l'espace client et le backend en place. Simulation pour le moment.
-    await new Promise((resolve) => setTimeout(resolve, 900));
-    setStatus("success");
-  }
+  const [state, formAction, pending] = useActionState(submitContactForm, undefined);
 
   return (
     <section id="contact" className="scroll-mt-16 py-20 sm:py-28">
@@ -32,7 +21,7 @@ export function ContactSection() {
         </div>
 
         <div className="lg:col-span-7">
-          {status === "success" ? (
+          {state?.success ? (
             <div className="flex items-start gap-3 rounded-2xl border border-line bg-surface-elevated p-6">
               <CheckCircle
                 size={22}
@@ -48,7 +37,7 @@ export function ContactSection() {
               </div>
             </div>
           ) : (
-            <form onSubmit={handleSubmit} className="grid gap-5 sm:grid-cols-2">
+            <form action={formAction} className="grid gap-5 sm:grid-cols-2">
               <div className="flex flex-col gap-2">
                 <label htmlFor="name" className="text-sm font-medium text-ink">
                   Nom
@@ -107,20 +96,20 @@ export function ContactSection() {
                 />
               </div>
 
-              {status === "error" && (
+              {state?.error && (
                 <div className="flex items-center gap-2 text-sm text-danger sm:col-span-2">
                   <WarningCircle size={18} weight="fill" />
-                  Une erreur est survenue, merci de réessayer.
+                  {state.error}
                 </div>
               )}
 
               <div className="sm:col-span-2">
                 <button
                   type="submit"
-                  disabled={status === "submitting"}
+                  disabled={pending}
                   className="inline-flex items-center rounded-full bg-accent px-6 py-3 text-sm font-medium text-accent-ink transition-transform active:scale-[0.98] disabled:opacity-60"
                 >
-                  {status === "submitting" ? "Envoi..." : "Envoyer la demande"}
+                  {pending ? "Envoi..." : "Envoyer la demande"}
                 </button>
               </div>
             </form>

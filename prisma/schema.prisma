@@ -142,6 +142,22 @@ model Task {
 
   deliverables Deliverable[]
   attachments  Attachment[]
+  comments     TaskComment[]
+}
+
+// Fil de commentaires par tâche (admin + client), pour discuter d'une tâche
+// sans passer par email. `authorType`/`authorName` sont dénormalisés (comme
+// `createdByType`/`createdById` sur Task) pour garder l'historique lisible
+// même si le compte auteur est supprimé plus tard.
+model TaskComment {
+  id         String   @id @default(cuid())
+  taskId     String
+  task       Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  authorType String
+  authorId   String
+  authorName String
+  body       String
+  createdAt  DateTime @default(now())
 }
 
 model Deliverable {

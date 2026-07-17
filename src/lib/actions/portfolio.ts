@@ -16,9 +16,15 @@ import {
 } from "@/lib/validation/portfolio";
 
 const MAX_IMAGE_SIZE = 20 * 1024 * 1024;
-const MAX_VIDEO_SIZE = 50 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
-const ALLOWED_VIDEO_TYPES = new Set(["video/mp4", "video/webm"]);
+// Pas de limite de taille pour les vidéos (au-delà de la limite technique
+// globale des Server Actions, voir bodySizeLimit dans next.config.ts) : les
+// aftermovies/motion design dépassent régulièrement 50 Mo.
+const ALLOWED_VIDEO_TYPES = new Set([
+  "video/mp4",
+  "video/webm",
+  "video/quicktime",
+]);
 
 async function nextPillarSortOrder() {
   const last = await db.portfolioPillar.findFirst({ orderBy: { sortOrder: "desc" } });
@@ -224,9 +230,8 @@ export async function createMediaItem(
   const isVideo = file.type.startsWith("video/");
   const isImage = file.type.startsWith("image/");
   if (isVideo) {
-    if (file.size > MAX_VIDEO_SIZE) return { error: "Vidéo trop volumineuse (50 Mo maximum)." };
     if (!ALLOWED_VIDEO_TYPES.has(file.type)) {
-      return { error: "Format vidéo non autorisé (MP4 ou WebM)." };
+      return { error: "Format vidéo non autorisé (MP4, WebM ou MOV)." };
     }
   } else if (isImage) {
     if (file.size > MAX_IMAGE_SIZE) return { error: "Image trop volumineuse (20 Mo maximum)." };

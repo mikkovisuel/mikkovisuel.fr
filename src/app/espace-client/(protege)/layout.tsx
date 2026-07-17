@@ -25,8 +25,10 @@ export default async function ClientProtectedLayout({
     { href: "/espace-client", label: "Accueil" },
     { href: "/espace-client/a-valider", label: "À valider", count: toValidateCount },
     { href: "/espace-client/suivi", label: "Suivi" },
+    { href: "/espace-client/calendrier", label: "Calendrier" },
     { href: "/espace-client/livrables", label: "Livrables" },
     { href: "/espace-client/administratif", label: "Administratif", count: unpaidCount },
+    { href: "/espace-client/suggestion", label: "Suggestion" },
   ];
 
   return (

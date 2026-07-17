@@ -43,7 +43,7 @@ export function MediaItemUploadForm({
         key={resetKey}
         name="file"
         required
-        accept="image/png,image/jpeg,image/webp,video/mp4,video/webm"
+        accept="image/png,image/jpeg,image/webp,video/mp4,video/webm,video/quicktime"
       />
       <button
         type="submit"

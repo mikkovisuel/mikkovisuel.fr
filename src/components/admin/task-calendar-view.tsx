@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { dueDateKey, groupTasksByDueDate } from "@/lib/tasks";
+import { dueDateKey, groupTasksByEventDate } from "@/lib/tasks";
 import { PALETTE_SWATCH_CLASSES, type PaletteColor } from "@/lib/dropdown-lists";
 
 const WEEKDAY_LABELS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
@@ -8,8 +8,8 @@ const MONTH_FORMATTER = new Intl.DateTimeFormat("fr-FR", { month: "long", year: 
 interface CalendarTask {
   id: string;
   title: string;
-  dueDate: Date | null;
-  status: { color: string };
+  eventDate: Date | null;
+  status: { color: string; label: string };
 }
 
 // Grille de semaines (lundi en premier), avec des cases vides en bordure de
@@ -29,13 +29,19 @@ function buildMonthGrid(year: number, month: number) {
   return weeks;
 }
 
-function monthHref(year: number, month: number, clientId?: string, status?: string) {
+function monthHref(
+  basePath: string,
+  year: number,
+  month: number,
+  clientId?: string,
+  status?: string,
+) {
   const params = new URLSearchParams();
-  params.set("vue", "calendrier");
+  if (basePath === "/admin/taches") params.set("vue", "calendrier");
   if (clientId) params.set("clientId", clientId);
   if (status) params.set("status", status);
   params.set("mois", `${year}-${String(month + 1).padStart(2, "0")}`);
-  return `/admin/taches?${params.toString()}`;
+  return `${basePath}?${params.toString()}`;
 }
 
 export function TaskCalendarView({
@@ -44,6 +50,8 @@ export function TaskCalendarView({
   month,
   clientId,
   status,
+  basePath = "/admin/taches",
+  taskBasePath = "/admin/taches",
 }: {
   tasks: CalendarTask[];
   /** Mois affiché, `month` indexé à partir de 0 (comme Date). */
@@ -51,9 +59,13 @@ export function TaskCalendarView({
   month: number;
   clientId?: string;
   status?: string;
+  /** URL de la vue elle-même (pour les liens ← Précédent / Suivant →). */
+  basePath?: string;
+  /** URL de base des liens vers une tâche (admin ou espace client). */
+  taskBasePath?: string;
 }) {
   const weeks = buildMonthGrid(year, month);
-  const { byDay, undated } = groupTasksByDueDate(tasks);
+  const { byDay, undated } = groupTasksByEventDate(tasks);
   const today = dueDateKey(new Date());
   const prevMonth = month === 0 ? { year: year - 1, month: 11 } : { year, month: month - 1 };
   const nextMonth = month === 11 ? { year: year + 1, month: 0 } : { year, month: month + 1 };
@@ -66,13 +78,13 @@ export function TaskCalendarView({
         </h2>
         <div className="flex gap-2">
           <Link
-            href={monthHref(prevMonth.year, prevMonth.month, clientId, status)}
+            href={monthHref(basePath, prevMonth.year, prevMonth.month, clientId, status)}
             className="rounded-full border border-line px-3 py-1.5 text-sm text-ink-muted transition-colors hover:text-ink"
           >
             ← Précédent
           </Link>
           <Link
-            href={monthHref(nextMonth.year, nextMonth.month, clientId, status)}
+            href={monthHref(basePath, nextMonth.year, nextMonth.month, clientId, status)}
             className="rounded-full border border-line px-3 py-1.5 text-sm text-ink-muted transition-colors hover:text-ink"
           >
             Suivant →
@@ -117,11 +129,16 @@ export function TaskCalendarView({
                     return (
                       <Link
                         key={task.id}
-                        href={`/admin/taches/${task.id}`}
-                        className="flex items-center gap-1.5 truncate rounded-lg bg-surface-elevated px-2 py-1 text-xs text-ink hover:underline"
+                        href={`${taskBasePath}/${task.id}`}
+                        className="flex flex-col gap-0.5 truncate rounded-lg bg-surface-elevated px-2 py-1 text-xs text-ink hover:underline"
                       >
-                        <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${dot}`} />
-                        <span className="truncate">{task.title}</span>
+                        <span className="flex items-center gap-1.5 truncate">
+                          <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${dot}`} />
+                          <span className="truncate">{task.title}</span>
+                        </span>
+                        <span className="truncate pl-3 text-[11px] text-ink-muted">
+                          {task.status.label}
+                        </span>
                       </Link>
                     );
                   })}
@@ -134,12 +151,12 @@ export function TaskCalendarView({
 
       {undated.length > 0 && (
         <div className="mt-6">
-          <h3 className="text-sm font-medium text-ink">Sans échéance</h3>
+          <h3 className="text-sm font-medium text-ink">Sans date d&apos;événement</h3>
           <ul className="mt-2 flex flex-wrap gap-2">
             {undated.map((task) => (
               <li key={task.id}>
                 <Link
-                  href={`/admin/taches/${task.id}`}
+                  href={`${taskBasePath}/${task.id}`}
                   className="rounded-full border border-line px-3 py-1.5 text-xs text-ink-muted transition-colors hover:text-ink"
                 >
                   {task.title}

@@ -10,13 +10,23 @@ export type EmailTrigger =
   | "refusal_confirmed"
   | "new_deliverable"
   | "payment_reminder"
-  | "task_reminder";
+  | "task_reminder"
+  | "contact_form"
+  | "feedback_suggestion"
+  | "bat_validated";
 
 export interface SendEmailInput {
   trigger: EmailTrigger;
   to: string;
   subject: string;
   html: string;
+}
+
+// Single-admin app: the destination for contact/feedback/BAT-copy emails is
+// whichever address the admin account currently uses, not a hardcoded string.
+export async function getAdminEmail(): Promise<string | null> {
+  const admin = await db.admin.findFirst();
+  return admin?.email ?? null;
 }
 
 // Resend is used when RESEND_API_KEY is set; otherwise emails are logged to

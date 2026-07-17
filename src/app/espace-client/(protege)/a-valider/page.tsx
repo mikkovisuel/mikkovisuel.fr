@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { verifyClientSession } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { TASK_STATUS } from "@/lib/dropdown-lists";
@@ -31,7 +32,12 @@ export default async function ClientToValidatePage() {
         <div className="mt-8 grid gap-4 sm:grid-cols-2">
           {tasks.map((task) => (
             <div key={task.id} className="rounded-2xl border border-line p-6">
-              <p className="font-medium text-ink">{task.title}</p>
+              <Link
+                href={`/espace-client/taches/${task.id}`}
+                className="font-medium text-ink hover:underline"
+              >
+                {task.title}
+              </Link>
               {task.description && (
                 <p className="mt-1 text-sm text-ink-muted">{task.description}</p>
               )}

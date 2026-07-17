@@ -7,6 +7,7 @@ import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { db } from "@/lib/db";
 import { resolveItemSrc } from "@/lib/portfolio-media";
+import { PortfolioVideo } from "@/components/portfolio-video";
 
 export async function generateMetadata({
   params,
@@ -103,9 +104,8 @@ export default async function PillarPage({
                     className={`group relative ${aspectClass} overflow-hidden rounded-2xl border border-line`}
                   >
                     {isUploadedVideo ? (
-                      <video
+                      <PortfolioVideo
                         src={resolveItemSrc(item)}
-                        controls
                         className="absolute inset-0 h-full w-full object-cover"
                       />
                     ) : (

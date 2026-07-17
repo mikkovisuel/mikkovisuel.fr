@@ -69,7 +69,12 @@ export default async function ClientFollowUpPage({
         <div className="mt-8 divide-y divide-line rounded-2xl border border-line">
           {tasks.map((task) => (
             <div key={task.id} className="px-6 py-4">
-              <p className="font-medium text-ink">{task.title}</p>
+              <Link
+                href={`/espace-client/taches/${task.id}`}
+                className="font-medium text-ink hover:underline"
+              >
+                {task.title}
+              </Link>
               <div className="mt-3">
                 <TaskStatusTimeline statusSlug={task.status.slug} refusalReason={task.refusalReason} />
               </div>

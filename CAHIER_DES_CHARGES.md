@@ -79,12 +79,25 @@ appliquée à l'ensemble du site :
   conseillées : image principale 1200×900 px (ratio 4:3), image de détail
   600×800 px (ratio 3:4) — voir aussi le récapitulatif complet des visuels
   de la page d'accueil communiqué au client le 2026-07-16.
+- Aperçus vidéo autoplay + limite de taille retirée (2026-07-17) : sur la
+  page de détail d'un pilier (`/portfolio/[slug]`), les vidéos uploadées ne
+  se lançaient pas automatiquement (attribut `muted` manquant, bloqué par
+  les navigateurs). Corrigé avec un nouveau composant `PortfolioVideo`
+  (muet, en boucle, `playsInline`) piloté par IntersectionObserver pour ne
+  jouer que les vidéos réellement visibles à l'écran. Limite de 50 Mo par
+  vidéo (`src/lib/actions/portfolio.ts`) supprimée à la demande du client
+  (plus de plafond, hors limite technique globale de 2 Go des Server
+  Actions) ; format QuickTime (`.mov`) ajouté aux formats vidéo acceptés en
+  plus de MP4/WebM, pour corriger un rejet d'upload signalé sur le pilier
+  Vidéo Aftermovies.
 
 ## 2. Espace client
 
 - Accès sécurisé par compte (email + mot de passe), un compte par client.
-- 5 onglets (2026-07-16 : ajout d'**Accueil** en tête, voir plus bas) :
-  **Accueil / À valider / Suivi / Livrables / Administratif**.
+- 7 onglets (2026-07-16 : ajout d'**Accueil** en tête ; 2026-07-17 : ajout de
+  **Calendrier** et **Suggestion**, voir plus bas) :
+  **Accueil / À valider / Suivi / Calendrier / Livrables / Administratif /
+  Suggestion**.
 - Cycle de statut d'une tâche (confirmé par le client le 2026-07-13, ne pas
   rediscuter sauf demande explicite) :
   `Nouveau → En cours → À valider → BAT validé / À modifier → Terminé`
@@ -217,6 +230,40 @@ appliquée à l'ensemble du site :
   Actions — le fichier était tronqué avant même d'atteindre l'action
   d'upload. Corrigé en alignant `proxyClientMaxBodySize` sur `bodySizeLimit`
   (2 Go) dans `next.config.ts`. Vérifié avec un upload réel de 15 Mo.
+- Formulaire de contact public branché sur un vrai envoi d'email
+  (2026-07-17) : `ContactSection` simulait l'envoi (attente factice, aucun
+  email réel) — corrigé avec une Server Action (`submitContactForm`) qui
+  envoie le message à l'adresse admin courante (compte `Admin` en base,
+  `mikko.visuel@gmail.com` actuellement).
+- Calendrier admin basé sur la date de l'évènement (2026-07-17) : la vue
+  `Calendrier` de `/admin/taches` groupait les tâches par échéance de
+  livraison interne, pas par date d'évènement client — corrigé
+  (`groupTasksByEventDate`), avec le statut de la tâche affiché en plus du
+  titre sur chaque case du calendrier (pas seulement la pastille de
+  couleur).
+- Section "Suggestion" côté espace client (2026-07-17) : nouvel onglet
+  (`/espace-client/suggestion`) avec un simple message texte envoyé par
+  email à l'admin, pour du feedback sur l'expérience utilisateur de
+  l'espace client.
+- Fil de commentaires par tâche (2026-07-17) : nouveau modèle
+  `TaskComment` (auteur, nom, date, message), affiché et alimentable à la
+  fois sur la fiche tâche admin (`/admin/taches/[taskId]`) et sur une
+  nouvelle page de détail tâche côté client
+  (`/espace-client/taches/[taskId]`, accessible depuis "Suivi" et "À
+  valider"). Permet de discuter d'une tâche sans passer par email.
+- Vue calendrier côté espace client (2026-07-17) : `TaskCalendarView`
+  (jusqu'ici réservé à `/admin/taches`) généralisé avec des props
+  `basePath`/`taskBasePath`, et réutilisé sur une nouvelle page
+  `/espace-client/calendrier` — mêmes demandes classées par date
+  d'événement, avec titre et statut, mais scopées au client connecté (pas
+  de filtre client/statut, inutile ici) et pointant vers les fiches tâche
+  de l'espace client plutôt que celles de l'admin.
+- Email de confirmation à la validation d'un BAT (2026-07-17) :
+  `validateTask` n'envoyait jusqu'ici aucun email (seul le refus en
+  envoyait un). Corrigé : à la validation, un email "Validation du BAT
+  faite !" part à la fois vers l'admin et vers le compte client qui a
+  validé, avec récapitulatif de la tâche, noms des livrables validés, date
+  et nom de l'utilisateur.
 
 ## 3. Backend interne (admin)
 
@@ -306,4 +353,6 @@ Le client a explicitement délégué ces choix :
 | 2026-07-16 | Contrôle admin pour les 2 photos du Hero (page d'accueil) + dimensions pixel des visuels homepage à fournir | Livré : modèle `HomepageHero`, upload dans `/admin/portfolio` ("Page d'accueil"), fallback propre sur les placeholders Picsum tant que rien n'est uploadé — voir section "Portfolio public" |
 | 2026-07-17 | Mise en ligne du site | Livré : hébergement Scalingo + PostgreSQL, stockage OVH Object Storage, bascule SQLite→Postgres, dépôt git initialisé, site en ligne sur `https://mikkovisuel.osc-fr1.scalingo.io` |
 | 2026-07-17 | Signalement : échec de l'upload d'image (page d'accueil) en production, erreur serveur générique | Corrigé : incompatibilité `@aws-sdk/client-s3` récent vs OVH Object Storage (`SignatureDoesNotMatch`), SDK fixé à la version 3.726.1 — voir "Décisions techniques déléguées" |
+| 2026-07-17 | Premier retour d'expérience (7 points) : formulaire de contact → email admin ; aperçus vidéo motion en autoplay ; limite 50 Mo vidéo à retirer + bug d'upload signalé sur Aftermovie ; vue calendrier par date d'évènement (admin) ; section "demande d'amélioration interface" ; chat de commentaires par tâche ; email de confirmation à la validation d'un BAT | Livré (les 7) : voir sections "Portfolio public" et "Espace client" ci-dessus pour le détail de chaque point |
+| 2026-07-17 | Ajouter la vue calendrier (par date d'évènement) côté espace client, pas seulement admin | Livré : nouvel onglet "Calendrier" sur `/espace-client/calendrier`, réutilisant `TaskCalendarView` généralisé — voir section "Espace client" |
 | 2026-07-17 | Pointage du domaine mikkovisuel.fr | Livré : CNAME `www.mikkovisuel.fr` → Scalingo, redirection `mikkovisuel.fr` → `www.` déjà en place côté OVH, SSL automatique — site accessible sur son vrai domaine |
