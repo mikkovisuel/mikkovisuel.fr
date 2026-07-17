@@ -8,9 +8,11 @@ async function main() {
   await client.connect();
 
   const rows = await client.query(
-    'SELECT "triggerType", "recipientEmail", success, error, "sentAt" FROM "EmailLog" ORDER BY "sentAt" DESC LIMIT 5',
+    'SELECT "triggerType", "recipientEmail", success, error, "sentAt" FROM "EmailLog" ORDER BY "sentAt" DESC LIMIT 8',
   );
-  console.log(JSON.stringify(rows.rows, null, 2));
+  for (const row of rows.rows) {
+    console.log(JSON.stringify(row));
+  }
 
   await client.end();
 }
