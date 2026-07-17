@@ -387,6 +387,21 @@ appliquée à l'ensemble du site :
   `Task.refusedAt` (miroir de `batValidatedAt`, jusqu'ici seul le champ
   `updatedAt`, trop générique, existait pour dater un refus). Rien ne
   s'affiche à la toute première connexion (pas de point de comparaison).
+- Quatre sections supplémentaires sur le tableau de bord (2026-07-17, sur 4
+  suggestions proposées + 1 apportée par le client, toutes retenues) :
+  - **Prochains événements** : les 6 prochaines tâches par date d'évènement
+    à venir (titre, client, statut, date), lien direct vers chaque tâche.
+  - **Tâches par statut** : décompte par statut (les 6 statuts verrouillés,
+    y compris à 0), lien vers la vue `Liste` filtrée par statut.
+  - **Clients sans activité récente** : clients sans nouvelle tâche depuis
+    30 jours ou plus (ou sans aucune tâche), pour repérer une relance
+    commerciale à prévoir.
+  - **Journal de connexion** : historique des connexions client à leur
+    espace (nom du compte, client, date/heure), les 8 plus récentes.
+    Nouveau modèle `ClientLoginEvent` (une ligne par connexion réussie),
+    distinct de `ClientUser.lastLoginAt` qui ne garde que la toute
+    dernière — alimenté depuis `clientLogin` (`src/lib/actions/
+    client-auth.ts`).
 - Modification de mot de passe côté client + réinitialisation côté admin
   (2026-07-17) : le client peut désormais changer son mot de passe en étant
   connecté (mot de passe actuel + nouveau + confirmation), depuis un nouveau
@@ -505,3 +520,4 @@ Le client a explicitement délégué ces choix :
 | 2026-07-17 | (Incident interne, pas une demande client) Relance du script de seed en production pour la couleur du statut "Terminé" | Corrigé le jour même : compte de démonstration créé par erreur sur la prod, supprimé, garde-fou ajouté à `seedDemoClient()` — voir section "Backend interne" |
 | 2026-07-17 | Brancher Resend pour l'envoi d'emails réel | Livré : compte Resend créé, domaine `mikkovisuel.fr` vérifié (DNS chez OVH), `RESEND_API_KEY` configurée sur Scalingo, testé avec un envoi réel depuis le formulaire de contact et reçu — voir section "Espace client" |
 | 2026-07-17 | Signalement : échec de l'envoi de 10 photos en pièces jointes sur une "Nouvelle demande" (cliente La Mescla) | Corrigé : upload des fichiers parallélisé (au lieu de séquentiel) sur les 3 parcours multi-fichiers, pour rester sous le délai d'attente du routeur — voir section "Espace client" |
+| 2026-07-17 | Suggestions pour enrichir le tableau de bord (+ demande du client : journal de connexion des clients) | Livré (les 4 retenues) : prochains événements, tâches par statut, clients sans activité récente, journal de connexion — voir section "Backend interne" |

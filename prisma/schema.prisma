@@ -55,6 +55,18 @@ model ClientUser {
   lastLoginAt     DateTime?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
+
+  loginEvents ClientLoginEvent[]
+}
+
+// Historique des connexions client, pour le "journal de connexion" du
+// tableau de bord admin — distinct de `ClientUser.lastLoginAt` (qui ne garde
+// que la toute dernière connexion) : une ligne par connexion réussie.
+model ClientLoginEvent {
+  id           String     @id @default(cuid())
+  clientUserId String
+  clientUser   ClientUser @relation(fields: [clientUserId], references: [id], onDelete: Cascade)
+  loggedInAt   DateTime   @default(now())
 }
 
 // Opaque session tokens: subjectType/subjectId is a lightweight polymorphic

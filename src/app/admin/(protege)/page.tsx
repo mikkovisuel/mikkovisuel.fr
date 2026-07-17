@@ -2,8 +2,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { verifyAdminSession } from "@/lib/dal";
 import { db } from "@/lib/db";
-import { TASK_STATUS } from "@/lib/dropdown-lists";
+import { TASK_STATUS, TASK_STATUS_LIST_KEY } from "@/lib/dropdown-lists";
 import { RecentActivity } from "@/components/admin/recent-activity";
+import { UpcomingEvents } from "@/components/admin/upcoming-events";
+import { StatusBreakdown } from "@/components/admin/status-breakdown";
+import { InactiveClients } from "@/components/admin/inactive-clients";
+import { ClientLoginJournal } from "@/components/admin/client-login-journal";
+
+const INACTIVE_THRESHOLD_MS = 30 * 24 * 60 * 60 * 1000;
 
 export const metadata: Metadata = {
   title: "Tableau de bord — Admin Mikko Visuel",
@@ -80,6 +86,70 @@ export default async function AdminDashboardPage() {
     newRequests.length > 0 ||
     newComments.length > 0;
 
+  const [upcomingTaskRows, statusList, statusGroups, clientsWithLastTask, loginEventRows] =
+    await Promise.all([
+      db.task.findMany({
+        where: { eventDate: { gte: new Date() }, archivedAt: null },
+        include: { client: true, status: true },
+        orderBy: { eventDate: "asc" },
+        take: 6,
+      }),
+      db.dropdownList.findUnique({
+        where: { key: TASK_STATUS_LIST_KEY },
+        include: { items: { orderBy: { sortOrder: "asc" } } },
+      }),
+      db.task.groupBy({ by: ["statusId"], where: { archivedAt: null }, _count: { _all: true } }),
+      db.client.findMany({
+        include: {
+          tasks: {
+            where: { archivedAt: null },
+            orderBy: { createdAt: "desc" },
+            take: 1,
+            select: { createdAt: true },
+          },
+        },
+      }),
+      db.clientLoginEvent.findMany({
+        orderBy: { loggedInAt: "desc" },
+        take: 8,
+        include: { clientUser: { include: { client: true } } },
+      }),
+    ]);
+
+  const upcomingEvents = upcomingTaskRows.map((task) => ({
+    id: task.id,
+    title: task.title,
+    eventDate: task.eventDate!,
+    clientName: task.client.name,
+    statusLabel: task.status.label,
+  }));
+
+  const taskCountByStatusId = new Map(statusGroups.map((group) => [group.statusId, group._count._all]));
+  const statusBreakdown =
+    statusList?.items.map((item) => ({
+      slug: item.slug,
+      label: item.label,
+      color: item.color,
+      count: taskCountByStatusId.get(item.id) ?? 0,
+    })) ?? [];
+
+  const inactiveThreshold = new Date(new Date().getTime() - INACTIVE_THRESHOLD_MS);
+  const inactiveClients = clientsWithLastTask
+    .filter((client) => client.tasks.length === 0 || client.tasks[0].createdAt < inactiveThreshold)
+    .map((client) => ({
+      id: client.id,
+      name: client.name,
+      lastTaskAt: client.tasks[0]?.createdAt ?? null,
+    }));
+
+  const loginEvents = loginEventRows.map((event) => ({
+    id: event.id,
+    clientId: event.clientUser.client.id,
+    clientName: event.clientUser.client.name,
+    userName: event.clientUser.name,
+    loggedInAt: event.loggedInAt,
+  }));
+
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
       <h1 className="font-display text-2xl font-medium tracking-tight text-ink">
@@ -129,6 +199,13 @@ export default async function AdminDashboardPage() {
           newComments={newComments}
         />
       )}
+
+      <div className="mt-8 grid gap-4 lg:grid-cols-2">
+        <UpcomingEvents tasks={upcomingEvents} />
+        <StatusBreakdown statuses={statusBreakdown} />
+        <InactiveClients clients={inactiveClients} />
+        <ClientLoginJournal events={loginEvents} />
+      </div>
     </div>
   );
 }

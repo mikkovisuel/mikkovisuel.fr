@@ -42,6 +42,7 @@ export async function clientLogin(
     where: { id: clientUser.id },
     data: { lastLoginAt: new Date() },
   });
+  await db.clientLoginEvent.create({ data: { clientUserId: clientUser.id } });
 
   await createSession("CLIENT_USER", clientUser.id);
   await setThemeCookie(clientUser.themePreference === "dark" ? "dark" : "light");
