@@ -1,0 +1,261 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// SQLite doesn't support Prisma's `enum` or `Decimal` types, so this schema
+// intentionally avoids both (String columns + zod validation in the app
+// layer instead) to stay portable to Postgres in production without a
+// rewrite. See /Users/mikko/.claude/plans/smooth-crafting-rose.md.
+
+model Admin {
+  id              String   @id @default(cuid())
+  email           String   @unique
+  passwordHash    String
+  themePreference String   @default("light")
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  uploadedDocuments Document[]
+}
+
+model Client {
+  id        String   @id @default(cuid())
+  name      String
+  notes     String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  users     ClientUser[]
+  tasks     Task[]
+  documents Document[]
+}
+
+model ClientUser {
+  id              String    @id @default(cuid())
+  clientId        String
+  client          Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  email           String    @unique
+  passwordHash    String
+  name            String
+  themePreference String    @default("light")
+  lastLoginAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+}
+
+// Opaque session tokens: subjectType/subjectId is a lightweight polymorphic
+// reference (Admin or ClientUser) rather than two nullable FKs, since a
+// session belongs to exactly one subject type at a time.
+model Session {
+  id          String   @id @default(cuid())
+  tokenHash   String   @unique
+  subjectType String
+  subjectId   String
+  expiresAt   DateTime
+  createdAt   DateTime @default(now())
+
+  @@index([subjectType, subjectId])
+}
+
+model PasswordResetToken {
+  id          String    @id @default(cuid())
+  subjectType String
+  subjectId   String
+  tokenHash   String    @unique
+  expiresAt   DateTime
+  usedAt      DateTime?
+  createdAt   DateTime  @default(now())
+}
+
+model LoginAttempt {
+  id         String   @id @default(cuid())
+  identifier String
+  ipAddress  String?
+  succeeded  Boolean
+  createdAt  DateTime @default(now())
+
+  @@index([identifier, createdAt])
+}
+
+model DropdownList {
+  id               String         @id @default(cuid())
+  key              String         @unique
+  name             String
+  allowCustomItems Boolean        @default(true)
+  items            DropdownItem[]
+}
+
+// `slug` is the stable key application code branches on (never edited);
+// `label`/`color`/`sortOrder` are freely admin-editable. `locked` prevents
+// adding/removing items on lists whose membership is fixed by the cahier
+// des charges (the six task statuses, and the "facture" document type).
+model DropdownItem {
+  id        String       @id @default(cuid())
+  listId    String
+  list      DropdownList @relation(fields: [listId], references: [id], onDelete: Cascade)
+  slug      String
+  label     String
+  color     String
+  sortOrder Int          @default(0)
+  locked    Boolean      @default(false)
+  createdAt DateTime     @default(now())
+  updatedAt DateTime     @updatedAt
+
+  tasks     Task[]
+  documents Document[]
+
+  taskTypeOf   Task[] @relation("TaskTypes")
+  taskFormatOf Task[] @relation("TaskFormats")
+
+  @@unique([listId, slug])
+}
+
+model Task {
+  id             String       @id @default(cuid())
+  clientId       String
+  client         Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  title          String
+  description    String?
+  statusId       String
+  status         DropdownItem @relation(fields: [statusId], references: [id])
+  eventDate      DateTime?
+  dueDate        DateTime?
+  createdByType  String
+  createdById    String
+  refusalReason  String?
+  batValidatedAt DateTime?
+  archivedAt     DateTime?
+  lastReminderAt DateTime?
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  types   DropdownItem[] @relation("TaskTypes")
+  formats DropdownItem[] @relation("TaskFormats")
+
+  deliverables Deliverable[]
+  attachments  Attachment[]
+}
+
+model Deliverable {
+  id             String   @id @default(cuid())
+  taskId         String
+  task           Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  fileName       String
+  storageKey     String
+  mimeType       String
+  sizeBytes      Int
+  storageBackend String
+  uploadedAt     DateTime @default(now())
+}
+
+// Fichiers de référence fournis par le client à la création d'une tâche
+// (moodboard, briefing, logo...) — distinct de `Deliverable` (le travail fini
+// livré par Mikko) pour ne pas polluer l'onglet "Livrables" du client.
+model Attachment {
+  id             String   @id @default(cuid())
+  taskId         String
+  task           Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  fileName       String
+  storageKey     String
+  mimeType       String
+  sizeBytes      Int
+  storageBackend String
+  uploadedAt     DateTime @default(now())
+}
+
+model Document {
+  id                      String       @id @default(cuid())
+  clientId                String
+  client                  Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  typeId                  String
+  type                    DropdownItem @relation(fields: [typeId], references: [id])
+  fileName                String
+  storageKey              String
+  mimeType                String
+  sizeBytes               Int
+  storageBackend          String
+  amountCents             Int?
+  currency                String       @default("EUR")
+  paymentStatus           String       @default("n/a")
+  stripeCheckoutSessionId String?
+  paidAt                  DateTime?
+  dueDate                 DateTime?
+  lastReminderAt          DateTime?
+  uploadedByAdminId       String
+  uploadedByAdmin         Admin        @relation(fields: [uploadedByAdminId], references: [id])
+  uploadedAt              DateTime     @default(now())
+}
+
+model EmailLog {
+  id             String   @id @default(cuid())
+  triggerType    String
+  recipientEmail String
+  sentAt         DateTime @default(now())
+  success        Boolean
+  error          String?
+}
+
+// Each cover/item resolves its image either from an external URL (the
+// Picsum placeholders migrated from the original static content) or from an
+// uploaded file via StorageAdapter — never both. See
+// src/lib/portfolio-media.ts for the resolver. Portfolio media is public
+// (no auth), unlike client Documents/Deliverables.
+model PortfolioPillar {
+  id                  String   @id @default(cuid())
+  slug                String   @unique
+  title               String
+  description         String
+  sortOrder           Int      @default(0)
+  mediaType           String   @default("mixed")
+  coverExternalUrl    String?
+  coverStorageKey     String?
+  coverMimeType       String?
+  coverStorageBackend String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+
+  items PortfolioMediaItem[]
+}
+
+// aspectRatio is "3:4" or "9:16" (client uploads photos in one of these two
+// crops, videos are always "9:16" - enforced in src/lib/actions/portfolio.ts,
+// not just this default). Controls the CSS tile shape on the public grid.
+model PortfolioMediaItem {
+  id             String          @id @default(cuid())
+  pillarId       String
+  pillar         PortfolioPillar @relation(fields: [pillarId], references: [id], onDelete: Cascade)
+  title          String
+  mediaType      String
+  aspectRatio    String          @default("3:4")
+  externalUrl    String?
+  storageKey     String?
+  mimeType       String?
+  storageBackend String?
+  sortOrder      Int             @default(0)
+  createdAt      DateTime        @default(now())
+}
+
+// Singleton (always id "hero") holding the two images in the homepage Hero
+// section (src/components/hero-visual.tsx), below the "Voir le travail"
+// button. No externalUrl fields here (unlike PortfolioPillar/MediaItem) —
+// there's no legacy data to migrate, the component falls back to its
+// original hardcoded Picsum placeholders in code when a slot is empty. See
+// src/lib/homepage-hero.ts for the resolver.
+model HomepageHero {
+  id                   String   @id @default("hero")
+  mainStorageKey       String?
+  mainMimeType         String?
+  mainStorageBackend   String?
+  detailStorageKey     String?
+  detailMimeType       String?
+  detailStorageBackend String?
+  updatedAt            DateTime @updatedAt
+}

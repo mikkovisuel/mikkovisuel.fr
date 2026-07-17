@@ -1,0 +1,42 @@
+import "server-only";
+import { db } from "@/lib/db";
+import { sendWithResend } from "@/lib/email/resend";
+import { sendWithConsole } from "@/lib/email/console";
+
+export type EmailTrigger =
+  | "password_reset"
+  | "new_document"
+  | "new_task_to_validate"
+  | "refusal_confirmed"
+  | "new_deliverable"
+  | "payment_reminder"
+  | "task_reminder";
+
+export interface SendEmailInput {
+  trigger: EmailTrigger;
+  to: string;
+  subject: string;
+  html: string;
+}
+
+// Resend is used when RESEND_API_KEY is set; otherwise emails are logged to
+// the console so the app works fully without that account existing yet.
+export async function sendEmail(input: SendEmailInput): Promise<void> {
+  const send = process.env.RESEND_API_KEY ? sendWithResend : sendWithConsole;
+
+  try {
+    await send(input);
+    await db.emailLog.create({
+      data: { triggerType: input.trigger, recipientEmail: input.to, success: true },
+    });
+  } catch (error) {
+    await db.emailLog.create({
+      data: {
+        triggerType: input.trigger,
+        recipientEmail: input.to,
+        success: false,
+        error: error instanceof Error ? error.message : String(error),
+      },
+    });
+  }
+}

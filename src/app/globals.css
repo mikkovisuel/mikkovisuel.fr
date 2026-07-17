@@ -1,0 +1,157 @@
+@import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --color-surface: #f7f6f3;
+  --color-surface-elevated: #ffffff;
+  --color-ink: #14141a;
+  --color-ink-muted: #52525b;
+  --color-line: rgba(20, 20, 26, 0.12);
+  /* Brand accent is a fixed lime, not tuned per theme like the old coral -
+     it's the client's exact brand color from the Figma DA. accent-ink stays
+     dark in both themes since lime is too light for white text. */
+  --color-accent: #dded2e;
+  --color-accent-ink: #14141a;
+  --color-brand-orange: #f18a2f;
+  --color-brand-purple: #84239f;
+  --color-brand-teal: #1e8993;
+  /* Separate from --color-accent: error/refusal copy needs to read as a
+     warning regardless of what the brand accent color is. */
+  --color-danger: #dc2626;
+}
+
+.dark {
+  --color-surface: #0b0b0d;
+  --color-surface-elevated: #17171b;
+  --color-ink: #f5f4f2;
+  --color-ink-muted: #a1a1aa;
+  --color-line: rgba(245, 244, 242, 0.1);
+  --color-accent: #dded2e;
+  --color-accent-ink: #14141a;
+  --color-brand-orange: #f18a2f;
+  --color-brand-purple: #84239f;
+  --color-brand-teal: #1e8993;
+  --color-danger: #f87171;
+}
+
+@theme inline {
+  --color-surface: var(--color-surface);
+  --color-surface-elevated: var(--color-surface-elevated);
+  --color-ink: var(--color-ink);
+  --color-ink-muted: var(--color-ink-muted);
+  --color-line: var(--color-line);
+  --color-accent: var(--color-accent);
+  --color-accent-ink: var(--color-accent-ink);
+  --color-brand-orange: var(--color-brand-orange);
+  --color-brand-purple: var(--color-brand-purple);
+  --color-brand-teal: var(--color-brand-teal);
+  --color-danger: var(--color-danger);
+  --font-display: var(--font-clash-display);
+  --font-body: var(--font-manrope);
+}
+
+body {
+  background: var(--color-surface);
+  color: var(--color-ink);
+  font-family: var(--font-body), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Dark, minimal scrollbar instead of the browser's default light/white one -
+   same near-black tone in both themes (just a touch more opaque in dark
+   mode so it stays visible against a dark background), transparent track. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(20, 20, 26, 0.4) transparent;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background-color: rgba(20, 20, 26, 0.4);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(20, 20, 26, 0.6);
+}
+
+.dark {
+  scrollbar-color: rgba(20, 20, 26, 0.6) transparent;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background-color: rgba(20, 20, 26, 0.6);
+}
+
+.dark ::-webkit-scrollbar-thumb:hover {
+  background-color: rgba(20, 20, 26, 0.8);
+}
+
+/* Native date-input calendar icon, recolored to the brand's citron accent
+   (fixed in both themes, see --color-accent) instead of the browser's
+   default grey. Chromium-only (::-webkit-calendar-picker-indicator has no
+   Firefox equivalent) — an acceptable gap since the admin/espace-client is
+   mainly used on Chromium-based browsers. */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 1.05em;
+  height: 1.05em;
+  cursor: pointer;
+  background-color: var(--color-accent);
+  -webkit-mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M208,32H184V24a8,8,0,0,0-16,0v8H88V24a8,8,0,0,0-16,0v8H48A16,16,0,0,0,32,48V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V48A16,16,0,0,0,208,32ZM72,48v8a8,8,0,0,0,16,0V48h80v8a8,8,0,0,0,16,0V48h24V80H48V48ZM208,208H48V96H208V208Z'/%3E%3C/svg%3E");
+  mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 256 256'%3E%3Cpath d='M208,32H184V24a8,8,0,0,0-16,0v8H88V24a8,8,0,0,0-16,0v8H48A16,16,0,0,0,32,48V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V48A16,16,0,0,0,208,32ZM72,48v8a8,8,0,0,0,16,0V48h80v8a8,8,0,0,0,16,0V48h24V80H48V48ZM208,208H48V96H208V208Z'/%3E%3C/svg%3E");
+  -webkit-mask-size: contain;
+  mask-size: contain;
+  -webkit-mask-repeat: no-repeat;
+  mask-repeat: no-repeat;
+  -webkit-mask-position: center;
+  mask-position: center;
+}
+
+/* Portfolio bento grid - collapses to a simple stack below lg, named areas above. */
+.portfolio-bento {
+  display: grid;
+  gap: 1rem;
+  grid-template-columns: 1fr;
+}
+
+@media (min-width: 640px) {
+  .portfolio-bento {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (min-width: 1024px) {
+  .portfolio-bento.is-bento {
+    grid-template-columns: repeat(4, 1fr);
+    grid-template-areas:
+      "a a b c"
+      "a a d e";
+    grid-auto-rows: minmax(240px, auto);
+  }
+
+  .portfolio-bento.is-bento > [data-area="a"] {
+    grid-area: a;
+  }
+  .portfolio-bento.is-bento > [data-area="b"] {
+    grid-area: b;
+  }
+  .portfolio-bento.is-bento > [data-area="c"] {
+    grid-area: c;
+  }
+  .portfolio-bento.is-bento > [data-area="d"] {
+    grid-area: d;
+  }
+  .portfolio-bento.is-bento > [data-area="e"] {
+    grid-area: e;
+  }
+}

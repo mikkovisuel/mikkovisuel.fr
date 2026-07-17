@@ -1,0 +1,70 @@
+import "server-only";
+import {
+  S3Client,
+  PutObjectCommand,
+  GetObjectCommand,
+  DeleteObjectCommand,
+} from "@aws-sdk/client-s3";
+import type { StorageAdapter } from "@/lib/storage/adapter";
+
+function streamToBuffer(stream: NodeJS.ReadableStream): Promise<Buffer> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = [];
+    stream.on("data", (chunk) => chunks.push(Buffer.from(chunk)));
+    stream.on("end", () => resolve(Buffer.concat(chunks)));
+    stream.on("error", reject);
+  });
+}
+
+export function createS3Storage(): StorageAdapter {
+  const endpoint = process.env.STORAGE_S3_ENDPOINT;
+  const region = process.env.STORAGE_S3_REGION ?? "auto";
+  const bucket = process.env.STORAGE_S3_BUCKET;
+  const accessKeyId = process.env.STORAGE_S3_ACCESS_KEY_ID;
+  const secretAccessKey = process.env.STORAGE_S3_SECRET_ACCESS_KEY;
+
+  if (!endpoint || !bucket || !accessKeyId || !secretAccessKey) {
+    throw new Error("S3 storage is not fully configured (STORAGE_S3_* env vars).");
+  }
+
+  const client = new S3Client({
+    endpoint,
+    region,
+    credentials: { accessKeyId, secretAccessKey },
+  });
+
+  return {
+    backend: "s3",
+
+    async save(key, data) {
+      await client.send(
+        new PutObjectCommand({ Bucket: bucket, Key: key, Body: data }),
+      );
+    },
+
+    async read(key) {
+      const response = await client.send(
+        new GetObjectCommand({ Bucket: bucket, Key: key }),
+      );
+      return streamToBuffer(response.Body as NodeJS.ReadableStream);
+    },
+
+    async readStream(key, range) {
+      const response = await client.send(
+        new GetObjectCommand({
+          Bucket: bucket,
+          Key: key,
+          ...(range ? { Range: `bytes=${range.start}-${range.end}` } : {}),
+        }),
+      );
+      // SdkStreamMixin (aws-sdk v3) exposes this helper to get a native web
+      // ReadableStream regardless of runtime, instead of manually branching
+      // on Node Readable vs Blob.
+      return response.Body!.transformToWebStream() as ReadableStream<Uint8Array>;
+    },
+
+    async delete(key) {
+      await client.send(new DeleteObjectCommand({ Bucket: bucket, Key: key }));
+    },
+  };
+}
