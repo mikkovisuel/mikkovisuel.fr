@@ -6,7 +6,9 @@ import { verifyAdminSession } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { resolveCoverSrc } from "@/lib/portfolio-media";
 import { resolveHeroMainSrc, resolveHeroDetailSrc } from "@/lib/homepage-hero";
+import { resolveHomepageContent } from "@/lib/homepage-content";
 import { HomepageHeroForm } from "@/components/admin/homepage-hero-form";
+import { HomepageContentForm } from "@/components/admin/homepage-content-form";
 
 export const metadata: Metadata = {
   title: "Portfolio — Admin Mikko Visuel",
@@ -15,13 +17,15 @@ export const metadata: Metadata = {
 export default async function AdminPortfolioPage() {
   await verifyAdminSession();
 
-  const [pillars, hero] = await Promise.all([
+  const [pillars, hero, content] = await Promise.all([
     db.portfolioPillar.findMany({
       include: { _count: { select: { items: true } } },
       orderBy: { sortOrder: "asc" },
     }),
     db.homepageHero.findUnique({ where: { id: "hero" } }),
+    db.homepageContent.findUnique({ where: { id: "homepage" } }),
   ]);
+  const resolvedContent = resolveHomepageContent(content);
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
@@ -42,6 +46,17 @@ export default async function AdminPortfolioPage() {
         </div>
         <div className="mt-6">
           <HomepageHeroForm />
+        </div>
+      </section>
+
+      <section className="mt-12">
+        <h2 className="text-sm font-medium text-ink-muted">Textes de l&rsquo;accueil</h2>
+        <p className="mt-1 text-sm text-ink-muted">
+          Le titre principal et le bouton du Hero, ainsi que l&rsquo;intitulé
+          de la section portfolio.
+        </p>
+        <div className="mt-4">
+          <HomepageContentForm defaultValues={resolvedContent} />
         </div>
       </section>
 

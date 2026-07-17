@@ -276,3 +276,17 @@ model HomepageHero {
   detailStorageBackend String?
   updatedAt            DateTime @updatedAt
 }
+
+// Singleton (always id "homepage") holding editable copy for the homepage
+// Hero and portfolio section headings. Fields are nullable — an empty value
+// falls back to the original hardcoded copy in code, same pattern as
+// HomepageHero images. See src/lib/homepage-content.ts for the resolver.
+model HomepageContent {
+  id                String   @id @default("homepage")
+  heroTitle         String?
+  heroSubtitle      String?
+  heroButtonLabel   String?
+  portfolioTitle    String?
+  portfolioSubtitle String?
+  updatedAt         DateTime @updatedAt
+}

@@ -79,6 +79,14 @@ appliquée à l'ensemble du site :
   conseillées : image principale 1200×900 px (ratio 4:3), image de détail
   600×800 px (ratio 3:4) — voir aussi le récapitulatif complet des visuels
   de la page d'accueil communiqué au client le 2026-07-16.
+- Textes de l'accueil administrables (2026-07-17) : le titre/sous-titre/
+  texte du bouton du Hero, ainsi que le titre/sous-titre de la section
+  portfolio, étaient codés en dur. Même principe que les visuels
+  ci-dessus : nouveau modèle singleton `HomepageContent`, formulaire dans
+  `/admin/portfolio` sous "Textes de l'accueil". Un champ laissé vide
+  restaure le texte par défaut d'origine (pas de page cassée). Les titres/
+  descriptions de chaque pilier restaient déjà modifiables (voir plus haut) —
+  ce point ne couvrait que les deux blocs de titre de la page d'accueil.
 - Aperçus vidéo autoplay + limite de taille retirée (2026-07-17) : sur la
   page de détail d'un pilier (`/portfolio/[slug]`), les vidéos uploadées ne
   se lançaient pas automatiquement (attribut `muted` manquant, bloqué par
@@ -395,3 +403,4 @@ Le client a explicitement délégué ces choix :
 | 2026-07-17 | Pointage du domaine mikkovisuel.fr | Livré : CNAME `www.mikkovisuel.fr` → Scalingo, redirection `mikkovisuel.fr` → `www.` déjà en place côté OVH, SSL automatique — site accessible sur son vrai domaine |
 | 2026-07-17 | Signalement : sur mobile, la vidéo réellement en ligne sur le pilier Motion Design affiche toujours une icône de lecture barrée malgré le correctif autoplay | Corrigé : `/api/portfolio-media/items/[itemId]` ne supportait pas les requêtes `Range`, requises par Safari mobile pour lire une vidéo — voir section "Portfolio public" |
 | 2026-07-17 | Signalement : upload d'une vidéo sur le pilier Vidéo Aftermovies en échec ("This page couldn't load") | Corrigé : conteneur de production tombé à court de mémoire (upload sans streaming + limite retirée plus tôt dans la journée) ; client a choisi de réintroduire un plafond (200 Mo, contre 3 options proposées) plutôt que le streaming ou un conteneur plus gros — voir section "Portfolio public" |
+| 2026-07-17 | Rendre modifiables depuis l'admin le titre/sous-titre/bouton du Hero et le titre/sous-titre de la section portfolio | Livré : nouveau modèle `HomepageContent`, formulaire "Textes de l'accueil" dans `/admin/portfolio` — voir section "Portfolio public" |
