@@ -366,6 +366,18 @@ appliquée à l'ensemble du site :
   `Task.refusedAt` (miroir de `batValidatedAt`, jusqu'ici seul le champ
   `updatedAt`, trop générique, existait pour dater un refus). Rien ne
   s'affiche à la toute première connexion (pas de point de comparaison).
+- Modification de mot de passe côté client + réinitialisation côté admin
+  (2026-07-17) : le client peut désormais changer son mot de passe en étant
+  connecté (mot de passe actuel + nouveau + confirmation), depuis un nouveau
+  lien "roue crantée" dans l'en-tête de l'espace client
+  (`/espace-client/compte`) — pop-up de confirmation à la validation, même
+  composant modal que "Nouvelle demande". Distinct du parcours "mot de passe
+  oublié" existant (celui-ci ne demande pas le mot de passe actuel, part
+  d'un lien email). Côté admin, un bouton "Réinitialiser le mot de passe" a
+  été ajouté à côté de chaque compte de connexion sur la fiche client
+  (`/admin/clients/[clientId]`) : envoie le même email de réinitialisation
+  que le formulaire public, sans que l'admin ait à ressaisir l'email du
+  client.
 
 ## Décisions techniques déléguées à Claude Code
 
@@ -455,3 +467,4 @@ Le client a explicitement délégué ces choix :
 | 2026-07-17 | Après modification d'une tâche, retour à la liste des tâches plutôt qu'à la fiche client | Livré : redirection changée sur `updateTask` — voir section "Backend interne" |
 | 2026-07-17 | Pouvoir ajouter des pièces jointes à une tâche côté admin | Livré : nouvelle action `uploadAttachment` + formulaire sur la fiche tâche — voir section "Backend interne" |
 | 2026-07-17 | Suggestions pour un résumé d'activité "depuis ma dernière connexion" sur le tableau de bord (ex. BAT validés, refus + motif) | Livré (4 des 5 catégories proposées retenues) : BAT validés, refus, nouvelles demandes clients, nouveaux commentaires clients — voir section "Backend interne" |
+| 2026-07-17 | Modification de mot de passe pour les clients (avec pop-up de confirmation) + bouton de réinitialisation admin en face de chaque profil client | Livré : `/espace-client/compte` (changement avec mot de passe actuel + pop-up), bouton "Réinitialiser le mot de passe" sur la fiche client admin (envoie l'email de réinitialisation existant) — voir section "Backend interne" |

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Gear } from "@phosphor-icons/react/dist/ssr";
 import { verifyClientSession } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { TASK_STATUS } from "@/lib/dropdown-lists";
@@ -42,6 +43,13 @@ export default async function ClientProtectedLayout({
             <span className="hidden text-sm text-ink-muted sm:inline">
               {clientUser.client.name}
             </span>
+            <Link
+              href="/espace-client/compte"
+              aria-label="Mon compte"
+              className="rounded-full border border-line p-2 text-ink-muted transition-colors hover:border-accent hover:text-ink"
+            >
+              <Gear size={18} weight="regular" />
+            </Link>
             <ThemeToggle />
             <Link
               href="/espace-client/nouvelle-demande"

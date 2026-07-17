@@ -7,6 +7,7 @@ import { db } from "@/lib/db";
 import { ClientForm } from "@/components/admin/client-form";
 import { ClientUserForm } from "@/components/admin/client-user-form";
 import { DeleteButton } from "@/components/admin/delete-button";
+import { ResetPasswordButton } from "@/components/admin/reset-password-button";
 import { TaskForm } from "@/components/task-form";
 import { TaskRow } from "@/components/admin/task-row";
 import { DocumentRow } from "@/components/admin/document-row";
@@ -112,10 +113,13 @@ export default async function ClientDetailPage({
                   <p className="font-medium text-ink">{user.name}</p>
                   <p className="text-sm text-ink-muted">{user.email}</p>
                 </div>
-                <DeleteButton
-                  action={deleteClientUser.bind(null, user.id, client.id)}
-                  confirmMessage={`Supprimer le compte ${user.email} ?`}
-                />
+                <div className="flex items-center gap-4">
+                  <ResetPasswordButton clientUserId={user.id} />
+                  <DeleteButton
+                    action={deleteClientUser.bind(null, user.id, client.id)}
+                    confirmMessage={`Supprimer le compte ${user.email} ?`}
+                  />
+                </div>
               </div>
             ))}
           </div>

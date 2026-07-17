@@ -4,9 +4,11 @@ import { redirect } from "next/navigation";
 import { randomBytes, createHash } from "node:crypto";
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { hashPassword } from "@/lib/password";
+import { hashPassword, verifyPassword } from "@/lib/password";
 import { destroyAllSessionsForSubject, type SubjectType } from "@/lib/session";
 import { sendEmail } from "@/lib/email/service";
+import { verifyAdminSession, verifyClientSession } from "@/lib/dal";
+import { ChangePasswordSchema, type ChangePasswordState } from "@/lib/validation/auth";
 
 const RESET_TOKEN_DURATION_MS = 60 * 60 * 1000;
 const GENERIC_MESSAGE =
@@ -116,4 +118,64 @@ export async function resetPassword(
   await destroyAllSessionsForSubject(subjectType, resetToken.subjectId);
 
   redirect(subjectType === "ADMIN" ? "/admin/connexion" : "/espace-client/connexion");
+}
+
+// Changement de mot de passe depuis l'espace client, en étant déjà connecté
+// (contrairement à `resetPassword`, qui part d'un lien email pour un mot de
+// passe oublié) — demande le mot de passe actuel plutôt qu'un token.
+export async function changeClientPassword(
+  _prev: ChangePasswordState,
+  formData: FormData,
+): Promise<ChangePasswordState> {
+  const clientUser = await verifyClientSession();
+
+  const parsed = ChangePasswordSchema.safeParse({
+    currentPassword: formData.get("currentPassword"),
+    newPassword: formData.get("newPassword"),
+    confirmPassword: formData.get("confirmPassword"),
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Formulaire invalide." };
+  }
+
+  const valid = await verifyPassword(parsed.data.currentPassword, clientUser.passwordHash);
+  if (!valid) {
+    return { error: "Mot de passe actuel incorrect." };
+  }
+
+  const passwordHash = await hashPassword(parsed.data.newPassword);
+  await db.clientUser.update({ where: { id: clientUser.id }, data: { passwordHash } });
+
+  return { success: true };
+}
+
+// Bouton "Réinitialiser" sur la fiche client admin (à côté de chaque compte
+// de connexion) : envoie le même email de réinitialisation que le
+// formulaire "mot de passe oublié" public, sans passer par la ressaisie de
+// l'email — l'admin connaît déjà le compte.
+export async function adminResetClientPassword(clientUserId: string) {
+  await verifyAdminSession();
+
+  const clientUser = await db.clientUser.findUnique({ where: { id: clientUserId } });
+  if (!clientUser) return;
+
+  const token = randomBytes(32).toString("base64url");
+  await db.passwordResetToken.create({
+    data: {
+      subjectType: "CLIENT_USER",
+      subjectId: clientUser.id,
+      tokenHash: hashToken(token),
+      expiresAt: new Date(Date.now() + RESET_TOKEN_DURATION_MS),
+    },
+  });
+
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+  const resetUrl = `${siteUrl}/espace-client/reinitialiser-mot-de-passe/${token}`;
+
+  await sendEmail({
+    trigger: "password_reset",
+    to: clientUser.email,
+    subject: "Réinitialisation de votre mot de passe — Mikko Visuel",
+    html: `<p>Un lien de réinitialisation de mot de passe a été généré pour vous par Mikko Visuel. Cliquez pour choisir un nouveau mot de passe (valable 1 heure) :</p><p><a href="${resetUrl}">${resetUrl}</a></p>`,
+  });
 }
