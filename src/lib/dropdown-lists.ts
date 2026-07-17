@@ -84,7 +84,7 @@ export const TASK_STATUS_SEED: SeedDropdownItem[] = [
   { slug: TASK_STATUS.A_VALIDER, label: "À valider", color: "amber", locked: true, sortOrder: 2 },
   { slug: TASK_STATUS.BAT_VALIDE, label: "BAT validé", color: "emerald", locked: true, sortOrder: 3 },
   { slug: TASK_STATUS.A_MODIFIER, label: "À modifier", color: "rose", locked: true, sortOrder: 4 },
-  { slug: TASK_STATUS.TERMINE, label: "Terminé", color: "violet", locked: true, sortOrder: 5 },
+  { slug: TASK_STATUS.TERMINE, label: "Terminé", color: "emerald", locked: true, sortOrder: 5 },
 ];
 
 // Document types stay open for admins to extend, except "facture" which the

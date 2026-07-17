@@ -197,6 +197,15 @@ appliquée à l'ensemble du site :
   Tâche/Statut triables en cliquant l'en-tête (bascule croissant/décroissant).
   Les vues Kanban/Calendrier/Par client et la liste des tâches sur la fiche
   client gardent l'affichage en cartes, plus adapté à ces contextes.
+- Tâches "Terminées" isolées + couleur du statut (2026-07-17) : sur la vue
+  `Liste`, les tâches "Terminé" étaient mélangées avec les tâches actives —
+  désormais séparées en deux tableaux, les tâches actives en premier et les
+  tâches terminées regroupées en dessous sous un intitulé "Terminées (n)"
+  (n'affiché que s'il y en a). Couleur du statut "Terminé" changée de
+  violet à vert (`emerald`, la seule teinte verte de la palette figée —
+  déjà utilisée par "BAT validé"). Changement de couleur propagé via le
+  script de seed (idempotent, `prisma/seed.ts`), pas une migration de
+  schéma.
 - Résumé d'activité + création rapide (2026-07-14) : le tableau de bord
   (`/admin`) affiche désormais, sous le total de tâches, le nombre en retard
   (lien vers la liste triée par échéance) et le nombre "à valider" (lien
@@ -419,3 +428,4 @@ Le client a explicitement délégué ces choix :
 | 2026-07-17 | Rendre modifiables depuis l'admin le titre/sous-titre/bouton du Hero et le titre/sous-titre de la section portfolio | Livré : nouveau modèle `HomepageContent`, formulaire "Textes de l'accueil" dans `/admin/portfolio` — voir section "Portfolio public" |
 | 2026-07-17 | Faire tourner les deux images du Hero en 3D | Livré : entrée en rotation 3D (`rotateY` miroir + zoom léger) au chargement, remplace l'ancien fondu/glissement — voir section "Portfolio public" |
 | 2026-07-17 | Ajouter un mouvement perpétuel type balancement sur les images du Hero | Livré : léger balancement en boucle (`rotate` ±2-2,5°) après l'entrée 3D, désactivé si "réduire les animations" — voir section "Portfolio public" |
+| 2026-07-17 | Isoler les tâches terminées en dessous dans la vue Liste + couleur verte pour le statut "Terminé" | Livré : vue `Liste` en deux tableaux (actives puis "Terminées (n)"), couleur du statut passée de violet à `emerald` — voir section "Espace client" |

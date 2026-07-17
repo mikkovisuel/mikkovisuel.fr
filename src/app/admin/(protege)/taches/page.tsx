@@ -9,7 +9,12 @@ import { TaskKanbanBoard } from "@/components/admin/task-kanban-board";
 import { TaskCalendarView } from "@/components/admin/task-calendar-view";
 import { TaskByClientView } from "@/components/admin/task-by-client-view";
 import { ArchivedTaskList } from "@/components/admin/task-archived-list";
-import { TASK_STATUS_LIST_KEY, TASK_TYPE_LIST_KEY, TASK_FORMAT_LIST_KEY } from "@/lib/dropdown-lists";
+import {
+  TASK_STATUS,
+  TASK_STATUS_LIST_KEY,
+  TASK_TYPE_LIST_KEY,
+  TASK_FORMAT_LIST_KEY,
+} from "@/lib/dropdown-lists";
 import { buildTaskOrderBy, isTaskSortField, type TaskSortField, type TaskSortDir } from "@/lib/tasks";
 
 export const metadata: Metadata = {
@@ -232,16 +237,39 @@ export default async function AdminTasksPage({
 
       {view === "archivees" && <ArchivedTaskList tasks={tasks} />}
 
-      {view === "liste" && (
-        <TaskTable
-          tasks={tasks}
-          statusOptions={statusOptions}
-          sortField={sortField}
-          sortDir={sortDir}
-          clientId={clientId}
-          status={status}
-        />
-      )}
+      {view === "liste" &&
+        (() => {
+          const activeTasks = tasks.filter((task) => task.status.slug !== TASK_STATUS.TERMINE);
+          const doneTasks = tasks.filter((task) => task.status.slug === TASK_STATUS.TERMINE);
+          return (
+            <>
+              <TaskTable
+                tasks={activeTasks}
+                statusOptions={statusOptions}
+                sortField={sortField}
+                sortDir={sortDir}
+                clientId={clientId}
+                status={status}
+                emptyMessage="Aucune tâche en cours."
+              />
+              {doneTasks.length > 0 && (
+                <div className="mt-10">
+                  <h2 className="text-sm font-medium text-ink-muted">
+                    Terminées ({doneTasks.length})
+                  </h2>
+                  <TaskTable
+                    tasks={doneTasks}
+                    statusOptions={statusOptions}
+                    sortField={sortField}
+                    sortDir={sortDir}
+                    clientId={clientId}
+                    status={status}
+                  />
+                </div>
+              )}
+            </>
+          );
+        })()}
     </div>
   );
 }

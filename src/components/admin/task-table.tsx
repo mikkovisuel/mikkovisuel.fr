@@ -59,6 +59,7 @@ export function TaskTable({
   sortDir,
   clientId,
   status,
+  emptyMessage = "Aucune tâche pour le moment.",
 }: {
   tasks: TaskTableTask[];
   statusOptions: { slug: string; label: string }[];
@@ -66,9 +67,10 @@ export function TaskTable({
   sortDir: TaskSortDir;
   clientId?: string;
   status?: string;
+  emptyMessage?: string;
 }) {
   if (tasks.length === 0) {
-    return <p className="mt-8 text-sm text-ink-muted">Aucune tâche pour le moment.</p>;
+    return <p className="mt-8 text-sm text-ink-muted">{emptyMessage}</p>;
   }
 
   return (
