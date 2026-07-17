@@ -156,7 +156,14 @@ appliquée à l'ensemble du site :
 - Paiement en ligne (Stripe Checkout), montants en EUR.
 - Préférence de thème clair/sombre par compte, mémorisée.
 - Notifications email aux étapes clés (dégradé proprement en log console si
-  pas de clé Resend configurée).
+  pas de clé Resend configurée). **Resend branché et domaine `mikkovisuel.fr`
+  vérifié le 2026-07-17** (compte créé par le client, domaine vérifié via 4
+  enregistrements DNS ajoutés dans la zone OVH — DKIM, MX + TXT SPF sur le
+  sous-domaine `send`, DMARC — sans toucher aux enregistrements MX existants
+  sur `@`, qui restent la messagerie OVH du client). `RESEND_API_KEY`
+  configurée sur Scalingo. Testé de bout en bout avec un vrai envoi depuis
+  le formulaire de contact public, reçu avec succès. Les emails transitent
+  désormais réellement, ce n'est plus juste un log console.
 - Upload des livrables (ajusté le 2026-07-14) : plusieurs fichiers à la fois,
   jusqu'à 500 Mo par fichier (au lieu de 1 fichier / 20 Mo). Les documents
   administratifs (devis/contrat/facture) restent à 20 Mo, toujours 1 fichier
@@ -482,3 +489,4 @@ Le client a explicitement délégué ces choix :
 | 2026-07-17 | Suggestions pour un résumé d'activité "depuis ma dernière connexion" sur le tableau de bord (ex. BAT validés, refus + motif) | Livré (4 des 5 catégories proposées retenues) : BAT validés, refus, nouvelles demandes clients, nouveaux commentaires clients — voir section "Backend interne" |
 | 2026-07-17 | Modification de mot de passe pour les clients (avec pop-up de confirmation) + bouton de réinitialisation admin en face de chaque profil client | Livré : `/espace-client/compte` (changement avec mot de passe actuel + pop-up), bouton "Réinitialiser le mot de passe" sur la fiche client admin (envoie l'email de réinitialisation existant) — voir section "Backend interne" |
 | 2026-07-17 | (Incident interne, pas une demande client) Relance du script de seed en production pour la couleur du statut "Terminé" | Corrigé le jour même : compte de démonstration créé par erreur sur la prod, supprimé, garde-fou ajouté à `seedDemoClient()` — voir section "Backend interne" |
+| 2026-07-17 | Brancher Resend pour l'envoi d'emails réel | Livré : compte Resend créé, domaine `mikkovisuel.fr` vérifié (DNS chez OVH), `RESEND_API_KEY` configurée sur Scalingo, testé avec un envoi réel depuis le formulaire de contact et reçu — voir section "Espace client" |
