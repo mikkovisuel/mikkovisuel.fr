@@ -8,7 +8,7 @@ async function main() {
   await client.connect();
 
   const rows = await client.query(
-    'SELECT "triggerType", "recipientEmail", success, error, "createdAt" FROM "EmailLog" ORDER BY "createdAt" DESC LIMIT 5',
+    'SELECT "triggerType", "recipientEmail", success, error, "sentAt" FROM "EmailLog" ORDER BY "sentAt" DESC LIMIT 5',
   );
   console.log(JSON.stringify(rows.rows, null, 2));
 
