@@ -5,6 +5,13 @@ import { ContactSection } from "@/components/contact-section";
 import { SalesTermsSection } from "@/components/sales-terms-section";
 import { SiteFooter } from "@/components/site-footer";
 
+// Contenu admin-éditable (Hero, piliers portfolio) : rendu dynamique plutôt
+// que statique à la build, pour que les changements côté admin apparaissent
+// sans reconstruire le site, et pour ne pas dépendre de la base de données
+// au moment du build (celle-ci n'a pas encore de schéma lors du tout
+// premier déploiement, avant la migration).
+export const dynamic = "force-dynamic";
+
 export default function Home() {
   return (
     <>
