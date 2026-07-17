@@ -297,6 +297,20 @@ appliquée à l'ensemble du site :
   Actions — le fichier était tronqué avant même d'atteindre l'action
   d'upload. Corrigé en alignant `proxyClientMaxBodySize` sur `bodySizeLimit`
   (2 Go) dans `next.config.ts`. Vérifié avec un upload réel de 15 Mo.
+- Signalement (2026-07-17) : une cliente (La Mescla) a tenté de joindre 10
+  photos en pièces jointes à une "Nouvelle demande" — échec avec une erreur
+  générique navigateur ("This page couldn't load"), sans crash du conteneur
+  cette fois (contrairement à l'incident vidéo du même jour — voir
+  "Portfolio public" — aucun événement de crash correspondant dans les logs
+  Scalingo). Cause la plus probable : les fichiers étaient envoyés au
+  stockage S3 un par un, en série ; avec 10 fichiers, le temps de traitement
+  cumulé peut dépasser le délai d'attente du routeur avant que la réponse ne
+  revienne au navigateur. Corrigé en traitant les fichiers en parallèle
+  (`Promise.all` au lieu d'une boucle séquentielle) sur les trois parcours
+  d'upload multi-fichiers : pièces jointes côté client (`createTaskByClient`),
+  livrables et pièces jointes côté admin (`uploadDeliverable`/
+  `uploadAttachment`). Réduit le temps de réponse total sans changer la
+  mémoire utilisée par requête.
 - Formulaire de contact public branché sur un vrai envoi d'email
   (2026-07-17) : `ContactSection` simulait l'envoi (attente factice, aucun
   email réel) — corrigé avec une Server Action (`submitContactForm`) qui
@@ -490,3 +504,4 @@ Le client a explicitement délégué ces choix :
 | 2026-07-17 | Modification de mot de passe pour les clients (avec pop-up de confirmation) + bouton de réinitialisation admin en face de chaque profil client | Livré : `/espace-client/compte` (changement avec mot de passe actuel + pop-up), bouton "Réinitialiser le mot de passe" sur la fiche client admin (envoie l'email de réinitialisation existant) — voir section "Backend interne" |
 | 2026-07-17 | (Incident interne, pas une demande client) Relance du script de seed en production pour la couleur du statut "Terminé" | Corrigé le jour même : compte de démonstration créé par erreur sur la prod, supprimé, garde-fou ajouté à `seedDemoClient()` — voir section "Backend interne" |
 | 2026-07-17 | Brancher Resend pour l'envoi d'emails réel | Livré : compte Resend créé, domaine `mikkovisuel.fr` vérifié (DNS chez OVH), `RESEND_API_KEY` configurée sur Scalingo, testé avec un envoi réel depuis le formulaire de contact et reçu — voir section "Espace client" |
+| 2026-07-17 | Signalement : échec de l'envoi de 10 photos en pièces jointes sur une "Nouvelle demande" (cliente La Mescla) | Corrigé : upload des fichiers parallélisé (au lieu de séquentiel) sur les 3 parcours multi-fichiers, pour rester sous le délai d'attente du routeur — voir section "Espace client" |

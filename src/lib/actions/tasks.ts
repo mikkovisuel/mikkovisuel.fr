@@ -106,22 +106,28 @@ export async function createTaskByClient(
   });
 
   const storage = getStorageAdapter();
-  for (const file of attachmentFiles) {
-    const storageKey = `attachments/${randomUUID()}`;
-    const buffer = Buffer.from(await file.arrayBuffer());
-    await storage.save(storageKey, buffer);
+  // En parallèle plutôt que fichier par fichier : avec plusieurs pièces
+  // jointes (ex. 10 photos), un envoi séquentiel vers le stockage S3 peut
+  // prendre assez de temps pour dépasser le délai d'attente du routeur
+  // avant que la réponse ne revienne au client.
+  await Promise.all(
+    attachmentFiles.map(async (file) => {
+      const storageKey = `attachments/${randomUUID()}`;
+      const buffer = Buffer.from(await file.arrayBuffer());
+      await storage.save(storageKey, buffer);
 
-    await db.attachment.create({
-      data: {
-        taskId: task.id,
-        fileName: file.name,
-        storageKey,
-        mimeType: file.type,
-        sizeBytes: file.size,
-        storageBackend: storage.backend,
-      },
-    });
-  }
+      await db.attachment.create({
+        data: {
+          taskId: task.id,
+          fileName: file.name,
+          storageKey,
+          mimeType: file.type,
+          sizeBytes: file.size,
+          storageBackend: storage.backend,
+        },
+      });
+    }),
+  );
 
   revalidateTaskPaths(clientUser.clientId);
   return undefined;

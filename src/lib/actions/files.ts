@@ -56,22 +56,27 @@ export async function uploadDeliverable(
   if (!task) return { error: "Tâche introuvable." };
 
   const storage = getStorageAdapter();
-  for (const file of files) {
-    const storageKey = `deliverables/${randomUUID()}`;
-    const buffer = Buffer.from(await file.arrayBuffer());
-    await storage.save(storageKey, buffer);
+  // En parallèle plutôt que fichier par fichier : avec plusieurs livrables
+  // en un envoi, un upload séquentiel vers le stockage S3 peut prendre assez
+  // de temps pour dépasser le délai d'attente du routeur.
+  await Promise.all(
+    files.map(async (file) => {
+      const storageKey = `deliverables/${randomUUID()}`;
+      const buffer = Buffer.from(await file.arrayBuffer());
+      await storage.save(storageKey, buffer);
 
-    await db.deliverable.create({
-      data: {
-        taskId,
-        fileName: file.name,
-        storageKey,
-        mimeType: file.type,
-        sizeBytes: file.size,
-        storageBackend: storage.backend,
-      },
-    });
-  }
+      await db.deliverable.create({
+        data: {
+          taskId,
+          fileName: file.name,
+          storageKey,
+          mimeType: file.type,
+          sizeBytes: file.size,
+          storageBackend: storage.backend,
+        },
+      });
+    }),
+  );
 
   for (const user of task.client.users) {
     await sendEmail({
@@ -136,22 +141,25 @@ export async function uploadAttachment(
   if (!task) return { error: "Tâche introuvable." };
 
   const storage = getStorageAdapter();
-  for (const file of files) {
-    const storageKey = `attachments/${randomUUID()}`;
-    const buffer = Buffer.from(await file.arrayBuffer());
-    await storage.save(storageKey, buffer);
+  // En parallèle plutôt que fichier par fichier — voir uploadDeliverable.
+  await Promise.all(
+    files.map(async (file) => {
+      const storageKey = `attachments/${randomUUID()}`;
+      const buffer = Buffer.from(await file.arrayBuffer());
+      await storage.save(storageKey, buffer);
 
-    await db.attachment.create({
-      data: {
-        taskId,
-        fileName: file.name,
-        storageKey,
-        mimeType: file.type,
-        sizeBytes: file.size,
-        storageBackend: storage.backend,
-      },
-    });
-  }
+      await db.attachment.create({
+        data: {
+          taskId,
+          fileName: file.name,
+          storageKey,
+          mimeType: file.type,
+          sizeBytes: file.size,
+          storageBackend: storage.backend,
+        },
+      });
+    }),
+  );
 
   revalidatePath(`/admin/taches/${taskId}`);
   return undefined;
