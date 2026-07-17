@@ -3,6 +3,7 @@ import { randomBytes } from "node:crypto";
 import bcrypt from "bcryptjs";
 import { PrismaClient } from "../src/generated/prisma/client";
 import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
+import { PrismaPg } from "@prisma/adapter-pg";
 import {
   DOCUMENT_TYPE_LIST_KEY,
   DOCUMENT_TYPE_SEED,
@@ -17,12 +18,21 @@ import {
 } from "../src/lib/dropdown-lists";
 
 const url = process.env.DATABASE_URL;
-if (!url?.startsWith("file:")) {
-  throw new Error(
-    "prisma/seed.ts only supports local SQLite (file: DATABASE_URL) for now.",
-  );
+if (!url) {
+  throw new Error("DATABASE_URL is not set.");
 }
-const prisma = new PrismaClient({ adapter: new PrismaBetterSqlite3({ url }) });
+
+function createSeedPrismaClient() {
+  if (url!.startsWith("file:")) {
+    return new PrismaClient({ adapter: new PrismaBetterSqlite3({ url: url! }) });
+  }
+  if (url!.startsWith("postgres://") || url!.startsWith("postgresql://")) {
+    return new PrismaClient({ adapter: new PrismaPg({ connectionString: url! }) });
+  }
+  throw new Error(`Unsupported DATABASE_URL scheme: ${url}`);
+}
+
+const prisma = createSeedPrismaClient();
 
 async function seedDropdownList(
   key: string,
