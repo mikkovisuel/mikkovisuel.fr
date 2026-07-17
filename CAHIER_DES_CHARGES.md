@@ -243,7 +243,10 @@ Le client a explicitement délégué ces choix :
 
 - **Hébergement** : Scalingo (écarté OVH VPS — gestion manuelle trop lourde
   pour ce besoin). RGPD/hébergement UE. Mis en ligne le 2026-07-17,
-  addon PostgreSQL "Starter 512M".
+  addon PostgreSQL "Starter 512M". Domaine mikkovisuel.fr actif depuis le
+  2026-07-17 (`www.mikkovisuel.fr` en CNAME vers Scalingo, `mikkovisuel.fr`
+  redirigé vers `www.` via la redirection déjà existante chez OVH,
+  certificat SSL généré automatiquement par Scalingo).
 - **Stockage des fichiers** : disque local en dev (`./storage`, gitignored),
   bascule vers S3 en production (garde-fou dans `src/instrumentation.ts`
   qui refuse de démarrer en prod sans S3 configuré, Scalingo ayant un
@@ -268,13 +271,6 @@ Le client a explicitement délégué ces choix :
   seedé avec des placeholders Picsum, à remplacer via l'admin (y compris,
   depuis le 2026-07-16, les 2 photos du Hero — voir section "Portfolio
   public").
-- Domaine mikkovisuel.fr pas encore pointé vers Scalingo (2026-07-17) : le
-  site est en ligne sur l'URL temporaire
-  `https://mikkovisuel.osc-fr1.scalingo.io`, il reste à configurer le DNS
-  chez OVH (le registrar du domaine) et ajouter le domaine personnalisé
-  côté Scalingo (le certificat SSL se génère automatiquement une fois ça
-  fait).
-
 ## Journal des modifications demandées
 
 | Date | Demande | Traitement |
@@ -304,4 +300,5 @@ Le client a explicitement délégué ces choix :
 | 2026-07-16 | Icône calendrier en citron + contrôle d'upload plus explicite (2 options maquettées, option "bouton compact + liste" retenue), appliqué à tous les endroits d'upload | Livré : icône native des champs date recolorée en citron, composant partagé `FilePicker` (bouton + chips de fichiers) sur les 5 formulaires d'upload — voir section "Direction artistique" |
 | 2026-07-16 | Suggestions expérience client : page d'accueil, compteurs sur les onglets, onglet actif surligné, timeline de statut visuelle (les 4 retenues) | Livré : nouvelle page `/espace-client` (redirection après connexion), badges sur "À valider"/"Administratif", nav active via `ClientNavTabs`, composant `TaskStatusTimeline` sur "Suivi" et l'accueil — voir section "Espace client" |
 | 2026-07-16 | Contrôle admin pour les 2 photos du Hero (page d'accueil) + dimensions pixel des visuels homepage à fournir | Livré : modèle `HomepageHero`, upload dans `/admin/portfolio` ("Page d'accueil"), fallback propre sur les placeholders Picsum tant que rien n'est uploadé — voir section "Portfolio public" |
-| 2026-07-17 | Mise en ligne du site | Livré : hébergement Scalingo + PostgreSQL, stockage OVH Object Storage, bascule SQLite→Postgres, dépôt git initialisé, site en ligne sur `https://mikkovisuel.osc-fr1.scalingo.io` — reste le pointage DNS de mikkovisuel.fr, voir "Points encore ouverts" |
+| 2026-07-17 | Mise en ligne du site | Livré : hébergement Scalingo + PostgreSQL, stockage OVH Object Storage, bascule SQLite→Postgres, dépôt git initialisé, site en ligne sur `https://mikkovisuel.osc-fr1.scalingo.io` |
+| 2026-07-17 | Pointage du domaine mikkovisuel.fr | Livré : CNAME `www.mikkovisuel.fr` → Scalingo, redirection `mikkovisuel.fr` → `www.` déjà en place côté OVH, SSL automatique — site accessible sur son vrai domaine |
