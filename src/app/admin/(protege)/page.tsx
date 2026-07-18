@@ -157,17 +157,6 @@ export default async function AdminDashboardPage() {
         Tableau de bord
       </h1>
 
-      <div className="mt-6 flex flex-col items-start gap-4 rounded-2xl border border-line p-6 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="font-medium text-ink">Installer le tableau de bord</p>
-          <p className="mt-1 text-sm text-ink-muted">
-            Ajoutez-le à l&apos;écran d&apos;accueil de votre téléphone ou
-            ordinateur pour y accéder directement, sans navigateur.
-          </p>
-        </div>
-        <InstallPwaCta />
-      </div>
-
       <div className="mt-8 grid gap-4 sm:grid-cols-3">
         <div className="rounded-2xl border border-line p-6">
           <p className="text-sm text-ink-muted">Clients</p>
@@ -218,6 +207,17 @@ export default async function AdminDashboardPage() {
         <StatusBreakdown statuses={statusBreakdown} />
         <InactiveClients clients={inactiveClients} />
         <ClientLoginJournal events={loginEvents} />
+      </div>
+
+      <div className="mt-12 flex flex-col items-start gap-4 border-t border-line pt-8 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="font-medium text-ink">Installer le tableau de bord</p>
+          <p className="mt-1 text-sm text-ink-muted">
+            Ajoutez-le à l&apos;écran d&apos;accueil de votre téléphone ou
+            ordinateur pour y accéder directement, sans navigateur.
+          </p>
+        </div>
+        <InstallPwaCta />
       </div>
     </div>
   );
