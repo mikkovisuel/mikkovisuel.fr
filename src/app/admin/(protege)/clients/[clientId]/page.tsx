@@ -8,6 +8,7 @@ import { ClientForm } from "@/components/admin/client-form";
 import { ClientUserForm } from "@/components/admin/client-user-form";
 import { DeleteButton } from "@/components/admin/delete-button";
 import { ResetPasswordButton } from "@/components/admin/reset-password-button";
+import { ImpersonateButton } from "@/components/admin/impersonate-button";
 import { TaskForm } from "@/components/task-form";
 import { TaskRow } from "@/components/admin/task-row";
 import { DocumentRow } from "@/components/admin/document-row";
@@ -114,6 +115,7 @@ export default async function ClientDetailPage({
                   <p className="text-sm text-ink-muted">{user.email}</p>
                 </div>
                 <div className="flex items-center gap-4">
+                  <ImpersonateButton clientUserId={user.id} />
                   <ResetPasswordButton clientUserId={user.id} />
                   <DeleteButton
                     action={deleteClientUser.bind(null, user.id, client.id)}

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { cookies } from "next/headers";
 import { Gear } from "@phosphor-icons/react/dist/ssr";
 import { verifyClientSession } from "@/lib/dal";
 import { db } from "@/lib/db";
@@ -7,6 +8,7 @@ import { BrandLogo } from "@/components/brand-logo";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { ClientNavTabs } from "@/components/client/client-nav-tabs";
+import { ImpersonationBanner } from "@/components/client/impersonation-banner";
 
 export default async function ClientProtectedLayout({
   children,
@@ -14,6 +16,8 @@ export default async function ClientProtectedLayout({
   children: React.ReactNode;
 }) {
   const clientUser = await verifyClientSession();
+  const cookieStore = await cookies();
+  const isImpersonating = cookieStore.has("admin_return_token");
 
   const [toValidateCount, unpaidCount] = await Promise.all([
     db.task.count({
@@ -34,6 +38,7 @@ export default async function ClientProtectedLayout({
 
   return (
     <div className="flex min-h-full flex-1 flex-col">
+      {isImpersonating && <ImpersonationBanner clientName={clientUser.client.name} />}
       <header className="border-b border-line">
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
           <Link href="/espace-client">

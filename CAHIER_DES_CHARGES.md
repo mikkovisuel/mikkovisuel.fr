@@ -433,6 +433,22 @@ appliquée à l'ensemble du site :
   l'écran d'accueil). Le manifest admin n'est déclaré que sur les pages
   `/admin/*` (protégées par connexion, comme le reste du back-office) — un
   visiteur non connecté ou un client ne peut ni le voir ni l'installer.
+  Favicon d'onglet navigateur également distinct sur tout `/admin/*`
+  (`src/app/admin/icon.png`, même fond noir), en plus de l'icône une fois
+  l'app installée, pour repérer l'onglet admin au premier coup d'œil parmi
+  d'autres onglets ouverts.
+- Aperçu de l'espace client depuis la fiche client admin (2026-07-18) :
+  bouton "Voir l'espace client" à côté de chaque compte de connexion sur
+  `/admin/clients/[clientId]` — ouvre l'espace client exactement comme le
+  client le voit (mêmes pages, aucune reconstruction séparée à maintenir),
+  via une bascule temporaire et réversible de la session plutôt qu'une copie
+  en lecture seule. Un bandeau citron ("Vous visualisez l'espace de X en
+  tant qu'admin — Revenir à l'admin") reste affiché sur toutes les pages de
+  l'espace client tant que l'aperçu est actif, avec un bouton de retour qui
+  restaure la session admin d'origine (et son thème clair/sombre) sur la
+  fiche du client concerné. Aperçu volontairement exclu du "journal de
+  connexion" du tableau de bord (pas un vrai login client) et limité à 1h
+  (expire tout seul même sans clic sur "Revenir à l'admin").
 - Modification de mot de passe côté client + réinitialisation côté admin
   (2026-07-17) : le client peut désormais changer son mot de passe en étant
   connecté (mot de passe actuel + nouveau + confirmation), depuis un nouveau
@@ -555,3 +571,4 @@ Le client a explicitement délégué ces choix :
 | 2026-07-18 | Application installable (PWA) pour iOS/Android, téléchargeable sur le site au-dessus des "Conditions", pour l'accès à l'espace client | Livré : section dédiée sur la page d'accueil (entre "Contact" et "Conditions"), manifest + icônes + service worker minimal, `start_url` vers `/espace-client`, bouton d'installation natif ou instructions selon la plateforme — voir section "Espace client" |
 | 2026-07-18 | Signalement : icône de l'app tronquée sur l'écran d'accueil + texte des instructions iOS mal affiché sur mobile | Corrigé : redimensionnement des icônes passé de "cover" (recadrait le personnage) à "contain", et paragraphe d'instructions iOS qui utilisait `inline-flex` (chaque fragment de texte devenait un bloc isolé au lieu de s'enrouler) — voir section "Espace client" |
 | 2026-07-18 | Même principe de PWA installable, mais côté admin, avec le lien d'installation visible uniquement sur le tableau de bord (pas côté client/public) | Livré : manifest et icônes distincts (fond noir), carte d'installation affichée seulement sur `/admin` — voir section "Backend interne" |
+| 2026-07-18 | Favicon admin également en fond noir (pas seulement l'icône PWA installée) + bouton "voir l'espace client" sur les fiches client, pour visualiser ce que voient réellement les clients | Livré : favicon dédié sur tout `/admin/*`, aperçu de l'espace client par bascule de session réversible (bandeau + retour à l'admin) — voir section "Backend interne" |

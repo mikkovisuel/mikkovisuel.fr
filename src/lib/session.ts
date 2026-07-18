@@ -3,7 +3,7 @@ import { cookies } from "next/headers";
 import { randomBytes, createHash } from "node:crypto";
 import { db } from "@/lib/db";
 
-const COOKIE_NAME = "session_token";
+export const COOKIE_NAME = "session_token";
 const SESSION_DURATION_MS = 30 * 24 * 60 * 60 * 1000;
 
 export type SubjectType = "ADMIN" | "CLIENT_USER";
@@ -15,9 +15,13 @@ function hashToken(token: string) {
 // A fresh token is issued on every login (never reused across sessions), and
 // resetting a password wipes every existing session for that subject — see
 // destroyAllSessionsForSubject, called from the password-reset action.
-export async function createSession(subjectType: SubjectType, subjectId: string) {
+export async function createSession(
+  subjectType: SubjectType,
+  subjectId: string,
+  durationMs: number = SESSION_DURATION_MS,
+) {
   const token = randomBytes(32).toString("base64url");
-  const expiresAt = new Date(Date.now() + SESSION_DURATION_MS);
+  const expiresAt = new Date(Date.now() + durationMs);
 
   await db.session.create({
     data: { tokenHash: hashToken(token), subjectType, subjectId, expiresAt },
@@ -52,6 +56,10 @@ export async function readSession() {
   }
 
   return session;
+}
+
+export async function findSessionByToken(token: string) {
+  return db.session.findUnique({ where: { tokenHash: hashToken(token) } });
 }
 
 export async function destroySession() {
