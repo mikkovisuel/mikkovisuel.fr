@@ -71,11 +71,14 @@ export function InstallPwaCta() {
 
   if (isIOS) {
     return (
-      <p className="inline-flex max-w-md items-center gap-2 text-sm text-ink-muted">
-        <ArrowSquareOut size={18} className="shrink-0 text-accent" />
-        Sur iPhone/iPad : appuyez sur le bouton{" "}
-        <span className="font-medium text-ink">Partager</span> de Safari, puis
-        sur <span className="font-medium text-ink">« Sur l&apos;écran d&apos;accueil »</span>.
+      <p className="flex max-w-md items-start gap-2 text-sm text-ink-muted">
+        <ArrowSquareOut size={18} className="mt-0.5 shrink-0 text-accent" />
+        <span>
+          Sur iPhone/iPad : appuyez sur le bouton{" "}
+          <span className="font-medium text-ink">Partager</span> de Safari,
+          puis sur{" "}
+          <span className="font-medium text-ink">« Sur l&apos;écran d&apos;accueil »</span>.
+        </span>
       </p>
     );
   }
