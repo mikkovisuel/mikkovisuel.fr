@@ -339,6 +339,24 @@ appliquée à l'ensemble du site :
   d'événement, avec titre et statut, mais scopées au client connecté (pas
   de filtre client/statut, inutile ici) et pointant vers les fiches tâche
   de l'espace client plutôt que celles de l'admin.
+- Application installable (PWA) pour accéder à l'espace client (2026-07-18) :
+  nouvelle section "Votre espace client, comme une application" sur la page
+  d'accueil, entre "Contact" et "Conditions" (lien "Application" ajouté à la
+  navigation du header et du footer, en plus de l'ancrage direct). Manifest
+  web (`app/manifest.ts`) avec icônes générées depuis le personnage du logo
+  (fond citron `#dded2e`, icônes 192/512 + variante "maskable" pour Android,
+  icône 180×180 pour iOS), et service worker minimal (`public/sw.js`, sans
+  cache — l'espace client change en permanence, la mise en cache aurait
+  affiché des données périmées) uniquement pour satisfaire le critère
+  d'installabilité de Chrome/Android. `start_url` pointe vers
+  `/espace-client` : une fois l'app installée et lancée, le client atterrit
+  directement sur son espace (redirigé vers la connexion s'il n'est pas déjà
+  identifié). Composant `InstallPwaCta` adapté à la plateforme : bouton
+  d'installation natif quand le navigateur le permet (Android/Chrome/
+  desktop), instructions manuelles "Partager → Sur l'écran d'accueil" sur
+  iOS/Safari (Apple ne propose pas d'invite d'installation automatique),
+  message générique de repli sur les autres navigateurs, et détection d'une
+  app déjà installée pour ne pas répéter l'invite.
 - Email de confirmation à la validation d'un BAT (2026-07-17) :
   `validateTask` n'envoyait jusqu'ici aucun email (seul le refus en
   envoyait un). Corrigé : à la validation, un email "Validation du BAT
@@ -521,3 +539,4 @@ Le client a explicitement délégué ces choix :
 | 2026-07-17 | Brancher Resend pour l'envoi d'emails réel | Livré : compte Resend créé, domaine `mikkovisuel.fr` vérifié (DNS chez OVH), `RESEND_API_KEY` configurée sur Scalingo, testé avec un envoi réel depuis le formulaire de contact et reçu — voir section "Espace client" |
 | 2026-07-17 | Signalement : échec de l'envoi de 10 photos en pièces jointes sur une "Nouvelle demande" (cliente La Mescla) | Corrigé : upload des fichiers parallélisé (au lieu de séquentiel) sur les 3 parcours multi-fichiers, pour rester sous le délai d'attente du routeur — voir section "Espace client" |
 | 2026-07-17 | Suggestions pour enrichir le tableau de bord (+ demande du client : journal de connexion des clients) | Livré (les 4 retenues) : prochains événements, tâches par statut, clients sans activité récente, journal de connexion — voir section "Backend interne" |
+| 2026-07-18 | Application installable (PWA) pour iOS/Android, téléchargeable sur le site au-dessus des "Conditions", pour l'accès à l'espace client | Livré : section dédiée sur la page d'accueil (entre "Contact" et "Conditions"), manifest + icônes + service worker minimal, `start_url` vers `/espace-client`, bouton d'installation natif ou instructions selon la plateforme — voir section "Espace client" |

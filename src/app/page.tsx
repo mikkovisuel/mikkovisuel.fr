@@ -2,6 +2,7 @@ import { SiteHeader } from "@/components/site-header";
 import { Hero } from "@/components/hero";
 import { PortfolioSection } from "@/components/portfolio-section";
 import { ContactSection } from "@/components/contact-section";
+import { InstallAppSection } from "@/components/install-app-section";
 import { SalesTermsSection } from "@/components/sales-terms-section";
 import { SiteFooter } from "@/components/site-footer";
 
@@ -20,6 +21,7 @@ export default function Home() {
         <Hero />
         <PortfolioSection />
         <ContactSection />
+        <InstallAppSection />
         <SalesTermsSection />
       </main>
       <SiteFooter />

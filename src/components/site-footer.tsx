@@ -14,6 +14,9 @@ export function SiteFooter() {
           <a href="#contact" className="transition-colors hover:text-ink">
             Contact
           </a>
+          <a href="#application" className="transition-colors hover:text-ink">
+            Application
+          </a>
           <a href="#conditions" className="transition-colors hover:text-ink">
             Conditions
           </a>

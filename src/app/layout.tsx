@@ -1,8 +1,9 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Manrope } from "next/font/google";
 import localFont from "next/font/local";
 import Script from "next/script";
 import { ThemeSync } from "@/components/theme-sync";
+import { PwaRegister } from "@/components/pwa-register";
 import "./globals.css";
 
 const clashDisplay = localFont({
@@ -23,6 +24,17 @@ export const metadata: Metadata = {
   title: "Mikko Visuel — Direction artistique, motion design & photo",
   description:
     "Portfolio de Mikko Visuel : flyers club, motion design, direction artistique, photo et aftermovies pour clubs et marques.",
+  icons: {
+    apple: "/icons/apple-touch-icon.png",
+  },
+  appleWebApp: {
+    title: "Mikko Visuel",
+    statusBarStyle: "default",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#dded2e",
 };
 
 const themeInitScript = `
@@ -52,6 +64,7 @@ export default function RootLayout({
           {themeInitScript}
         </Script>
         <ThemeSync />
+        <PwaRegister />
         {children}
       </body>
     </html>
