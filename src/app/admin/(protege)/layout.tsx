@@ -1,8 +1,23 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { verifyAdminSession } from "@/lib/dal";
 import { BrandLogo } from "@/components/brand-logo";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { ThemeToggle } from "@/components/theme-toggle";
+
+// Distinct from the client-facing manifest (see app/manifest.ts): only
+// linked on /admin/* pages, so "Add to Home Screen" here installs the
+// admin dashboard, not the client space.
+export const metadata: Metadata = {
+  manifest: "/admin/manifest.webmanifest",
+  icons: {
+    apple: "/icons/apple-touch-icon-admin.png",
+  },
+  appleWebApp: {
+    title: "Mikko Admin",
+    statusBarStyle: "default",
+  },
+};
 
 const navLinks = [
   { href: "/admin", label: "Tableau de bord" },

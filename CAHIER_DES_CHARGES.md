@@ -420,6 +420,19 @@ appliquée à l'ensemble du site :
     distinct de `ClientUser.lastLoginAt` qui ne garde que la toute
     dernière — alimenté depuis `clientLogin` (`src/lib/actions/
     client-auth.ts`).
+- Tableau de bord admin installable (PWA), distinct de l'app client
+  (2026-07-18) : même principe que la PWA client (voir "Espace client"),
+  mais réservée à l'admin — carte "Installer le tableau de bord" affichée
+  uniquement sur `/admin` (le tableau de bord, pas les autres pages admin),
+  jamais visible côté public ou client. Manifest séparé
+  (`/admin/manifest.webmanifest`, Route Handler dédié plutôt que la
+  convention `app/manifest.ts` qui ne couvre que la racine du site) avec
+  son propre `start_url`/`scope` (`/admin`) et ses propres icônes (mêmes
+  visuels que la PWA client mais fond noir `#14141a` au lieu du citron,
+  pour distinguer les deux icônes une fois installées côte à côte sur
+  l'écran d'accueil). Le manifest admin n'est déclaré que sur les pages
+  `/admin/*` (protégées par connexion, comme le reste du back-office) — un
+  visiteur non connecté ou un client ne peut ni le voir ni l'installer.
 - Modification de mot de passe côté client + réinitialisation côté admin
   (2026-07-17) : le client peut désormais changer son mot de passe en étant
   connecté (mot de passe actuel + nouveau + confirmation), depuis un nouveau
@@ -540,3 +553,5 @@ Le client a explicitement délégué ces choix :
 | 2026-07-17 | Signalement : échec de l'envoi de 10 photos en pièces jointes sur une "Nouvelle demande" (cliente La Mescla) | Corrigé : upload des fichiers parallélisé (au lieu de séquentiel) sur les 3 parcours multi-fichiers, pour rester sous le délai d'attente du routeur — voir section "Espace client" |
 | 2026-07-17 | Suggestions pour enrichir le tableau de bord (+ demande du client : journal de connexion des clients) | Livré (les 4 retenues) : prochains événements, tâches par statut, clients sans activité récente, journal de connexion — voir section "Backend interne" |
 | 2026-07-18 | Application installable (PWA) pour iOS/Android, téléchargeable sur le site au-dessus des "Conditions", pour l'accès à l'espace client | Livré : section dédiée sur la page d'accueil (entre "Contact" et "Conditions"), manifest + icônes + service worker minimal, `start_url` vers `/espace-client`, bouton d'installation natif ou instructions selon la plateforme — voir section "Espace client" |
+| 2026-07-18 | Signalement : icône de l'app tronquée sur l'écran d'accueil + texte des instructions iOS mal affiché sur mobile | Corrigé : redimensionnement des icônes passé de "cover" (recadrait le personnage) à "contain", et paragraphe d'instructions iOS qui utilisait `inline-flex` (chaque fragment de texte devenait un bloc isolé au lieu de s'enrouler) — voir section "Espace client" |
+| 2026-07-18 | Même principe de PWA installable, mais côté admin, avec le lien d'installation visible uniquement sur le tableau de bord (pas côté client/public) | Livré : manifest et icônes distincts (fond noir), carte d'installation affichée seulement sur `/admin` — voir section "Backend interne" |

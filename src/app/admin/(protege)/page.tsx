@@ -8,6 +8,7 @@ import { UpcomingEvents } from "@/components/admin/upcoming-events";
 import { StatusBreakdown } from "@/components/admin/status-breakdown";
 import { InactiveClients } from "@/components/admin/inactive-clients";
 import { ClientLoginJournal } from "@/components/admin/client-login-journal";
+import { InstallPwaCta } from "@/components/install-pwa-cta";
 
 const INACTIVE_THRESHOLD_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -155,6 +156,18 @@ export default async function AdminDashboardPage() {
       <h1 className="font-display text-2xl font-medium tracking-tight text-ink">
         Tableau de bord
       </h1>
+
+      <div className="mt-6 flex flex-col items-start gap-4 rounded-2xl border border-line p-6 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="font-medium text-ink">Installer le tableau de bord</p>
+          <p className="mt-1 text-sm text-ink-muted">
+            Ajoutez-le à l&apos;écran d&apos;accueil de votre téléphone ou
+            ordinateur pour y accéder directement, sans navigateur.
+          </p>
+        </div>
+        <InstallPwaCta />
+      </div>
+
       <div className="mt-8 grid gap-4 sm:grid-cols-3">
         <div className="rounded-2xl border border-line p-6">
           <p className="text-sm text-ink-muted">Clients</p>
