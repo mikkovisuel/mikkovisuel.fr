@@ -487,6 +487,22 @@ appliquée à l'ensemble du site :
   avant identification, ne peut afficher le manifest client. Note
   d'installation également déplacée tout en bas du tableau de bord (elle
   était juste sous le titre).
+- Signalement (2026-07-20) : sur `/admin`, le navigateur (Chrome/Arc)
+  proposait "Ouvrir dans l'appli" mais rouvrait l'app espace client déjà
+  installée, jamais de proposition d'installer une app admin distincte —
+  distinct du bug du 2026-07-18 ci-dessus (déjà corrigé). Cause : le
+  manifest de l'espace client (`src/app/manifest.ts`) déclarait
+  `scope: "/"` (tout le domaine) au lieu de se limiter à son propre
+  périmètre — un `scope` racine revendique toutes les URL du site, y
+  compris `/admin`, qui a pourtant son propre manifest avec son propre
+  `scope: "/admin"` ; les navigateurs associent alors `/admin` à l'app déjà
+  installée dont le scope le couvre, sans même regarder le manifest
+  réellement lié sur cette page. Corrigé : `scope` resserré à
+  `/espace-client` (aligné sur son `start_url`), qui n'entre plus en
+  collision avec le scope `/admin` de l'app admin. Une app déjà installée
+  avant ce correctif garde l'ancien scope en cache côté navigateur : il
+  faut la désinstaller puis relancer l'installation depuis `/admin` (le
+  bouton en bas du tableau de bord) pour obtenir une app admin distincte.
 - Aperçu de l'espace client depuis la fiche client admin (2026-07-18) :
   bouton "Voir l'espace client" à côté de chaque compte de connexion sur
   `/admin/clients/[clientId]` — ouvre l'espace client exactement comme le
@@ -763,3 +779,4 @@ Le client a explicitement délégué ces choix :
 | 2026-07-20 | Email de facturation sur la fiche client + bouton "Envoyer le document" par document (objet = nom du fichier, corps de message fixe fourni) + statut envoyé/non envoyé | Livré : nouveau champ `Client.billingEmail`, action d'envoi en pièce jointe (`sendDocumentByEmail`), nouveau champ `Document.sentAt` avec icône de statut — voir section "Backend interne" |
 | 2026-07-20 | Lien Google Drive par client (fiche client admin), affiché dans le bandeau de menu de l'espace client et redirigeant directement vers le Drive | Livré : nouveau champ `Client.driveUrl`, onglet "Google Drive" dans `ClientNavTabs` (ouverture dans un nouvel onglet) si renseigné — voir section "Backend interne" |
 | 2026-07-20 | Système d'épinglage des tâches (pastille en un clic), filtre "épinglés" dans la liste des tâches, liste des tâches épinglées sur le tableau de bord, désépinglage automatique à la fin d'une tâche | Livré (les 4 points) : nouveau champ `Task.pinnedAt`, `TaskPinButton` sur toutes les vues de tâches, case à cocher "Épinglées uniquement" sur `/admin/taches`, section "Tâches épinglées" sur `/admin`, remise à zéro automatique dans `setTaskStatus` au passage en "Terminé" — voir section "Backend interne" |
+| 2026-07-20 | Demande d'une application Mac pour l'admin ; signalement : `/admin` proposait d'"Ouvrir dans l'appli" mais rouvrait l'app espace client au lieu de proposer une app admin distincte | Expliqué que l'admin est déjà installable en PWA (existant depuis le 2026-07-18) ; bug identifié et corrigé : `scope: "/"` du manifest espace client revendiquait aussi `/admin`, resserré à `/espace-client` — voir section "Backend interne" |
