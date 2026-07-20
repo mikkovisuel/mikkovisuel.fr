@@ -628,6 +628,19 @@ appliquée à l'ensemble du site :
   renseigné, un onglet "Google Drive" apparaît dans le bandeau de l'espace
   client (`ClientNavTabs`), ouvrant le dossier dans un nouvel onglet ;
   absent sinon (pas de lien cassé affiché).
+- Épinglage des tâches (2026-07-20) : nouveau champ `Task.pinnedAt` (même
+  principe que `archivedAt` — une date plutôt qu'un simple booléen, sert
+  aussi à trier). Petite pastille cliquable (`TaskPinButton`, un clic,
+  bascule immédiate sans confirmation) affichée à côté du titre de la
+  tâche partout où l'admin la croise : vue `Liste`, Kanban, fiche client,
+  vue "Par client" et fiche de la tâche elle-même. Nouveau filtre
+  "Épinglées uniquement" dans les filtres de `/admin/taches` (case à
+  cocher, combinable avec les filtres client/statut existants, préservé en
+  changeant de vue ou de tri). Nouvelle section "Tâches épinglées" en tête
+  du tableau de bord (`/admin`), triée par date d'épinglage la plus
+  récente. Désépinglage automatique dès qu'une tâche passe au statut
+  "Terminé" (`setTaskStatus`) — une tâche terminée n'a plus besoin d'être
+  mise en avant.
 
 ## Décisions techniques déléguées à Claude Code
 
@@ -749,3 +762,4 @@ Le client a explicitement délégué ces choix :
 | 2026-07-20 | Téléphone et rôle (texte libre, ex. directeur/DJ/photographe) sur chaque compte de connexion d'un client | Livré : nouveaux champs optionnels sur `ClientUser`, renseignables à la création et modifiables ensuite via un formulaire dédié sous chaque compte — voir section "Backend interne" |
 | 2026-07-20 | Email de facturation sur la fiche client + bouton "Envoyer le document" par document (objet = nom du fichier, corps de message fixe fourni) + statut envoyé/non envoyé | Livré : nouveau champ `Client.billingEmail`, action d'envoi en pièce jointe (`sendDocumentByEmail`), nouveau champ `Document.sentAt` avec icône de statut — voir section "Backend interne" |
 | 2026-07-20 | Lien Google Drive par client (fiche client admin), affiché dans le bandeau de menu de l'espace client et redirigeant directement vers le Drive | Livré : nouveau champ `Client.driveUrl`, onglet "Google Drive" dans `ClientNavTabs` (ouverture dans un nouvel onglet) si renseigné — voir section "Backend interne" |
+| 2026-07-20 | Système d'épinglage des tâches (pastille en un clic), filtre "épinglés" dans la liste des tâches, liste des tâches épinglées sur le tableau de bord, désépinglage automatique à la fin d'une tâche | Livré (les 4 points) : nouveau champ `Task.pinnedAt`, `TaskPinButton` sur toutes les vues de tâches, case à cocher "Épinglées uniquement" sur `/admin/taches`, section "Tâches épinglées" sur `/admin`, remise à zéro automatique dans `setTaskStatus` au passage en "Terminé" — voir section "Backend interne" |

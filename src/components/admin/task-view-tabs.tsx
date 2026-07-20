@@ -14,10 +14,12 @@ export function TaskViewTabs({
   current,
   clientId,
   status,
+  pinnedOnly,
 }: {
   current: TaskView;
   clientId?: string;
   status?: string;
+  pinnedOnly?: boolean;
 }) {
   return (
     <nav className="flex flex-wrap gap-2">
@@ -25,6 +27,7 @@ export function TaskViewTabs({
         const params = new URLSearchParams();
         if (clientId) params.set("clientId", clientId);
         if (status) params.set("status", status);
+        if (pinnedOnly) params.set("epingle", "1");
         if (view.value !== "liste") params.set("vue", view.value);
         const query = params.toString();
         const isActive = view.value === current;

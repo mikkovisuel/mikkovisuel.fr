@@ -4,6 +4,7 @@ import { verifyAdminSession } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { TASK_STATUS, TASK_STATUS_LIST_KEY } from "@/lib/dropdown-lists";
 import { RecentActivity } from "@/components/admin/recent-activity";
+import { PinnedTasks } from "@/components/admin/pinned-tasks";
 import { UpcomingEvents } from "@/components/admin/upcoming-events";
 import { StatusBreakdown } from "@/components/admin/status-breakdown";
 import { InactiveClients } from "@/components/admin/inactive-clients";
@@ -87,8 +88,13 @@ export default async function AdminDashboardPage() {
     newRequests.length > 0 ||
     newComments.length > 0;
 
-  const [upcomingTaskRows, statusList, statusGroups, clientsWithLastTask, loginEventRows] =
+  const [pinnedTaskRows, upcomingTaskRows, statusList, statusGroups, clientsWithLastTask, loginEventRows] =
     await Promise.all([
+      db.task.findMany({
+        where: { pinnedAt: { not: null }, archivedAt: null },
+        include: { client: true, status: true },
+        orderBy: { pinnedAt: "desc" },
+      }),
       db.task.findMany({
         where: { eventDate: { gte: new Date() }, archivedAt: null },
         include: { client: true, status: true },
@@ -116,6 +122,14 @@ export default async function AdminDashboardPage() {
         include: { clientUser: { include: { client: true } } },
       }),
     ]);
+
+  const pinnedTasks = pinnedTaskRows.map((task) => ({
+    id: task.id,
+    title: task.title,
+    clientName: task.client.name,
+    statusLabel: task.status.label,
+    eventDate: task.eventDate,
+  }));
 
   const upcomingEvents = upcomingTaskRows.map((task) => ({
     id: task.id,
@@ -203,6 +217,7 @@ export default async function AdminDashboardPage() {
       )}
 
       <div className="mt-8 grid gap-4 lg:grid-cols-2">
+        <PinnedTasks tasks={pinnedTasks} />
         <UpcomingEvents tasks={upcomingEvents} />
         <StatusBreakdown statuses={statusBreakdown} />
         <InactiveClients clients={inactiveClients} />

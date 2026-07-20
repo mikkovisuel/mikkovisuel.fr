@@ -8,6 +8,7 @@ interface ByClientTask {
   eventDate: Date | null;
   dueDate: Date | null;
   refusalReason: string | null;
+  pinnedAt: Date | null;
   status: { slug: string; color: string };
   types: { id: string; label: string; color: string }[];
   formats: { id: string; label: string; color: string }[];

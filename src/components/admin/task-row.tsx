@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { TaskStatusSelect } from "@/components/admin/task-status-select";
+import { TaskPinButton } from "@/components/admin/task-pin-button";
 import { StatusBadge } from "@/components/status-badge";
 import { AttachmentBadge } from "@/components/attachment-badge";
 import { isTaskOverdue, taskDateFormatter } from "@/lib/tasks";
@@ -12,6 +13,7 @@ interface TaskRowProps {
     eventDate: Date | null;
     dueDate: Date | null;
     refusalReason: string | null;
+    pinnedAt: Date | null;
     status: { slug: string; color: string };
     types: { id: string; label: string; color: string }[];
     formats: { id: string; label: string; color: string }[];
@@ -38,6 +40,7 @@ export function TaskRow({ task, statusOptions, showClient = false }: TaskRowProp
             </Link>
           )}
           <div className="flex items-center gap-2">
+            <TaskPinButton taskId={task.id} pinned={task.pinnedAt !== null} />
             <p className="font-medium text-ink">{task.title}</p>
             <AttachmentBadge
               attachmentCount={task._count?.attachments}

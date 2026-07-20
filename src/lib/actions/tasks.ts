@@ -270,12 +270,40 @@ export async function setTaskStatus(taskId: string, statusSlug: TaskStatusSlug) 
   if (!task) return;
 
   const statusId = await getStatusId(statusSlug);
-  await db.task.update({ where: { id: taskId }, data: { statusId } });
+  await db.task.update({
+    where: { id: taskId },
+    data: {
+      statusId,
+      // Une tâche terminée n'a plus besoin d'être mise en avant — voir
+      // `Task.pinnedAt`. Pas d'effet si elle n'était pas épinglée.
+      ...(statusSlug === TASK_STATUS.TERMINE ? { pinnedAt: null } : {}),
+    },
+  });
   revalidateTaskPaths(task.clientId);
+  if (statusSlug === TASK_STATUS.TERMINE) {
+    revalidatePath("/admin");
+  }
 
   if (statusSlug === TASK_STATUS.A_VALIDER) {
     await notifyClientUsersOfNewTaskToValidate(taskId);
   }
+}
+
+// Épinglage manuel (bouton une pastille dans les vues admin) — un clic pour
+// épingler/désépingler, pas de confirmation. Voir `Task.pinnedAt`.
+export async function toggleTaskPin(taskId: string) {
+  await verifyAdminSession();
+
+  const task = await db.task.findUnique({ where: { id: taskId } });
+  if (!task) return;
+
+  await db.task.update({
+    where: { id: taskId },
+    data: { pinnedAt: task.pinnedAt ? null : new Date() },
+  });
+
+  revalidateTaskPaths(task.clientId);
+  revalidatePath("/admin");
 }
 
 export async function validateTask(taskId: string) {

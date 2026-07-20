@@ -6,6 +6,7 @@ import { setTaskStatus } from "@/lib/actions/tasks";
 import { StatusBadge } from "@/components/status-badge";
 import { AttachmentBadge } from "@/components/attachment-badge";
 import { TaskStatusSelect } from "@/components/admin/task-status-select";
+import { TaskPinButton } from "@/components/admin/task-pin-button";
 import { isTaskOverdue, taskDateFormatter } from "@/lib/tasks";
 import { PALETTE_BADGE_CLASSES, type PaletteColor, type TaskStatusSlug } from "@/lib/dropdown-lists";
 
@@ -14,6 +15,7 @@ interface KanbanTask {
   clientId: string;
   title: string;
   dueDate: Date | null;
+  pinnedAt: Date | null;
   status: { slug: string; color: string };
   client: { name: string };
   types: { id: string; label: string; color: string }[];
@@ -90,6 +92,7 @@ export function TaskKanbanBoard({
                     }`}
                   >
                     <div className="flex items-center gap-2">
+                      <TaskPinButton taskId={task.id} pinned={task.pinnedAt !== null} />
                       <Link
                         href={`/admin/taches/${task.id}`}
                         className="text-sm font-medium text-ink hover:underline"

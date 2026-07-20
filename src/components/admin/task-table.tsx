@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { CaretUp, CaretDown } from "@phosphor-icons/react/dist/ssr";
 import { TaskStatusSelect } from "@/components/admin/task-status-select";
+import { TaskPinButton } from "@/components/admin/task-pin-button";
 import { StatusBadge } from "@/components/status-badge";
 import { AttachmentBadge } from "@/components/attachment-badge";
 import { sendTaskReminder } from "@/lib/actions/tasks";
@@ -18,6 +19,7 @@ interface TaskTableTask {
   eventDate: Date | null;
   dueDate: Date | null;
   refusalReason: string | null;
+  pinnedAt: Date | null;
   status: { slug: string; color: string };
   types: { id: string; label: string; color: string }[];
   formats: { id: string; label: string; color: string }[];
@@ -144,6 +146,7 @@ export function TaskTable({
                 </td>
                 <td className="px-4 py-3 align-top">
                   <div className="flex items-center gap-2">
+                    <TaskPinButton taskId={task.id} pinned={task.pinnedAt !== null} />
                     <Link
                       href={`/admin/taches/${task.id}`}
                       className="font-medium text-ink hover:underline"

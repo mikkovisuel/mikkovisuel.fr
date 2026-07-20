@@ -5,6 +5,7 @@ import { ArrowLeft } from "@phosphor-icons/react/dist/ssr";
 import { verifyAdminSession } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { TaskEditForm } from "@/components/admin/task-edit-form";
+import { TaskPinButton } from "@/components/admin/task-pin-button";
 import { DeleteButton } from "@/components/admin/delete-button";
 import { DeliverableUploadForm } from "@/components/admin/deliverable-upload-form";
 import { AttachmentUploadForm } from "@/components/admin/attachment-upload-form";
@@ -75,9 +76,12 @@ export default async function TaskDetailPage({
       </Link>
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-        <h1 className="font-display text-2xl font-medium tracking-tight text-ink">
-          {task.title}
-        </h1>
+        <div className="flex items-center gap-2">
+          <TaskPinButton taskId={task.id} pinned={task.pinnedAt !== null} />
+          <h1 className="font-display text-2xl font-medium tracking-tight text-ink">
+            {task.title}
+          </h1>
+        </div>
 
         <div className="flex items-center gap-4">
           {task.archivedAt ? (

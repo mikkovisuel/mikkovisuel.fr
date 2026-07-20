@@ -37,16 +37,18 @@ export default async function AdminTasksPage({
     q?: string;
     type?: string;
     format?: string;
+    epingle?: string;
   }>;
 }) {
   await verifyAdminSession();
-  const { clientId, status, vue, mois, tri, dir, q, type, format } = await searchParams;
+  const { clientId, status, vue, mois, tri, dir, q, type, format, epingle } = await searchParams;
   const view: TaskView = VALID_VIEWS.includes(vue as TaskView) ? (vue as TaskView) : "liste";
   const sortField: TaskSortField = isTaskSortField(tri) ? tri : "evenement";
   const sortDir: TaskSortDir = dir === "desc" ? "desc" : "asc";
   // Recherche/filtres Type/Format : uniquement pertinents pour la vue Liste
   // (pas de plomberie de propagation vers Kanban/Calendrier/Par client).
   const isListe = view === "liste";
+  const pinnedOnly = epingle === "1";
 
   const [tasks, statusList, typeList, formatList, clients] = await Promise.all([
     db.task.findMany({
@@ -54,6 +56,7 @@ export default async function AdminTasksPage({
         archivedAt: view === "archivees" ? { not: null } : null,
         ...(clientId ? { clientId } : {}),
         ...(status ? { status: { slug: status } } : {}),
+        ...(pinnedOnly ? { pinnedAt: { not: null } } : {}),
         ...(isListe && q ? { title: { contains: q } } : {}),
         ...(isListe && type ? { types: { some: { slug: type } } } : {}),
         ...(isListe && format ? { formats: { some: { slug: format } } } : {}),
@@ -94,7 +97,7 @@ export default async function AdminTasksPage({
   const calendarYear = moisYear ? Number(moisYear) : now.getFullYear();
   const calendarMonth = moisMonth ? Number(moisMonth) - 1 : now.getMonth();
 
-  const hasFilters = Boolean(clientId || status || q || type || format);
+  const hasFilters = Boolean(clientId || status || q || type || format || pinnedOnly);
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
@@ -110,12 +113,18 @@ export default async function AdminTasksPage({
       </div>
 
       <div className="mt-6 flex flex-wrap items-center justify-between gap-4">
-        <TaskViewTabs current={view} clientId={clientId} status={status} />
+        <TaskViewTabs current={view} clientId={clientId} status={status} pinnedOnly={pinnedOnly} />
         <TaskSortControl
           basePath="/admin/taches"
           sortField={sortField}
           sortDir={sortDir}
-          extraParams={{ clientId, status, vue: view !== "liste" ? view : undefined, mois }}
+          extraParams={{
+            clientId,
+            status,
+            vue: view !== "liste" ? view : undefined,
+            mois,
+            epingle: pinnedOnly ? "1" : undefined,
+          }}
         />
       </div>
 
@@ -217,6 +226,21 @@ export default async function AdminTasksPage({
             </div>
           </>
         )}
+
+        <label
+          htmlFor="epingle"
+          className="flex items-center gap-2 rounded-xl border border-line bg-surface-elevated px-3 py-2.5 text-sm text-ink"
+        >
+          <input
+            id="epingle"
+            name="epingle"
+            type="checkbox"
+            value="1"
+            defaultChecked={pinnedOnly}
+            className="accent-accent"
+          />
+          Épinglées uniquement
+        </label>
 
         <button
           type="submit"

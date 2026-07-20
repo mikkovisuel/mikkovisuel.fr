@@ -183,6 +183,12 @@ model Task {
   batValidatedAt DateTime?
   archivedAt     DateTime?
   lastReminderAt DateTime?
+  // Épinglage admin (bouton une pastille, `toggleTaskPin`) — non null =
+  // épinglée, la date sert aussi à trier la liste des tâches épinglées du
+  // tableau de bord (plus récemment épinglée en premier). Remis à `null`
+  // automatiquement quand la tâche passe au statut "Terminé"
+  // (`setTaskStatus`), même pattern que `archivedAt`/`refusedAt`.
+  pinnedAt       DateTime?
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt
 
