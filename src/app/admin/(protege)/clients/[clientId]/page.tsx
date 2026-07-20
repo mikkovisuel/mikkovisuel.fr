@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "@phosphor-icons/react/dist/ssr";
+import { ArrowLeft, EnvelopeSimple } from "@phosphor-icons/react/dist/ssr";
 import { verifyAdminSession } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { ClientForm } from "@/components/admin/client-form";
@@ -95,9 +95,18 @@ export default async function ClientDetailPage({
         Retour aux clients
       </Link>
 
-      <h1 className="mt-4 font-display text-2xl font-medium tracking-tight text-ink">
-        {client.name}
-      </h1>
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+        <h1 className="font-display text-2xl font-medium tracking-tight text-ink">
+          {client.name}
+        </h1>
+        <Link
+          href={`/admin/clients/${client.id}/emails`}
+          className="inline-flex items-center gap-2 rounded-full border border-line px-4 py-2 text-sm text-ink-muted transition-colors hover:border-accent hover:text-ink"
+        >
+          <EnvelopeSimple size={16} weight="regular" />
+          Emails
+        </Link>
+      </div>
 
       <section className="mt-8">
         <h2 className="text-sm font-medium text-ink-muted">Informations</h2>
@@ -147,13 +156,21 @@ export default async function ClientDetailPage({
       <section className="mt-12">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <h2 className="text-sm font-medium text-ink-muted">Tâches ({client.tasks.length})</h2>
-          {client.tasks.length > 1 && (
-            <TaskSortControl
-              basePath={`/admin/clients/${client.id}`}
-              sortField={sortField}
-              sortDir={sortDir}
-            />
-          )}
+          <div className="flex flex-wrap items-center gap-4">
+            <a
+              href={`/api/exports/clients/${client.id}/rapport`}
+              className="text-xs text-ink-muted transition-colors hover:text-ink"
+            >
+              Télécharger le rapport (PDF)
+            </a>
+            {client.tasks.length > 1 && (
+              <TaskSortControl
+                basePath={`/admin/clients/${client.id}`}
+                sortField={sortField}
+                sortDir={sortDir}
+              />
+            )}
+          </div>
         </div>
 
         {client.tasks.length > 0 && (

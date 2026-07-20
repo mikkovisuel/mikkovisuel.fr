@@ -16,18 +16,28 @@ datasource db {
 // rewrite. See /Users/mikko/.claude/plans/smooth-crafting-rose.md.
 
 model Admin {
-  id              String    @id @default(cuid())
-  email           String    @unique
-  passwordHash    String
-  themePreference String    @default("light")
+  id                   String    @id @default(cuid())
+  email                String    @unique
+  passwordHash         String
+  themePreference      String    @default("light")
   // `previousLoginAt` is the value `lastLoginAt` held right before the
   // current session's login overwrote it — this is the cursor the "depuis
   // votre dernière connexion" dashboard panel actually compares against,
   // since by the time the dashboard renders, `lastLoginAt` is already "now".
-  lastLoginAt     DateTime?
-  previousLoginAt DateTime?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  lastLoginAt          DateTime?
+  previousLoginAt      DateTime?
+  // Boîte mail Gmail intégrée à l'admin (voir src/lib/gmail.ts) — un seul
+  // compte Google connecté, celui de l'admin, d'où ces champs directement
+  // sur `Admin` plutôt qu'une table à part. `gmailRefreshTokenEnc` est
+  // chiffré (src/lib/crypto-secrets.ts), jamais stocké en clair : ce token
+  // donne un accès permanent en lecture/envoi au Gmail personnel de
+  // l'admin, une fuite de la base ne doit pas suffire à elle seule à
+  // l'exploiter.
+  gmailEmail           String?
+  gmailRefreshTokenEnc String?
+  gmailConnectedAt     DateTime?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 
   uploadedDocuments Document[]
 }

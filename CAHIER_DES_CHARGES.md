@@ -547,6 +547,36 @@ appliquée à l'ensemble du site :
   "Points encore ouverts") et disponible en déclenchement manuel immédiat
   ("Purger maintenant" sur `/admin/reglages`, utile en test ou en dehors de
   Scalingo).
+- Rapport PDF des tâches en cours, par client (2026-07-20) : bouton
+  "Télécharger le rapport (PDF)" sur `/admin/clients/[clientId]`, à côté du
+  titre "Tâches". Liste toutes les tâches non terminées (hors archivées)
+  du client — titre, statut, type/formats, dates d'évènement/échéance,
+  description — pour un point d'avancement à envoyer tel quel. Généré à la
+  volée (`@react-pdf/renderer`, pas de navigateur headless type Puppeteer —
+  trop lourd pour le conteneur de production, voir l'incident mémoire du
+  2026-07-17). Téléchargement uniquement (décision explicite, pas d'envoi
+  email intégré).
+- Boîte mail Gmail intégrée à l'admin (2026-07-20) : nouveau bouton
+  "Emails" sur la fiche client (`/admin/clients/[clientId]`), ouvrant la
+  liste des fils de discussion Gmail échangés avec les adresses des
+  comptes de connexion de ce client (recherche `from:`/`to:` en direct via
+  l'API Gmail à chaque ouverture — aucun email stocké/synchronisé en
+  base). Permet de répondre (correctement rattaché au fil dans le vrai
+  Gmail), transférer, ou écrire un nouveau message sans jamais ouvrir
+  Gmail. Connexion en OAuth2 depuis `/admin/reglages` ("Boîte mail"), un
+  seul compte Google (celui de l'admin) — champs ajoutés sur `Admin`
+  (`gmailEmail`, `gmailRefreshTokenEnc`, `gmailConnectedAt`), le refresh
+  token étant chiffré en base (AES-256-GCM, nouvelle variable d'env
+  `ENCRYPTION_KEY`) plutôt qu'en clair : ce token donne un accès permanent
+  au Gmail personnel de l'admin, une fuite de la base ne doit pas suffire
+  à elle seule à l'exploiter. Scopes volontairement restreints à
+  lecture + envoi (jamais suppression/labellisation). Le corps HTML de
+  chaque email (contenu externe, pas de confiance) est affiché dans une
+  iframe `sandbox` sans script — protection contre une éventuelle
+  injection XSS via un email reçu. Fonctionnalité codée et testée (état
+  "non connecté", écran de réglages, garde-fous) mais l'usage réel dépend
+  de la création d'identifiants Google côté client — voir "Points encore
+  ouverts" et `GUIDE_GMAIL.md`.
 
 ## Décisions techniques déléguées à Claude Code
 
@@ -592,14 +622,13 @@ Le client a explicitement délégué ces choix :
   mémoire) permettrait de la lever sans risque si des vidéos plus lourdes
   deviennent nécessaires. Non fait par choix du client (option "plafond"
   retenue plutôt que "streaming" ou "conteneur plus gros").
-- Variable d'environnement `CRON_SECRET` à configurer sur Scalingo
-  (2026-07-20) : la route `/api/cron/purge-deliverables` refuse de
-  s'exécuter tant qu'elle n'est pas définie (échec volontaire plutôt que
-  purge non protégée) — à ajouter dans les variables d'environnement
-  Scalingo (n'importe quelle chaîne aléatoire longue), sans quoi
-  l'archivage automatique des livrables ne se déclenchera jamais (le
-  bouton "Purger maintenant" dans `/admin/reglages` fonctionne, lui, sans
-  ce réglage).
+- Identifiants Google OAuth pour la boîte mail Gmail (2026-07-20) : la
+  fonctionnalité est codée et déployée, mais inutilisable tant que le
+  client n'a pas créé son projet Google Cloud + identifiants OAuth (guide
+  détaillé fourni : `GUIDE_GMAIL.md`) — étape que Claude Code ne peut pas
+  faire à sa place (création de compte/identifiants). Une fois l'ID
+  client et la clé secrète transmis, il reste à les ajouter en variables
+  d'environnement (local + Scalingo) et à tester la connexion réelle.
 
 ## Journal des modifications demandées
 
@@ -661,3 +690,5 @@ Le client a explicitement délégué ces choix :
 | 2026-07-20 | Date d'évènement affichée devant le titre + tri (croissant/décroissant, par date d'évènement ou d'ajout) sur l'onglet Livrables de l'espace client | Livré : voir section "Espace client" |
 | 2026-07-20 | Pop-up de message admin affichable sur tous les comptes/espaces clients (case d'activation + texte) | Livré : réglage sur `/admin/reglages`, modale à la connexion côté client (une fois par message) — voir sections "Espace client" et "Backend interne" |
 | 2026-07-20 | Différencier les livrables des BAT, avec filigrane automatique (logo en répétition, 10 % d'opacité) réglable depuis l'admin | Livré (priorité images JPG/PNG, décision validée avec le client) : nouveau champ `Deliverable.kind`, filigrane généré à la volée via `sharp` sur les BAT vus par le client (jamais sur l'original ni côté admin), activable depuis `/admin/reglages` — voir section "Espace client" |
+| 2026-07-20 | Boîte mail Gmail connectée à l'admin : par client, voir tous les échanges email liés à son profil, pouvoir répondre/transférer directement dans l'application, sans jamais ouvrir Gmail | Livré (rattachement automatique par adresse email des comptes client, décision validée avec le client) : bouton "Emails" sur la fiche client, connexion OAuth2 depuis `/admin/reglages`, aucune synchronisation en base (requêtes Gmail en direct) — bloqué en usage réel tant que le client n'a pas créé ses identifiants Google (guide fourni : `GUIDE_GMAIL.md`) — voir section "Backend interne" |
+| 2026-07-20 | Export PDF par client de toutes les tâches en cours non terminées (rapport d'état à envoyer au client) | Livré (téléchargement uniquement, décision validée avec le client) : bouton "Télécharger le rapport (PDF)" sur la fiche client, généré à la volée via `@react-pdf/renderer` — voir section "Backend interne" |
