@@ -36,6 +36,12 @@ model Client {
   id        String   @id @default(cuid())
   name      String
   notes     String?
+  // Espace client public accessible sans connexion (bouton "Voir l'espace
+  // client de démo" côté site vitrine) — voir src/lib/actions/demo.ts. Un
+  // seul client devrait porter ce flag ; les Server Actions d'écriture
+  // côté client le vérifient (assertNotDemo dans src/lib/dal.ts) pour
+  // rester en lecture seule malgré l'accès public.
+  isDemo    Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -188,6 +194,11 @@ model Deliverable {
   mimeType       String
   sizeBytes      Int
   storageBackend String
+  // "bat" (épreuve à valider, filigranée côté client si l'option est
+  // active — voir src/lib/watermark.ts) ou "final" (livrable remis, jamais
+  // filigrané). Les lignes existantes migrent en "final" par défaut : rien
+  // n'est filigrané rétroactivement sans action de l'admin.
+  kind           String   @default("final")
   uploadedAt     DateTime @default(now())
 }
 
@@ -227,6 +238,22 @@ model Document {
   uploadedByAdminId       String
   uploadedByAdmin         Admin        @relation(fields: [uploadedByAdminId], references: [id])
   uploadedAt              DateTime     @default(now())
+}
+
+// Singleton (toujours id "settings") pour les réglages ajustables en direct
+// depuis /admin/reglages, sans redéploiement. Même pattern que
+// HomepageContent/HomepageHero ci-dessous.
+model AppSettings {
+  id                       String   @id @default("settings")
+  // Nombre de jours après lesquels un livrable final (tâche "Terminé")
+  // est purgé du stockage — voir /api/cron/purge-livrables.
+  deliverableRetentionDays Int      @default(60)
+  // Filigrane à 10% d'opacité appliqué à la volée aux BAT (Deliverable.kind
+  // = "bat") vus par le client — voir src/lib/watermark.ts.
+  batWatermarkEnabled      Boolean  @default(true)
+  popupEnabled             Boolean  @default(false)
+  popupMessage             String?
+  updatedAt                DateTime @updatedAt
 }
 
 model EmailLog {

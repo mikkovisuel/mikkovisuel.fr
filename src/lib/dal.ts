@@ -40,3 +40,14 @@ export const verifyClientSession = cache(async () => {
   }
   return clientUser;
 });
+
+// Verrou du mode lecture seule de l'espace client de démonstration
+// (Client.isDemo — voir src/lib/actions/demo.ts). L'espace démo est
+// accessible publiquement sans connexion, donc masquer les boutons
+// d'action côté UI ne suffit pas : chaque Server Action d'écriture côté
+// client doit appeler ce garde en tête, juste après verifyClientSession().
+export function assertNotDemo(clientUser: { client: { isDemo: boolean } }) {
+  if (clientUser.client.isDemo) {
+    throw new Error("Cette action n'est pas disponible dans l'espace de démonstration.");
+  }
+}

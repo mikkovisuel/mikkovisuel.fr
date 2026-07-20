@@ -1,6 +1,10 @@
 import "dotenv/config";
 import { randomBytes } from "node:crypto";
+import { mkdir, writeFile } from "node:fs/promises";
+import path from "node:path";
 import bcrypt from "bcryptjs";
+import { S3Client, PutObjectCommand } from "@aws-sdk/client-s3";
+import sharp from "sharp";
 import { PrismaClient } from "../src/generated/prisma/client";
 import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
 import { PrismaPg } from "@prisma/adapter-pg";
@@ -10,12 +14,62 @@ import {
   PORTFOLIO_CATEGORY_LIST_KEY,
   TASK_FORMAT_LIST_KEY,
   TASK_FORMAT_SEED,
+  TASK_STATUS,
   TASK_STATUS_LIST_KEY,
   TASK_STATUS_SEED,
   TASK_TYPE_LIST_KEY,
   TASK_TYPE_SEED,
   type SeedDropdownItem,
 } from "../src/lib/dropdown-lists";
+
+// Réimplémentation minimale (save uniquement) de src/lib/storage/index.ts —
+// ce fichier-ci et local.ts/s3.ts commencent par `import "server-only"`,
+// qui n'est résolvable que sous le bundler Next.js (alias interne, jamais
+// un vrai package dans node_modules) et casse `tsx prisma/seed.ts` en Node
+// pur. Même logique de sélection S3/local que getStorageAdapter().
+function hasSeedS3Config() {
+  return Boolean(
+    process.env.STORAGE_S3_ENDPOINT &&
+      process.env.STORAGE_S3_BUCKET &&
+      process.env.STORAGE_S3_ACCESS_KEY_ID &&
+      process.env.STORAGE_S3_SECRET_ACCESS_KEY,
+  );
+}
+
+function getSeedStorage(): {
+  backend: "local" | "s3";
+  save: (key: string, data: Buffer) => Promise<void>;
+} {
+  if (hasSeedS3Config()) {
+    const client = new S3Client({
+      endpoint: process.env.STORAGE_S3_ENDPOINT!,
+      region: process.env.STORAGE_S3_REGION ?? "auto",
+      credentials: {
+        accessKeyId: process.env.STORAGE_S3_ACCESS_KEY_ID!,
+        secretAccessKey: process.env.STORAGE_S3_SECRET_ACCESS_KEY!,
+      },
+      requestChecksumCalculation: "WHEN_REQUIRED",
+      responseChecksumValidation: "WHEN_REQUIRED",
+    });
+    const bucket = process.env.STORAGE_S3_BUCKET!;
+    return {
+      backend: "s3",
+      async save(key, data) {
+        await client.send(new PutObjectCommand({ Bucket: bucket, Key: key, Body: data }));
+      },
+    };
+  }
+
+  const storageRoot = path.join(process.cwd(), "storage");
+  return {
+    backend: "local",
+    async save(key, data) {
+      const filePath = path.join(storageRoot, key);
+      await mkdir(path.dirname(filePath), { recursive: true });
+      await writeFile(filePath, data);
+    },
+  };
+}
 
 const url = process.env.DATABASE_URL;
 if (!url) {
@@ -119,6 +173,174 @@ async function seedDemoClient() {
   console.log("Client de démo créé :");
   console.log(`  email : ${email}`);
   console.log("  mot de passe : demo-password");
+}
+
+// PNG uni généré à la volée (assez grand pour que le filigrane BAT — une
+// tuile de 160x160 — puisse s'appliquer dessus, contrairement à une vraie
+// vignette 1x1), utilisé comme contenu de fichier factice pour les pièces
+// jointes/livrables de démonstration ci-dessous.
+async function createPlaceholderImage(): Promise<Buffer> {
+  return sharp({
+    create: { width: 640, height: 800, channels: 3, background: { r: 210, g: 205, b: 195 } },
+  })
+    .png()
+    .toBuffer();
+}
+
+async function dropdownItemId(listKey: string, slug: string) {
+  const item = await prisma.dropdownItem.findFirst({ where: { list: { key: listKey }, slug } });
+  if (!item) throw new Error(`Dropdown item introuvable : ${listKey}/${slug}`);
+  return item.id;
+}
+
+// Espace client public, accessible sans connexion depuis le site vitrine
+// ("Voir l'espace client de démo"), pour que les prospects visualisent leur
+// futur espace avant de signer. À la différence de `seedDemoClient`
+// ci-dessus (identifiants de test réservés au développement local, jamais
+// seedés en production), celui-ci est fait pour tourner en production : le
+// compte n'est jamais utilisable pour un vrai login (mot de passe aléatoire
+// jamais journalisé, accès uniquement via viewDemoClientSpace côté site),
+// et reste en lecture seule (Client.isDemo, vérifié par assertNotDemo dans
+// src/lib/dal.ts sur chaque action d'écriture côté client).
+async function seedPublicDemoClient() {
+  const existing = await prisma.client.findFirst({ where: { isDemo: true } });
+  if (existing) {
+    console.log("Client de démo public déjà présent.");
+    return;
+  }
+
+  const client = await prisma.client.create({
+    data: {
+      name: "Espace de démonstration",
+      notes: "Espace public en lecture seule, accessible sans connexion depuis le site vitrine.",
+      isDemo: true,
+    },
+  });
+
+  const passwordHash = await bcrypt.hash(randomBytes(24).toString("base64url"), 12);
+  await prisma.clientUser.create({
+    data: {
+      clientId: client.id,
+      email: `demo-public-${client.id}@mikkovisuel.internal`,
+      passwordHash,
+      name: "Prospect",
+    },
+  });
+
+  const storage = getSeedStorage();
+  const placeholderImage = await createPlaceholderImage();
+  const now = Date.now();
+  const daysFromNow = (n: number) => new Date(now + n * 24 * 60 * 60 * 1000);
+
+  const [nouveauId, enCoursId, aValiderId, termineId] = await Promise.all([
+    dropdownItemId(TASK_STATUS_LIST_KEY, TASK_STATUS.NOUVEAU),
+    dropdownItemId(TASK_STATUS_LIST_KEY, TASK_STATUS.EN_COURS),
+    dropdownItemId(TASK_STATUS_LIST_KEY, TASK_STATUS.A_VALIDER),
+    dropdownItemId(TASK_STATUS_LIST_KEY, TASK_STATUS.TERMINE),
+  ]);
+  const [flyerTypeId, motionTypeId, format45Id, format169Id] = await Promise.all([
+    dropdownItemId(TASK_TYPE_LIST_KEY, "flyer"),
+    dropdownItemId(TASK_TYPE_LIST_KEY, "motion"),
+    dropdownItemId(TASK_FORMAT_LIST_KEY, "4-5"),
+    dropdownItemId(TASK_FORMAT_LIST_KEY, "16-9"),
+  ]);
+
+  const enCoursTask = await prisma.task.create({
+    data: {
+      clientId: client.id,
+      title: "Flyer soirée Ember",
+      description: "Flyer d'annonce pour la prochaine soirée, format story.",
+      statusId: enCoursId,
+      eventDate: daysFromNow(25),
+      dueDate: daysFromNow(10),
+      types: { connect: [{ id: flyerTypeId }] },
+      formats: { connect: [{ id: format45Id }] },
+      createdByType: "ADMIN",
+      createdById: "seed",
+    },
+  });
+  await prisma.attachment.create({
+    data: {
+      taskId: enCoursTask.id,
+      fileName: "brief-client.png",
+      storageKey: `attachments/demo-${enCoursTask.id}`,
+      mimeType: "image/png",
+      sizeBytes: placeholderImage.byteLength,
+      storageBackend: storage.backend,
+    },
+  });
+
+  const aValiderTask = await prisma.task.create({
+    data: {
+      clientId: client.id,
+      title: "Visuel affiche — Warehouse #05",
+      description: "Première proposition d'affiche, en attente de votre validation.",
+      statusId: aValiderId,
+      eventDate: daysFromNow(40),
+      dueDate: daysFromNow(3),
+      types: { connect: [{ id: flyerTypeId }] },
+      formats: { connect: [{ id: format45Id }] },
+      createdByType: "ADMIN",
+      createdById: "seed",
+    },
+  });
+  await prisma.deliverable.create({
+    data: {
+      taskId: aValiderTask.id,
+      fileName: "affiche-warehouse-05-BAT.png",
+      storageKey: `deliverables/demo-${aValiderTask.id}`,
+      mimeType: "image/png",
+      sizeBytes: placeholderImage.byteLength,
+      storageBackend: storage.backend,
+      kind: "bat",
+    },
+  });
+
+  const termineTask = await prisma.task.create({
+    data: {
+      clientId: client.id,
+      title: "Logo animé — label Volt",
+      description: "Version finale livrée, prête à l'emploi.",
+      statusId: termineId,
+      eventDate: daysFromNow(-15),
+      dueDate: daysFromNow(-20),
+      types: { connect: [{ id: motionTypeId }] },
+      formats: { connect: [{ id: format169Id }] },
+      createdByType: "ADMIN",
+      createdById: "seed",
+    },
+  });
+  await prisma.deliverable.create({
+    data: {
+      taskId: termineTask.id,
+      fileName: "logo-anime-volt-FINAL.png",
+      storageKey: `deliverables/demo-${termineTask.id}`,
+      mimeType: "image/png",
+      sizeBytes: placeholderImage.byteLength,
+      storageBackend: storage.backend,
+      kind: "final",
+    },
+  });
+
+  await prisma.task.create({
+    data: {
+      clientId: client.id,
+      title: "Nouvelle demande — exemple",
+      description: "Exemple de demande tout juste envoyée, pas encore prise en charge.",
+      statusId: nouveauId,
+      types: { connect: [{ id: flyerTypeId }] },
+      createdByType: "CLIENT_USER",
+      createdById: "seed",
+    },
+  });
+
+  await Promise.all([
+    storage.save(`attachments/demo-${enCoursTask.id}`, placeholderImage),
+    storage.save(`deliverables/demo-${aValiderTask.id}`, placeholderImage),
+    storage.save(`deliverables/demo-${termineTask.id}`, placeholderImage),
+  ]);
+
+  console.log("Client de démo public créé (espace en lecture seule, accessible sans connexion).");
 }
 
 interface SeedPortfolioItem {
@@ -289,6 +511,7 @@ async function main() {
   );
   await seedAdmin();
   await seedDemoClient();
+  await seedPublicDemoClient();
   await seedPortfolio();
 }
 

@@ -4,6 +4,7 @@ import { useTransition } from "react";
 import Link from "next/link";
 import { setTaskStatus } from "@/lib/actions/tasks";
 import { StatusBadge } from "@/components/status-badge";
+import { AttachmentBadge } from "@/components/attachment-badge";
 import { TaskStatusSelect } from "@/components/admin/task-status-select";
 import { isTaskOverdue, taskDateFormatter } from "@/lib/tasks";
 import { PALETTE_BADGE_CLASSES, type PaletteColor, type TaskStatusSlug } from "@/lib/dropdown-lists";
@@ -17,6 +18,7 @@ interface KanbanTask {
   client: { name: string };
   types: { id: string; label: string; color: string }[];
   formats: { id: string; label: string; color: string }[];
+  _count?: { deliverables: number; attachments: number };
 }
 
 interface StatusColumn {
@@ -87,12 +89,18 @@ export function TaskKanbanBoard({
                       isPending ? "opacity-70" : ""
                     }`}
                   >
-                    <Link
-                      href={`/admin/taches/${task.id}`}
-                      className="text-sm font-medium text-ink hover:underline"
-                    >
-                      {task.title}
-                    </Link>
+                    <div className="flex items-center gap-2">
+                      <Link
+                        href={`/admin/taches/${task.id}`}
+                        className="text-sm font-medium text-ink hover:underline"
+                      >
+                        {task.title}
+                      </Link>
+                      <AttachmentBadge
+                        attachmentCount={task._count?.attachments}
+                        deliverableCount={task._count?.deliverables}
+                      />
+                    </div>
                     <Link
                       href={`/admin/clients/${task.clientId}`}
                       className="text-xs text-ink-muted transition-colors hover:text-ink"

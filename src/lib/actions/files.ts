@@ -49,6 +49,9 @@ export async function uploadDeliverable(
     }
   }
 
+  const kindRaw = formData.get("kind");
+  const kind = kindRaw === "bat" ? "bat" : "final";
+
   const task = await db.task.findUnique({
     where: { id: taskId },
     include: { client: { include: { users: true } } },
@@ -73,21 +76,26 @@ export async function uploadDeliverable(
           mimeType: file.type,
           sizeBytes: file.size,
           storageBackend: storage.backend,
+          kind,
         },
       });
     }),
   );
 
+  const tabLabel = kind === "bat" ? "À valider" : "Livrables";
   for (const user of task.client.users) {
     await sendEmail({
       trigger: "new_deliverable",
       to: user.email,
-      subject: `Nouveau livrable disponible — ${task.title}`,
+      subject:
+        kind === "bat"
+          ? `Nouveau BAT à valider — ${task.title}`
+          : `Nouveau livrable disponible — ${task.title}`,
       html: `<p>${
         files.length > 1
           ? `${files.length} nouveaux fichiers sont disponibles`
           : "Un nouveau fichier est disponible"
-      } dans l'onglet Livrables pour "${task.title}".</p>`,
+      } dans l'onglet ${tabLabel} pour "${task.title}".</p>`,
     });
   }
 

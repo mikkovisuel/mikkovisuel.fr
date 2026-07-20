@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { verifyAdminSession, verifyClientSession } from "@/lib/dal";
+import { verifyAdminSession, verifyClientSession, assertNotDemo } from "@/lib/dal";
 import { CommentSchema, type CommentFormState } from "@/lib/validation/comment";
 
 function revalidateCommentPaths(taskId: string) {
@@ -42,6 +42,7 @@ export async function postClientComment(
   formData: FormData,
 ): Promise<CommentFormState> {
   const clientUser = await verifyClientSession();
+  assertNotDemo(clientUser);
 
   const parsed = CommentSchema.safeParse({ body: formData.get("body") });
   if (!parsed.success) {

@@ -1,6 +1,6 @@
 "use server";
 
-import { verifyClientSession } from "@/lib/dal";
+import { verifyClientSession, assertNotDemo } from "@/lib/dal";
 import { sendEmail, getAdminEmail } from "@/lib/email/service";
 import { FeedbackSchema, type FeedbackFormState } from "@/lib/validation/feedback";
 
@@ -9,6 +9,7 @@ export async function submitInterfaceFeedback(
   formData: FormData,
 ): Promise<FeedbackFormState> {
   const clientUser = await verifyClientSession();
+  assertNotDemo(clientUser);
 
   const parsed = FeedbackSchema.safeParse({ message: formData.get("message") });
   if (!parsed.success) {

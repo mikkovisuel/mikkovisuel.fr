@@ -4,8 +4,16 @@ import { useActionState } from "react";
 import { CheckCircle, WarningCircle } from "@phosphor-icons/react/dist/ssr";
 import { submitInterfaceFeedback } from "@/lib/actions/feedback";
 
-export function FeedbackForm() {
+export function FeedbackForm({ readOnly = false }: { readOnly?: boolean }) {
   const [state, formAction, pending] = useActionState(submitInterfaceFeedback, undefined);
+
+  if (readOnly) {
+    return (
+      <p className="text-sm text-ink-muted">
+        L&apos;envoi de suggestions est désactivé dans l&apos;espace de démonstration.
+      </p>
+    );
+  }
 
   if (state?.success) {
     return (

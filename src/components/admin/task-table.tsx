@@ -2,6 +2,7 @@ import Link from "next/link";
 import { CaretUp, CaretDown } from "@phosphor-icons/react/dist/ssr";
 import { TaskStatusSelect } from "@/components/admin/task-status-select";
 import { StatusBadge } from "@/components/status-badge";
+import { AttachmentBadge } from "@/components/attachment-badge";
 import { sendTaskReminder } from "@/lib/actions/tasks";
 import {
   isTaskOverdue,
@@ -21,6 +22,7 @@ interface TaskTableTask {
   types: { id: string; label: string; color: string }[];
   formats: { id: string; label: string; color: string }[];
   client: { name: string };
+  _count?: { deliverables: number; attachments: number };
 }
 
 const COLUMNS: { label: string; field?: TaskSortField }[] = [
@@ -141,12 +143,18 @@ export function TaskTable({
                   </Link>
                 </td>
                 <td className="px-4 py-3 align-top">
-                  <Link
-                    href={`/admin/taches/${task.id}`}
-                    className="font-medium text-ink hover:underline"
-                  >
-                    {task.title}
-                  </Link>
+                  <div className="flex items-center gap-2">
+                    <Link
+                      href={`/admin/taches/${task.id}`}
+                      className="font-medium text-ink hover:underline"
+                    >
+                      {task.title}
+                    </Link>
+                    <AttachmentBadge
+                      attachmentCount={task._count?.attachments}
+                      deliverableCount={task._count?.deliverables}
+                    />
+                  </div>
                   {task.refusalReason && (
                     <p
                       className="mt-1 max-w-xs truncate text-xs text-danger"

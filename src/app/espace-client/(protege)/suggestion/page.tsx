@@ -1,11 +1,14 @@
 import type { Metadata } from "next";
+import { verifyClientSession } from "@/lib/dal";
 import { FeedbackForm } from "@/components/client/feedback-form";
 
 export const metadata: Metadata = {
   title: "Suggestion — Espace client Mikko Visuel",
 };
 
-export default function ClientFeedbackPage() {
+export default async function ClientFeedbackPage() {
+  const clientUser = await verifyClientSession();
+
   return (
     <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6 lg:px-8">
       <h1 className="font-display text-2xl font-medium tracking-tight text-ink">
@@ -17,7 +20,7 @@ export default function ClientFeedbackPage() {
       </p>
 
       <div className="mt-8">
-        <FeedbackForm />
+        <FeedbackForm readOnly={clientUser.client.isDemo} />
       </div>
     </div>
   );

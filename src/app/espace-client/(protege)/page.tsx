@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { TASK_STATUS } from "@/lib/dropdown-lists";
 import { taskDateFormatter } from "@/lib/tasks";
 import { TaskStatusTimeline } from "@/components/client/task-status-timeline";
+import { AttachmentBadge } from "@/components/attachment-badge";
 
 export const metadata: Metadata = {
   title: "Accueil — Espace client Mikko Visuel",
@@ -30,7 +31,7 @@ export default async function ClientHomePage() {
         archivedAt: null,
         status: { slug: { not: TASK_STATUS.TERMINE } },
       },
-      include: { status: true },
+      include: { status: true, _count: { select: { deliverables: true, attachments: true } } },
       orderBy: [{ dueDate: { sort: "asc", nulls: "last" } }, { eventDate: { sort: "asc", nulls: "last" } }],
       take: 6,
     }),
@@ -90,7 +91,13 @@ export default async function ClientHomePage() {
             {activeTasks.map((task) => (
               <div key={task.id} className="px-6 py-4">
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
-                  <p className="font-medium text-ink">{task.title}</p>
+                  <div className="flex items-center gap-2">
+                    <p className="font-medium text-ink">{task.title}</p>
+                    <AttachmentBadge
+                      attachmentCount={task._count.attachments}
+                      deliverableCount={task._count.deliverables}
+                    />
+                  </div>
                   {task.dueDate && (
                     <p className="text-xs text-ink-muted">
                       Échéance : {taskDateFormatter.format(task.dueDate)}

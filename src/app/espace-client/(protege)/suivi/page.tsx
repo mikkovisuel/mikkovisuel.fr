@@ -3,6 +3,7 @@ import Link from "next/link";
 import { verifyClientSession } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { TaskStatusTimeline } from "@/components/client/task-status-timeline";
+import { AttachmentBadge } from "@/components/attachment-badge";
 import { TASK_STATUS_LIST_KEY } from "@/lib/dropdown-lists";
 
 export const metadata: Metadata = {
@@ -24,7 +25,7 @@ export default async function ClientFollowUpPage({
         archivedAt: null,
         ...(statut ? { status: { slug: statut } } : {}),
       },
-      include: { status: true },
+      include: { status: true, _count: { select: { deliverables: true, attachments: true } } },
       orderBy: { createdAt: "desc" },
     }),
     db.dropdownList.findUnique({
@@ -69,12 +70,18 @@ export default async function ClientFollowUpPage({
         <div className="mt-8 divide-y divide-line rounded-2xl border border-line">
           {tasks.map((task) => (
             <div key={task.id} className="px-6 py-4">
-              <Link
-                href={`/espace-client/taches/${task.id}`}
-                className="font-medium text-ink hover:underline"
-              >
-                {task.title}
-              </Link>
+              <div className="flex items-center gap-2">
+                <Link
+                  href={`/espace-client/taches/${task.id}`}
+                  className="font-medium text-ink hover:underline"
+                >
+                  {task.title}
+                </Link>
+                <AttachmentBadge
+                  attachmentCount={task._count.attachments}
+                  deliverableCount={task._count.deliverables}
+                />
+              </div>
               <div className="mt-3">
                 <TaskStatusTimeline statusSlug={task.status.slug} refusalReason={task.refusalReason} />
               </div>

@@ -12,6 +12,7 @@ interface ByClientTask {
   types: { id: string; label: string; color: string }[];
   formats: { id: string; label: string; color: string }[];
   client: { name: string };
+  _count?: { deliverables: number; attachments: number };
 }
 
 export function TaskByClientView({

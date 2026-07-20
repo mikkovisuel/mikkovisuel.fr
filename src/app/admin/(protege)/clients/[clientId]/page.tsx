@@ -20,6 +20,8 @@ import {
 } from "@/lib/actions/clients";
 import { createTaskByAdmin } from "@/lib/actions/tasks";
 import { TASK_STATUS_LIST_KEY, TASK_TYPE_LIST_KEY, TASK_FORMAT_LIST_KEY } from "@/lib/dropdown-lists";
+import { buildTaskOrderBy, isTaskSortField, type TaskSortField, type TaskSortDir } from "@/lib/tasks";
+import { TaskSortControl } from "@/components/admin/task-sort-control";
 
 export const metadata: Metadata = {
   title: "Client — Admin Mikko Visuel",
@@ -27,11 +29,16 @@ export const metadata: Metadata = {
 
 export default async function ClientDetailPage({
   params,
+  searchParams,
 }: {
   params: Promise<{ clientId: string }>;
+  searchParams: Promise<{ tri?: string; dir?: string }>;
 }) {
   await verifyAdminSession();
   const { clientId } = await params;
+  const { tri, dir } = await searchParams;
+  const sortField: TaskSortField = isTaskSortField(tri) ? tri : "evenement";
+  const sortDir: TaskSortDir = dir === "desc" ? "desc" : "asc";
 
   const [client, statusList, typeList, formatList] = await Promise.all([
     db.client.findUnique({
@@ -40,8 +47,13 @@ export default async function ClientDetailPage({
         users: { orderBy: { createdAt: "asc" } },
         tasks: {
           where: { archivedAt: null },
-          include: { status: true, types: true, formats: true },
-          orderBy: { createdAt: "desc" },
+          include: {
+            status: true,
+            types: true,
+            formats: true,
+            _count: { select: { deliverables: true, attachments: true } },
+          },
+          orderBy: buildTaskOrderBy(sortField, sortDir),
         },
         documents: {
           include: { type: true },
@@ -133,7 +145,16 @@ export default async function ClientDetailPage({
       </section>
 
       <section className="mt-12">
-        <h2 className="text-sm font-medium text-ink-muted">Tâches ({client.tasks.length})</h2>
+        <div className="flex flex-wrap items-center justify-between gap-4">
+          <h2 className="text-sm font-medium text-ink-muted">Tâches ({client.tasks.length})</h2>
+          {client.tasks.length > 1 && (
+            <TaskSortControl
+              basePath={`/admin/clients/${client.id}`}
+              sortField={sortField}
+              sortDir={sortDir}
+            />
+          )}
+        </div>
 
         {client.tasks.length > 0 && (
           <div className="mt-4 divide-y divide-line rounded-2xl border border-line">

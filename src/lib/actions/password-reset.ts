@@ -7,7 +7,7 @@ import { db } from "@/lib/db";
 import { hashPassword, verifyPassword } from "@/lib/password";
 import { destroyAllSessionsForSubject, type SubjectType } from "@/lib/session";
 import { sendEmail } from "@/lib/email/service";
-import { verifyAdminSession, verifyClientSession } from "@/lib/dal";
+import { verifyAdminSession, verifyClientSession, assertNotDemo } from "@/lib/dal";
 import { ChangePasswordSchema, type ChangePasswordState } from "@/lib/validation/auth";
 
 const RESET_TOKEN_DURATION_MS = 60 * 60 * 1000;
@@ -128,6 +128,7 @@ export async function changeClientPassword(
   formData: FormData,
 ): Promise<ChangePasswordState> {
   const clientUser = await verifyClientSession();
+  assertNotDemo(clientUser);
 
   const parsed = ChangePasswordSchema.safeParse({
     currentPassword: formData.get("currentPassword"),

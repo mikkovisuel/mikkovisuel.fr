@@ -4,7 +4,7 @@ import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
-import { verifyAdminSession, verifyClientSession } from "@/lib/dal";
+import { verifyAdminSession, verifyClientSession, assertNotDemo } from "@/lib/dal";
 import { sendEmail, getAdminEmail } from "@/lib/email/service";
 import { getStorageAdapter } from "@/lib/storage";
 import { isTaskOverdue, taskDateFormatter } from "@/lib/tasks";
@@ -61,6 +61,7 @@ export async function createTaskByClient(
   formData: FormData,
 ): Promise<TaskFormState> {
   const clientUser = await verifyClientSession();
+  assertNotDemo(clientUser);
 
   const parsed = TaskSchema.safeParse({
     title: formData.get("title"),
@@ -279,6 +280,7 @@ export async function setTaskStatus(taskId: string, statusSlug: TaskStatusSlug) 
 
 export async function validateTask(taskId: string) {
   const clientUser = await verifyClientSession();
+  assertNotDemo(clientUser);
 
   const task = await db.task.findUnique({ where: { id: taskId }, include: { deliverables: true } });
   if (!task || task.clientId !== clientUser.clientId) return;
@@ -334,6 +336,7 @@ export async function refuseTask(
   formData: FormData,
 ): Promise<RefusalFormState> {
   const clientUser = await verifyClientSession();
+  assertNotDemo(clientUser);
 
   const parsed = RefusalSchema.safeParse({ reason: formData.get("reason") });
   if (!parsed.success) {

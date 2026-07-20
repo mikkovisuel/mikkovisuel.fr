@@ -61,7 +61,9 @@ export default async function ClientAdministrativePage() {
                 </p>
               </div>
               <div className="flex items-center gap-2 self-start">
-                {doc.paymentStatus === "unpaid" && stripeEnabled && <PayButton documentId={doc.id} />}
+                {doc.paymentStatus === "unpaid" && stripeEnabled && !clientUser.client.isDemo && (
+                  <PayButton documentId={doc.id} />
+                )}
                 <a
                   href={`/api/fichiers/documents/${doc.id}`}
                   className="inline-flex items-center gap-2 rounded-full border border-line px-4 py-2 text-sm text-ink transition-colors hover:border-accent hover:bg-accent hover:text-accent-ink"

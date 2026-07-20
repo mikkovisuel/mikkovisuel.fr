@@ -24,11 +24,13 @@ export function TaskCommentThread({
   comments,
   currentAuthorType,
   action,
+  readOnly = false,
 }: {
   comments: CommentEntry[];
   /** Le rôle courant (ADMIN ou CLIENT_USER), pour distinguer visuellement ses propres messages. */
   currentAuthorType: string;
   action: (state: CommentFormState, formData: FormData) => Promise<CommentFormState>;
+  readOnly?: boolean;
 }) {
   const [state, formAction, pending] = useActionState(action, undefined);
   const formRef = useRef<HTMLFormElement>(null);
@@ -69,30 +71,36 @@ export function TaskCommentThread({
         </ul>
       )}
 
-      <form ref={formRef} action={formAction} className="flex flex-col gap-2">
-        <textarea
-          name="body"
-          required
-          rows={3}
-          placeholder="Écrire un commentaire..."
-          className="resize-none rounded-xl border border-line bg-surface-elevated px-3 py-2 text-sm text-ink placeholder:text-ink-muted/70 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
-        />
-        {state?.error && (
-          <span className="flex items-center gap-1 text-sm text-danger">
-            <WarningCircle size={16} weight="fill" />
-            {state.error}
-          </span>
-        )}
-        <div>
-          <button
-            type="submit"
-            disabled={pending}
-            className="rounded-full bg-accent px-4 py-2 text-sm font-medium text-accent-ink transition-transform active:scale-[0.98] disabled:opacity-60"
-          >
-            {pending ? "Envoi..." : "Commenter"}
-          </button>
-        </div>
-      </form>
+      {readOnly ? (
+        <p className="text-sm text-ink-muted">
+          Les commentaires sont désactivés dans l&apos;espace de démonstration.
+        </p>
+      ) : (
+        <form ref={formRef} action={formAction} className="flex flex-col gap-2">
+          <textarea
+            name="body"
+            required
+            rows={3}
+            placeholder="Écrire un commentaire..."
+            className="resize-none rounded-xl border border-line bg-surface-elevated px-3 py-2 text-sm text-ink placeholder:text-ink-muted/70 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
+          />
+          {state?.error && (
+            <span className="flex items-center gap-1 text-sm text-danger">
+              <WarningCircle size={16} weight="fill" />
+              {state.error}
+            </span>
+          )}
+          <div>
+            <button
+              type="submit"
+              disabled={pending}
+              className="rounded-full bg-accent px-4 py-2 text-sm font-medium text-accent-ink transition-transform active:scale-[0.98] disabled:opacity-60"
+            >
+              {pending ? "Envoi..." : "Commenter"}
+            </button>
+          </div>
+        </form>
+      )}
     </div>
   );
 }

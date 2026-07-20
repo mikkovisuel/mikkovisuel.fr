@@ -3,13 +3,14 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { verifyAdminSession, verifyClientSession } from "@/lib/dal";
+import { verifyAdminSession, verifyClientSession, assertNotDemo } from "@/lib/dal";
 import { getStripeClient } from "@/lib/stripe";
 import { sendEmail } from "@/lib/email/service";
 import { formatAmount } from "@/lib/documents";
 
 export async function createCheckoutSession(documentId: string) {
   const clientUser = await verifyClientSession();
+  assertNotDemo(clientUser);
   const stripe = getStripeClient();
   if (!stripe) return;
 

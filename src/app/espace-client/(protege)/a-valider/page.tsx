@@ -47,7 +47,7 @@ export default async function ClientToValidatePage() {
                 </div>
               )}
               <div className="mt-4">
-                <ValidateRefuseButtons taskId={task.id} />
+                <ValidateRefuseButtons taskId={task.id} readOnly={clientUser.client.isDemo} />
               </div>
             </div>
           ))}

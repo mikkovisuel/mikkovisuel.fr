@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { TaskForm } from "@/components/task-form";
 import { createTaskByClient } from "@/lib/actions/tasks";
 import { db } from "@/lib/db";
+import { verifyClientSession } from "@/lib/dal";
 import { TASK_TYPE_LIST_KEY, TASK_FORMAT_LIST_KEY } from "@/lib/dropdown-lists";
 
 export const metadata: Metadata = {
@@ -9,6 +10,20 @@ export const metadata: Metadata = {
 };
 
 export default async function NewRequestPage() {
+  const clientUser = await verifyClientSession();
+  if (clientUser.client.isDemo) {
+    return (
+      <div className="mx-auto max-w-2xl px-4 py-10 sm:px-6 lg:px-8">
+        <h1 className="font-display text-2xl font-medium tracking-tight text-ink">
+          Nouvelle demande
+        </h1>
+        <p className="mt-4 text-sm text-ink-muted">
+          L&apos;envoi de nouvelles demandes est désactivé dans l&apos;espace de démonstration.
+        </p>
+      </div>
+    );
+  }
+
   const [typeList, formatList] = await Promise.all([
     db.dropdownList.findUnique({
       where: { key: TASK_TYPE_LIST_KEY },

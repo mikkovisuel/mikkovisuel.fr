@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { TaskStatusSelect } from "@/components/admin/task-status-select";
 import { StatusBadge } from "@/components/status-badge";
+import { AttachmentBadge } from "@/components/attachment-badge";
 import { isTaskOverdue, taskDateFormatter } from "@/lib/tasks";
 
 interface TaskRowProps {
@@ -15,6 +16,7 @@ interface TaskRowProps {
     types: { id: string; label: string; color: string }[];
     formats: { id: string; label: string; color: string }[];
     client?: { name: string };
+    _count?: { deliverables: number; attachments: number };
   };
   statusOptions: { slug: string; label: string }[];
   showClient?: boolean;
@@ -35,7 +37,13 @@ export function TaskRow({ task, statusOptions, showClient = false }: TaskRowProp
               {task.client.name}
             </Link>
           )}
-          <p className="font-medium text-ink">{task.title}</p>
+          <div className="flex items-center gap-2">
+            <p className="font-medium text-ink">{task.title}</p>
+            <AttachmentBadge
+              attachmentCount={task._count?.attachments}
+              deliverableCount={task._count?.deliverables}
+            />
+          </div>
           {task.eventDate && (
             <p className="mt-1 text-sm text-ink-muted">
               Évènement le {taskDateFormatter.format(task.eventDate)}

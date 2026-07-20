@@ -1,11 +1,13 @@
 import Link from "next/link";
 import { taskDateFormatter } from "@/lib/tasks";
+import { AttachmentBadge } from "@/components/attachment-badge";
 
 interface ArchivedTask {
   id: string;
   title: string;
   archivedAt: Date | null;
   client: { name: string };
+  _count?: { deliverables: number; attachments: number };
 }
 
 // Vue en lecture seule : désarchiver/supprimer se fait depuis la page de
@@ -25,7 +27,13 @@ export function ArchivedTaskList({ tasks }: { tasks: ArchivedTask[] }) {
         >
           <div>
             <p className="text-sm text-ink-muted">{task.client.name}</p>
-            <p className="font-medium text-ink">{task.title}</p>
+            <div className="flex items-center gap-2">
+              <p className="font-medium text-ink">{task.title}</p>
+              <AttachmentBadge
+                attachmentCount={task._count?.attachments}
+                deliverableCount={task._count?.deliverables}
+              />
+            </div>
           </div>
           {task.archivedAt && (
             <p className="text-sm text-ink-muted">

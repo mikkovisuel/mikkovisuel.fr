@@ -363,6 +363,43 @@ appliquée à l'ensemble du site :
   faite !" part à la fois vers l'admin et vers le compte client qui a
   validé, avec récapitulatif de la tâche, noms des livrables validés, date
   et nom de l'utilisateur.
+- Icônes pièce jointe/livrable dans les vues résumées (2026-07-20) : le
+  tableau de bord (`/espace-client`) et "Suivi" affichaient une tâche sans
+  indiquer si des fichiers y étaient déjà attachés — nouveau composant
+  partagé `AttachmentBadge` (pastille trombone/livrable + compteur),
+  affiché à côté du titre partout où une tâche est résumée sans lister ses
+  fichiers.
+- Date d'évènement + tri sur l'onglet Livrables (2026-07-20) : chaque tâche
+  affiche désormais sa date d'évènement avant le titre, et un contrôle "Trier
+  par : Date d'évènement / Date d'ajout" (croissant/décroissant) a été ajouté
+  en haut de `/espace-client/livrables`.
+- Espace client de démonstration public (2026-07-20), pour que les
+  prospects visualisent leur futur espace avant de signer : bouton "Voir
+  l'espace client de démo" sur `/espace-client/connexion`, sans connexion
+  requise. Nouveau champ `Client.isDemo` (client factice seedé avec des
+  tâches d'exemple à différents stades). Espace strictement **en lecture
+  seule** (décision explicite) : bandeau permanent + boutons d'action
+  masqués/désactivés côté interface, et surtout verrou côté serveur
+  (`assertNotDemo`, dans `src/lib/dal.ts`) sur chaque action d'écriture
+  côté client (nouvelle demande, suggestion, validation/refus de BAT,
+  commentaires, changement de mot de passe, paiement Stripe) — nécessaire
+  car l'espace est accessible publiquement sans authentification, masquer
+  les boutons ne suffit pas.
+- Filigrane automatique sur les BAT (2026-07-20) : les livrables sont
+  désormais typés `kind` = "BAT à valider" ou "livrable final" au moment de
+  l'upload (choix admin sur la fiche tâche). Les BAT vus par le client
+  (route `/api/fichiers/livrables/[id]`) sont filigranés à la volée (logo
+  Mikko Visuel en tuile répétée, 10 % d'opacité, via `sharp`) — le fichier
+  original en stockage n'est jamais modifié, et l'admin voit toujours
+  l'original sans filigrane. Réglable (activé par défaut) depuis
+  `/admin/reglages` — voir section "Backend interne".
+- Pop-up d'annonce admin → tous les espaces clients (2026-07-20) : nouveau
+  réglage (case à cocher + texte libre) sur `/admin/reglages`, affiché en
+  modale à la connexion sur tous les comptes client (le client de
+  démonstration y compris, pratique pour prévisualiser le rendu avant
+  diffusion). Un message donné ne s'affiche qu'une fois par onglet
+  (mémorisé en `sessionStorage`, pas de nouvelle table de suivi de lecture
+  — un nouveau texte réapparaît même si le précédent avait été fermé).
 
 ## 3. Backend interne (admin)
 
@@ -488,6 +525,29 @@ appliquée à l'ensemble du site :
   refuse maintenant de s'exécuter si `DATABASE_URL` n'est pas du SQLite
   local). Aucune action nécessaire de votre côté.
 
+- Tri des tâches généralisé à toutes les vues (2026-07-20) : le tri par
+  colonne existait déjà sur la vue `Liste` de `/admin/taches`
+  (`buildTaskOrderBy`, statut/date d'évènement/date d'échéance/client/
+  titre) mais restait invisible sur les autres vues et sur la liste des
+  tâches d'une fiche client. Nouveau composant `TaskSortControl` (mêmes
+  champs, mêmes liens `?tri=...&dir=...`), affiché sur toutes les vues de
+  `/admin/taches` et sur `/admin/clients/[clientId]`.
+- Réglages en direct + archivage automatique des livrables (2026-07-20) :
+  nouvelle page `/admin/reglages` (icône ⚙️ dans l'en-tête admin), avec un
+  nouveau modèle singleton `AppSettings` (même principe que
+  `HomepageContent`) portant : le nombre de jours avant purge automatique
+  des livrables finaux (60 par défaut, appliqué immédiatement à
+  l'enregistrement), l'activation du filigrane BAT et le réglage de la
+  pop-up (voir section "Espace client"). Purge = suppression réelle du
+  fichier en stockage (décision explicite, pas un simple masquage), et ne
+  concerne que les livrables **finaux** des tâches "Terminé" — jamais les
+  BAT en attente de validation. Déclenchée quotidiennement via une tâche
+  planifiée Scalingo (`cron.json`, appelle `/api/cron/purge-deliverables`
+  protégée par un secret `CRON_SECRET` à configurer côté Scalingo — voir
+  "Points encore ouverts") et disponible en déclenchement manuel immédiat
+  ("Purger maintenant" sur `/admin/reglages`, utile en test ou en dehors de
+  Scalingo).
+
 ## Décisions techniques déléguées à Claude Code
 
 Le client a explicitement délégué ces choix :
@@ -532,6 +592,14 @@ Le client a explicitement délégué ces choix :
   mémoire) permettrait de la lever sans risque si des vidéos plus lourdes
   deviennent nécessaires. Non fait par choix du client (option "plafond"
   retenue plutôt que "streaming" ou "conteneur plus gros").
+- Variable d'environnement `CRON_SECRET` à configurer sur Scalingo
+  (2026-07-20) : la route `/api/cron/purge-deliverables` refuse de
+  s'exécuter tant qu'elle n'est pas définie (échec volontaire plutôt que
+  purge non protégée) — à ajouter dans les variables d'environnement
+  Scalingo (n'importe quelle chaîne aléatoire longue), sans quoi
+  l'archivage automatique des livrables ne se déclenchera jamais (le
+  bouton "Purger maintenant" dans `/admin/reglages` fonctionne, lui, sans
+  ce réglage).
 
 ## Journal des modifications demandées
 
@@ -586,3 +654,10 @@ Le client a explicitement délégué ces choix :
 | 2026-07-18 | Même principe de PWA installable, mais côté admin, avec le lien d'installation visible uniquement sur le tableau de bord (pas côté client/public) | Livré : manifest et icônes distincts (fond noir), carte d'installation affichée seulement sur `/admin` — voir section "Backend interne" |
 | 2026-07-18 | Favicon admin également en fond noir (pas seulement l'icône PWA installée) + bouton "voir l'espace client" sur les fiches client, pour visualiser ce que voient réellement les clients | Livré : favicon dédié sur tout `/admin/*`, aperçu de l'espace client par bascule de session réversible (bandeau + retour à l'admin) — voir section "Backend interne" |
 | 2026-07-18 | Signalement : l'app installée depuis le tableau de bord pointait vers l'espace client au lieu de l'admin ; demande de déplacer la note d'installation tout en bas du tableau de bord | Corrigé : manifest admin désormais déclaré dès `/admin/connexion` (plus seulement les pages protégées), note déplacée en bas de page — voir section "Backend interne" |
+| 2026-07-20 | Pouvoir trier les tâches (statut, date d'évènement, date d'échéance...) dans la vue Tâches et sur la fiche client | Livré : nouveau contrôle `TaskSortControl`, généralisé à toutes les vues de `/admin/taches` et à la fiche client (le tri par colonne existait déjà, mais uniquement sur la vue Liste) — voir section "Backend interne" |
+| 2026-07-20 | Icône visible dès qu'une pièce jointe/livrable est attaché, dans toutes les vues résumées | Livré : composant partagé `AttachmentBadge`, intégré dans les vues admin (tableau, cartes Kanban, liste archivée, fiche client) et client (accueil, suivi) — voir sections "Espace client" et "Backend interne" |
+| 2026-07-20 | Client "démo" accessible sans connexion, pour montrer aux prospects leur futur espace client | Livré (lecture seule, décision validée avec le client) : bouton public sur `/espace-client/connexion`, nouveau champ `Client.isDemo`, verrou serveur `assertNotDemo` sur toutes les actions d'écriture côté client — voir section "Espace client" |
+| 2026-07-20 | Archivage automatique des livrables clients après un nombre de jours réglable en direct (roue de réglage admin) | Livré (suppression réelle du fichier, décision validée avec le client) : nouvelle page `/admin/reglages`, modèle `AppSettings`, tâche planifiée Scalingo quotidienne + purge manuelle immédiate — voir section "Backend interne" |
+| 2026-07-20 | Date d'évènement affichée devant le titre + tri (croissant/décroissant, par date d'évènement ou d'ajout) sur l'onglet Livrables de l'espace client | Livré : voir section "Espace client" |
+| 2026-07-20 | Pop-up de message admin affichable sur tous les comptes/espaces clients (case d'activation + texte) | Livré : réglage sur `/admin/reglages`, modale à la connexion côté client (une fois par message) — voir sections "Espace client" et "Backend interne" |
+| 2026-07-20 | Différencier les livrables des BAT, avec filigrane automatique (logo en répétition, 10 % d'opacité) réglable depuis l'admin | Livré (priorité images JPG/PNG, décision validée avec le client) : nouveau champ `Deliverable.kind`, filigrane généré à la volée via `sharp` sur les BAT vus par le client (jamais sur l'original ni côté admin), activable depuis `/admin/reglages` — voir section "Espace client" |

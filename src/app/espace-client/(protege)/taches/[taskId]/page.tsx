@@ -61,7 +61,7 @@ export default async function ClientTaskDetailPage({
             </div>
           )}
           <div className="mt-4">
-            <ValidateRefuseButtons taskId={task.id} />
+            <ValidateRefuseButtons taskId={task.id} readOnly={clientUser.client.isDemo} />
           </div>
         </>
       )}
@@ -75,6 +75,7 @@ export default async function ClientTaskDetailPage({
             comments={task.comments}
             currentAuthorType="CLIENT_USER"
             action={postClientComment.bind(null, task.id)}
+            readOnly={clientUser.client.isDemo}
           />
         </div>
       </section>

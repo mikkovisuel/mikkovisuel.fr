@@ -1,0 +1,3 @@
+[
+  "0 3 * * * curl -fsS -H \"Authorization: Bearer $CRON_SECRET\" \"${NEXT_PUBLIC_SITE_URL:-https://www.mikkovisuel.fr}/api/cron/purge-deliverables\" || true"
+]

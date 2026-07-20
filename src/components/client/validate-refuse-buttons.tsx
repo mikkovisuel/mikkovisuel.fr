@@ -4,13 +4,23 @@ import { useActionState, useState, useTransition } from "react";
 import { WarningCircle } from "@phosphor-icons/react/dist/ssr";
 import { validateTask, refuseTask } from "@/lib/actions/tasks";
 
-export function ValidateRefuseButtons({ taskId }: { taskId: string }) {
+export function ValidateRefuseButtons({
+  taskId,
+  readOnly = false,
+}: {
+  taskId: string;
+  readOnly?: boolean;
+}) {
   const [showRefuseForm, setShowRefuseForm] = useState(false);
   const [isValidating, startValidateTransition] = useTransition();
   const [state, formAction, refusePending] = useActionState(
     refuseTask.bind(null, taskId),
     undefined,
   );
+
+  if (readOnly) {
+    return <p className="text-sm text-ink-muted">Validation désactivée dans l&apos;espace de démonstration.</p>;
+  }
 
   if (showRefuseForm) {
     return (

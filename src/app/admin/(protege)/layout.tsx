@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { GearSix } from "@phosphor-icons/react/dist/ssr";
 import { verifyAdminSession } from "@/lib/dal";
 import { BrandLogo } from "@/components/brand-logo";
 import { LogoutButton } from "@/components/auth/logout-button";
@@ -33,6 +34,13 @@ export default async function AdminProtectedLayout({
           </Link>
           <div className="flex items-center gap-4">
             <span className="hidden text-sm text-ink-muted sm:inline">{admin.email}</span>
+            <Link
+              href="/admin/reglages"
+              aria-label="Réglages"
+              className="rounded-full border border-line p-2 text-ink-muted transition-colors hover:border-accent hover:text-ink"
+            >
+              <GearSix size={18} weight="regular" />
+            </Link>
             <ThemeToggle />
             <LogoutButton />
           </div>

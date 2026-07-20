@@ -32,6 +32,17 @@ export function DeliverableUploadForm({
         multiple
         helperText="PDF, JPG, PNG, WEBP, MP4, ZIP · 500 Mo max par fichier"
       />
+      <label className="flex flex-col gap-1 text-xs text-ink-muted">
+        Type
+        <select
+          name="kind"
+          defaultValue="final"
+          className="rounded-xl border border-line bg-surface-elevated px-3 py-1.5 text-xs text-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
+        >
+          <option value="final">Livrable final</option>
+          <option value="bat">BAT à valider (filigrané côté client)</option>
+        </select>
+      </label>
       <button
         type="submit"
         disabled={pending}

@@ -9,6 +9,7 @@ import { TaskKanbanBoard } from "@/components/admin/task-kanban-board";
 import { TaskCalendarView } from "@/components/admin/task-calendar-view";
 import { TaskByClientView } from "@/components/admin/task-by-client-view";
 import { ArchivedTaskList } from "@/components/admin/task-archived-list";
+import { TaskSortControl } from "@/components/admin/task-sort-control";
 import {
   TASK_STATUS,
   TASK_STATUS_LIST_KEY,
@@ -57,7 +58,13 @@ export default async function AdminTasksPage({
         ...(isListe && type ? { types: { some: { slug: type } } } : {}),
         ...(isListe && format ? { formats: { some: { slug: format } } } : {}),
       },
-      include: { client: true, status: true, types: true, formats: true },
+      include: {
+        client: true,
+        status: true,
+        types: true,
+        formats: true,
+        _count: { select: { deliverables: true, attachments: true } },
+      },
       orderBy: buildTaskOrderBy(sortField, sortDir),
     }),
     db.dropdownList.findUnique({
@@ -102,8 +109,14 @@ export default async function AdminTasksPage({
         </Link>
       </div>
 
-      <div className="mt-6">
+      <div className="mt-6 flex flex-wrap items-center justify-between gap-4">
         <TaskViewTabs current={view} clientId={clientId} status={status} />
+        <TaskSortControl
+          basePath="/admin/taches"
+          sortField={sortField}
+          sortDir={sortDir}
+          extraParams={{ clientId, status, vue: view !== "liste" ? view : undefined, mois }}
+        />
       </div>
 
       <form className="mt-6 flex flex-wrap items-end gap-3">
