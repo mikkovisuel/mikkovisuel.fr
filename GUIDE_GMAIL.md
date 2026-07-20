@@ -28,38 +28,48 @@ d'activer la facturation sur le projet Google Cloud.
 
 ## 3. Configurer l'écran de consentement OAuth
 
-1. Menu ☰ → **"API et services"** → **"Écran de consentement OAuth"**.
-2. Type d'utilisateur : **"Externe"** (obligatoire pour un compte Gmail
-   personnel, pas un Google Workspace). Clique **"Créer"**.
-3. Renseigne :
-   - Nom de l'application : `Mikko Visuel Admin`
-   - Adresse e-mail d'assistance utilisateur : `mikko.visuel@gmail.com`
-   - Logo : optionnel, laisse vide.
-   - Coordonnées du développeur : `mikko.visuel@gmail.com`
-4. Étape **"Champs d'application" (Scopes)** : clique **"Ajouter ou
-   supprimer des champs d'application"**, puis cherche et coche ces trois
-   scopes Gmail :
-   - `.../auth/gmail.readonly`
-   - `.../auth/gmail.send`
-   - `.../auth/userinfo.email`
-   Google les marque comme "Sensibles"/"Restreints" — c'est normal, on ne
-   demande que le strict nécessaire (lire + envoyer, jamais supprimer).
-5. Étape **"Utilisateurs test"** : clique **"Ajouter des utilisateurs"**
-   et ajoute `mikko.visuel@gmail.com`.
+Google a renommé/redessiné cette section en **"Google Auth Platform"**
+(menu de gauche : Présentation, Branding, Audience, Clients, Accès aux
+données, Centre de validation, Paramètres) — les étapes ci-dessous
+correspondent à cette nouvelle interface.
 
-   **C'est l'étape la plus importante du guide** : tant que l'app reste en
-   mode **"Testing"** (le mode par défaut, ne clique jamais sur "Publier
-   l'application") ET que tu es dans cette liste de testeurs, aucune
-   validation Google n'est nécessaire (le processus de validation officiel
-   prend plusieurs semaines et n'a aucun intérêt pour un usage strictement
-   personnel comme celui-ci). Rester testeur évite aussi que la connexion
-   expire au bout de 7 jours.
-6. Termine l'assistant ("Retour au tableau de bord").
+1. Menu ☰ → **"API et services"** → **"Google Auth Platform"**, ou
+   directement depuis la page "Présentation d'OAuth" si elle s'affiche.
+2. Clique **"Premiers pas"**. Un assistant en 4 étapes s'ouvre :
+   - **App Information** : nom de l'app `Mikko Visuel Admin`, email
+     d'assistance `mikko.visuel@gmail.com`.
+   - **Audience** : **"Externe"** (obligatoire pour un compte Gmail
+     personnel, pas un Google Workspace).
+   - **Contact Information** : `mikko.visuel@gmail.com`.
+   - **Finish** : coche la case d'acceptation de la politique de données
+     Google, puis **"Continuer"/"Créer"**.
+3. Tu arrives sur le tableau de bord avec le menu de gauche actif.
+   Complète, dans cet ordre :
+   - **Audience** → section "Utilisateurs test" → **"+ Ajouter des
+     utilisateurs"** → ajoute `mikko.visuel@gmail.com`.
 
-## 4. Créer les identifiants OAuth
+     **C'est l'étape la plus importante du guide** : tant que le statut
+     de publication reste sur **"Testing"** (le défaut — ne clique jamais
+     sur "Publier l'application") ET que tu es dans cette liste de
+     testeurs, aucune validation Google n'est nécessaire (le processus de
+     validation officiel prend plusieurs semaines et n'a aucun intérêt
+     pour un usage strictement personnel comme celui-ci). Rester testeur
+     évite aussi que la connexion expire au bout de 7 jours.
+   - **Accès aux données** → **"Ajouter ou supprimer des champs
+     d'application"** → cherche et coche ces trois scopes Gmail :
+     - `.../auth/gmail.readonly`
+     - `.../auth/gmail.send`
+     - `.../auth/userinfo.email`
 
-1. Menu ☰ → **"API et services"** → **"Identifiants"**.
-2. **"+ Créer des identifiants"** → **"ID client OAuth"**.
+     Google les marque comme "Sensibles"/"Restreints" — normal, on ne
+     demande que le strict nécessaire (lire + envoyer, jamais supprimer).
+     Clique **"Mettre à jour"** puis **"Enregistrer"**.
+
+## 4. Créer les identifiants OAuth (section "Clients")
+
+1. Dans le même menu de gauche → **"Clients"**.
+2. **"+ Créer un client"** (ou "+ Créer des identifiants" → "ID client
+   OAuth" selon la version de l'interface).
 3. Type d'application : **"Application Web"**.
 4. Nom : `Admin Mikko Visuel`.
 5. **"URI de redirection autorisés"** → ajoute ces deux lignes (les deux
