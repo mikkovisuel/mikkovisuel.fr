@@ -10,21 +10,29 @@ import { formatFileSize } from "@/lib/files";
 // présent (visually-hidden) pour que la soumission de formulaire fonctionne
 // normalement ; on resynchronise son FileList via DataTransfer à chaque
 // ajout/retrait pour que name= transporte toujours la bonne sélection.
+//
+// `dropzone` bascule sur une zone de glisser-déposer plus grande (au lieu du
+// simple bouton compact) — opt-in, réservé aux endroits où déposer plusieurs
+// gros fichiers d'un coup est le cas d'usage principal (livrables), pour ne
+// pas changer le rendu des 4 autres formulaires qui partagent ce composant.
 export function FilePicker({
   name,
   multiple,
   required,
   accept,
   helperText,
+  dropzone,
 }: {
   name: string;
   multiple?: boolean;
   required?: boolean;
   accept?: string;
   helperText?: string;
+  dropzone?: boolean;
 }) {
   const id = useId();
   const [files, setFiles] = useState<File[]>([]);
+  const [isDraggingOver, setIsDraggingOver] = useState(false);
 
   function syncInput(next: File[]) {
     setFiles(next);
@@ -33,6 +41,10 @@ export function FilePicker({
     const dataTransfer = new DataTransfer();
     next.forEach((file) => dataTransfer.items.add(file));
     input.files = dataTransfer.files;
+  }
+
+  function addFiles(selected: File[]) {
+    syncInput(multiple ? [...files, ...selected] : selected);
   }
 
   return (
@@ -45,18 +57,44 @@ export function FilePicker({
         required={required}
         accept={accept}
         className="sr-only"
-        onChange={(event) => {
-          const selected = Array.from(event.target.files ?? []);
-          syncInput(multiple ? [...files, ...selected] : selected);
-        }}
+        onChange={(event) => addFiles(Array.from(event.target.files ?? []))}
       />
-      <label
-        htmlFor={id}
-        className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-line px-4 py-2 text-sm text-ink transition-colors hover:border-accent"
-      >
-        <UploadSimple size={15} weight="regular" className="text-accent" />
-        {multiple ? "Choisir des fichiers" : "Choisir un fichier"}
-      </label>
+      {dropzone ? (
+        <label
+          htmlFor={id}
+          onDragOver={(event) => {
+            event.preventDefault();
+            setIsDraggingOver(true);
+          }}
+          onDragLeave={() => setIsDraggingOver(false)}
+          onDrop={(event) => {
+            event.preventDefault();
+            setIsDraggingOver(false);
+            addFiles(Array.from(event.dataTransfer.files));
+          }}
+          className={`flex cursor-pointer flex-col items-center gap-2 rounded-2xl border-2 border-dashed px-6 py-10 text-center transition-colors ${
+            isDraggingOver
+              ? "border-accent bg-accent/10"
+              : "border-line hover:border-accent hover:bg-surface-elevated"
+          }`}
+        >
+          <UploadSimple size={22} weight="regular" className="text-accent" />
+          <span className="text-sm text-ink">
+            Glissez vos fichiers ici, ou{" "}
+            <span className="font-medium underline underline-offset-2">
+              {multiple ? "choisissez des fichiers" : "choisissez un fichier"}
+            </span>
+          </span>
+        </label>
+      ) : (
+        <label
+          htmlFor={id}
+          className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-line px-4 py-2 text-sm text-ink transition-colors hover:border-accent"
+        >
+          <UploadSimple size={15} weight="regular" className="text-accent" />
+          {multiple ? "Choisir des fichiers" : "Choisir un fichier"}
+        </label>
+      )}
       {helperText && <p className="mt-1.5 text-xs text-ink-muted">{helperText}</p>}
       {files.length > 0 && (
         <div className="mt-3 flex flex-col gap-1.5">

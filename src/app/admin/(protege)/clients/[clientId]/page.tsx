@@ -34,13 +34,14 @@ export default async function ClientDetailPage({
   searchParams,
 }: {
   params: Promise<{ clientId: string }>;
-  searchParams: Promise<{ tri?: string; dir?: string }>;
+  searchParams: Promise<{ tri?: string; dir?: string; epingle?: string }>;
 }) {
   await verifyAdminSession();
   const { clientId } = await params;
-  const { tri, dir } = await searchParams;
+  const { tri, dir, epingle } = await searchParams;
   const sortField: TaskSortField = isTaskSortField(tri) ? tri : "evenement";
   const sortDir: TaskSortDir = dir === "desc" ? "desc" : "asc";
+  const pinnedOnly = epingle === "1";
 
   const [client, statusList, typeList, formatList] = await Promise.all([
     db.client.findUnique({
@@ -48,7 +49,10 @@ export default async function ClientDetailPage({
       include: {
         users: { orderBy: { createdAt: "asc" } },
         tasks: {
-          where: { archivedAt: null },
+          where: {
+            archivedAt: null,
+            ...(pinnedOnly ? { pinnedAt: { not: null } } : {}),
+          },
           include: {
             status: true,
             types: true,
@@ -183,22 +187,39 @@ export default async function ClientDetailPage({
             >
               Télécharger le rapport (PDF)
             </a>
+            <Link
+              href={
+                pinnedOnly
+                  ? `/admin/clients/${client.id}?${new URLSearchParams({ ...(tri ? { tri } : {}), ...(dir ? { dir } : {}) }).toString()}`
+                  : `/admin/clients/${client.id}?${new URLSearchParams({ ...(tri ? { tri } : {}), ...(dir ? { dir } : {}), epingle: "1" }).toString()}`
+              }
+              className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
+                pinnedOnly
+                  ? "border-accent bg-accent/10 text-ink"
+                  : "border-line text-ink-muted hover:text-ink"
+              }`}
+            >
+              Épinglées uniquement
+            </Link>
             {client.tasks.length > 1 && (
               <TaskSortControl
                 basePath={`/admin/clients/${client.id}`}
                 sortField={sortField}
                 sortDir={sortDir}
+                extraParams={{ epingle: pinnedOnly ? "1" : undefined }}
               />
             )}
           </div>
         </div>
 
-        {client.tasks.length > 0 && (
+        {client.tasks.length > 0 ? (
           <div className="mt-4 divide-y divide-line rounded-2xl border border-line">
             {client.tasks.map((task) => (
               <TaskRow key={task.id} task={task} statusOptions={statusOptions} />
             ))}
           </div>
+        ) : (
+          pinnedOnly && <p className="mt-4 text-sm text-ink-muted">Aucune tâche épinglée.</p>
         )}
 
         <div className="mt-6 rounded-2xl border border-line p-6">

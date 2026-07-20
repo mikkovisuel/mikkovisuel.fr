@@ -6,10 +6,17 @@ import { db } from "@/lib/db";
 import { verifyAdminSession } from "@/lib/dal";
 import { getStorageAdapter } from "@/lib/storage";
 import { sendEmail } from "@/lib/email/service";
+import { formatFileSize } from "@/lib/files";
+import { taskDateFormatterShort } from "@/lib/tasks";
 
 const MAX_DOCUMENT_SIZE = 20 * 1024 * 1024;
 const MAX_DELIVERABLE_SIZE = 500 * 1024 * 1024;
 const MAX_ATTACHMENT_SIZE = 20 * 1024 * 1024;
+// Marge de sécurité sous la limite réelle de Resend (~40 Mo par email, tout
+// compris) : l'encodage base64 des pièces jointes gonfle leur taille
+// d'environ un tiers, donc on plafonne bien en-dessous plutôt qu'au ras de
+// la limite du fournisseur.
+const MAX_EMAIL_ATTACHMENTS_SIZE = 25 * 1024 * 1024;
 
 const ALLOWED_DELIVERABLE_TYPES = new Set([
   "application/pdf",
@@ -120,6 +127,68 @@ export async function deleteDeliverable(deliverableId: string) {
   revalidatePath(`/admin/clients/${deliverable.task.clientId}`);
   revalidatePath(`/admin/taches/${deliverable.taskId}`);
   revalidatePath("/espace-client/livrables");
+}
+
+export type SendDeliverablesFormState = { error?: string; success?: boolean } | undefined;
+
+// Envoi groupé des livrables finaux d'une tâche à l'email de facturation du
+// client (même mécanique que `sendDocumentByEmail`), en pièces jointes.
+// Objet = "date de l'évènement - titre de la tâche" (ou juste le titre si la
+// tâche n'a pas de date). Les BAT (kind "bat") ne sont jamais inclus : ce
+// bouton concerne uniquement le travail livré, pas les épreuves à valider.
+export async function sendDeliverablesByEmail(
+  taskId: string,
+  _prev: SendDeliverablesFormState,
+  _formData: FormData,
+): Promise<SendDeliverablesFormState> {
+  await verifyAdminSession();
+
+  const task = await db.task.findUnique({
+    where: { id: taskId },
+    include: { client: true, deliverables: true },
+  });
+  if (!task) return { error: "Tâche introuvable." };
+  if (!task.client.billingEmail) {
+    return { error: "Ajoutez un email de facturation sur la fiche client." };
+  }
+
+  const finalDeliverables = task.deliverables.filter((d) => d.kind === "final");
+  if (finalDeliverables.length === 0) {
+    return { error: "Aucun livrable final à envoyer." };
+  }
+
+  const totalSize = finalDeliverables.reduce((sum, d) => sum + d.sizeBytes, 0);
+  if (totalSize > MAX_EMAIL_ATTACHMENTS_SIZE) {
+    return {
+      error: `Livrables trop volumineux pour un envoi par email (${formatFileSize(totalSize)}, ${formatFileSize(MAX_EMAIL_ATTACHMENTS_SIZE)} max) — le client peut les télécharger depuis son espace client.`,
+    };
+  }
+
+  const storage = getStorageAdapter();
+  const attachments = await Promise.all(
+    finalDeliverables.map(async (deliverable) => ({
+      filename: deliverable.fileName,
+      content: await storage.read(deliverable.storageKey),
+    })),
+  );
+
+  const subject = task.eventDate
+    ? `${taskDateFormatterShort.format(task.eventDate)} - ${task.title}`
+    : task.title;
+
+  await sendEmail({
+    trigger: "deliverables_sent",
+    to: task.client.billingEmail,
+    subject,
+    html: `<p>Bonjour,</p><p>Vous trouverez ci-joint les livrables finaux de la tâche "${task.title}".</p><p>Je reste à disposition pour tout renseignement complémentaire.</p><p>Par avance, merci.</p>`,
+    attachments,
+  });
+
+  await db.task.update({ where: { id: taskId }, data: { deliverablesSentAt: new Date() } });
+
+  revalidatePath(`/admin/taches/${taskId}`);
+  revalidatePath(`/admin/clients/${task.clientId}`);
+  return { success: true };
 }
 
 // Miroir de `uploadDeliverable`, mais pour les pièces jointes de référence

@@ -9,6 +9,7 @@ import { TaskPinButton } from "@/components/admin/task-pin-button";
 import { DeleteButton } from "@/components/admin/delete-button";
 import { DeliverableUploadForm } from "@/components/admin/deliverable-upload-form";
 import { AttachmentUploadForm } from "@/components/admin/attachment-upload-form";
+import { SendDeliverablesButton } from "@/components/admin/send-deliverables-button";
 import { FileGrid } from "@/components/file-grid";
 import { TaskCommentThread } from "@/components/task-comment-thread";
 import { updateTask, archiveTask, unarchiveTask, deleteTask } from "@/lib/actions/tasks";
@@ -145,6 +146,22 @@ export default async function TaskDetailPage({
             />
           </div>
         )}
+
+        <div className="mt-4">
+          <SendDeliverablesButton
+            taskId={task.id}
+            sentAt={task.deliverablesSentAt}
+            canSend={
+              Boolean(task.client.billingEmail) &&
+              task.deliverables.some((d) => d.kind === "final")
+            }
+            disabledReason={
+              !task.client.billingEmail
+                ? "Ajoutez un email de facturation sur la fiche client pour envoyer les livrables"
+                : "Aucun livrable final à envoyer"
+            }
+          />
+        </div>
 
         <div className="mt-4">
           <DeliverableUploadForm action={uploadDeliverable.bind(null, task.id)} />

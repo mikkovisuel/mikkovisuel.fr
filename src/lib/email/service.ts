@@ -7,6 +7,7 @@ export type EmailTrigger =
   | "password_reset"
   | "new_document"
   | "document_sent"
+  | "deliverables_sent"
   | "new_task_to_validate"
   | "refusal_confirmed"
   | "new_deliverable"

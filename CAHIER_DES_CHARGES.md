@@ -685,6 +685,36 @@ appliquée à l'ensemble du site :
   récente. Désépinglage automatique dès qu'une tâche passe au statut
   "Terminé" (`setTaskStatus`) — une tâche terminée n'a plus besoin d'être
   mise en avant.
+- Filtre "Épinglées uniquement" sur la fiche client (2026-07-20) : la liste
+  des tâches d'un client n'avait jusqu'ici pas de filtre du tout (seulement
+  un tri). Ajout d'un lien-pastille "Épinglées uniquement" à côté de
+  "Télécharger le rapport (PDF)" sur `/admin/clients/[clientId]`, même
+  logique que la case à cocher de `/admin/taches` (préservé au changement
+  de tri). Message "Aucune tâche épinglée." si le filtre ne retourne rien.
+- Glisser-déposer pour l'upload des livrables (2026-07-20) : le composant
+  partagé `FilePicker` (bouton compact + chips, voir "Direction
+  artistique") gagne un mode `dropzone` optionnel — grande zone à bordure
+  pointillée, glisser-déposer en plus du clic pour choisir un fichier.
+  Activé uniquement sur le formulaire d'ajout de livrables
+  (`/admin/taches/[taskId]`, section "Livrables"), à la demande explicite
+  du client ; les 4 autres endroits qui partagent `FilePicker` (pièces
+  jointes, documents, médias/couvertures du portfolio) gardent le bouton
+  compact d'origine, sans changement.
+- Envoi groupé des livrables finaux par email (2026-07-20) : même mécanique
+  que l'envoi de document (voir plus haut) — bouton "Envoyer les livrables
+  finaux" sur la fiche tâche (section "Livrables"), visible seulement si un
+  email de facturation est renseigné et qu'au moins un livrable "final"
+  existe (les BAT ne sont jamais inclus). Tous les livrables finaux de la
+  tâche partent en une seule fois, en pièces jointes, à l'email de
+  facturation du client. Objet = "date de l'évènement - titre de la tâche"
+  (ou juste le titre si la tâche n'a pas de date), corps fixe dans le même
+  ton que l'envoi de document. Nouveau champ `Task.deliverablesSentAt`,
+  avec la même icône de statut envoyé/non envoyé. Garde-fou ajouté (au-delà
+  de la demande initiale) : au-delà de 25 Mo cumulés, l'envoi est refusé
+  avec un message clair plutôt que d'échouer silencieusement ou de dépasser
+  la limite réelle du fournisseur d'email (Resend, ~40 Mo par email tout
+  compris) — le client peut toujours télécharger les fichiers depuis son
+  espace client dans ce cas, l'email n'est qu'une commodité de notification.
 
 ## Décisions techniques déléguées à Claude Code
 
@@ -816,3 +846,5 @@ Le client a explicitement délégué ces choix :
 | 2026-07-20 | Demande d'une application Mac pour l'admin ; signalement : `/admin` proposait d'"Ouvrir dans l'appli" mais rouvrait l'app espace client au lieu de proposer une app admin distincte | Expliqué que l'admin est déjà installable en PWA (existant depuis le 2026-07-18) ; bug identifié et corrigé : `scope: "/"` du manifest espace client revendiquait aussi `/admin`, resserré à `/espace-client` — voir section "Backend interne" |
 | 2026-07-20 | Signalement (suite) : toujours aucune icône d'installation même après le correctif de `scope` | Corrigé : `src/proxy.ts` bloquait `/admin/manifest.webmanifest` et `/admin/icon.png` derrière la connexion, invalidant le manifest aux yeux du navigateur — ces deux chemins ajoutés aux routes publiques — voir section "Backend interne" |
 | 2026-07-20 | (Constat, pas une demande) `mikkovisuel.fr` sans `www.` affiche un autre site (404 sur /admin, assets étrangers au projet) | Hors code applicatif : configuration DNS/redirection OVH à vérifier côté client — ajouté aux "Points encore ouverts" |
+| 2026-07-20 | Ajouter un filtre "épinglées" dans la vue tâche | Déjà présent sur `/admin/taches` ; ajouté en complément sur la fiche client (`/admin/clients/[clientId]`), qui n'avait pas ce filtre — voir section "Backend interne" |
+| 2026-07-20 | Zone de glisser-déposer pour l'upload des livrables/fichiers finaux ; système d'envoi des livrables finaux par email (comme pour les factures : pièce jointe + bouton d'envoi + icône de statut), objet = "date de l'évènement - titre de la tâche" | Livré (les 2 demandes) : mode `dropzone` sur `FilePicker` (livrables uniquement), bouton "Envoyer les livrables finaux" sur la fiche tâche avec nouveau champ `Task.deliverablesSentAt` — voir section "Backend interne" |

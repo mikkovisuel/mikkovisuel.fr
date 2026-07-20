@@ -167,30 +167,35 @@ model DropdownItem {
 }
 
 model Task {
-  id             String       @id @default(cuid())
-  clientId       String
-  client         Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  title          String
-  description    String?
-  statusId       String
-  status         DropdownItem @relation(fields: [statusId], references: [id])
-  eventDate      DateTime?
-  dueDate        DateTime?
-  createdByType  String
-  createdById    String
-  refusalReason  String?
-  refusedAt      DateTime?
-  batValidatedAt DateTime?
-  archivedAt     DateTime?
-  lastReminderAt DateTime?
+  id                 String       @id @default(cuid())
+  clientId           String
+  client             Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  title              String
+  description        String?
+  statusId           String
+  status             DropdownItem @relation(fields: [statusId], references: [id])
+  eventDate          DateTime?
+  dueDate            DateTime?
+  createdByType      String
+  createdById        String
+  refusalReason      String?
+  refusedAt          DateTime?
+  batValidatedAt     DateTime?
+  archivedAt         DateTime?
+  lastReminderAt     DateTime?
   // Épinglage admin (bouton une pastille, `toggleTaskPin`) — non null =
   // épinglée, la date sert aussi à trier la liste des tâches épinglées du
   // tableau de bord (plus récemment épinglée en premier). Remis à `null`
   // automatiquement quand la tâche passe au statut "Terminé"
   // (`setTaskStatus`), même pattern que `archivedAt`/`refusedAt`.
-  pinnedAt       DateTime?
-  createdAt      DateTime     @default(now())
-  updatedAt      DateTime     @updatedAt
+  pinnedAt           DateTime?
+  // Date du dernier envoi groupé des livrables finaux par email (bouton
+  // "Envoyer les livrables finaux" — voir `sendDeliverablesByEmail`), même
+  // logique que `Document.sentAt` : un indicateur envoyé/non envoyé, pas un
+  // accusé de réception.
+  deliverablesSentAt DateTime?
+  createdAt          DateTime     @default(now())
+  updatedAt          DateTime     @updatedAt
 
   types   DropdownItem[] @relation("TaskTypes")
   formats DropdownItem[] @relation("TaskFormats")
