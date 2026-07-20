@@ -503,6 +503,34 @@ appliquée à l'ensemble du site :
   avant ce correctif garde l'ancien scope en cache côté navigateur : il
   faut la désinstaller puis relancer l'installation depuis `/admin` (le
   bouton en bas du tableau de bord) pour obtenir une app admin distincte.
+- Signalement (2026-07-20, suite du point ci-dessus) : même après le
+  correctif de `scope`, aucune icône d'installation n'apparaissait au bas
+  du tableau de bord (juste le texte générique "Depuis le menu de votre
+  navigateur..."). Deuxième cause trouvée, indépendante du `scope` :
+  `src/proxy.ts` protège tout `/admin/*` derrière la présence d'un cookie
+  de session et ne laissait passer que `/admin/connexion` et
+  `/admin/mot-de-passe-oublie` sans authentification — `/admin/
+  manifest.webmanifest` et `/admin/icon.png` (générés par les conventions
+  de fichiers Next.js sous `src/app/admin/`) étaient donc redirigés vers la
+  page de connexion (HTML) au lieu de renvoyer le JSON/l'image attendue.
+  Or le navigateur récupère lui-même le manifest via l'URL du `<link
+  rel="manifest">`, y compris sur la page de connexion avant toute
+  identification — un manifest invalide (redirigé vers du HTML) rend la
+  page non installable, sans erreur visible pour l'utilisateur. Corrigé :
+  ces deux chemins ajoutés aux routes publiques de `proxy.ts`.
+- Signalement (2026-07-20, sans lien avec le code de ce dépôt) : en testant
+  `mikkovisuel.fr/admin` (sans `www.`), le navigateur affiche un tout autre
+  site (404 sur `/admin`, assets `/dist/js/main.js` et `/site/
+  translations` qui n'appartiennent pas à ce projet) — vraisemblablement
+  un ancien site resté actif sur le domaine nu. `www.mikkovisuel.fr`
+  fonctionne normalement (Chrome masque le "www." dans la barre d'adresse,
+  d'où la confusion). Le cahier notait pourtant une redirection `mikkovisuel.fr`
+  → `www.` déjà en place chez OVH (voir "Décisions techniques déléguées",
+  mise en ligne du 2026-07-17) — elle ne fonctionne plus ou n'a jamais
+  couvert que la racine sans les sous-chemins. Point hors du code
+  applicatif (configuration DNS/hébergement côté OVH) : à vérifier/corriger
+  par le client directement dans son espace OVH, ou à signaler à Claude
+  Code s'il faut de l'aide pour formuler la bonne règle de redirection.
 - Aperçu de l'espace client depuis la fiche client admin (2026-07-18) :
   bouton "Voir l'espace client" à côté de chaque compte de connexion sur
   `/admin/clients/[clientId]` — ouvre l'espace client exactement comme le
@@ -709,6 +737,12 @@ Le client a explicitement délégué ces choix :
   faire à sa place (création de compte/identifiants). Une fois l'ID
   client et la clé secrète transmis, il reste à les ajouter en variables
   d'environnement (local + Scalingo) et à tester la connexion réelle.
+- Redirection `mikkovisuel.fr` → `www.mikkovisuel.fr` cassée ou incomplète
+  (2026-07-20) : le domaine nu affiche un autre site (voir section
+  "Backend interne", signalement du 2026-07-20). Configuration DNS/OVH,
+  hors du code de ce dépôt — à corriger côté client dans son espace OVH,
+  ou à reprendre avec Claude Code pour formuler la bonne règle si besoin
+  d'aide.
 
 ## Journal des modifications demandées
 
@@ -780,3 +814,5 @@ Le client a explicitement délégué ces choix :
 | 2026-07-20 | Lien Google Drive par client (fiche client admin), affiché dans le bandeau de menu de l'espace client et redirigeant directement vers le Drive | Livré : nouveau champ `Client.driveUrl`, onglet "Google Drive" dans `ClientNavTabs` (ouverture dans un nouvel onglet) si renseigné — voir section "Backend interne" |
 | 2026-07-20 | Système d'épinglage des tâches (pastille en un clic), filtre "épinglés" dans la liste des tâches, liste des tâches épinglées sur le tableau de bord, désépinglage automatique à la fin d'une tâche | Livré (les 4 points) : nouveau champ `Task.pinnedAt`, `TaskPinButton` sur toutes les vues de tâches, case à cocher "Épinglées uniquement" sur `/admin/taches`, section "Tâches épinglées" sur `/admin`, remise à zéro automatique dans `setTaskStatus` au passage en "Terminé" — voir section "Backend interne" |
 | 2026-07-20 | Demande d'une application Mac pour l'admin ; signalement : `/admin` proposait d'"Ouvrir dans l'appli" mais rouvrait l'app espace client au lieu de proposer une app admin distincte | Expliqué que l'admin est déjà installable en PWA (existant depuis le 2026-07-18) ; bug identifié et corrigé : `scope: "/"` du manifest espace client revendiquait aussi `/admin`, resserré à `/espace-client` — voir section "Backend interne" |
+| 2026-07-20 | Signalement (suite) : toujours aucune icône d'installation même après le correctif de `scope` | Corrigé : `src/proxy.ts` bloquait `/admin/manifest.webmanifest` et `/admin/icon.png` derrière la connexion, invalidant le manifest aux yeux du navigateur — ces deux chemins ajoutés aux routes publiques — voir section "Backend interne" |
+| 2026-07-20 | (Constat, pas une demande) `mikkovisuel.fr` sans `www.` affiche un autre site (404 sur /admin, assets étrangers au projet) | Hors code applicatif : configuration DNS/redirection OVH à vérifier côté client — ajouté aux "Points encore ouverts" |

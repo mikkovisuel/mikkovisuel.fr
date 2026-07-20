@@ -7,7 +7,20 @@ import type { NextRequest } from "next/server";
 // protected Server Component.
 const SESSION_COOKIE = "session_token";
 
-const ADMIN_PUBLIC_PATHS = new Set(["/admin/connexion", "/admin/mot-de-passe-oublie"]);
+// Le manifest et l'icône admin doivent rester accessibles sans session : ce
+// sont des assets PWA (manifest.webmanifest, icon.png, générés par les
+// conventions de fichiers Next.js sous src/app/admin/) que le navigateur va
+// chercher lui-même pour évaluer l'installabilité de l'app — y compris
+// depuis /admin/connexion, avant toute authentification. Sans cette
+// exception, la requête était redirigée vers une page HTML (la connexion)
+// au lieu de renvoyer le JSON/l'image attendus, ce qui invalide le manifest
+// aux yeux du navigateur et empêche purement et simplement l'installation.
+const ADMIN_PUBLIC_PATHS = new Set([
+  "/admin/connexion",
+  "/admin/mot-de-passe-oublie",
+  "/admin/manifest.webmanifest",
+  "/admin/icon.png",
+]);
 const CLIENT_PUBLIC_PATHS = new Set([
   "/espace-client/connexion",
   "/espace-client/mot-de-passe-oublie",
