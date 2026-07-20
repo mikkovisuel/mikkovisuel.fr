@@ -6,6 +6,8 @@ import { verifyAdminSession } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { TaskEditForm } from "@/components/admin/task-edit-form";
 import { TaskPinButton } from "@/components/admin/task-pin-button";
+import { TaskStatusSelect } from "@/components/admin/task-status-select";
+import { TaskValidationButton } from "@/components/admin/task-validation-button";
 import { DeleteButton } from "@/components/admin/delete-button";
 import { DeliverableUploadForm } from "@/components/admin/deliverable-upload-form";
 import { AttachmentUploadForm } from "@/components/admin/attachment-upload-form";
@@ -20,7 +22,11 @@ import {
   deleteAttachment,
 } from "@/lib/actions/files";
 import { postAdminComment } from "@/lib/actions/comments";
-import { TASK_TYPE_LIST_KEY, TASK_FORMAT_LIST_KEY } from "@/lib/dropdown-lists";
+import {
+  TASK_TYPE_LIST_KEY,
+  TASK_FORMAT_LIST_KEY,
+  TASK_STATUS_LIST_KEY,
+} from "@/lib/dropdown-lists";
 import { taskDateFormatter } from "@/lib/tasks";
 
 export const metadata: Metadata = {
@@ -40,16 +46,18 @@ export default async function TaskDetailPage({
   await verifyAdminSession();
   const { taskId } = await params;
 
-  const [task, typeList, formatList] = await Promise.all([
+  const [task, typeList, formatList, statusList] = await Promise.all([
     db.task.findUnique({
       where: { id: taskId },
       include: {
         client: true,
+        status: true,
         types: true,
         formats: true,
         deliverables: true,
         attachments: true,
         comments: { orderBy: { createdAt: "asc" } },
+        refusalHistory: { orderBy: { refusedAt: "desc" } },
       },
     }),
     db.dropdownList.findUnique({
@@ -58,6 +66,10 @@ export default async function TaskDetailPage({
     }),
     db.dropdownList.findUnique({
       where: { key: TASK_FORMAT_LIST_KEY },
+      include: { items: { orderBy: { sortOrder: "asc" } } },
+    }),
+    db.dropdownList.findUnique({
+      where: { key: TASK_STATUS_LIST_KEY },
       include: { items: { orderBy: { sortOrder: "asc" } } },
     }),
   ]);
@@ -116,6 +128,20 @@ export default async function TaskDetailPage({
         </div>
       </div>
 
+      <div className="mt-6 flex flex-wrap items-center gap-3">
+        <TaskStatusSelect
+          taskId={task.id}
+          currentSlug={task.status.slug}
+          currentColor={task.status.color}
+          statuses={statusList?.items ?? []}
+        />
+        <TaskValidationButton taskId={task.id} currentSlug={task.status.slug} />
+      </div>
+
+      {task.refusalReason && (
+        <p className="mt-3 text-sm text-danger">Motif de refus : {task.refusalReason}</p>
+      )}
+
       <div className="mt-8">
         <TaskEditForm
           action={updateThisTask}
@@ -131,6 +157,25 @@ export default async function TaskDetailPage({
           }}
         />
       </div>
+
+      {task.refusalHistory.length > 0 && (
+        <section className="mt-12">
+          <h2 className="text-sm font-medium text-ink-muted">
+            Historique des refus ({task.refusalHistory.length})
+          </h2>
+          <ul className="mt-4 flex flex-col gap-3">
+            {task.refusalHistory.map((entry) => (
+              <li
+                key={entry.id}
+                className="rounded-2xl border border-line bg-surface-elevated p-3 text-sm"
+              >
+                <p className="text-xs text-ink-muted">{taskDateFormatter.format(entry.refusedAt)}</p>
+                <p className="mt-1 whitespace-pre-wrap text-ink">{entry.reason}</p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       <section className="mt-12">
         <h2 className="text-sm font-medium text-ink-muted">

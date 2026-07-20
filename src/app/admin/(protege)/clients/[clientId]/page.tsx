@@ -7,6 +7,7 @@ import { db } from "@/lib/db";
 import { ClientForm } from "@/components/admin/client-form";
 import { ClientUserForm } from "@/components/admin/client-user-form";
 import { ClientUserEditForm } from "@/components/admin/client-user-edit-form";
+import { ClientUserEmailToggle } from "@/components/admin/client-user-email-toggle";
 import { DeleteButton } from "@/components/admin/delete-button";
 import { ResetPasswordButton } from "@/components/admin/reset-password-button";
 import { ImpersonateButton } from "@/components/admin/impersonate-button";
@@ -160,6 +161,11 @@ export default async function ClientDetailPage({
                   />
                 </div>
                 <div className="flex shrink-0 items-center gap-4">
+                  <ClientUserEmailToggle
+                    clientUserId={user.id}
+                    clientId={client.id}
+                    enabled={user.emailNotificationsEnabled}
+                  />
                   <ImpersonateButton clientUserId={user.id} />
                   <ResetPasswordButton clientUserId={user.id} />
                   <DeleteButton

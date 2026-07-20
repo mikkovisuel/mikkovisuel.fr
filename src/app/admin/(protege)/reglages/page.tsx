@@ -1,9 +1,12 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { WarningCircle, CheckCircle } from "@phosphor-icons/react/dist/ssr";
 import { verifyAdminSession } from "@/lib/dal";
+import { db } from "@/lib/db";
 import { getAppSettings } from "@/lib/settings";
 import { SettingsForm } from "@/components/admin/settings-form";
 import { GmailConnectionCard } from "@/components/admin/gmail-connection-card";
+import { ClientUserEmailToggle } from "@/components/admin/client-user-email-toggle";
 
 export const metadata: Metadata = {
   title: "Réglages — Admin Mikko Visuel",
@@ -17,6 +20,12 @@ export default async function AdminSettingsPage({
   const admin = await verifyAdminSession();
   const settings = await getAppSettings();
   const { gmail } = await searchParams;
+
+  const clients = await db.client.findMany({
+    where: { users: { some: {} } },
+    include: { users: { orderBy: { createdAt: "asc" } } },
+    orderBy: { name: "asc" },
+  });
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-10 sm:px-6 lg:px-8">
@@ -58,6 +67,55 @@ export default async function AdminSettingsPage({
             popupMessage: settings.popupMessage ?? "",
           }}
         />
+      </div>
+
+      <div className="mt-10 border-t border-line pt-8">
+        <h2 className="font-display text-lg font-medium tracking-tight text-ink">
+          Notifications email par profil
+        </h2>
+        <p className="mt-2 text-sm text-ink-muted">
+          Vue consolidée de tous les comptes de connexion, tous clients confondus. Bascule
+          identique à celle de chaque fiche client — désactivée par défaut pour un nouveau
+          profil, pour éviter de spammer un contact qui n&apos;a pas besoin d&apos;être notifié.
+        </p>
+
+        {clients.length === 0 ? (
+          <p className="mt-4 text-sm text-ink-muted">Aucun compte de connexion pour l&apos;instant.</p>
+        ) : (
+          <div className="mt-4 flex flex-col gap-6">
+            {clients.map((client) => (
+              <div key={client.id}>
+                <Link
+                  href={`/admin/clients/${client.id}`}
+                  className="text-sm font-medium text-ink transition-colors hover:text-accent"
+                >
+                  {client.name}
+                </Link>
+                <div className="mt-2 divide-y divide-line rounded-2xl border border-line">
+                  {client.users.map((user) => (
+                    <div
+                      key={user.id}
+                      className="flex flex-wrap items-center justify-between gap-4 px-4 py-3"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-sm text-ink">
+                          {user.name}
+                          {user.role && <span className="text-ink-muted"> · {user.role}</span>}
+                        </p>
+                        <p className="text-xs text-ink-muted">{user.email}</p>
+                      </div>
+                      <ClientUserEmailToggle
+                        clientUserId={user.id}
+                        clientId={client.id}
+                        enabled={user.emailNotificationsEnabled}
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );

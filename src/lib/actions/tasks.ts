@@ -254,6 +254,7 @@ async function notifyClientUsersOfNewTaskToValidate(taskId: string) {
   if (!task) return;
 
   for (const user of task.client.users) {
+    if (!user.emailNotificationsEnabled) continue;
     await sendEmail({
       trigger: "new_task_to_validate",
       to: user.email,
@@ -277,6 +278,10 @@ export async function setTaskStatus(taskId: string, statusSlug: TaskStatusSlug) 
       // Une tâche terminée n'a plus besoin d'être mise en avant — voir
       // `Task.pinnedAt`. Pas d'effet si elle n'était pas épinglée.
       ...(statusSlug === TASK_STATUS.TERMINE ? { pinnedAt: null } : {}),
+      // Le motif de refus courant n'a plus lieu d'être affiché une fois le
+      // BAT validé — il reste consultable dans `TaskRefusalHistory` (écrit
+      // au moment du refus, dans `refuseTask`), jamais supprimé.
+      ...(statusSlug === TASK_STATUS.BAT_VALIDE ? { refusalReason: null, refusedAt: null } : {}),
     },
   });
   revalidateTaskPaths(task.clientId);
@@ -317,7 +322,11 @@ export async function validateTask(taskId: string) {
   const validatedAt = new Date();
   await db.task.update({
     where: { id: taskId },
-    data: { statusId, batValidatedAt: validatedAt },
+    // Le motif de refus courant est effacé ici aussi (déjà conservé dans
+    // `TaskRefusalHistory` si la tâche avait été refusée avant) — voir
+    // `setTaskStatus` pour le même traitement quand l'admin change le statut
+    // directement.
+    data: { statusId, batValidatedAt: validatedAt, refusalReason: null, refusedAt: null },
   });
 
   await notifyBatValidated(task.title, task.deliverables.map((d) => d.fileName), validatedAt, clientUser);
@@ -329,7 +338,7 @@ async function notifyBatValidated(
   taskTitle: string,
   deliverableNames: string[],
   validatedAt: Date,
-  clientUser: { name: string; email: string },
+  clientUser: { name: string; email: string; emailNotificationsEnabled: boolean },
 ) {
   const adminEmail = await getAdminEmail();
   const validatedAtLabel = taskDateFormatter.format(validatedAt);
@@ -345,9 +354,13 @@ async function notifyBatValidated(
     ${deliverablesHtml}
   `;
 
-  const recipients = [adminEmail, clientUser.email].filter(
-    (email): email is string => Boolean(email),
-  );
+  // L'admin reçoit toujours la confirmation ; le client qui vient de valider
+  // ne la reçoit que si ses notifications email sont actives (la préférence
+  // s'applique même à sa propre action, pas seulement aux relances).
+  const recipients = [
+    adminEmail,
+    clientUser.emailNotificationsEnabled ? clientUser.email : null,
+  ].filter((email): email is string => Boolean(email));
   for (const to of recipients) {
     await sendEmail({
       trigger: "bat_validated",
@@ -377,9 +390,16 @@ export async function refuseTask(
   }
 
   const statusId = await getStatusId(TASK_STATUS.A_MODIFIER);
+  const refusedAt = new Date();
   await db.task.update({
     where: { id: taskId },
-    data: { statusId, refusalReason: parsed.data.reason, refusedAt: new Date() },
+    data: { statusId, refusalReason: parsed.data.reason, refusedAt },
+  });
+  // Conservé même après que le motif courant soit effacé au passage en "BAT
+  // validé" (voir `setTaskStatus`/`validateTask`) — trace en historique,
+  // jamais réécrite ni supprimée.
+  await db.taskRefusalHistory.create({
+    data: { taskId, reason: parsed.data.reason, refusedAt },
   });
 
   await sendEmail({
@@ -450,6 +470,7 @@ export async function sendTaskReminder(taskId: string) {
   if (!task || !isTaskOverdue(task)) return;
 
   for (const user of task.client.users) {
+    if (!user.emailNotificationsEnabled) continue;
     await sendEmail({
       trigger: "task_reminder",
       to: user.email,

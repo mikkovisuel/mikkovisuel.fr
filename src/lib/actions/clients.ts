@@ -135,6 +135,28 @@ export async function updateClientUser(
   return { success: true };
 }
 
+// Bascule "reçoit les emails automatiques" par profil (bouton une pastille,
+// même pattern que `toggleTaskPin`) — pour couper les notifications d'un
+// profil sans supprimer le compte, ex. un client avec plusieurs contacts
+// dont un seul doit être notifié. N'affecte jamais l'email de
+// réinitialisation de mot de passe.
+export async function toggleClientUserEmailNotifications(clientUserId: string, clientId: string) {
+  await verifyAdminSession();
+
+  const clientUser = await db.clientUser.findUnique({ where: { id: clientUserId } });
+  if (!clientUser) return;
+
+  await db.clientUser.update({
+    where: { id: clientUserId },
+    data: { emailNotificationsEnabled: !clientUser.emailNotificationsEnabled },
+  });
+
+  revalidatePath(`/admin/clients/${clientId}`);
+  // Vue consolidée de tous les profils, tous clients confondus — voir
+  // /admin/reglages.
+  revalidatePath("/admin/reglages");
+}
+
 export async function deleteClientUser(clientUserId: string, clientId: string) {
   await verifyAdminSession();
   await db.clientUser.delete({ where: { id: clientUserId } });

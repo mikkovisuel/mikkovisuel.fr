@@ -400,6 +400,16 @@ appliquée à l'ensemble du site :
   diffusion). Un message donné ne s'affiche qu'une fois par onglet
   (mémorisé en `sessionStorage`, pas de nouvelle table de suivi de lecture
   — un nouveau texte réapparaît même si le précédent avait été fermé).
+- Motif de refus effacé (avec historique) à la validation du BAT
+  (2026-07-20) : jusqu'ici `Task.refusalReason` restait affiché en rouge
+  même après validation d'un BAT précédemment refusé. Corrigé : nouveau
+  modèle `TaskRefusalHistory` (une ligne par refus, jamais réécrite ni
+  supprimée), alimenté au moment du refus (`refuseTask`) ; le motif courant
+  (`refusalReason`/`refusedAt`) est remis à `null` dès que le statut passe
+  en "BAT validé", que ce soit via la validation client (`validateTask`) ou
+  un changement de statut manuel par l'admin (`setTaskStatus`). L'historique
+  complet reste consultable sur `/admin/taches/[taskId]`, section
+  "Historique des refus".
 
 ## 3. Backend interne (admin)
 
@@ -715,6 +725,33 @@ appliquée à l'ensemble du site :
   la limite réelle du fournisseur d'email (Resend, ~40 Mo par email tout
   compris) — le client peut toujours télécharger les fichiers depuis son
   espace client dans ce cas, l'email n'est qu'une commodité de notification.
+- Statut modifiable + bouton "Mettre en validation" sur la fiche tâche
+  (2026-07-20) : `/admin/taches/[taskId]` n'exposait jusqu'ici aucun moyen
+  de changer le statut (seul le sélecteur des vues Liste/Kanban/fiche client
+  le permettait). Ajout du même sélecteur de statut sur la fiche tâche, et
+  d'un bouton dédié "Mettre en validation" (raccourci vers le statut "À
+  valider", plus visible qu'un menu déroulant) qui prévient automatiquement
+  tous les profils du client par email ("vous avez un nouveau BAT à
+  valider" — logique déjà existante de `setTaskStatus`, désormais aussi
+  déclenchable depuis cette page). Désactivé si la tâche est déjà "À
+  valider", pour éviter un second envoi accidentel.
+- Administration des envois d'email par profil client (2026-07-20), pour
+  éviter de spammer un contact qui n'a pas besoin d'être notifié (client
+  avec plusieurs comptes de connexion) : nouveau champ
+  `ClientUser.emailNotificationsEnabled`, **désactivé par défaut** (opt-in —
+  ajusté le 2026-07-20 même jour, initialement activé par défaut) : un
+  nouveau profil ne reçoit aucune notification tant que l'admin ne l'active
+  pas explicitement. Bascule en un clic sur la fiche client (pastille
+  cloche/cloche barrée, section "Comptes de connexion", même pattern que
+  l'épinglage des tâches). Contrôle les notifications automatiques
+  adressées aux comptes client (nouvelle tâche à valider, rappel d'échéance,
+  nouveau livrable/document, relance de
+  paiement, confirmation de BAT validé) — n'affecte jamais l'email de
+  réinitialisation de mot de passe (sécurité, pas une notification). Vue
+  consolidée ajoutée le 2026-07-20 (même jour) sur `/admin/reglages` :
+  tous les comptes de connexion, tous clients confondus, regroupés par
+  client avec la même bascule — pour ne pas avoir à ouvrir chaque fiche
+  client un par un afin de vérifier qui est notifié.
 
 ## Décisions techniques déléguées à Claude Code
 
@@ -848,3 +885,8 @@ Le client a explicitement délégué ces choix :
 | 2026-07-20 | (Constat, pas une demande) `mikkovisuel.fr` sans `www.` affiche un autre site (404 sur /admin, assets étrangers au projet) | Hors code applicatif : configuration DNS/redirection OVH à vérifier côté client — ajouté aux "Points encore ouverts" |
 | 2026-07-20 | Ajouter un filtre "épinglées" dans la vue tâche | Déjà présent sur `/admin/taches` ; ajouté en complément sur la fiche client (`/admin/clients/[clientId]`), qui n'avait pas ce filtre — voir section "Backend interne" |
 | 2026-07-20 | Zone de glisser-déposer pour l'upload des livrables/fichiers finaux ; système d'envoi des livrables finaux par email (comme pour les factures : pièce jointe + bouton d'envoi + icône de statut), objet = "date de l'évènement - titre de la tâche" | Livré (les 2 demandes) : mode `dropzone` sur `FilePicker` (livrables uniquement), bouton "Envoyer les livrables finaux" sur la fiche tâche avec nouveau champ `Task.deliverablesSentAt` — voir section "Backend interne" |
+| 2026-07-20 | Effacer le motif de refus une fois le BAT validé, en gardant une trace en historique dans la tâche | Livré : nouveau modèle `TaskRefusalHistory` (une ligne par refus, jamais supprimée), `refusalReason`/`refusedAt` remis à `null` au passage en "BAT validé" (validation client ou changement de statut admin), historique consultable sur la fiche tâche — voir section "Espace client" |
+| 2026-07-20 | Rendre le statut modifiable depuis la fiche tâche + bouton "Mettre en validation" qui passe la tâche en "À valider" et prévient les profils du client par email | Livré : sélecteur de statut ajouté sur `/admin/taches/[taskId]`, bouton dédié "Mettre en validation" (désactivé si déjà "À valider"), réutilise l'envoi d'email existant de `setTaskStatus` — voir section "Backend interne" |
+| 2026-07-20 | Administration des envois d'email par profil, pour éviter de spammer les clients ayant plusieurs comptes | Livré : nouveau champ `ClientUser.emailNotificationsEnabled`, bascule en un clic sur la fiche client, applique le filtre à toutes les notifications automatiques adressées aux comptes client (hors réinitialisation de mot de passe) — voir section "Backend interne" |
+| 2026-07-20 | Mettre les emails automatiques par profil désactivés par défaut (plutôt qu'activés) | Livré : `ClientUser.emailNotificationsEnabled` passé en opt-in (`@default(false)`), un nouveau profil ne reçoit rien tant que l'admin ne l'active pas explicitement — voir section "Backend interne" |
+| 2026-07-20 | "Où on administre les mails ?" / demande d'un seul endroit pour gérer les notifications de tous les profils | Livré : nouvelle section "Notifications email par profil" sur `/admin/reglages`, tous les comptes de connexion de tous les clients listés avec la même bascule que sur chaque fiche client — voir section "Backend interne" |

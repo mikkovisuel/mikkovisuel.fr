@@ -70,21 +70,29 @@ model Client {
 }
 
 model ClientUser {
-  id              String    @id @default(cuid())
-  clientId        String
-  client          Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  email           String    @unique
-  passwordHash    String
-  name            String
-  phone           String?
+  id                        String    @id @default(cuid())
+  clientId                  String
+  client                    Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  email                     String    @unique
+  passwordHash              String
+  name                      String
+  phone                     String?
   // Fonction du contact chez le client (ex. "Directeur", "DJ",
   // "Photographe") — texte libre, pas de liste fermée (trop variable d'un
   // client à l'autre).
-  role            String?
-  themePreference String    @default("light")
-  lastLoginAt     DateTime?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  role                      String?
+  // Interrupteur par profil (bouton sur la fiche client, section "Comptes de
+  // connexion") pour autoriser les emails automatiques (nouvelle tâche à
+  // valider, rappel d'échéance, nouveau livrable/document, relance de
+  // paiement, BAT validé) — désactivé par défaut (opt-in) pour éviter de
+  // spammer un profil par erreur, l'admin l'active explicitement pour le(s)
+  // contact(s) qui doivent être notifiés. N'affecte jamais l'email de
+  // réinitialisation de mot de passe (sécurité, pas une notification).
+  emailNotificationsEnabled Boolean   @default(false)
+  themePreference           String    @default("light")
+  lastLoginAt               DateTime?
+  createdAt                 DateTime  @default(now())
+  updatedAt                 DateTime  @updatedAt
 
   loginEvents ClientLoginEvent[]
 }
@@ -200,9 +208,25 @@ model Task {
   types   DropdownItem[] @relation("TaskTypes")
   formats DropdownItem[] @relation("TaskFormats")
 
-  deliverables Deliverable[]
-  attachments  Attachment[]
-  comments     TaskComment[]
+  deliverables   Deliverable[]
+  attachments    Attachment[]
+  comments       TaskComment[]
+  refusalHistory TaskRefusalHistory[]
+}
+
+// Historique des refus de BAT, pour ne pas perdre le motif quand le BAT est
+// ensuite validé : `Task.refusalReason`/`refusedAt` ne gardent que le refus
+// courant et sont remis à `null` par `setTaskStatus`/`validateTask` au
+// passage en "BAT validé" (même pattern que `ClientLoginEvent` pour
+// `ClientUser.lastLoginAt` — une ligne par évènement, jamais réécrite ni
+// supprimée).
+model TaskRefusalHistory {
+  id        String   @id @default(cuid())
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  reason    String
+  refusedAt DateTime
+  createdAt DateTime @default(now())
 }
 
 // Fil de commentaires par tâche (admin + client), pour discuter d'une tâche

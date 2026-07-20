@@ -88,6 +88,7 @@ export async function sendPaymentReminder(documentId: string) {
   const amount = formatAmount(document.amountCents, document.currency);
 
   for (const user of document.client.users) {
+    if (!user.emailNotificationsEnabled) continue;
     await sendEmail({
       trigger: "payment_reminder",
       to: user.email,

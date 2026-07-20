@@ -91,6 +91,7 @@ export async function uploadDeliverable(
 
   const tabLabel = kind === "bat" ? "À valider" : "Livrables";
   for (const user of task.client.users) {
+    if (!user.emailNotificationsEnabled) continue;
     await sendEmail({
       trigger: "new_deliverable",
       to: user.email,
@@ -327,6 +328,7 @@ export async function uploadDocument(
   });
 
   for (const user of client.users) {
+    if (!user.emailNotificationsEnabled) continue;
     await sendEmail({
       trigger: "new_document",
       to: user.email,
