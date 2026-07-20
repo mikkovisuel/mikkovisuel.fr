@@ -1,7 +1,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Paperclip, DownloadSimple } from "@phosphor-icons/react/dist/ssr";
+import {
+  ArrowLeft,
+  Paperclip,
+  DownloadSimple,
+  Envelope,
+  EnvelopeOpen,
+} from "@phosphor-icons/react/dist/ssr";
 import { verifyAdminSession } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { getThread, extractEmailAddress } from "@/lib/gmail";
@@ -76,7 +82,19 @@ export default async function EmailThreadPage({
         {messages.map((message) => (
           <div key={message.id} className="rounded-2xl border border-line p-4">
             <div className="flex flex-wrap items-baseline justify-between gap-2 text-sm">
-              <span className="font-medium text-ink">{message.from}</span>
+              <span className="flex items-center gap-2 font-medium text-ink">
+                {message.isUnread ? (
+                  <Envelope size={14} weight="fill" className="shrink-0 text-accent" aria-label="Non lu" />
+                ) : (
+                  <EnvelopeOpen
+                    size={14}
+                    weight="regular"
+                    className="shrink-0 text-ink-muted"
+                    aria-label="Lu"
+                  />
+                )}
+                {message.from}
+              </span>
               <span className="text-xs text-ink-muted">
                 {message.date ? DATE_FORMATTER.format(message.date) : ""}
               </span>

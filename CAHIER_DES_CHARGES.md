@@ -577,6 +577,36 @@ appliquée à l'ensemble du site :
   "non connecté", écran de réglages, garde-fous) mais l'usage réel dépend
   de la création d'identifiants Google côté client — voir "Points encore
   ouverts" et `GUIDE_GMAIL.md`.
+- Boîte mail globale "Mail" dans le bandeau admin (2026-07-20) : nouvel
+  onglet "Mail" entre "Documents" et "Portfolio" (`/admin/mails`),
+  regroupant en une seule vue les fils Gmail échangés avec l'ensemble des
+  clients (même principe que le bouton "Emails" par client — recherche
+  `from:`/`to:` en direct, toujours aucun email stocké en base). Chaque fil
+  est rattaché automatiquement au client dont une adresse de compte
+  apparaît dans l'expéditeur/destinataire du dernier message, avec filtre
+  par client et lien direct vers le fil (réutilise la page de fil existante
+  `/admin/clients/[clientId]/emails/[threadId]`, pas de vue dupliquée pour
+  répondre/transférer).
+- Statut lu/non lu + recherche dans les vues email (2026-07-20) : icône
+  lu/non lu ajoutée sur chaque fil (listes par client et "Mail" globale) et
+  sur chaque message dans le détail d'un fil, reflétant le label Gmail réel
+  `UNREAD` — l'app ne le modifie jamais (scope volontairement restreint à
+  lecture + envoi, voir ci-dessus), donc l'indicateur suit l'état du vrai
+  Gmail de l'admin, pas une lecture "dans l'app". Champ "Rechercher" ajouté
+  sur les deux vues de liste, pour filtrer par mot-clé présent dans l'objet
+  ou le corps du message (recherche Gmail standard côté serveur, pas
+  d'index local).
+- Adresse, SIRET et n° TVA sur la fiche client (2026-07-20) : nouveaux
+  champs optionnels sur `Client` (`address`, `siret`, `vatNumber`),
+  ajoutés au formulaire "Informations" de la fiche client
+  (`/admin/clients/[clientId]`).
+- Téléphone et rôle par compte de connexion (2026-07-20) : nouveaux champs
+  optionnels sur `ClientUser` (`phone`, et `role` en texte libre — ex.
+  "Directeur", "DJ", "Photographe", pas de liste fermée, trop variable
+  d'un client à l'autre). Renseignables à la création d'un compte
+  (formulaire existant) et modifiables ensuite pour un compte existant via
+  un petit formulaire dédié affiché sous chaque compte sur la fiche
+  client.
 
 ## Décisions techniques déléguées à Claude Code
 
@@ -692,3 +722,7 @@ Le client a explicitement délégué ces choix :
 | 2026-07-20 | Différencier les livrables des BAT, avec filigrane automatique (logo en répétition, 10 % d'opacité) réglable depuis l'admin | Livré (priorité images JPG/PNG, décision validée avec le client) : nouveau champ `Deliverable.kind`, filigrane généré à la volée via `sharp` sur les BAT vus par le client (jamais sur l'original ni côté admin), activable depuis `/admin/reglages` — voir section "Espace client" |
 | 2026-07-20 | Boîte mail Gmail connectée à l'admin : par client, voir tous les échanges email liés à son profil, pouvoir répondre/transférer directement dans l'application, sans jamais ouvrir Gmail | Livré (rattachement automatique par adresse email des comptes client, décision validée avec le client) : bouton "Emails" sur la fiche client, connexion OAuth2 depuis `/admin/reglages`, aucune synchronisation en base (requêtes Gmail en direct) — bloqué en usage réel tant que le client n'a pas créé ses identifiants Google (guide fourni : `GUIDE_GMAIL.md`) — voir section "Backend interne" |
 | 2026-07-20 | Export PDF par client de toutes les tâches en cours non terminées (rapport d'état à envoyer au client) | Livré (téléchargement uniquement, décision validée avec le client) : bouton "Télécharger le rapport (PDF)" sur la fiche client, généré à la volée via `@react-pdf/renderer` — voir section "Backend interne" |
+| 2026-07-20 | Section "Mail" globale dans le bandeau admin, entre Documents et Portfolio, regroupant les emails de tous les clients | Livré : nouvel onglet `/admin/mails`, réutilisant la recherche Gmail existante sur l'ensemble des comptes clients avec rattachement automatique par client + filtre — voir section "Backend interne" |
+| 2026-07-20 | Icône lu/non lu sur les vues email + recherche par mot-clé dans l'objet/le corps des messages | Livré : icône basée sur le label Gmail `UNREAD` (fils et messages), champ "Rechercher" sur les listes email par client et globale (recherche Gmail côté serveur) — voir section "Backend interne" |
+| 2026-07-20 | Adresse, SIRET et n° TVA sur la fiche client | Livré : nouveaux champs optionnels sur `Client`, ajoutés au formulaire "Informations" de la fiche client — voir section "Backend interne" |
+| 2026-07-20 | Téléphone et rôle (texte libre, ex. directeur/DJ/photographe) sur chaque compte de connexion d'un client | Livré : nouveaux champs optionnels sur `ClientUser`, renseignables à la création et modifiables ensuite via un formulaire dédié sous chaque compte — voir section "Backend interne" |

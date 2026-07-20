@@ -46,6 +46,9 @@ model Client {
   id        String   @id @default(cuid())
   name      String
   notes     String?
+  address   String?
+  siret     String?
+  vatNumber String?
   // Espace client public accessible sans connexion (bouton "Voir l'espace
   // client de démo" côté site vitrine) — voir src/lib/actions/demo.ts. Un
   // seul client devrait porter ce flag ; les Server Actions d'écriture
@@ -67,6 +70,11 @@ model ClientUser {
   email           String    @unique
   passwordHash    String
   name            String
+  phone           String?
+  // Fonction du contact chez le client (ex. "Directeur", "DJ",
+  // "Photographe") — texte libre, pas de liste fermée (trop variable d'un
+  // client à l'autre).
+  role            String?
   themePreference String    @default("light")
   lastLoginAt     DateTime?
   createdAt       DateTime  @default(now())

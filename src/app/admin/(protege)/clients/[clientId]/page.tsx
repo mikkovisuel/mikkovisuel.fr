@@ -6,6 +6,7 @@ import { verifyAdminSession } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { ClientForm } from "@/components/admin/client-form";
 import { ClientUserForm } from "@/components/admin/client-user-form";
+import { ClientUserEditForm } from "@/components/admin/client-user-edit-form";
 import { DeleteButton } from "@/components/admin/delete-button";
 import { ResetPasswordButton } from "@/components/admin/reset-password-button";
 import { ImpersonateButton } from "@/components/admin/impersonate-button";
@@ -16,6 +17,7 @@ import {
   updateClient,
   deleteClient,
   createClientUser,
+  updateClientUser,
   deleteClientUser,
 } from "@/lib/actions/clients";
 import { createTaskByAdmin } from "@/lib/actions/tasks";
@@ -113,7 +115,13 @@ export default async function ClientDetailPage({
         <div className="mt-4">
           <ClientForm
             action={updateThisClient}
-            defaultValues={{ name: client.name, notes: client.notes }}
+            defaultValues={{
+              name: client.name,
+              notes: client.notes,
+              address: client.address,
+              siret: client.siret,
+              vatNumber: client.vatNumber,
+            }}
             submitLabel="Enregistrer"
           />
         </div>
@@ -130,12 +138,22 @@ export default async function ClientDetailPage({
         {client.users.length > 0 && (
           <div className="mt-4 divide-y divide-line rounded-2xl border border-line">
             {client.users.map((user) => (
-              <div key={user.id} className="flex items-center justify-between px-6 py-4">
-                <div>
-                  <p className="font-medium text-ink">{user.name}</p>
-                  <p className="text-sm text-ink-muted">{user.email}</p>
+              <div key={user.id} className="flex flex-wrap items-start justify-between gap-4 px-6 py-4">
+                <div className="min-w-0">
+                  <p className="font-medium text-ink">
+                    {user.name}
+                    {user.role && <span className="text-ink-muted"> · {user.role}</span>}
+                  </p>
+                  <p className="text-sm text-ink-muted">
+                    {user.email}
+                    {user.phone && ` · ${user.phone}`}
+                  </p>
+                  <ClientUserEditForm
+                    action={updateClientUser.bind(null, user.id, client.id)}
+                    defaultValues={{ phone: user.phone, role: user.role }}
+                  />
                 </div>
-                <div className="flex items-center gap-4">
+                <div className="flex shrink-0 items-center gap-4">
                   <ImpersonateButton clientUserId={user.id} />
                   <ResetPasswordButton clientUserId={user.id} />
                   <DeleteButton

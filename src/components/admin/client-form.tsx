@@ -10,7 +10,13 @@ export function ClientForm({
   submitLabel,
 }: {
   action: (state: ClientFormState, formData: FormData) => Promise<ClientFormState>;
-  defaultValues?: { name: string; notes: string | null };
+  defaultValues?: {
+    name: string;
+    notes: string | null;
+    address: string | null;
+    siret: string | null;
+    vatNumber: string | null;
+  };
   submitLabel: string;
 }) {
   const [state, formAction, pending] = useActionState(action, undefined);
@@ -30,6 +36,50 @@ export function ClientForm({
           className="rounded-xl border border-line bg-surface-elevated px-4 py-3 text-sm text-ink placeholder:text-ink-muted/70 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
           placeholder="Nom de l'entreprise ou de la personne"
         />
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <label htmlFor="address" className="text-sm font-medium text-ink">
+          Adresse
+        </label>
+        <textarea
+          id="address"
+          name="address"
+          rows={2}
+          defaultValue={defaultValues?.address ?? ""}
+          className="resize-none rounded-xl border border-line bg-surface-elevated px-4 py-3 text-sm text-ink placeholder:text-ink-muted/70 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
+          placeholder="Numéro, rue, code postal, ville"
+        />
+      </div>
+
+      <div className="grid gap-5 sm:grid-cols-2">
+        <div className="flex flex-col gap-2">
+          <label htmlFor="siret" className="text-sm font-medium text-ink">
+            SIRET
+          </label>
+          <input
+            id="siret"
+            name="siret"
+            type="text"
+            defaultValue={defaultValues?.siret ?? ""}
+            className="rounded-xl border border-line bg-surface-elevated px-4 py-3 text-sm text-ink placeholder:text-ink-muted/70 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
+            placeholder="14 chiffres"
+          />
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <label htmlFor="vatNumber" className="text-sm font-medium text-ink">
+            N° TVA intracommunautaire
+          </label>
+          <input
+            id="vatNumber"
+            name="vatNumber"
+            type="text"
+            defaultValue={defaultValues?.vatNumber ?? ""}
+            className="rounded-xl border border-line bg-surface-elevated px-4 py-3 text-sm text-ink placeholder:text-ink-muted/70 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
+            placeholder="FR12345678900"
+          />
+        </div>
       </div>
 
       <div className="flex flex-col gap-2">

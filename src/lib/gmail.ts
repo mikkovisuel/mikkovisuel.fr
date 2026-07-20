@@ -114,50 +114,127 @@ export interface EmailThreadSummary {
   lastMessageFrom: string;
   lastMessageDate: Date | null;
   messageCount: number;
+  // Vrai si au moins un message du fil porte encore le label Gmail
+  // `UNREAD`. Reflète l'état réel du Gmail de l'admin — consulter un fil
+  // dans l'app ne le marque pas comme lu (scope volontairement restreint à
+  // lecture + envoi, jamais `gmail.modify`, voir `GMAIL_SCOPES`).
+  isUnread: boolean;
 }
 
 function headerValue(headers: gmail_v1.Schema$MessagePartHeader[] | undefined, name: string) {
   return headers?.find((header) => header.name?.toLowerCase() === name.toLowerCase())?.value ?? "";
 }
 
+async function fetchThreadSummary(
+  gmail: gmail_v1.Gmail,
+  threadId: string,
+): Promise<{ summary: EmailThreadSummary; fromHeader: string; toHeader: string } | null> {
+  const { data: full } = await gmail.users.threads.get({
+    userId: "me",
+    id: threadId,
+    format: "metadata",
+    metadataHeaders: ["From", "To", "Subject", "Date"],
+  });
+  const messages = full.messages ?? [];
+  const lastMessage = messages[messages.length - 1];
+  const headers = lastMessage?.payload?.headers;
+  const dateHeader = headerValue(headers, "Date");
+  const fromHeader = headerValue(headers, "From");
+  const toHeader = headerValue(headers, "To");
+
+  return {
+    summary: {
+      id: threadId,
+      snippet: full.snippet ?? "",
+      subject: headerValue(headers, "Subject") || "(sans objet)",
+      lastMessageFrom: fromHeader,
+      lastMessageDate: dateHeader ? new Date(dateHeader) : null,
+      messageCount: messages.length,
+      isUnread: messages.some((message) => message.labelIds?.includes("UNREAD")),
+    },
+    fromHeader,
+    toHeader,
+  };
+}
+
 // Recherche les fils de discussion Gmail impliquant l'une des adresses
 // données (comptes de connexion du client) — `from:`/`to:` couvre les deux
-// sens de la conversation. Triés par Gmail par pertinence/récence.
-export async function searchThreadsForEmails(emails: string[]): Promise<EmailThreadSummary[]> {
+// sens de la conversation. `keyword` restreint en plus aux fils dont
+// l'objet ou le corps contient ce texte (syntaxe de recherche Gmail
+// standard, cherche par défaut dans les deux). Triés par pertinence/récence.
+export async function searchThreadsForEmails(
+  emails: string[],
+  keyword?: string,
+): Promise<EmailThreadSummary[]> {
   if (emails.length === 0) return [];
   const { gmail } = await getGmailClient();
 
-  const query = emails.map((email) => `(from:${email} OR to:${email})`).join(" OR ");
+  const emailQuery = emails.map((email) => `(from:${email} OR to:${email})`).join(" OR ");
+  const query = keyword?.trim() ? `(${emailQuery}) ${keyword.trim()}` : emailQuery;
   const { data } = await gmail.users.threads.list({ userId: "me", q: query, maxResults: 30 });
   const threads = data.threads ?? [];
 
-  const summaries = await Promise.all(
-    threads.map(async (thread) => {
-      if (!thread.id) return null;
-      const { data: full } = await gmail.users.threads.get({
-        userId: "me",
-        id: thread.id,
-        format: "metadata",
-        metadataHeaders: ["From", "Subject", "Date"],
-      });
-      const messages = full.messages ?? [];
-      const lastMessage = messages[messages.length - 1];
-      const headers = lastMessage?.payload?.headers;
-      const dateHeader = headerValue(headers, "Date");
-
-      return {
-        id: thread.id,
-        snippet: thread.snippet ?? "",
-        subject: headerValue(headers, "Subject") || "(sans objet)",
-        lastMessageFrom: headerValue(headers, "From"),
-        lastMessageDate: dateHeader ? new Date(dateHeader) : null,
-        messageCount: messages.length,
-      } satisfies EmailThreadSummary;
-    }),
+  const results = await Promise.all(
+    threads.map((thread) => (thread.id ? fetchThreadSummary(gmail, thread.id) : null)),
   );
 
-  return summaries
-    .filter((summary): summary is EmailThreadSummary => summary !== null)
+  return results
+    .filter((result): result is NonNullable<typeof result> => result !== null)
+    .map((result) => result.summary)
+    .sort((a, b) => (b.lastMessageDate?.getTime() ?? 0) - (a.lastMessageDate?.getTime() ?? 0));
+}
+
+export interface ClientEmailScope {
+  clientId: string;
+  clientName: string;
+  emails: string[];
+}
+
+export interface EmailThreadSummaryWithClient extends EmailThreadSummary {
+  clientId: string | null;
+  clientName: string | null;
+}
+
+// Boîte mail globale (section "Mail" du bandeau admin) : regroupe les fils
+// Gmail de tous les clients en une seule recherche, puis rattache chaque
+// fil au client dont une adresse de compte apparaît dans l'expéditeur ou
+// les destinataires du dernier message (comparaison sur le texte brut des
+// en-têtes, pas un parsing strict — robuste aux listes de destinataires
+// multiples en `To`/`Cc`).
+export async function searchThreadsAcrossClients(
+  scopes: ClientEmailScope[],
+  keyword?: string,
+): Promise<EmailThreadSummaryWithClient[]> {
+  const allEmails = scopes.flatMap((scope) => scope.emails);
+  if (allEmails.length === 0) return [];
+  const { gmail } = await getGmailClient();
+
+  const emailQuery = allEmails.map((email) => `(from:${email} OR to:${email})`).join(" OR ");
+  const query = keyword?.trim() ? `(${emailQuery}) ${keyword.trim()}` : emailQuery;
+  const { data } = await gmail.users.threads.list({ userId: "me", q: query, maxResults: 50 });
+  const threads = data.threads ?? [];
+
+  const results = await Promise.all(
+    threads.map((thread) => (thread.id ? fetchThreadSummary(gmail, thread.id) : null)),
+  );
+
+  return results
+    .filter((result): result is NonNullable<typeof result> => result !== null)
+    .map(({ summary, fromHeader, toHeader }) => {
+      const from = fromHeader.toLowerCase();
+      const to = toHeader.toLowerCase();
+      const match = scopes.find((scope) =>
+        scope.emails.some((email) => {
+          const needle = email.toLowerCase();
+          return from.includes(needle) || to.includes(needle);
+        }),
+      );
+      return {
+        ...summary,
+        clientId: match?.clientId ?? null,
+        clientName: match?.clientName ?? null,
+      } satisfies EmailThreadSummaryWithClient;
+    })
     .sort((a, b) => (b.lastMessageDate?.getTime() ?? 0) - (a.lastMessageDate?.getTime() ?? 0));
 }
 
@@ -180,6 +257,7 @@ export interface EmailMessage {
   attachments: EmailAttachment[];
   messageIdHeader: string;
   referencesHeader: string;
+  isUnread: boolean;
 }
 
 function decodeBase64Url(data: string): string {
@@ -244,6 +322,7 @@ export async function getThread(threadId: string): Promise<EmailMessage[]> {
       attachments: acc.attachments,
       messageIdHeader: headerValue(headers, "Message-ID"),
       referencesHeader: headerValue(headers, "References"),
+      isUnread: message.labelIds?.includes("UNREAD") ?? false,
     } satisfies EmailMessage;
   });
 }

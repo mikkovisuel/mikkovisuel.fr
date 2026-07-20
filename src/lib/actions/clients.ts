@@ -8,8 +8,10 @@ import { hashPassword } from "@/lib/password";
 import {
   ClientSchema,
   ClientUserSchema,
+  ClientUserEditSchema,
   type ClientFormState,
   type ClientUserFormState,
+  type ClientUserEditFormState,
 } from "@/lib/validation/client";
 
 export async function createClient(
@@ -21,6 +23,9 @@ export async function createClient(
   const parsed = ClientSchema.safeParse({
     name: formData.get("name"),
     notes: formData.get("notes"),
+    address: formData.get("address"),
+    siret: formData.get("siret"),
+    vatNumber: formData.get("vatNumber"),
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Formulaire invalide." };
@@ -41,6 +46,9 @@ export async function updateClient(
   const parsed = ClientSchema.safeParse({
     name: formData.get("name"),
     notes: formData.get("notes"),
+    address: formData.get("address"),
+    siret: formData.get("siret"),
+    vatNumber: formData.get("vatNumber"),
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Formulaire invalide." };
@@ -70,6 +78,8 @@ export async function createClientUser(
     name: formData.get("name"),
     email: formData.get("email"),
     password: formData.get("password"),
+    phone: formData.get("phone"),
+    role: formData.get("role"),
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Formulaire invalide." };
@@ -82,11 +92,43 @@ export async function createClientUser(
 
   const passwordHash = await hashPassword(parsed.data.password);
   await db.clientUser.create({
-    data: { clientId, name: parsed.data.name, email: parsed.data.email, passwordHash },
+    data: {
+      clientId,
+      name: parsed.data.name,
+      email: parsed.data.email,
+      passwordHash,
+      phone: parsed.data.phone || null,
+      role: parsed.data.role || null,
+    },
   });
 
   revalidatePath(`/admin/clients/${clientId}`);
   return undefined;
+}
+
+export async function updateClientUser(
+  clientUserId: string,
+  clientId: string,
+  _prev: ClientUserEditFormState,
+  formData: FormData,
+): Promise<ClientUserEditFormState> {
+  await verifyAdminSession();
+
+  const parsed = ClientUserEditSchema.safeParse({
+    phone: formData.get("phone"),
+    role: formData.get("role"),
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Formulaire invalide." };
+  }
+
+  await db.clientUser.update({
+    where: { id: clientUserId },
+    data: { phone: parsed.data.phone || null, role: parsed.data.role || null },
+  });
+
+  revalidatePath(`/admin/clients/${clientId}`);
+  return { success: true };
 }
 
 export async function deleteClientUser(clientUserId: string, clientId: string) {
