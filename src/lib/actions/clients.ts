@@ -26,6 +26,8 @@ export async function createClient(
     address: formData.get("address"),
     siret: formData.get("siret"),
     vatNumber: formData.get("vatNumber"),
+    billingEmail: formData.get("billingEmail"),
+    driveUrl: formData.get("driveUrl"),
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Formulaire invalide." };
@@ -49,6 +51,8 @@ export async function updateClient(
     address: formData.get("address"),
     siret: formData.get("siret"),
     vatNumber: formData.get("vatNumber"),
+    billingEmail: formData.get("billingEmail"),
+    driveUrl: formData.get("driveUrl"),
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Formulaire invalide." };

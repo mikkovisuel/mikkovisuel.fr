@@ -7,6 +7,7 @@ import { verifyAdminSession, verifyClientSession, assertNotDemo } from "@/lib/da
 import { getStripeClient } from "@/lib/stripe";
 import { sendEmail } from "@/lib/email/service";
 import { formatAmount } from "@/lib/documents";
+import { getStorageAdapter } from "@/lib/storage";
 
 export async function createCheckoutSession(documentId: string) {
   const clientUser = await verifyClientSession();
@@ -100,6 +101,37 @@ export async function sendPaymentReminder(documentId: string) {
   await db.document.update({
     where: { id: documentId },
     data: { lastReminderAt: new Date() },
+  });
+
+  revalidatePath("/admin/documents");
+  revalidatePath(`/admin/clients/${document.clientId}`);
+}
+
+// Envoi manuel d'un document à l'email de facturation du client (distinct
+// des comptes de connexion — voir `Client.billingEmail`), en pièce jointe.
+// Objet = nom du fichier, corps = message fixe demandé par le client.
+export async function sendDocumentByEmail(documentId: string) {
+  await verifyAdminSession();
+
+  const document = await db.document.findUnique({
+    where: { id: documentId },
+    include: { client: true },
+  });
+  if (!document || !document.client.billingEmail) return;
+
+  const buffer = await getStorageAdapter().read(document.storageKey);
+
+  await sendEmail({
+    trigger: "document_sent",
+    to: document.client.billingEmail,
+    subject: document.fileName,
+    html: `<p>Bonjour,</p><p>Ci-joint un nouveau document : "${document.fileName}".</p><p>Je reste à disposition pour tout renseignement complémentaire.</p><p>Par avance, merci.</p>`,
+    attachments: [{ filename: document.fileName, content: buffer }],
+  });
+
+  await db.document.update({
+    where: { id: documentId },
+    data: { sentAt: new Date() },
   });
 
   revalidatePath("/admin/documents");

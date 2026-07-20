@@ -121,6 +121,8 @@ export default async function ClientDetailPage({
               address: client.address,
               siret: client.siret,
               vatNumber: client.vatNumber,
+              billingEmail: client.billingEmail,
+              driveUrl: client.driveUrl,
             }}
             submitLabel="Enregistrer"
           />
@@ -216,7 +218,7 @@ export default async function ClientDetailPage({
         {client.documents.length > 0 ? (
           <div className="mt-4 divide-y divide-line rounded-2xl border border-line">
             {client.documents.map((doc) => (
-              <DocumentRow key={doc.id} document={doc} />
+              <DocumentRow key={doc.id} document={doc} billingEmail={client.billingEmail} />
             ))}
           </div>
         ) : (

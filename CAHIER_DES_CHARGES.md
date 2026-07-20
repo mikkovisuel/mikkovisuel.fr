@@ -607,6 +607,27 @@ appliquée à l'ensemble du site :
   (formulaire existant) et modifiables ensuite pour un compte existant via
   un petit formulaire dédié affiché sous chaque compte sur la fiche
   client.
+- Email de facturation + envoi de document par email (2026-07-20) : nouveau
+  champ `Client.billingEmail` sur la fiche client, distinct des emails des
+  comptes de connexion (usage uniquement pour l'envoi manuel des
+  documents). Bouton "Envoyer le document" ajouté sur chaque document
+  (fiche client et `/admin/documents`), visible seulement si un email de
+  facturation est renseigné : envoie le fichier **en pièce jointe** à cette
+  adresse, objet = nom du fichier, corps fixe ("Bonjour, ci-joint un
+  nouveau document : "nom du document". Je reste à disposition pour tout
+  renseignement complémentaire. Par avance, merci." — texte demandé par le
+  client, légèrement corrigé sur l'accord "tout/tous"). Nouveau champ
+  `Document.sentAt`, avec icône de statut envoyé/non envoyé à côté de
+  chaque document (avion en papier plein si envoyé, contour sinon, avec la
+  date du dernier envoi). Le service d'email (`src/lib/email/service.ts`)
+  gère désormais les pièces jointes (support déjà présent chez Resend),
+  avec repli console habituel si `RESEND_API_KEY` n'est pas configurée.
+- Lien Google Drive par client (2026-07-20) : nouveau champ `Client.driveUrl`
+  sur la fiche client (un seul lien par client, pas par compte de
+  connexion — cohérent avec le fonctionnement "1 client = 1 espace"). Si
+  renseigné, un onglet "Google Drive" apparaît dans le bandeau de l'espace
+  client (`ClientNavTabs`), ouvrant le dossier dans un nouvel onglet ;
+  absent sinon (pas de lien cassé affiché).
 
 ## Décisions techniques déléguées à Claude Code
 
@@ -726,3 +747,5 @@ Le client a explicitement délégué ces choix :
 | 2026-07-20 | Icône lu/non lu sur les vues email + recherche par mot-clé dans l'objet/le corps des messages | Livré : icône basée sur le label Gmail `UNREAD` (fils et messages), champ "Rechercher" sur les listes email par client et globale (recherche Gmail côté serveur) — voir section "Backend interne" |
 | 2026-07-20 | Adresse, SIRET et n° TVA sur la fiche client | Livré : nouveaux champs optionnels sur `Client`, ajoutés au formulaire "Informations" de la fiche client — voir section "Backend interne" |
 | 2026-07-20 | Téléphone et rôle (texte libre, ex. directeur/DJ/photographe) sur chaque compte de connexion d'un client | Livré : nouveaux champs optionnels sur `ClientUser`, renseignables à la création et modifiables ensuite via un formulaire dédié sous chaque compte — voir section "Backend interne" |
+| 2026-07-20 | Email de facturation sur la fiche client + bouton "Envoyer le document" par document (objet = nom du fichier, corps de message fixe fourni) + statut envoyé/non envoyé | Livré : nouveau champ `Client.billingEmail`, action d'envoi en pièce jointe (`sendDocumentByEmail`), nouveau champ `Document.sentAt` avec icône de statut — voir section "Backend interne" |
+| 2026-07-20 | Lien Google Drive par client (fiche client admin), affiché dans le bandeau de menu de l'espace client et redirigeant directement vers le Drive | Livré : nouveau champ `Client.driveUrl`, onglet "Google Drive" dans `ClientNavTabs` (ouverture dans un nouvel onglet) si renseigné — voir section "Backend interne" |

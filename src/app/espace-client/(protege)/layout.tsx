@@ -38,6 +38,9 @@ export default async function ClientProtectedLayout({
     { href: "/espace-client/livrables", label: "Livrables" },
     { href: "/espace-client/administratif", label: "Administratif", count: unpaidCount },
     { href: "/espace-client/suggestion", label: "Suggestion" },
+    ...(clientUser.client.driveUrl
+      ? [{ href: clientUser.client.driveUrl, label: "Google Drive", external: true }]
+      : []),
   ];
 
   return (

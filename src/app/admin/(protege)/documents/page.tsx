@@ -147,7 +147,12 @@ export default async function AdminDocumentsPage({
       ) : (
         <div className="mt-8 divide-y divide-line rounded-2xl border border-line">
           {documents.map((doc) => (
-            <DocumentRow key={doc.id} document={doc} showClient />
+            <DocumentRow
+              key={doc.id}
+              document={doc}
+              showClient
+              billingEmail={doc.client.billingEmail}
+            />
           ))}
         </div>
       )}

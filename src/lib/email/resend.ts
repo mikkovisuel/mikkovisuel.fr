@@ -11,5 +11,9 @@ export async function sendWithResend(input: SendEmailInput) {
     to: input.to,
     subject: input.subject,
     html: input.html,
+    attachments: input.attachments?.map((attachment) => ({
+      filename: attachment.filename,
+      content: attachment.content,
+    })),
   });
 }

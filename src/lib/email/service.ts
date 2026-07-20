@@ -6,6 +6,7 @@ import { sendWithConsole } from "@/lib/email/console";
 export type EmailTrigger =
   | "password_reset"
   | "new_document"
+  | "document_sent"
   | "new_task_to_validate"
   | "refusal_confirmed"
   | "new_deliverable"
@@ -15,11 +16,17 @@ export type EmailTrigger =
   | "feedback_suggestion"
   | "bat_validated";
 
+export interface EmailAttachmentInput {
+  filename: string;
+  content: Buffer;
+}
+
 export interface SendEmailInput {
   trigger: EmailTrigger;
   to: string;
   subject: string;
   html: string;
+  attachments?: EmailAttachmentInput[];
 }
 
 // Single-admin app: the destination for contact/feedback/BAT-copy emails is

@@ -16,6 +16,8 @@ export function ClientForm({
     address: string | null;
     siret: string | null;
     vatNumber: string | null;
+    billingEmail: string | null;
+    driveUrl: string | null;
   };
   submitLabel: string;
 }) {
@@ -78,6 +80,36 @@ export function ClientForm({
             defaultValue={defaultValues?.vatNumber ?? ""}
             className="rounded-xl border border-line bg-surface-elevated px-4 py-3 text-sm text-ink placeholder:text-ink-muted/70 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
             placeholder="FR12345678900"
+          />
+        </div>
+      </div>
+
+      <div className="grid gap-5 sm:grid-cols-2">
+        <div className="flex flex-col gap-2">
+          <label htmlFor="billingEmail" className="text-sm font-medium text-ink">
+            Email de facturation
+          </label>
+          <input
+            id="billingEmail"
+            name="billingEmail"
+            type="email"
+            defaultValue={defaultValues?.billingEmail ?? ""}
+            className="rounded-xl border border-line bg-surface-elevated px-4 py-3 text-sm text-ink placeholder:text-ink-muted/70 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
+            placeholder="facturation@client.com"
+          />
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <label htmlFor="driveUrl" className="text-sm font-medium text-ink">
+            Lien Google Drive
+          </label>
+          <input
+            id="driveUrl"
+            name="driveUrl"
+            type="url"
+            defaultValue={defaultValues?.driveUrl ?? ""}
+            className="rounded-xl border border-line bg-surface-elevated px-4 py-3 text-sm text-ink placeholder:text-ink-muted/70 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
+            placeholder="https://drive.google.com/..."
           />
         </div>
       </div>
