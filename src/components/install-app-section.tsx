@@ -1,4 +1,5 @@
 import { InstallPwaCta } from "@/components/install-pwa-cta";
+import { viewDemoClientSpace } from "@/lib/actions/demo";
 
 export function InstallAppSection() {
   return (
@@ -14,6 +15,14 @@ export function InstallAppSection() {
             recherche : suivi de projet, validation des BAT, livrables et
             documents administratifs.
           </p>
+          <form action={viewDemoClientSpace} className="mt-6">
+            <button
+              type="submit"
+              className="text-sm font-medium text-ink underline underline-offset-2 transition-colors hover:text-accent"
+            >
+              Pas encore client ? Voir l&apos;espace client de démo
+            </button>
+          </form>
         </div>
 
         <div className="flex lg:col-span-5 lg:justify-end">
