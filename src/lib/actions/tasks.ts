@@ -30,12 +30,34 @@ import {
   type RefusalFormState,
 } from "@/lib/validation/task";
 
-async function getStatusId(slug: TaskStatusSlug) {
+// Retourne l'item complet (pas seulement son id) : `label` est réutilisé
+// pour dénormaliser `TaskStatusHistory.statusLabel` sans un second aller-
+// retour DB à chaque changement de statut.
+async function getStatusItem(slug: TaskStatusSlug) {
   const list = await db.dropdownList.findUniqueOrThrow({ where: { key: TASK_STATUS_LIST_KEY } });
-  const item = await db.dropdownItem.findUniqueOrThrow({
+  return db.dropdownItem.findUniqueOrThrow({
     where: { listId_slug: { listId: list.id, slug } },
   });
-  return item.id;
+}
+
+// Audit trail des changements de statut (qui, quand, vers quel statut) —
+// couvre la création (statut initial "Nouveau") et tous les changements
+// ultérieurs, admin comme client. Voir `TaskStatusHistory` dans le schéma.
+async function logTaskStatusChange(
+  taskId: string,
+  status: { slug: string; label: string },
+  actor: { type: "ADMIN" | "CLIENT_USER"; id: string; name: string },
+) {
+  await db.taskStatusHistory.create({
+    data: {
+      taskId,
+      statusSlug: status.slug,
+      statusLabel: status.label,
+      changedByType: actor.type,
+      changedById: actor.id,
+      changedByName: actor.name,
+    },
+  });
 }
 
 async function getDropdownItemIds(listKey: string, slugs: string[]) {
@@ -86,8 +108,8 @@ export async function createTaskByClient(
     }
   }
 
-  const [statusId, typeIds, formatIds] = await Promise.all([
-    getStatusId(TASK_STATUS.NOUVEAU),
+  const [statusItem, typeIds, formatIds] = await Promise.all([
+    getStatusItem(TASK_STATUS.NOUVEAU),
     getDropdownItemIds(TASK_TYPE_LIST_KEY, parsed.data.types),
     getDropdownItemIds(TASK_FORMAT_LIST_KEY, parsed.data.formats),
   ]);
@@ -98,12 +120,17 @@ export async function createTaskByClient(
       title: parsed.data.title,
       description: parsed.data.description,
       eventDate: parsed.data.eventDate ? new Date(parsed.data.eventDate) : null,
-      statusId,
+      statusId: statusItem.id,
       types: { connect: typeIds },
       formats: { connect: formatIds },
       createdByType: "CLIENT_USER",
       createdById: clientUser.id,
     },
+  });
+  await logTaskStatusChange(task.id, statusItem, {
+    type: "CLIENT_USER",
+    id: clientUser.id,
+    name: clientUser.name,
   });
 
   const storage = getStorageAdapter();
@@ -150,25 +177,26 @@ async function createTaskRecord(
     return { error: parsed.error.issues[0]?.message ?? "Formulaire invalide." };
   }
 
-  const [statusId, typeIds, formatIds] = await Promise.all([
-    getStatusId(TASK_STATUS.NOUVEAU),
+  const [statusItem, typeIds, formatIds] = await Promise.all([
+    getStatusItem(TASK_STATUS.NOUVEAU),
     getDropdownItemIds(TASK_TYPE_LIST_KEY, parsed.data.types),
     getDropdownItemIds(TASK_FORMAT_LIST_KEY, parsed.data.formats),
   ]);
 
-  await db.task.create({
+  const task = await db.task.create({
     data: {
       clientId,
       title: parsed.data.title,
       description: parsed.data.description,
       eventDate: parsed.data.eventDate ? new Date(parsed.data.eventDate) : null,
-      statusId,
+      statusId: statusItem.id,
       types: { connect: typeIds },
       formats: { connect: formatIds },
       createdByType: "ADMIN",
       createdById: adminId,
     },
   });
+  await logTaskStatusChange(task.id, statusItem, { type: "ADMIN", id: adminId, name: "Mikko" });
 
   revalidateTaskPaths(clientId);
   return undefined;
@@ -265,16 +293,16 @@ async function notifyClientUsersOfNewTaskToValidate(taskId: string) {
 }
 
 export async function setTaskStatus(taskId: string, statusSlug: TaskStatusSlug) {
-  await verifyAdminSession();
+  const admin = await verifyAdminSession();
 
   const task = await db.task.findUnique({ where: { id: taskId } });
   if (!task) return;
 
-  const statusId = await getStatusId(statusSlug);
+  const statusItem = await getStatusItem(statusSlug);
   await db.task.update({
     where: { id: taskId },
     data: {
-      statusId,
+      statusId: statusItem.id,
       // Une tâche terminée n'a plus besoin d'être mise en avant — voir
       // `Task.pinnedAt`. Pas d'effet si elle n'était pas épinglée.
       ...(statusSlug === TASK_STATUS.TERMINE ? { pinnedAt: null } : {}),
@@ -284,6 +312,8 @@ export async function setTaskStatus(taskId: string, statusSlug: TaskStatusSlug) 
       ...(statusSlug === TASK_STATUS.BAT_VALIDE ? { refusalReason: null, refusedAt: null } : {}),
     },
   });
+  await logTaskStatusChange(taskId, statusItem, { type: "ADMIN", id: admin.id, name: "Mikko" });
+
   revalidateTaskPaths(task.clientId);
   if (statusSlug === TASK_STATUS.TERMINE) {
     revalidatePath("/admin");
@@ -318,7 +348,7 @@ export async function validateTask(taskId: string) {
   const task = await db.task.findUnique({ where: { id: taskId }, include: { deliverables: true } });
   if (!task || task.clientId !== clientUser.clientId) return;
 
-  const statusId = await getStatusId(TASK_STATUS.BAT_VALIDE);
+  const statusItem = await getStatusItem(TASK_STATUS.BAT_VALIDE);
   const validatedAt = new Date();
   await db.task.update({
     where: { id: taskId },
@@ -326,7 +356,12 @@ export async function validateTask(taskId: string) {
     // `TaskRefusalHistory` si la tâche avait été refusée avant) — voir
     // `setTaskStatus` pour le même traitement quand l'admin change le statut
     // directement.
-    data: { statusId, batValidatedAt: validatedAt, refusalReason: null, refusedAt: null },
+    data: { statusId: statusItem.id, batValidatedAt: validatedAt, refusalReason: null, refusedAt: null },
+  });
+  await logTaskStatusChange(taskId, statusItem, {
+    type: "CLIENT_USER",
+    id: clientUser.id,
+    name: clientUser.name,
   });
 
   await notifyBatValidated(task.title, task.deliverables.map((d) => d.fileName), validatedAt, clientUser);
@@ -389,17 +424,22 @@ export async function refuseTask(
     return { error: "Tâche introuvable." };
   }
 
-  const statusId = await getStatusId(TASK_STATUS.A_MODIFIER);
+  const statusItem = await getStatusItem(TASK_STATUS.A_MODIFIER);
   const refusedAt = new Date();
   await db.task.update({
     where: { id: taskId },
-    data: { statusId, refusalReason: parsed.data.reason, refusedAt },
+    data: { statusId: statusItem.id, refusalReason: parsed.data.reason, refusedAt },
   });
   // Conservé même après que le motif courant soit effacé au passage en "BAT
   // validé" (voir `setTaskStatus`/`validateTask`) — trace en historique,
   // jamais réécrite ni supprimée.
   await db.taskRefusalHistory.create({
     data: { taskId, reason: parsed.data.reason, refusedAt },
+  });
+  await logTaskStatusChange(taskId, statusItem, {
+    type: "CLIENT_USER",
+    id: clientUser.id,
+    name: clientUser.name,
   });
 
   await sendEmail({

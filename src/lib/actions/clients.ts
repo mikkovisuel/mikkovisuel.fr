@@ -3,7 +3,7 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
-import { verifyAdminSession } from "@/lib/dal";
+import { verifyAdminSession, verifyClientSession, assertNotDemo } from "@/lib/dal";
 import { hashPassword } from "@/lib/password";
 import {
   ClientSchema,
@@ -154,6 +154,24 @@ export async function toggleClientUserEmailNotifications(clientUserId: string, c
   revalidatePath(`/admin/clients/${clientId}`);
   // Vue consolidée de tous les profils, tous clients confondus — voir
   // /admin/reglages.
+  revalidatePath("/admin/reglages");
+}
+
+// Variante self-service de `toggleClientUserEmailNotifications` : le client
+// bascule sa propre préférence depuis "Mon compte", sans passer par l'admin
+// (même champ `ClientUser.emailNotificationsEnabled`, juste un point d'accès
+// différent — les deux restent en phase).
+export async function toggleOwnEmailNotifications() {
+  const clientUser = await verifyClientSession();
+  assertNotDemo(clientUser);
+
+  await db.clientUser.update({
+    where: { id: clientUser.id },
+    data: { emailNotificationsEnabled: !clientUser.emailNotificationsEnabled },
+  });
+
+  revalidatePath("/espace-client/compte");
+  revalidatePath(`/admin/clients/${clientUser.clientId}`);
   revalidatePath("/admin/reglages");
 }
 

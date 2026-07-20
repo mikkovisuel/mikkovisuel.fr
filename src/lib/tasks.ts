@@ -1,4 +1,17 @@
+import type { Prisma } from "@/generated/prisma/client";
 import { TASK_STATUS } from "@/lib/dropdown-lists";
+
+// Le client de démo (`Client.isDemo`) alimente un espace public pour les
+// prospects (voir src/lib/actions/demo.ts) avec des tâches d'exemple — à
+// exclure des vues de gestion courantes de l'admin (liste/kanban/calendrier/
+// tableau de bord). En dur ici plutôt qu'un réglage admin dédié, pour rester
+// simple : ses tâches restent consultables et gérables depuis la fiche du
+// client de démo lui-même (`/admin/clients/[clientId]`), qui n'utilise pas
+// ce filtre. Pour revenir en arrière, retirer ce filtre des requêtes qui
+// l'utilisent (grep `EXCLUDE_DEMO_CLIENT_TASKS`).
+export const EXCLUDE_DEMO_CLIENT_TASKS = {
+  client: { isDemo: false },
+} satisfies Prisma.TaskWhereInput;
 
 export function isTaskOverdue(task: { dueDate: Date | null; status: { slug: string } }) {
   return (
@@ -18,6 +31,16 @@ export const taskDateFormatterShort = new Intl.DateTimeFormat("fr-FR", {
   day: "2-digit",
   month: "2-digit",
   year: "numeric",
+});
+
+// Avec l'heure, pour l'audit trail des statuts (qui a changé quoi, à quelle
+// date et heure précises) — `taskDateFormatter` n'affiche que le jour.
+export const taskDateTimeFormatter = new Intl.DateTimeFormat("fr-FR", {
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+  hour: "2-digit",
+  minute: "2-digit",
 });
 
 // "YYYY-MM-DD" in local time (not toISOString, which shifts to UTC) so it

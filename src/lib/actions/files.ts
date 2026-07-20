@@ -343,3 +343,20 @@ export async function uploadDocument(
   revalidatePath("/espace-client/administratif");
   return undefined;
 }
+
+// Miroir de `deleteDeliverable`/`deleteAttachment` : efface aussi le fichier
+// du stockage, pas seulement la ligne en base.
+export async function deleteDocument(documentId: string) {
+  await verifyAdminSession();
+
+  const document = await db.document.findUnique({ where: { id: documentId } });
+  if (!document) return;
+
+  await getStorageAdapter().delete(document.storageKey);
+  await db.document.delete({ where: { id: documentId } });
+
+  revalidatePath(`/admin/clients/${document.clientId}`);
+  revalidatePath("/admin/documents");
+  revalidatePath("/espace-client");
+  revalidatePath("/espace-client/administratif");
+}

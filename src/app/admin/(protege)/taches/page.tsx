@@ -16,7 +16,13 @@ import {
   TASK_TYPE_LIST_KEY,
   TASK_FORMAT_LIST_KEY,
 } from "@/lib/dropdown-lists";
-import { buildTaskOrderBy, isTaskSortField, type TaskSortField, type TaskSortDir } from "@/lib/tasks";
+import {
+  buildTaskOrderBy,
+  isTaskSortField,
+  EXCLUDE_DEMO_CLIENT_TASKS,
+  type TaskSortField,
+  type TaskSortDir,
+} from "@/lib/tasks";
 
 export const metadata: Metadata = {
   title: "Tâches — Admin Mikko Visuel",
@@ -53,6 +59,7 @@ export default async function AdminTasksPage({
   const [tasks, statusList, typeList, formatList, clients] = await Promise.all([
     db.task.findMany({
       where: {
+        ...EXCLUDE_DEMO_CLIENT_TASKS,
         archivedAt: view === "archivees" ? { not: null } : null,
         ...(clientId ? { clientId } : {}),
         ...(status ? { status: { slug: status } } : {}),
@@ -82,7 +89,7 @@ export default async function AdminTasksPage({
       where: { key: TASK_FORMAT_LIST_KEY },
       include: { items: { orderBy: { sortOrder: "asc" } } },
     }),
-    db.client.findMany({ orderBy: { name: "asc" } }),
+    db.client.findMany({ where: { isDemo: false }, orderBy: { name: "asc" } }),
   ]);
 
   const statusOptions =

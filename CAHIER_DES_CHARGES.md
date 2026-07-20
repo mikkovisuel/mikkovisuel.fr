@@ -410,6 +410,14 @@ appliquée à l'ensemble du site :
   un changement de statut manuel par l'admin (`setTaskStatus`). L'historique
   complet reste consultable sur `/admin/taches/[taskId]`, section
   "Historique des refus".
+- Notifications par email gérables par le client lui-même (2026-07-21) :
+  jusqu'ici seul l'admin pouvait activer/désactiver les emails automatiques
+  d'un profil (voir section "Backend interne"). Ajout d'une section
+  "Notifications par email" sur `/espace-client/compte` ("Mon compte"),
+  avec la même bascule — le client peut désormais s'auto-gérer sans passer
+  par l'admin (même champ `ClientUser.emailNotificationsEnabled`, un point
+  d'accès de plus, les deux restent synchronisés). Désactivée dans l'espace
+  de démonstration, comme le reste de "Mon compte".
 
 ## 3. Backend interne (admin)
 
@@ -752,6 +760,33 @@ appliquée à l'ensemble du site :
   tous les comptes de connexion, tous clients confondus, regroupés par
   client avec la même bascule — pour ne pas avoir à ouvrir chaque fiche
   client un par un afin de vérifier qui est notifié.
+- Historique des changements de statut d'une tâche — audit trail
+  (2026-07-21) : nouveau modèle `TaskStatusHistory` (une ligne par
+  changement, jamais réécrite ni supprimée — même pattern que
+  `TaskRefusalHistory`), alimenté à la création de la tâche (statut initial
+  "Nouveau") et à chaque changement ultérieur, admin (`setTaskStatus`) comme
+  client (`validateTask`/`refuseTask`). Chaque ligne garde le statut
+  atteint, la date et l'heure précises, et qui a fait le changement (nom +
+  admin/client, dénormalisés pour rester lisibles même si le compte est
+  supprimé plus tard). Consultable sur `/admin/taches/[taskId]`, section
+  "Historique des statuts" — couvre aussi la validation de BAT, qui est un
+  changement de statut comme un autre dans cet historique.
+- Tâches du client de démo masquées des vues de gestion courantes
+  (2026-07-21) : le client de démo public (`Client.isDemo`, voir section
+  "Espace client") alimentait ses tâches d'exemple dans `/admin/taches`
+  (toutes vues) et le tableau de bord (`/admin`), au milieu des vraies
+  tâches. Corrigé en excluant ce client des requêtes de ces deux pages
+  (nouveau filtre partagé `EXCLUDE_DEMO_CLIENT_TASKS`, `src/lib/tasks.ts`).
+  Choix explicite de coder ce filtre en dur plutôt que d'ajouter un réglage
+  admin dédié, pour rester simple — ses tâches restent entièrement
+  consultables et gérables depuis la fiche du client de démo lui-même
+  (`/admin/clients/[clientId]`), qui n'est pas concernée par ce filtre.
+- Suppression de documents (2026-07-21) : jusqu'ici un document
+  (devis/contrat/facture) ne pouvait être qu'ajouté, jamais supprimé.
+  Nouvelle action `deleteDocument` (miroir de `deleteDeliverable`/
+  `deleteAttachment` — efface aussi le fichier du stockage, pas seulement
+  la ligne en base), bouton "Supprimer" ajouté sur chaque document, sur
+  `/admin/documents` comme sur la fiche client.
 
 ## Décisions techniques déléguées à Claude Code
 
@@ -890,3 +925,7 @@ Le client a explicitement délégué ces choix :
 | 2026-07-20 | Administration des envois d'email par profil, pour éviter de spammer les clients ayant plusieurs comptes | Livré : nouveau champ `ClientUser.emailNotificationsEnabled`, bascule en un clic sur la fiche client, applique le filtre à toutes les notifications automatiques adressées aux comptes client (hors réinitialisation de mot de passe) — voir section "Backend interne" |
 | 2026-07-20 | Mettre les emails automatiques par profil désactivés par défaut (plutôt qu'activés) | Livré : `ClientUser.emailNotificationsEnabled` passé en opt-in (`@default(false)`), un nouveau profil ne reçoit rien tant que l'admin ne l'active pas explicitement — voir section "Backend interne" |
 | 2026-07-20 | "Où on administre les mails ?" / demande d'un seul endroit pour gérer les notifications de tous les profils | Livré : nouvelle section "Notifications email par profil" sur `/admin/reglages`, tous les comptes de connexion de tous les clients listés avec la même bascule que sur chaque fiche client — voir section "Backend interne" |
+| 2026-07-21 | Garder un historique des changements de statut d'une tâche (qui, date, heure), et tracer la validation du BAT | Livré : nouveau modèle `TaskStatusHistory`, alimenté à la création et à chaque changement de statut (admin et client) ; historique consultable sur `/admin/taches/[taskId]`, section "Historique des statuts" ; la validation de BAT est un changement de statut comme un autre et y apparaît donc aussi — voir section "Backend interne" |
+| 2026-07-21 | Ne pas faire apparaître les tâches du client de démo dans les listes courantes (réglage ou filtre en dur) | Livré (filtre en dur retenu, plus simple) : nouveau filtre partagé `EXCLUDE_DEMO_CLIENT_TASKS`, appliqué sur `/admin/taches` et le tableau de bord `/admin` ; les tâches restent gérables depuis la fiche du client de démo lui-même — voir section "Backend interne" |
+| 2026-07-21 | Ajouter une fonction de suppression des documents | Livré : nouvelle action `deleteDocument` (miroir de la suppression des livrables/pièces jointes), bouton "Supprimer" sur `/admin/documents` et sur la fiche client — voir section "Backend interne" |
+| 2026-07-21 | Ajouter le réglage des notifications par email dans les pages profil de chaque client (dans les réglages) | Livré : nouvelle section "Notifications par email" sur `/espace-client/compte` ("Mon compte"), le client peut désormais activer/désactiver lui-même ses notifications, en plus du contrôle déjà existant côté admin — voir section "Espace client" |

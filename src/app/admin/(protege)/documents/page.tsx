@@ -4,6 +4,7 @@ import { verifyAdminSession } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { DocumentUploadForm } from "@/components/admin/document-upload-form";
 import { DocumentRow } from "@/components/admin/document-row";
+import { deleteDocument } from "@/lib/actions/files";
 import { DOCUMENT_TYPE_LIST_KEY } from "@/lib/dropdown-lists";
 import { formatAmount } from "@/lib/documents";
 
@@ -152,6 +153,7 @@ export default async function AdminDocumentsPage({
               document={doc}
               showClient
               billingEmail={doc.client.billingEmail}
+              deleteAction={deleteDocument}
             />
           ))}
         </div>

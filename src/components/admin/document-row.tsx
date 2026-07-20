@@ -4,6 +4,7 @@ import {
   sendPaymentReminder,
   sendDocumentByEmail,
 } from "@/lib/actions/payments";
+import { DeleteButton } from "@/components/admin/delete-button";
 import { formatAmount, isOverdue, dueDateFormatter } from "@/lib/documents";
 
 const SENT_AT_FORMATTER = new Intl.DateTimeFormat("fr-FR", {
@@ -31,9 +32,15 @@ interface DocumentRowProps {
   // liste globale des documents (qui l'inclut) n'ont pas la même forme de
   // données en entrée.
   billingEmail?: string | null;
+  deleteAction?: (id: string) => Promise<void>;
 }
 
-export function DocumentRow({ document, showClient = false, billingEmail }: DocumentRowProps) {
+export function DocumentRow({
+  document,
+  showClient = false,
+  billingEmail,
+  deleteAction,
+}: DocumentRowProps) {
   const overdue = isOverdue(document);
 
   return (
@@ -109,6 +116,12 @@ export function DocumentRow({ document, showClient = false, billingEmail }: Docu
           <DownloadSimple size={16} weight="regular" />
           Télécharger
         </a>
+        {deleteAction && (
+          <DeleteButton
+            action={deleteAction.bind(null, document.id)}
+            confirmMessage={`Supprimer définitivement "${document.fileName}" ? Le fichier sera effacé du stockage et ne pourra pas être récupéré.`}
+          />
+        )}
       </div>
     </div>
   );

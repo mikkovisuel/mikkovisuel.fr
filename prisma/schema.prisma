@@ -212,6 +212,25 @@ model Task {
   attachments    Attachment[]
   comments       TaskComment[]
   refusalHistory TaskRefusalHistory[]
+  statusHistory  TaskStatusHistory[]
+}
+
+// Audit trail des changements de statut d'une tâche (qui, quand, vers quel
+// statut) — couvre aussi bien les changements admin (`setTaskStatus`) que
+// les actions client (`validateTask`/`refuseTask`), plus la création de la
+// tâche (statut initial "Nouveau"). `statusLabel` est dénormalisé (même
+// raisonnement que `TaskComment.authorName`) pour rester lisible même si le
+// libellé du statut est renommé plus tard depuis `/admin/listes`.
+model TaskStatusHistory {
+  id            String   @id @default(cuid())
+  taskId        String
+  task          Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  statusSlug    String
+  statusLabel   String
+  changedByType String
+  changedById   String
+  changedByName String
+  changedAt     DateTime @default(now())
 }
 
 // Historique des refus de BAT, pour ne pas perdre le motif quand le BAT est

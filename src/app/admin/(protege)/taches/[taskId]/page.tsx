@@ -27,7 +27,7 @@ import {
   TASK_FORMAT_LIST_KEY,
   TASK_STATUS_LIST_KEY,
 } from "@/lib/dropdown-lists";
-import { taskDateFormatter } from "@/lib/tasks";
+import { taskDateFormatter, taskDateTimeFormatter } from "@/lib/tasks";
 
 export const metadata: Metadata = {
   title: "Tâche — Admin Mikko Visuel",
@@ -58,6 +58,7 @@ export default async function TaskDetailPage({
         attachments: true,
         comments: { orderBy: { createdAt: "asc" } },
         refusalHistory: { orderBy: { refusedAt: "desc" } },
+        statusHistory: { orderBy: { changedAt: "desc" } },
       },
     }),
     db.dropdownList.findUnique({
@@ -157,6 +158,33 @@ export default async function TaskDetailPage({
           }}
         />
       </div>
+
+      {task.statusHistory.length > 0 && (
+        <section className="mt-12">
+          <h2 className="text-sm font-medium text-ink-muted">
+            Historique des statuts ({task.statusHistory.length})
+          </h2>
+          <ul className="mt-4 flex flex-col gap-3">
+            {task.statusHistory.map((entry) => (
+              <li
+                key={entry.id}
+                className="rounded-2xl border border-line bg-surface-elevated p-3 text-sm"
+              >
+                <p className="text-xs text-ink-muted">
+                  {taskDateTimeFormatter.format(entry.changedAt)}
+                </p>
+                <p className="mt-1 text-ink">
+                  Statut changé en <span className="font-medium">{entry.statusLabel}</span> par{" "}
+                  {entry.changedByName}{" "}
+                  <span className="text-ink-muted">
+                    ({entry.changedByType === "ADMIN" ? "admin" : "client"})
+                  </span>
+                </p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
 
       {task.refusalHistory.length > 0 && (
         <section className="mt-12">

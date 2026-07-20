@@ -14,6 +14,7 @@ import { ImpersonateButton } from "@/components/admin/impersonate-button";
 import { TaskForm } from "@/components/task-form";
 import { TaskRow } from "@/components/admin/task-row";
 import { DocumentRow } from "@/components/admin/document-row";
+import { deleteDocument } from "@/lib/actions/files";
 import {
   updateClient,
   deleteClient,
@@ -245,7 +246,12 @@ export default async function ClientDetailPage({
         {client.documents.length > 0 ? (
           <div className="mt-4 divide-y divide-line rounded-2xl border border-line">
             {client.documents.map((doc) => (
-              <DocumentRow key={doc.id} document={doc} billingEmail={client.billingEmail} />
+              <DocumentRow
+                key={doc.id}
+                document={doc}
+                billingEmail={client.billingEmail}
+                deleteAction={deleteDocument}
+              />
             ))}
           </div>
         ) : (

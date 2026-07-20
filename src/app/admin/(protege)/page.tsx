@@ -3,6 +3,7 @@ import Link from "next/link";
 import { verifyAdminSession } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { TASK_STATUS, TASK_STATUS_LIST_KEY } from "@/lib/dropdown-lists";
+import { EXCLUDE_DEMO_CLIENT_TASKS } from "@/lib/tasks";
 import { RecentActivity } from "@/components/admin/recent-activity";
 import { PinnedTasks } from "@/components/admin/pinned-tasks";
 import { UpcomingEvents } from "@/components/admin/upcoming-events";
@@ -23,33 +24,43 @@ export default async function AdminDashboardPage() {
 
   const [clientCount, taskCount, unpaidCount, overdueCount, toValidateCount] = await Promise.all([
     db.client.count(),
-    db.task.count(),
+    db.task.count({ where: EXCLUDE_DEMO_CLIENT_TASKS }),
     db.document.count({ where: { paymentStatus: "unpaid" } }),
     db.task.count({
-      where: { dueDate: { lt: new Date() }, status: { slug: { not: TASK_STATUS.TERMINE } } },
+      where: {
+        ...EXCLUDE_DEMO_CLIENT_TASKS,
+        dueDate: { lt: new Date() },
+        status: { slug: { not: TASK_STATUS.TERMINE } },
+      },
     }),
-    db.task.count({ where: { status: { slug: TASK_STATUS.A_VALIDER } } }),
+    db.task.count({
+      where: { ...EXCLUDE_DEMO_CLIENT_TASKS, status: { slug: TASK_STATUS.A_VALIDER } },
+    }),
   ]);
 
   const [batValidatedTasks, refusedTasks, newRequestTasks, newCommentRows] = since
     ? await Promise.all([
         db.task.findMany({
-          where: { batValidatedAt: { gte: since } },
+          where: { ...EXCLUDE_DEMO_CLIENT_TASKS, batValidatedAt: { gte: since } },
           include: { client: true },
           orderBy: { batValidatedAt: "desc" },
         }),
         db.task.findMany({
-          where: { refusedAt: { gte: since } },
+          where: { ...EXCLUDE_DEMO_CLIENT_TASKS, refusedAt: { gte: since } },
           include: { client: true },
           orderBy: { refusedAt: "desc" },
         }),
         db.task.findMany({
-          where: { createdByType: "CLIENT_USER", createdAt: { gte: since } },
+          where: { ...EXCLUDE_DEMO_CLIENT_TASKS, createdByType: "CLIENT_USER", createdAt: { gte: since } },
           include: { client: true },
           orderBy: { createdAt: "desc" },
         }),
         db.taskComment.findMany({
-          where: { authorType: "CLIENT_USER", createdAt: { gte: since } },
+          where: {
+            authorType: "CLIENT_USER",
+            createdAt: { gte: since },
+            task: EXCLUDE_DEMO_CLIENT_TASKS,
+          },
           include: { task: { include: { client: true } } },
           orderBy: { createdAt: "desc" },
         }),
@@ -91,12 +102,12 @@ export default async function AdminDashboardPage() {
   const [pinnedTaskRows, upcomingTaskRows, statusList, statusGroups, clientsWithLastTask, loginEventRows] =
     await Promise.all([
       db.task.findMany({
-        where: { pinnedAt: { not: null }, archivedAt: null },
+        where: { ...EXCLUDE_DEMO_CLIENT_TASKS, pinnedAt: { not: null }, archivedAt: null },
         include: { client: true, status: true },
         orderBy: { pinnedAt: "desc" },
       }),
       db.task.findMany({
-        where: { eventDate: { gte: new Date() }, archivedAt: null },
+        where: { ...EXCLUDE_DEMO_CLIENT_TASKS, eventDate: { gte: new Date() }, archivedAt: null },
         include: { client: true, status: true },
         orderBy: { eventDate: "asc" },
         take: 6,
@@ -105,7 +116,11 @@ export default async function AdminDashboardPage() {
         where: { key: TASK_STATUS_LIST_KEY },
         include: { items: { orderBy: { sortOrder: "asc" } } },
       }),
-      db.task.groupBy({ by: ["statusId"], where: { archivedAt: null }, _count: { _all: true } }),
+      db.task.groupBy({
+        by: ["statusId"],
+        where: { ...EXCLUDE_DEMO_CLIENT_TASKS, archivedAt: null },
+        _count: { _all: true },
+      }),
       db.client.findMany({
         include: {
           tasks: {
