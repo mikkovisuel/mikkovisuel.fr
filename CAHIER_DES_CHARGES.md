@@ -787,6 +787,33 @@ appliquée à l'ensemble du site :
   `deleteAttachment` — efface aussi le fichier du stockage, pas seulement
   la ligne en base), bouton "Supprimer" ajouté sur chaque document, sur
   `/admin/documents` comme sur la fiche client.
+- Suivi du temps passé par tâche (2026-07-21), avec chronomètre — jamais
+  visible côté espace client. Décisions prises avec le client avant
+  développement (les 4 points ci-dessous) : démarrage/arrêt uniquement
+  depuis la fiche tâche (pas de bouton rapide sur les listes) ; ajout
+  manuel de temps en plus du chronomètre (correction, oubli de lancer le
+  chrono) ; journal détaillé des sessions (pas seulement le total) ; jauge
+  colorée sur la vue Liste et la fiche tâche uniquement (pas Kanban/Par
+  client). Livré :
+  - Nouveau modèle `TaskTimeEntry` (une session = `startedAt`/`endedAt`,
+    `endedAt: null` = session en cours). Un seul admin dans ce projet, donc
+    un seul chronomètre actif à la fois : le démarrer sur une tâche arrête
+    automatiquement celui en cours sur une autre tâche (`startTaskTimer`).
+  - Chronomètre visible dans le header sur toutes les pages admin (pas
+    seulement la fiche tâche), avec le titre de la tâche en cours, le temps
+    écoulé en direct et un bouton "Arrêter".
+  - Nouveau champ `Task.estimatedMinutes` (minutes, optionnel), éditable
+    dans le formulaire de la fiche tâche.
+  - Jauge colorée temps passé/temps estimé : vert en dessous de 80 % de
+    l'estimation, orange de 80 % à 100 %, rouge au-delà — sur la colonne
+    "Temps" de la vue Liste et sur la fiche tâche. Sans temps estimé
+    renseigné, affiche juste le temps passé en texte (rien à comparer).
+  - Sur la fiche tâche, journal des sessions (date, durée, "ajouté
+    manuellement" si applicable) avec suppression individuelle, et
+    formulaire d'ajout manuel de temps (date + durée en minutes) pour
+    corriger un oubli de chronomètre.
+  - Jamais exposé côté espace client (aucune page client n'importe ces
+    champs/composants) ni dans les exports/rapports PDF existants.
 
 ## Décisions techniques déléguées à Claude Code
 
@@ -929,3 +956,4 @@ Le client a explicitement délégué ces choix :
 | 2026-07-21 | Ne pas faire apparaître les tâches du client de démo dans les listes courantes (réglage ou filtre en dur) | Livré (filtre en dur retenu, plus simple) : nouveau filtre partagé `EXCLUDE_DEMO_CLIENT_TASKS`, appliqué sur `/admin/taches` et le tableau de bord `/admin` ; les tâches restent gérables depuis la fiche du client de démo lui-même — voir section "Backend interne" |
 | 2026-07-21 | Ajouter une fonction de suppression des documents | Livré : nouvelle action `deleteDocument` (miroir de la suppression des livrables/pièces jointes), bouton "Supprimer" sur `/admin/documents` et sur la fiche client — voir section "Backend interne" |
 | 2026-07-21 | Ajouter le réglage des notifications par email dans les pages profil de chaque client (dans les réglages) | Livré : nouvelle section "Notifications par email" sur `/espace-client/compte` ("Mon compte"), le client peut désormais activer/désactiver lui-même ses notifications, en plus du contrôle déjà existant côté admin — voir section "Espace client" |
+| 2026-07-21 | Suivi du temps passé par tâche : chronomètre visible dans le header, arrêt automatique du précédent au démarrage d'un nouveau, vue du temps passé sur la vue globale, champ temps estimé (minutes), jauge colorée (vert/orange 80 %/rouge >100 %), rien de tout ça côté espace client. 4 précisions tranchées avant développement : démarrage/arrêt sur la fiche tâche uniquement, ajout manuel de temps possible, journal détaillé des sessions, jauge sur la vue Liste + fiche tâche | Livré (les 4 points, précisions comprises) : nouveau modèle `TaskTimeEntry`, chronomètre dans le header admin (toutes les pages), nouveau champ `Task.estimatedMinutes`, jauge colorée sur `/admin/taches` (colonne "Temps") et la fiche tâche, journal des sessions avec ajout manuel et suppression — voir section "Backend interne" |

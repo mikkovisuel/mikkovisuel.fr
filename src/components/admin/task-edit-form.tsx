@@ -25,6 +25,7 @@ export function TaskEditForm({
     description: string;
     eventDate: string;
     dueDate: string;
+    estimatedMinutes: string;
     types: string[];
     formats: string[];
   };
@@ -79,6 +80,21 @@ export function TaskEditForm({
           type="date"
           defaultValue={defaultValues.dueDate}
           className="rounded-xl border border-line bg-surface-elevated px-4 py-2.5 text-sm text-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
+        />
+      </div>
+      <div className="flex flex-col gap-2">
+        <label htmlFor="estimatedMinutes" className="text-sm font-medium text-ink">
+          Temps estimé (minutes)
+        </label>
+        <input
+          id="estimatedMinutes"
+          name="estimatedMinutes"
+          type="number"
+          min="0"
+          step="1"
+          placeholder="120"
+          defaultValue={defaultValues.estimatedMinutes}
+          className="w-32 rounded-xl border border-line bg-surface-elevated px-4 py-2.5 text-sm text-ink placeholder:text-ink-muted/70 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
         />
       </div>
       {typeOptions.length > 0 && (

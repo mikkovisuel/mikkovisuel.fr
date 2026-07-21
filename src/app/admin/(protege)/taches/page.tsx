@@ -73,6 +73,7 @@ export default async function AdminTasksPage({
         status: true,
         types: true,
         formats: true,
+        timeEntries: { select: { startedAt: true, endedAt: true } },
         _count: { select: { deliverables: true, attachments: true } },
       },
       orderBy: buildTaskOrderBy(sortField, sortDir),

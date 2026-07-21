@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { GearSix } from "@phosphor-icons/react/dist/ssr";
 import { verifyAdminSession } from "@/lib/dal";
+import { db } from "@/lib/db";
 import { BrandLogo } from "@/components/brand-logo";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { TimerHeaderWidget } from "@/components/admin/timer-header-widget";
 
 const navLinks = [
   { href: "/admin", label: "Tableau de bord" },
@@ -23,6 +25,13 @@ export default async function AdminProtectedLayout({
 }) {
   const admin = await verifyAdminSession();
 
+  // Chronomètre visible dans tout l'admin (pas seulement la fiche tâche) —
+  // au plus une ligne `endedAt: null` à la fois, voir `startTaskTimer`.
+  const runningEntry = await db.taskTimeEntry.findFirst({
+    where: { endedAt: null },
+    include: { task: true },
+  });
+
   return (
     <div className="flex min-h-full flex-1 flex-col">
       <header className="border-b border-line">
@@ -34,6 +43,15 @@ export default async function AdminProtectedLayout({
             </span>
           </Link>
           <div className="flex items-center gap-4">
+            {runningEntry && (
+              <TimerHeaderWidget
+                activeTimer={{
+                  taskId: runningEntry.taskId,
+                  taskTitle: runningEntry.task.title,
+                  startedAt: runningEntry.startedAt.toISOString(),
+                }}
+              />
+            )}
             <span className="hidden text-sm text-ink-muted sm:inline">{admin.email}</span>
             <Link
               href="/admin/reglages"

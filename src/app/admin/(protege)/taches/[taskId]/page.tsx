@@ -8,6 +8,9 @@ import { TaskEditForm } from "@/components/admin/task-edit-form";
 import { TaskPinButton } from "@/components/admin/task-pin-button";
 import { TaskStatusSelect } from "@/components/admin/task-status-select";
 import { TaskValidationButton } from "@/components/admin/task-validation-button";
+import { TaskTimerButton } from "@/components/admin/task-timer-button";
+import { TaskTimeGauge } from "@/components/admin/task-time-gauge";
+import { TaskTimeEntries } from "@/components/admin/task-time-entries";
 import { DeleteButton } from "@/components/admin/delete-button";
 import { DeliverableUploadForm } from "@/components/admin/deliverable-upload-form";
 import { AttachmentUploadForm } from "@/components/admin/attachment-upload-form";
@@ -28,6 +31,7 @@ import {
   TASK_STATUS_LIST_KEY,
 } from "@/lib/dropdown-lists";
 import { taskDateFormatter, taskDateTimeFormatter } from "@/lib/tasks";
+import { sumTaskTimeMs } from "@/lib/time-tracking";
 
 export const metadata: Metadata = {
   title: "Tâche — Admin Mikko Visuel",
@@ -59,6 +63,7 @@ export default async function TaskDetailPage({
         comments: { orderBy: { createdAt: "asc" } },
         refusalHistory: { orderBy: { refusedAt: "desc" } },
         statusHistory: { orderBy: { changedAt: "desc" } },
+        timeEntries: { orderBy: { startedAt: "desc" } },
       },
     }),
     db.dropdownList.findUnique({
@@ -78,6 +83,8 @@ export default async function TaskDetailPage({
   if (!task) notFound();
 
   const updateThisTask = updateTask.bind(null, task.id);
+  const runningEntry = task.timeEntries.find((entry) => entry.endedAt === null) ?? null;
+  const spentMs = sumTaskTimeMs(task.timeEntries);
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-10 sm:px-6 lg:px-8">
@@ -137,6 +144,10 @@ export default async function TaskDetailPage({
           statuses={statusList?.items ?? []}
         />
         <TaskValidationButton taskId={task.id} currentSlug={task.status.slug} />
+        <TaskTimerButton
+          taskId={task.id}
+          activeEntry={runningEntry ? { startedAt: runningEntry.startedAt.toISOString() } : null}
+        />
       </div>
 
       {task.refusalReason && (
@@ -153,11 +164,22 @@ export default async function TaskDetailPage({
             description: task.description ?? "",
             eventDate: toDateInputValue(task.eventDate),
             dueDate: toDateInputValue(task.dueDate),
+            estimatedMinutes: task.estimatedMinutes?.toString() ?? "",
             types: task.types.map((type) => type.slug),
             formats: task.formats.map((format) => format.slug),
           }}
         />
       </div>
+
+      <section className="mt-12">
+        <h2 className="text-sm font-medium text-ink-muted">Temps passé</h2>
+        <div className="mt-4">
+          <TaskTimeGauge spentMs={spentMs} estimatedMinutes={task.estimatedMinutes} />
+        </div>
+        <div className="mt-4">
+          <TaskTimeEntries taskId={task.id} entries={task.timeEntries} />
+        </div>
+      </section>
 
       {task.statusHistory.length > 0 && (
         <section className="mt-12">

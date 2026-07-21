@@ -249,6 +249,15 @@ export async function updateTask(
   }
 
   const dueDateRaw = formData.get("dueDate");
+  const estimatedMinutesRaw = formData.get("estimatedMinutes");
+  let estimatedMinutes: number | null = null;
+  if (typeof estimatedMinutesRaw === "string" && estimatedMinutesRaw.trim() !== "") {
+    const parsedMinutes = Number.parseInt(estimatedMinutesRaw, 10);
+    if (!Number.isInteger(parsedMinutes) || parsedMinutes < 0) {
+      return { error: "Le temps estimé doit être un nombre de minutes positif." };
+    }
+    estimatedMinutes = parsedMinutes;
+  }
 
   const task = await db.task.findUnique({ where: { id: taskId } });
   if (!task) return { error: "Tâche introuvable." };
@@ -265,6 +274,7 @@ export async function updateTask(
       description: parsed.data.description,
       eventDate: parsed.data.eventDate ? new Date(parsed.data.eventDate) : null,
       dueDate: typeof dueDateRaw === "string" && dueDateRaw ? new Date(dueDateRaw) : null,
+      estimatedMinutes,
       types: { set: typeIds },
       formats: { set: formatIds },
     },

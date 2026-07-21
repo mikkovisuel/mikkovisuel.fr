@@ -2,6 +2,7 @@ import Link from "next/link";
 import { CaretUp, CaretDown } from "@phosphor-icons/react/dist/ssr";
 import { TaskStatusSelect } from "@/components/admin/task-status-select";
 import { TaskPinButton } from "@/components/admin/task-pin-button";
+import { TaskTimeGauge } from "@/components/admin/task-time-gauge";
 import { StatusBadge } from "@/components/status-badge";
 import { AttachmentBadge } from "@/components/attachment-badge";
 import { sendTaskReminder } from "@/lib/actions/tasks";
@@ -11,6 +12,7 @@ import {
   type TaskSortField,
   type TaskSortDir,
 } from "@/lib/tasks";
+import { sumTaskTimeMs } from "@/lib/time-tracking";
 
 interface TaskTableTask {
   id: string;
@@ -20,6 +22,8 @@ interface TaskTableTask {
   dueDate: Date | null;
   refusalReason: string | null;
   pinnedAt: Date | null;
+  estimatedMinutes: number | null;
+  timeEntries: { startedAt: Date; endedAt: Date | null }[];
   status: { slug: string; color: string };
   types: { id: string; label: string; color: string }[];
   formats: { id: string; label: string; color: string }[];
@@ -34,6 +38,7 @@ const COLUMNS: { label: string; field?: TaskSortField }[] = [
   { label: "Tâche", field: "tache" },
   { label: "Type" },
   { label: "Formats" },
+  { label: "Temps" },
   { label: "Statut", field: "statut" },
   { label: "" },
 ];
@@ -184,6 +189,13 @@ export function TaskTable({
                       ))}
                     </div>
                   )}
+                </td>
+                <td className="px-4 py-3 align-top">
+                  <TaskTimeGauge
+                    spentMs={sumTaskTimeMs(task.timeEntries)}
+                    estimatedMinutes={task.estimatedMinutes}
+                    compact
+                  />
                 </td>
                 <td className="px-4 py-3 align-top">
                   <TaskStatusSelect

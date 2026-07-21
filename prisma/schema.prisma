@@ -202,6 +202,11 @@ model Task {
   // logique que `Document.sentAt` : un indicateur envoyé/non envoyé, pas un
   // accusé de réception.
   deliverablesSentAt DateTime?
+  // Temps estimé pour la tâche, en minutes — saisi par l'admin, comparé au
+  // temps réellement passé (`TaskTimeEntry`) pour la jauge colorée de
+  // `/admin/taches`. Jamais exposé côté espace client (suivi interne
+  // uniquement).
+  estimatedMinutes   Int?
   createdAt          DateTime     @default(now())
   updatedAt          DateTime     @updatedAt
 
@@ -213,6 +218,27 @@ model Task {
   comments       TaskComment[]
   refusalHistory TaskRefusalHistory[]
   statusHistory  TaskStatusHistory[]
+  timeEntries    TaskTimeEntry[]
+}
+
+// Suivi du temps passé sur une tâche (chronomètre visible dans le header
+// admin) — une ligne par session. `endedAt` null = session en cours ; un
+// seul admin existe dans ce projet, donc au plus une ligne `endedAt: null`
+// à la fois dans toute la table (imposé par `startTaskTimer`, qui arrête
+// systématiquement la session en cours avant d'en démarrer une nouvelle,
+// sur n'importe quelle tâche). `manual` distingue les sessions ajoutées à
+// la main (correction, oubli de lancer le chrono) des sessions
+// effectivement chronométrées — mêmes champs `startedAt`/`endedAt` dans les
+// deux cas pour garder un calcul de durée uniforme. Jamais exposé côté
+// espace client.
+model TaskTimeEntry {
+  id        String    @id @default(cuid())
+  taskId    String
+  task      Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  startedAt DateTime
+  endedAt   DateTime?
+  manual    Boolean   @default(false)
+  createdAt DateTime  @default(now())
 }
 
 // Audit trail des changements de statut d'une tâche (qui, quand, vers quel
