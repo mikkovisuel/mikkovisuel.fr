@@ -3,7 +3,7 @@ import { TaskStatusSelect } from "@/components/admin/task-status-select";
 import { TaskPinButton } from "@/components/admin/task-pin-button";
 import { StatusBadge } from "@/components/status-badge";
 import { AttachmentBadge } from "@/components/attachment-badge";
-import { isTaskOverdue, taskDateFormatter } from "@/lib/tasks";
+import { isTaskOverdue, isTaskDueToday, taskDateFormatter } from "@/lib/tasks";
 
 interface TaskRowProps {
   task: {
@@ -26,6 +26,7 @@ interface TaskRowProps {
 
 export function TaskRow({ task, statusOptions, showClient = false }: TaskRowProps) {
   const overdue = isTaskOverdue(task);
+  const dueToday = isTaskDueToday(task);
 
   return (
     <div className="flex flex-col gap-3 px-6 py-4">
@@ -53,11 +54,19 @@ export function TaskRow({ task, statusOptions, showClient = false }: TaskRowProp
             </p>
           )}
           {task.dueDate && (
-            <p className="mt-1 text-sm text-ink-muted">
+            <p
+              className={`mt-1 text-sm ${
+                overdue
+                  ? "font-medium text-danger"
+                  : dueToday
+                    ? "font-bold text-blue-600 dark:text-blue-400"
+                    : "text-ink-muted"
+              }`}
+            >
               Échéance le {taskDateFormatter.format(task.dueDate)}
+              {overdue && " · En retard"}
             </p>
           )}
-          {overdue && <p className="mt-1 text-sm font-medium text-danger">En retard</p>}
           {task.refusalReason && (
             <p className="mt-1 text-sm text-danger">Motif de refus : {task.refusalReason}</p>
           )}

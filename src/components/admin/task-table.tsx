@@ -8,6 +8,7 @@ import { AttachmentBadge } from "@/components/attachment-badge";
 import { sendTaskReminder } from "@/lib/actions/tasks";
 import {
   isTaskOverdue,
+  isTaskDueToday,
   taskDateFormatterShort,
   type TaskSortField,
   type TaskSortDir,
@@ -114,6 +115,7 @@ export function TaskTable({
         <tbody className="divide-y divide-line">
           {tasks.map((task) => {
             const overdue = isTaskOverdue(task);
+            const dueToday = isTaskDueToday(task);
             return (
               <tr key={task.id}>
                 <td className="whitespace-nowrap px-4 py-3 pl-6 align-top text-ink-muted">
@@ -121,7 +123,15 @@ export function TaskTable({
                 </td>
                 <td className="whitespace-nowrap px-4 py-3 align-top">
                   {task.dueDate ? (
-                    <span className={overdue ? "font-medium text-danger" : "text-ink-muted"}>
+                    <span
+                      className={
+                        overdue
+                          ? "font-medium text-danger"
+                          : dueToday
+                            ? "font-bold text-blue-600 dark:text-blue-400"
+                            : "text-ink-muted"
+                      }
+                    >
                       {taskDateFormatterShort.format(task.dueDate)}
                       {overdue && (
                         <>

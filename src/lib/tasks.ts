@@ -13,9 +13,34 @@ export const EXCLUDE_DEMO_CLIENT_TASKS = {
   client: { isDemo: false },
 } satisfies Prisma.TaskWhereInput;
 
+// Minuit aujourd'hui (heure locale) — sert de seuil pour "en retard" au lieu
+// de `new Date()` : une échéance fixée à aujourd'hui ne doit pas compter
+// comme en retard tant que la journée n'est pas terminée (voir
+// `isTaskDueToday`, qui la traite comme un cas à part, pas "en retard").
+// Exporté pour que les requêtes Prisma (ex. le compteur du tableau de bord)
+// utilisent le même seuil que l'affichage.
+export function startOfToday(): Date {
+  const date = new Date();
+  date.setHours(0, 0, 0, 0);
+  return date;
+}
+
 export function isTaskOverdue(task: { dueDate: Date | null; status: { slug: string } }) {
   return (
-    task.dueDate !== null && task.dueDate < new Date() && task.status.slug !== TASK_STATUS.TERMINE
+    task.dueDate !== null &&
+    task.dueDate < startOfToday() &&
+    task.status.slug !== TASK_STATUS.TERMINE
+  );
+}
+
+// Échéance fixée à aujourd'hui — mis en évidence (bleu, gras) plutôt que
+// traité comme "en retard", pour distinguer "encore dans les temps mais à
+// livrer aujourd'hui" de "dépassé".
+export function isTaskDueToday(task: { dueDate: Date | null; status: { slug: string } }) {
+  return (
+    task.dueDate !== null &&
+    dueDateKey(task.dueDate) === dueDateKey(new Date()) &&
+    task.status.slug !== TASK_STATUS.TERMINE
   );
 }
 
@@ -42,6 +67,18 @@ export const taskDateTimeFormatter = new Intl.DateTimeFormat("fr-FR", {
   hour: "2-digit",
   minute: "2-digit",
 });
+
+// Numéro de semaine ISO 8601 (semaine du jeudi, lundi = premier jour) —
+// utilisé par la vue Calendrier pour afficher "Sem. XX" devant chaque ligne.
+export function isoWeekNumber(date: Date): number {
+  const target = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNumber = (target.getUTCDay() + 6) % 7; // lundi = 0
+  target.setUTCDate(target.getUTCDate() - dayNumber + 3); // jeudi de cette semaine
+  const firstThursday = new Date(Date.UTC(target.getUTCFullYear(), 0, 4));
+  const firstDayNumber = (firstThursday.getUTCDay() + 6) % 7;
+  firstThursday.setUTCDate(firstThursday.getUTCDate() - firstDayNumber + 3);
+  return 1 + Math.round((target.getTime() - firstThursday.getTime()) / (7 * 24 * 60 * 60 * 1000));
+}
 
 // "YYYY-MM-DD" in local time (not toISOString, which shifts to UTC) so it
 // matches the day the admin actually sees in the calendar grid.
@@ -85,10 +122,12 @@ export function groupTasksByClient<T extends { client: { name: string } }>(tasks
   return [...byClient.entries()].sort(([a], [b]) => a.localeCompare(b, "fr"));
 }
 
-// Timeline de suivi côté espace client : les 6 statuts verrouillés (voir
+// Timeline de suivi côté espace client : les statuts verrouillés (voir
 // TASK_STATUS) se replient sur 4 étapes visuelles — "BAT validé" et "À
 // modifier" sont deux issues de l'étape "À valider" (validé vs à corriger),
-// pas des étapes à part entière.
+// pas des étapes à part entière ; "Non commencé" (ajouté le 2026-07-21) se
+// replie sur l'étape "Nouveau" (même chose du point de vue du client : la
+// tâche n'a pas encore démarré).
 export const TASK_PROGRESS_STEPS = [
   { key: TASK_STATUS.NOUVEAU, label: "Nouveau" },
   { key: TASK_STATUS.EN_COURS, label: "En cours" },
@@ -102,6 +141,7 @@ export function taskProgressStates(statusSlug: string): TaskProgressStepState[] 
   const doneUpTo = (() => {
     switch (statusSlug) {
       case TASK_STATUS.NOUVEAU:
+      case TASK_STATUS.NON_COMMENCE:
         return -1;
       case TASK_STATUS.EN_COURS:
         return 0;

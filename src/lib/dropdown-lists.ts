@@ -10,6 +10,7 @@ export const TASK_FORMAT_LIST_KEY = "task_format";
 
 export const TASK_STATUS = {
   NOUVEAU: "nouveau",
+  NON_COMMENCE: "non-commence",
   EN_COURS: "en-cours",
   A_VALIDER: "a-valider",
   BAT_VALIDE: "bat-valide",
@@ -75,16 +76,25 @@ export interface SeedDropdownItem {
   sortOrder: number;
 }
 
-// Six statuses confirmed with the client — do not add/remove without
-// revisiting the cahier des charges. `locked: true` blocks add/remove of
-// list items in the admin UI (labels/colors/order stay editable).
+// Cycle confirmé avec le client — 6 statuts verrouillés le 2026-07-13,
+// "Non commencé" ajouté le 2026-07-21 (demande explicite du client de
+// rouvrir ce cycle). Do not add/remove further without revisiting the
+// cahier des charges. `locked: true` blocks add/remove of list items in the
+// admin UI (labels/colors/order stay editable).
 export const TASK_STATUS_SEED: SeedDropdownItem[] = [
   { slug: TASK_STATUS.NOUVEAU, label: "Nouveau", color: "slate", locked: true, sortOrder: 0 },
-  { slug: TASK_STATUS.EN_COURS, label: "En cours", color: "blue", locked: true, sortOrder: 1 },
-  { slug: TASK_STATUS.A_VALIDER, label: "À valider", color: "amber", locked: true, sortOrder: 2 },
-  { slug: TASK_STATUS.BAT_VALIDE, label: "BAT validé", color: "emerald", locked: true, sortOrder: 3 },
-  { slug: TASK_STATUS.A_MODIFIER, label: "À modifier", color: "rose", locked: true, sortOrder: 4 },
-  { slug: TASK_STATUS.TERMINE, label: "Terminé", color: "emerald", locked: true, sortOrder: 5 },
+  {
+    slug: TASK_STATUS.NON_COMMENCE,
+    label: "Non commencé",
+    color: "cyan",
+    locked: true,
+    sortOrder: 1,
+  },
+  { slug: TASK_STATUS.EN_COURS, label: "En cours", color: "blue", locked: true, sortOrder: 2 },
+  { slug: TASK_STATUS.A_VALIDER, label: "À valider", color: "amber", locked: true, sortOrder: 3 },
+  { slug: TASK_STATUS.BAT_VALIDE, label: "BAT validé", color: "emerald", locked: true, sortOrder: 4 },
+  { slug: TASK_STATUS.A_MODIFIER, label: "À modifier", color: "rose", locked: true, sortOrder: 5 },
+  { slug: TASK_STATUS.TERMINE, label: "Terminé", color: "emerald", locked: true, sortOrder: 6 },
 ];
 
 // Document types stay open for admins to extend, except "facture" which the

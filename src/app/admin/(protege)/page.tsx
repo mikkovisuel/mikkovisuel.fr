@@ -3,7 +3,7 @@ import Link from "next/link";
 import { verifyAdminSession } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { TASK_STATUS, TASK_STATUS_LIST_KEY } from "@/lib/dropdown-lists";
-import { EXCLUDE_DEMO_CLIENT_TASKS } from "@/lib/tasks";
+import { EXCLUDE_DEMO_CLIENT_TASKS, startOfToday } from "@/lib/tasks";
 import { RecentActivity } from "@/components/admin/recent-activity";
 import { PinnedTasks } from "@/components/admin/pinned-tasks";
 import { UpcomingEvents } from "@/components/admin/upcoming-events";
@@ -29,7 +29,7 @@ export default async function AdminDashboardPage() {
     db.task.count({
       where: {
         ...EXCLUDE_DEMO_CLIENT_TASKS,
-        dueDate: { lt: new Date() },
+        dueDate: { lt: startOfToday() },
         status: { slug: { not: TASK_STATUS.TERMINE } },
       },
     }),

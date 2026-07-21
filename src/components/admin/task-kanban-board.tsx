@@ -7,7 +7,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { AttachmentBadge } from "@/components/attachment-badge";
 import { TaskStatusSelect } from "@/components/admin/task-status-select";
 import { TaskPinButton } from "@/components/admin/task-pin-button";
-import { isTaskOverdue, taskDateFormatter } from "@/lib/tasks";
+import { isTaskOverdue, isTaskDueToday, taskDateFormatter } from "@/lib/tasks";
 import { PALETTE_BADGE_CLASSES, type PaletteColor, type TaskStatusSlug } from "@/lib/dropdown-lists";
 
 interface KanbanTask {
@@ -79,6 +79,7 @@ export function TaskKanbanBoard({
               )}
               {columnTasks.map((task) => {
                 const overdue = isTaskOverdue(task);
+                const dueToday = isTaskDueToday(task);
                 return (
                   <div
                     key={task.id}
@@ -122,7 +123,13 @@ export function TaskKanbanBoard({
                     )}
                     {task.dueDate && (
                       <p
-                        className={`text-xs ${overdue ? "font-medium text-danger" : "text-ink-muted"}`}
+                        className={`text-xs ${
+                          overdue
+                            ? "font-medium text-danger"
+                            : dueToday
+                              ? "font-bold text-blue-600 dark:text-blue-400"
+                              : "text-ink-muted"
+                        }`}
                       >
                         Échéance le {taskDateFormatter.format(task.dueDate)}
                         {overdue ? " — en retard" : ""}

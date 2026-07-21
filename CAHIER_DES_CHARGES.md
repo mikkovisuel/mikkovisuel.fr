@@ -149,10 +149,12 @@ appliquée à l'ensemble du site :
   **Calendrier** et **Suggestion**, voir plus bas) :
   **Accueil / À valider / Suivi / Calendrier / Livrables / Administratif /
   Suggestion**.
-- Cycle de statut d'une tâche (confirmé par le client le 2026-07-13, ne pas
-  rediscuter sauf demande explicite) :
-  `Nouveau → En cours → À valider → BAT validé / À modifier → Terminé`
-- Workflow de validation/refus des BAT par le client.
+- Cycle de statut d'une tâche (confirmé par le client le 2026-07-13, "Non
+  commencé" ajouté le 2026-07-21 sur demande explicite du client — voir
+  section "Backend interne") :
+  `Nouveau → Non commencé → En cours → À valider → BAT validé / À modifier → Terminé`
+- Workflow de validation/refus des BAT par le client, et par l'admin en son
+  nom depuis l'admin (ajouté le 2026-07-21 — voir section "Backend interne").
 - Paiement en ligne (Stripe Checkout), montants en EUR.
 - Préférence de thème clair/sombre par compte, mémorisée.
 - Notifications email aux étapes clés (dégradé proprement en log console si
@@ -814,6 +816,42 @@ appliquée à l'ensemble du site :
     corriger un oubli de chronomètre.
   - Jamais exposé côté espace client (aucune page client n'importe ces
     champs/composants) ni dans les exports/rapports PDF existants.
+- Validation/refus de BAT directement depuis l'admin (2026-07-21) : jusqu'ici
+  seul le client pouvait valider/refuser un BAT depuis son espace. Ajout de
+  boutons "Valider"/"Refuser" sur `/admin/taches/[taskId]`, visibles
+  uniquement quand le statut est "À valider" (même formulaire de motif que
+  côté client pour un refus). Décision prise avec le client avant
+  développement : le client reçoit la même notification email que
+  s'il avait validé/refusé lui-même, avec la mention "Validé/Refusé par
+  Mikko (admin)" — l'admin ne se notifie pas lui-même dans ce cas (contre
+  toujours notifié quand c'est le client qui valide/refuse).
+- Échéance du jour distinguée du retard (2026-07-21) : une tâche dont
+  l'échéance de livraison tombe aujourd'hui apparaissait comme "en retard"
+  (rouge). Corrigé : le seuil de retard est désormais minuit du jour même
+  (pas l'heure courante) — une échéance today s'affiche en bleu gras sans
+  la mention "en retard", une échéance passée reste en rouge avec la
+  mention. Appliqué aux 3 vues (Liste, Kanban, cartes fiche client) et au
+  compteur "en retard" du tableau de bord.
+- Numéros de semaine sur la vue Calendrier (2026-07-21) : chaque ligne de
+  semaine affiche désormais "S27", "S28"... (numérotation ISO 8601),
+  côté admin comme côté espace client (`TaskCalendarView` est partagé par
+  les deux).
+- Tri de la vue Clients (2026-07-21) : `/admin/clients` n'avait qu'un tri
+  fixe (date d'ajout, plus récent en premier). Ajout d'un contrôle "Trier
+  par" (alphabétique ou date d'ajout, croissant/décroissant), même pattern
+  que le tri déjà existant sur les tâches.
+- Nouveau statut "Non commencé" (2026-07-21) : ajouté entre "Nouveau" et "En
+  cours" — rouvre explicitement le cycle des statuts verrouillé le
+  2026-07-13, à la demande du client. Se replie sur l'étape "Nouveau" dans
+  la timeline simplifiée de l'espace client (aucun changement visuel côté
+  client, les deux statuts signifient "pas encore démarré" de son point de
+  vue) ; a sa propre colonne sur la vue Kanban admin (générée
+  automatiquement à partir de la liste des statuts, aucun code dédié
+  nécessaire).
+- Signalement : masquer les tâches de l'espace de démonstration des vues
+  courantes (2026-07-21) — déjà livré le 2026-07-20 (`EXCLUDE_DEMO_CLIENT_TASKS`
+  sur `/admin/taches` et le tableau de bord), confirmé par le client comme
+  un doublon, rien à refaire.
 
 ## Décisions techniques déléguées à Claude Code
 
@@ -957,3 +995,9 @@ Le client a explicitement délégué ces choix :
 | 2026-07-21 | Ajouter une fonction de suppression des documents | Livré : nouvelle action `deleteDocument` (miroir de la suppression des livrables/pièces jointes), bouton "Supprimer" sur `/admin/documents` et sur la fiche client — voir section "Backend interne" |
 | 2026-07-21 | Ajouter le réglage des notifications par email dans les pages profil de chaque client (dans les réglages) | Livré : nouvelle section "Notifications par email" sur `/espace-client/compte` ("Mon compte"), le client peut désormais activer/désactiver lui-même ses notifications, en plus du contrôle déjà existant côté admin — voir section "Espace client" |
 | 2026-07-21 | Suivi du temps passé par tâche : chronomètre visible dans le header, arrêt automatique du précédent au démarrage d'un nouveau, vue du temps passé sur la vue globale, champ temps estimé (minutes), jauge colorée (vert/orange 80 %/rouge >100 %), rien de tout ça côté espace client. 4 précisions tranchées avant développement : démarrage/arrêt sur la fiche tâche uniquement, ajout manuel de temps possible, journal détaillé des sessions, jauge sur la vue Liste + fiche tâche | Livré (les 4 points, précisions comprises) : nouveau modèle `TaskTimeEntry`, chronomètre dans le header admin (toutes les pages), nouveau champ `Task.estimatedMinutes`, jauge colorée sur `/admin/taches` (colonne "Temps") et la fiche tâche, journal des sessions avec ajout manuel et suppression — voir section "Backend interne" |
+| 2026-07-21 | Pouvoir valider/refuser un BAT directement depuis l'admin (boutons sur la fiche tâche quand le statut est "À valider") | Livré : `validateTaskByAdmin`/`refuseTaskByAdmin`, mêmes notifications email au client qu'aujourd'hui (précision tranchée avant développement), attribuées à "Mikko (admin)" — voir section "Backend interne" |
+| 2026-07-21 | Bien distinguer "en retard" (rouge) d'une échéance le jour même (bleu gras, sans la mention "en retard") | Livré : seuil de retard basé sur minuit du jour même plutôt que l'heure courante, appliqué aux 3 vues de tâches et au compteur du tableau de bord — voir section "Backend interne" |
+| 2026-07-21 | Afficher les numéros de semaine dans la vue Calendrier | Livré : numérotation ISO 8601 ("S27"...) sur `TaskCalendarView`, admin et espace client — voir section "Backend interne" |
+| 2026-07-21 | Pouvoir trier la vue Clients par ordre d'ajout ou alphabétique | Livré : contrôle "Trier par" sur `/admin/clients`, même pattern que le tri des tâches — voir section "Backend interne" |
+| 2026-07-21 | Signalement : masquer les tâches de l'espace de démonstration des listes courantes | Confirmé par le client comme doublon de la demande du 2026-07-20, déjà livrée (`EXCLUDE_DEMO_CLIENT_TASKS`) — rien à refaire |
+| 2026-07-21 | Ajouter un statut de tâche "Non commencé" entre "Nouveau" et "En cours" | Livré : rouvre explicitement le cycle des statuts verrouillé le 2026-07-13 (demande explicite du client), se replie sur l'étape "Nouveau" côté timeline espace client — voir section "Backend interne" |

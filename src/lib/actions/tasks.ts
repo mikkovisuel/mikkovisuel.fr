@@ -374,38 +374,61 @@ export async function validateTask(taskId: string) {
     name: clientUser.name,
   });
 
-  await notifyBatValidated(task.title, task.deliverables.map((d) => d.fileName), validatedAt, clientUser);
+  await notifyBatValidated(task.title, task.deliverables.map((d) => d.fileName), validatedAt, {
+    type: "CLIENT_USER",
+    name: clientUser.name,
+    email: clientUser.email,
+    emailNotificationsEnabled: clientUser.emailNotificationsEnabled,
+  });
 
   revalidateTaskPaths(clientUser.clientId);
 }
 
+type ValidationActor =
+  | { type: "CLIENT_USER"; name: string; email: string; emailNotificationsEnabled: boolean }
+  | { type: "ADMIN"; clientUsers: { email: string; emailNotificationsEnabled: boolean }[] };
+
+// Deux déclencheurs possibles : le client lui-même (`validateTask`) ou
+// l'admin en son nom (`validateTaskByAdmin`, ex. accord donné par téléphone/
+// whatsapp). Dans le premier cas, seul le compte qui a validé reçoit la
+// confirmation (en plus de l'admin) ; dans le second, tous les profils du
+// client abonnés aux notifications la reçoivent (pas de compte précis à
+// l'origine de l'action), et l'admin ne se notifie pas lui-même.
 async function notifyBatValidated(
   taskTitle: string,
   deliverableNames: string[],
   validatedAt: Date,
-  clientUser: { name: string; email: string; emailNotificationsEnabled: boolean },
+  actor: ValidationActor,
 ) {
-  const adminEmail = await getAdminEmail();
   const validatedAtLabel = taskDateFormatter.format(validatedAt);
   const deliverablesHtml =
     deliverableNames.length > 0
       ? `<ul>${deliverableNames.map((name) => `<li>${name}</li>`).join("")}</ul>`
       : "<p>Aucun livrable associé.</p>";
+  const validatedByLabel = actor.type === "CLIENT_USER" ? `${actor.name} (${actor.email})` : "Mikko (admin)";
   const html = `
     <p>Le BAT de la tâche "${taskTitle}" a été validé.</p>
     <p><strong>Date :</strong> ${validatedAtLabel}</p>
-    <p><strong>Validé par :</strong> ${clientUser.name} (${clientUser.email})</p>
+    <p><strong>Validé par :</strong> ${validatedByLabel}</p>
     <p><strong>Livrables validés :</strong></p>
     ${deliverablesHtml}
   `;
 
-  // L'admin reçoit toujours la confirmation ; le client qui vient de valider
-  // ne la reçoit que si ses notifications email sont actives (la préférence
-  // s'applique même à sa propre action, pas seulement aux relances).
-  const recipients = [
-    adminEmail,
-    clientUser.emailNotificationsEnabled ? clientUser.email : null,
-  ].filter((email): email is string => Boolean(email));
+  const recipients: string[] = [];
+  if (actor.type === "CLIENT_USER") {
+    // L'admin reçoit toujours la confirmation ; le client qui vient de
+    // valider ne la reçoit que si ses notifications email sont actives (la
+    // préférence s'applique même à sa propre action, pas seulement aux
+    // relances).
+    const adminEmail = await getAdminEmail();
+    if (adminEmail) recipients.push(adminEmail);
+    if (actor.emailNotificationsEnabled) recipients.push(actor.email);
+  } else {
+    for (const user of actor.clientUsers) {
+      if (user.emailNotificationsEnabled) recipients.push(user.email);
+    }
+  }
+
   for (const to of recipients) {
     await sendEmail({
       trigger: "bat_validated",
@@ -414,6 +437,34 @@ async function notifyBatValidated(
       html,
     });
   }
+}
+
+// Miroir de `validateTask`, déclenché par l'admin plutôt que le client (ex.
+// accord donné par téléphone/WhatsApp) — voir `ValidationActor` pour la
+// différence de notification.
+export async function validateTaskByAdmin(taskId: string) {
+  const admin = await verifyAdminSession();
+
+  const task = await db.task.findUnique({
+    where: { id: taskId },
+    include: { deliverables: true, client: { include: { users: true } } },
+  });
+  if (!task) return;
+
+  const statusItem = await getStatusItem(TASK_STATUS.BAT_VALIDE);
+  const validatedAt = new Date();
+  await db.task.update({
+    where: { id: taskId },
+    data: { statusId: statusItem.id, batValidatedAt: validatedAt, refusalReason: null, refusedAt: null },
+  });
+  await logTaskStatusChange(taskId, statusItem, { type: "ADMIN", id: admin.id, name: "Mikko" });
+
+  await notifyBatValidated(task.title, task.deliverables.map((d) => d.fileName), validatedAt, {
+    type: "ADMIN",
+    clientUsers: task.client.users,
+  });
+
+  revalidateTaskPaths(task.clientId);
 }
 
 export async function refuseTask(
@@ -463,9 +514,55 @@ export async function refuseTask(
   return undefined;
 }
 
-// Alternative au 7e statut "Abandonné" : un champ séparé plutôt que de
-// rouvrir le cycle des 6 statuts verrouillé le 2026-07-13. Sort la tâche de
-// toutes les vues actives (admin et espace client) sans perdre l'historique.
+// Miroir de `refuseTask`, déclenché par l'admin plutôt que le client — tous
+// les profils du client abonnés aux notifications sont prévenus (pas un
+// compte précis, contrairement au refus déclenché par le client lui-même).
+export async function refuseTaskByAdmin(
+  taskId: string,
+  _prev: RefusalFormState,
+  formData: FormData,
+): Promise<RefusalFormState> {
+  const admin = await verifyAdminSession();
+
+  const parsed = RefusalSchema.safeParse({ reason: formData.get("reason") });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Le motif est requis." };
+  }
+
+  const task = await db.task.findUnique({
+    where: { id: taskId },
+    include: { client: { include: { users: true } } },
+  });
+  if (!task) return { error: "Tâche introuvable." };
+
+  const statusItem = await getStatusItem(TASK_STATUS.A_MODIFIER);
+  const refusedAt = new Date();
+  await db.task.update({
+    where: { id: taskId },
+    data: { statusId: statusItem.id, refusalReason: parsed.data.reason, refusedAt },
+  });
+  await db.taskRefusalHistory.create({
+    data: { taskId, reason: parsed.data.reason, refusedAt },
+  });
+  await logTaskStatusChange(taskId, statusItem, { type: "ADMIN", id: admin.id, name: "Mikko" });
+
+  for (const user of task.client.users) {
+    if (!user.emailNotificationsEnabled) continue;
+    await sendEmail({
+      trigger: "refusal_confirmed",
+      to: user.email,
+      subject: `Refus enregistré — ${task.title}`,
+      html: `<p>Le refus concernant "${task.title}" a bien été enregistré par Mikko, avec le motif suivant :</p><blockquote>${parsed.data.reason}</blockquote>`,
+    });
+  }
+
+  revalidateTaskPaths(task.clientId);
+  return undefined;
+}
+
+// Alternative à un statut "Abandonné" : un champ séparé plutôt qu'un statut
+// de plus dans le cycle. Sort la tâche de toutes les vues actives (admin et
+// espace client) sans perdre l'historique.
 export async function archiveTask(taskId: string) {
   await verifyAdminSession();
 

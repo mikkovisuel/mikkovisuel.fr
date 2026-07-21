@@ -3,16 +3,30 @@ import Link from "next/link";
 import { Plus } from "@phosphor-icons/react/dist/ssr";
 import { verifyAdminSession } from "@/lib/dal";
 import { db } from "@/lib/db";
+import { ClientSortControl } from "@/components/admin/client-sort-control";
+import {
+  isClientSortField,
+  buildClientOrderBy,
+  type ClientSortField,
+  type ClientSortDir,
+} from "@/lib/clients";
 
 export const metadata: Metadata = {
   title: "Clients — Admin Mikko Visuel",
 };
 
-export default async function AdminClientsPage() {
+export default async function AdminClientsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ tri?: string; dir?: string }>;
+}) {
   await verifyAdminSession();
+  const { tri, dir } = await searchParams;
+  const sortField: ClientSortField = isClientSortField(tri) ? tri : "date_ajout";
+  const sortDir: ClientSortDir = dir === "asc" ? "asc" : "desc";
 
   const clients = await db.client.findMany({
-    orderBy: { createdAt: "desc" },
+    orderBy: buildClientOrderBy(sortField, sortDir),
     include: { _count: { select: { users: true, tasks: true } } },
   });
 
@@ -27,6 +41,10 @@ export default async function AdminClientsPage() {
           <Plus size={16} weight="bold" />
           Nouveau client
         </Link>
+      </div>
+
+      <div className="mt-6">
+        <ClientSortControl sortField={sortField} sortDir={sortDir} />
       </div>
 
       {clients.length === 0 ? (

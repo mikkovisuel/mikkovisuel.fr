@@ -8,6 +8,7 @@ import { TaskEditForm } from "@/components/admin/task-edit-form";
 import { TaskPinButton } from "@/components/admin/task-pin-button";
 import { TaskStatusSelect } from "@/components/admin/task-status-select";
 import { TaskValidationButton } from "@/components/admin/task-validation-button";
+import { TaskValidateRefuseButtons } from "@/components/admin/task-validate-refuse-buttons";
 import { TaskTimerButton } from "@/components/admin/task-timer-button";
 import { TaskTimeGauge } from "@/components/admin/task-time-gauge";
 import { TaskTimeEntries } from "@/components/admin/task-time-entries";
@@ -26,6 +27,7 @@ import {
 } from "@/lib/actions/files";
 import { postAdminComment } from "@/lib/actions/comments";
 import {
+  TASK_STATUS,
   TASK_TYPE_LIST_KEY,
   TASK_FORMAT_LIST_KEY,
   TASK_STATUS_LIST_KEY,
@@ -149,6 +151,12 @@ export default async function TaskDetailPage({
           activeEntry={runningEntry ? { startedAt: runningEntry.startedAt.toISOString() } : null}
         />
       </div>
+
+      {task.status.slug === TASK_STATUS.A_VALIDER && (
+        <div className="mt-4">
+          <TaskValidateRefuseButtons taskId={task.id} />
+        </div>
+      )}
 
       {task.refusalReason && (
         <p className="mt-3 text-sm text-danger">Motif de refus : {task.refusalReason}</p>
