@@ -620,6 +620,16 @@ appliquée à l'ensemble du site :
   trop lourd pour le conteneur de production, voir l'incident mémoire du
   2026-07-17). Téléchargement uniquement (décision explicite, pas d'envoi
   email intégré).
+  - Habillé aux couleurs de la DA sombre du site (2026-07-21) : fond sombre,
+    accent citron sur le nom de marque et le liseré sous l'en-tête, titres
+    en Clash Display, badges de statut recolorés selon la couleur réelle du
+    statut (même palette que l'admin). En construisant ce style, un bug de
+    police a été corrigé au passage : le `.woff2` de Clash Display
+    (auto-hébergé, utilisé côté web) provoquait des espaces parasites dans
+    certains mots une fois rendu en PDF par `@react-pdf/renderer`/fontkit
+    ("af che" au lieu de "affiche") — la police PDF utilise maintenant une
+    version `.ttf` du même fichier (simple décompression, pas une police
+    différente).
 - Boîte mail Gmail intégrée à l'admin (2026-07-20) : nouveau bouton
   "Emails" sur la fiche client (`/admin/clients/[clientId]`), ouvrant la
   liste des fils de discussion Gmail échangés avec les adresses des
@@ -1001,3 +1011,4 @@ Le client a explicitement délégué ces choix :
 | 2026-07-21 | Pouvoir trier la vue Clients par ordre d'ajout ou alphabétique | Livré : contrôle "Trier par" sur `/admin/clients`, même pattern que le tri des tâches — voir section "Backend interne" |
 | 2026-07-21 | Signalement : masquer les tâches de l'espace de démonstration des listes courantes | Confirmé par le client comme doublon de la demande du 2026-07-20, déjà livrée (`EXCLUDE_DEMO_CLIENT_TASKS`) — rien à refaire |
 | 2026-07-21 | Ajouter un statut de tâche "Non commencé" entre "Nouveau" et "En cours" | Livré : rouvre explicitement le cycle des statuts verrouillé le 2026-07-13 (demande explicite du client), se replie sur l'étape "Nouveau" côté timeline espace client — voir section "Backend interne" |
+| 2026-07-21 | Styliser le rapport PDF par client (tâches en cours) pour coller à la DA sombre du site | Livré : fond sombre, accent citron, titres en Clash Display, badges de statut recolorés selon la vraie couleur du statut. Au passage, correction d'un bug de rendu du `.woff2` de Clash Display dans le PDF (espaces parasites dans certains mots) en passant à un `.ttf` du même fichier — voir section "Backend interne" |
