@@ -12,6 +12,7 @@ import {
   Check,
   X,
   NotePencil,
+  CaretLeft,
 } from "@phosphor-icons/react";
 import {
   createFolder,
@@ -44,6 +45,12 @@ export interface ClientOption {
 }
 
 type View = { type: "all" } | { type: "pinned" } | { type: "folder"; folderId: string };
+
+// En dessous de `md`, les 3 colonnes n'ont pas la place de coexister : on
+// n'affiche qu'un panneau à la fois façon Apple Notes sur iPhone (dossiers
+// -> notes -> édition, avec retour). À partir de `md`, ignoré : les 3
+// colonnes restent côte à côte comme sur desktop.
+type MobilePane = "folders" | "list" | "editor";
 
 const SAVE_DELAY_MS = 600;
 
@@ -78,6 +85,7 @@ export function NotesApp({
   const [notes, setNotes] = useState(initialNotes);
   const [view, setView] = useState<View>({ type: "all" });
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(initialNotes[0]?.id ?? null);
+  const [mobilePane, setMobilePane] = useState<MobilePane>("folders");
   const [search, setSearch] = useState("");
   const [clientFilter, setClientFilter] = useState<string>("");
   const [isAddingFolder, setIsAddingFolder] = useState(false);
@@ -150,14 +158,28 @@ export function NotesApp({
     };
     setNotes((prev) => [created, ...prev]);
     setSelectedNoteId(created.id);
+    setMobilePane("editor");
   }
 
   async function handleDeleteNote(noteId: string) {
     if (!window.confirm("Supprimer définitivement cette note ?")) return;
     if (saveTimers.current[noteId]) clearTimeout(saveTimers.current[noteId]);
     setNotes((prev) => prev.filter((note) => note.id !== noteId));
-    if (selectedNoteId === noteId) setSelectedNoteId(null);
+    if (selectedNoteId === noteId) {
+      setSelectedNoteId(null);
+      setMobilePane("list");
+    }
     await deleteNote(noteId);
+  }
+
+  function selectView(next: View) {
+    setView(next);
+    setMobilePane("list");
+  }
+
+  function selectNote(noteId: string) {
+    setSelectedNoteId(noteId);
+    setMobilePane("editor");
   }
 
   async function handleCreateFolder() {
@@ -199,9 +221,13 @@ export function NotesApp({
   return (
     <div className="flex h-[calc(100vh-8rem)] overflow-hidden rounded-xl border border-line bg-surface-elevated">
       {/* Dossiers */}
-      <aside className="flex w-56 shrink-0 flex-col gap-1 overflow-y-auto border-r border-line p-3">
+      <aside
+        className={`w-full shrink-0 flex-col gap-1 overflow-y-auto border-r border-line p-3 md:flex md:w-56 ${
+          mobilePane === "folders" ? "flex" : "hidden"
+        }`}
+      >
         <button
-          onClick={() => setView({ type: "all" })}
+          onClick={() => selectView({ type: "all" })}
           className={`rounded-md px-2.5 py-1.5 text-left text-sm transition-colors ${
             view.type === "all" ? "bg-accent text-accent-ink" : "text-ink hover:bg-surface"
           }`}
@@ -209,7 +235,7 @@ export function NotesApp({
           Toutes les notes
         </button>
         <button
-          onClick={() => setView({ type: "pinned" })}
+          onClick={() => selectView({ type: "pinned" })}
           className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-left text-sm transition-colors ${
             view.type === "pinned" ? "bg-accent text-accent-ink" : "text-ink hover:bg-surface"
           }`}
@@ -255,7 +281,7 @@ export function NotesApp({
               }`}
             >
               <button
-                onClick={() => setView({ type: "folder", folderId: folder.id })}
+                onClick={() => selectView({ type: "folder", folderId: folder.id })}
                 className="flex flex-1 items-center gap-1.5 truncate text-left"
               >
                 <FolderSimple size={14} weight="regular" />
@@ -308,8 +334,18 @@ export function NotesApp({
       </aside>
 
       {/* Liste des notes */}
-      <section className="flex w-80 shrink-0 flex-col border-r border-line">
+      <section
+        className={`w-full shrink-0 flex-col border-r border-line md:flex md:w-80 ${
+          mobilePane === "list" ? "flex" : "hidden"
+        }`}
+      >
         <div className="space-y-2 border-b border-line p-3">
+          <button
+            onClick={() => setMobilePane("folders")}
+            className="flex items-center gap-1 text-sm text-ink-muted hover:text-ink md:hidden"
+          >
+            <CaretLeft size={14} /> Dossiers
+          </button>
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-semibold text-ink">{viewLabel}</h2>
             <button
@@ -354,7 +390,7 @@ export function NotesApp({
           {visibleNotes.map((note) => (
             <li key={note.id}>
               <button
-                onClick={() => setSelectedNoteId(note.id)}
+                onClick={() => selectNote(note.id)}
                 className={`w-full border-b border-line px-3 py-2.5 text-left transition-colors ${
                   selectedNoteId === note.id ? "bg-surface" : "hover:bg-surface"
                 }`}
@@ -376,21 +412,34 @@ export function NotesApp({
       </section>
 
       {/* Éditeur */}
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div
+        className={`w-full flex-1 flex-col overflow-hidden md:flex ${
+          mobilePane === "editor" ? "flex" : "hidden"
+        }`}
+      >
         {selectedNote ? (
           <>
-            <div className="flex items-center justify-between gap-3 border-b border-line px-6 py-3">
-              <input
-                value={selectedNote.title}
-                onChange={(e) => patchNote(selectedNote.id, { title: e.target.value })}
-                placeholder="Titre"
-                className="flex-1 font-display text-xl font-semibold text-ink focus:outline-none"
-              />
-              <div className="flex shrink-0 items-center gap-2">
+            <div className="flex flex-col gap-2 border-b border-line px-4 py-3 md:flex-row md:items-center md:justify-between md:gap-3 md:px-6">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setMobilePane("list")}
+                  aria-label="Retour aux notes"
+                  className="shrink-0 text-ink-muted hover:text-ink md:hidden"
+                >
+                  <CaretLeft size={18} />
+                </button>
+                <input
+                  value={selectedNote.title}
+                  onChange={(e) => patchNote(selectedNote.id, { title: e.target.value })}
+                  placeholder="Titre"
+                  className="min-w-0 flex-1 font-display text-xl font-semibold text-ink focus:outline-none"
+                />
+              </div>
+              <div className="flex flex-wrap items-center gap-2 md:shrink-0 md:flex-nowrap">
                 <select
                   value={selectedNote.folderId ?? ""}
                   onChange={(e) => patchNote(selectedNote.id, { folderId: e.target.value || null }, true)}
-                  className="rounded-md border border-line bg-surface px-2 py-1 text-xs text-ink-muted focus:outline-none focus:ring-1 focus:ring-accent"
+                  className="min-w-0 max-w-[9rem] rounded-md border border-line bg-surface px-2 py-1 text-xs text-ink-muted focus:outline-none focus:ring-1 focus:ring-accent"
                 >
                   <option value="">Sans dossier</option>
                   {folders.map((folder) => (
@@ -403,7 +452,7 @@ export function NotesApp({
                   <select
                     value={selectedNote.clientId ?? ""}
                     onChange={(e) => patchNote(selectedNote.id, { clientId: e.target.value || null }, true)}
-                    className="rounded-md border border-line bg-surface px-2 py-1 text-xs text-ink-muted focus:outline-none focus:ring-1 focus:ring-accent"
+                    className="min-w-0 max-w-[9rem] rounded-md border border-line bg-surface px-2 py-1 text-xs text-ink-muted focus:outline-none focus:ring-1 focus:ring-accent"
                   >
                     <option value="">Aucun client lié</option>
                     {clients.map((client) => (

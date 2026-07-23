@@ -876,6 +876,34 @@ appliquée à l'ensemble du site :
   automatique débouncée (600 ms) — pas de bouton "Enregistrer", pas de
   rechargement de page à chaque frappe, exactement le comportement d'Apple
   Notes.
+- Rendre tout l'admin utilisable jusqu'à mobile (2026-07-23), à la demande
+  du client ("resizer la fenêtre, adapté à la taille de l'écran"). Deux
+  précisions tranchées avant développement : périmètre = tout l'admin (pas
+  seulement le module Notes qui venait d'être livré) ; cible = jusqu'à
+  tablette/mobile (pas seulement une fenêtre desktop réduite). Corrections
+  concrètes : en-tête admin (bouton "Se déconnecter" en icône seule sous
+  `sm`, évite le retour à la ligne qui le faisait déborder de la bande de
+  64px) ; ligne d'actions d'un compte de connexion sur la fiche client qui
+  débordait hors écran (passage en `flex-wrap`) et email de compte trop
+  long qui débordait de sa carte (`break-all`) ; vue Calendrier des tâches
+  (admin et espace client, composant partagé) dont la grille 8 colonnes
+  faisait défiler la page entière horizontalement — encapsulée dans son
+  propre conteneur à défilement, comme le Kanban et le tableau de la vue
+  Liste le faisaient déjà ; module Notes passé d'un layout 3 colonnes figées
+  (inutilisable sous ~900px) à une navigation à un seul panneau sur mobile
+  façon Apple Notes iPhone (dossiers → notes → édition, avec retour),
+  toujours 3 colonnes à partir de `md` (768px). Le reste de l'admin
+  (Clients, Tâches en vue Liste, Documents, Mail, Portfolio, Listes,
+  Exports, Réglages) était déjà correctement responsive (cartes empilables,
+  tableaux déjà à défilement horizontal contenu) et n'a pas nécessité de
+  changement.
+- Épuration du tableau de la vue Liste des tâches (2026-07-23) : les
+  colonnes Type/Formats/Temps, moins consultées au premier coup d'œil que
+  l'échéance ou le statut, sont repliées par défaut derrière un triangle par
+  ligne (`TaskTableRow`, nouveau composant client) plutôt que 3 colonnes
+  toujours visibles — dépliage indépendant par ligne, pas de mémorisation
+  entre rechargements. Le lien "Modifier" (dernière colonne) a été retiré :
+  redondant avec le titre de la tâche, déjà cliquable vers sa fiche.
 
 ## Décisions techniques déléguées à Claude Code
 
@@ -1027,3 +1055,5 @@ Le client a explicitement délégué ces choix :
 | 2026-07-21 | Ajouter un statut de tâche "Non commencé" entre "Nouveau" et "En cours" | Livré : rouvre explicitement le cycle des statuts verrouillé le 2026-07-13 (demande explicite du client), se replie sur l'étape "Nouveau" côté timeline espace client — voir section "Backend interne" |
 | 2026-07-21 | Styliser le rapport PDF par client (tâches en cours) pour coller à la DA sombre du site | Livré : fond sombre, accent citron, titres en Clash Display, badges de statut recolorés selon la vraie couleur du statut. Au passage, correction d'un bug de rendu du `.woff2` de Clash Display dans le PDF (espaces parasites dans certains mots) en passant à un `.ttf` du même fichier — voir section "Backend interne" |
 | 2026-07-23 | Ajouter un module de notes internes qui se comporte comme Apple Notes | Livré : nouvel onglet "Notes" (admin uniquement, jamais visible côté espace client), dossiers + épinglage, rattachement optionnel à un client, éditeur de texte riche (Tiptap) avec checklists, sauvegarde automatique sans bouton ni rechargement — voir section "Backend interne" |
+| 2026-07-23 | Rendre tout le côté admin utilisable jusqu'à mobile/tablette (pas seulement une fenêtre desktop réduite) | Livré : en-tête admin corrigé, ligne d'actions et email trop long corrigés sur la fiche client, vue Calendrier des tâches contenue dans son propre défilement horizontal (au lieu de faire défiler toute la page), module Notes passé en navigation à un seul panneau sous 768px façon Apple Notes iPhone — voir section "Backend interne" |
+| 2026-07-23 | Sur la vue Liste des tâches, replier Type/Format/Temps derrière un triangle par ligne et retirer le bouton "Modifier" (redondant avec le titre, déjà cliquable) | Livré : nouveau composant `TaskTableRow`, tableau réduit à Évènement/Échéance/Client/Tâche/Statut par défaut, détails dépliables par ligne — voir section "Backend interne" |

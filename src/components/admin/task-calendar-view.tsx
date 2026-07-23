@@ -92,71 +92,75 @@ export function TaskCalendarView({
         </div>
       </div>
 
-      <div className="mt-4 grid grid-cols-[3rem_repeat(7,1fr)] gap-2 text-center text-xs font-medium text-ink-muted">
-        <div />
-        {WEEKDAY_LABELS.map((label) => (
-          <div key={label}>{label}</div>
-        ))}
-      </div>
+      <div className="mt-4 overflow-x-auto">
+        <div className="min-w-[640px]">
+          <div className="grid grid-cols-[3rem_repeat(7,1fr)] gap-2 text-center text-xs font-medium text-ink-muted">
+            <div />
+            {WEEKDAY_LABELS.map((label) => (
+              <div key={label}>{label}</div>
+            ))}
+          </div>
 
-      <div className="mt-2 grid grid-cols-[3rem_repeat(7,1fr)] gap-2">
-        {weeks.flatMap((week, weekIndex) => {
-          const firstDay = week.find((day): day is Date => day !== null);
-          return [
-            <div
-              key={`week-${weekIndex}`}
-              className="flex min-h-28 items-start justify-center pt-2 text-xs text-ink-muted"
-            >
-              {firstDay && `S${isoWeekNumber(firstDay)}`}
-            </div>,
-            ...week.map((day, dayIndex) => {
-              if (!day) {
-                return (
-                  <div
-                    key={`${weekIndex}-${dayIndex}`}
-                    className="min-h-28 rounded-xl border border-transparent"
-                  />
-                );
-              }
-              const key = dueDateKey(day);
-              const dayTasks = byDay.get(key) ?? [];
-              const isToday = key === today;
-
-              return (
+          <div className="mt-2 grid grid-cols-[3rem_repeat(7,1fr)] gap-2">
+            {weeks.flatMap((week, weekIndex) => {
+              const firstDay = week.find((day): day is Date => day !== null);
+              return [
                 <div
-                  key={key}
-                  className={`flex min-h-28 flex-col gap-1.5 rounded-xl border p-2 ${
-                    isToday ? "border-accent" : "border-line"
-                  }`}
+                  key={`week-${weekIndex}`}
+                  className="flex min-h-28 items-start justify-center pt-2 text-xs text-ink-muted"
                 >
-                  <span className="text-xs font-medium text-ink-muted">{day.getDate()}</span>
-                  <div className="flex flex-col gap-1">
-                    {dayTasks.map((task) => {
-                      const dot =
-                        PALETTE_SWATCH_CLASSES[task.status.color as PaletteColor] ??
-                        PALETTE_SWATCH_CLASSES.slate;
-                      return (
-                        <Link
-                          key={task.id}
-                          href={`${taskBasePath}/${task.id}`}
-                          className="flex flex-col gap-0.5 truncate rounded-lg bg-surface-elevated px-2 py-1 text-xs text-ink hover:underline"
-                        >
-                          <span className="flex items-center gap-1.5 truncate">
-                            <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${dot}`} />
-                            <span className="truncate">{task.title}</span>
-                          </span>
-                          <span className="truncate pl-3 text-[11px] text-ink-muted">
-                            {task.status.label}
-                          </span>
-                        </Link>
-                      );
-                    })}
-                  </div>
-                </div>
-              );
-            }),
-          ];
-        })}
+                  {firstDay && `S${isoWeekNumber(firstDay)}`}
+                </div>,
+                ...week.map((day, dayIndex) => {
+                  if (!day) {
+                    return (
+                      <div
+                        key={`${weekIndex}-${dayIndex}`}
+                        className="min-h-28 rounded-xl border border-transparent"
+                      />
+                    );
+                  }
+                  const key = dueDateKey(day);
+                  const dayTasks = byDay.get(key) ?? [];
+                  const isToday = key === today;
+
+                  return (
+                    <div
+                      key={key}
+                      className={`flex min-h-28 flex-col gap-1.5 rounded-xl border p-2 ${
+                        isToday ? "border-accent" : "border-line"
+                      }`}
+                    >
+                      <span className="text-xs font-medium text-ink-muted">{day.getDate()}</span>
+                      <div className="flex flex-col gap-1">
+                        {dayTasks.map((task) => {
+                          const dot =
+                            PALETTE_SWATCH_CLASSES[task.status.color as PaletteColor] ??
+                            PALETTE_SWATCH_CLASSES.slate;
+                          return (
+                            <Link
+                              key={task.id}
+                              href={`${taskBasePath}/${task.id}`}
+                              className="flex flex-col gap-0.5 truncate rounded-lg bg-surface-elevated px-2 py-1 text-xs text-ink hover:underline"
+                            >
+                              <span className="flex items-center gap-1.5 truncate">
+                                <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${dot}`} />
+                                <span className="truncate">{task.title}</span>
+                              </span>
+                              <span className="truncate pl-3 text-[11px] text-ink-muted">
+                                {task.status.label}
+                              </span>
+                            </Link>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                }),
+              ];
+            })}
+          </div>
+        </div>
       </div>
 
       {undated.length > 0 && (

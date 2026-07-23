@@ -24,9 +24,11 @@ export function GmailConnectionCard({
 
       {gmailEmail ? (
         <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-line p-4">
-          <span className="flex items-center gap-2 text-sm text-ink">
-            <CheckCircle size={18} weight="fill" className="text-accent" />
-            Connecté : <span className="font-medium">{gmailEmail}</span>
+          <span className="flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-ink">
+            <span className="flex items-center gap-2 whitespace-nowrap">
+              <CheckCircle size={18} weight="fill" className="text-accent" />
+              Connecté : <span className="font-medium">{gmailEmail}</span>
+            </span>
             {gmailConnectedAt && (
               <span className="text-xs text-ink-muted">
                 depuis le {DATE_FORMATTER.format(gmailConnectedAt)}

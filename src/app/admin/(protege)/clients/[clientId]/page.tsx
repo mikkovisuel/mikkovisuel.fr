@@ -152,7 +152,7 @@ export default async function ClientDetailPage({
                     {user.name}
                     {user.role && <span className="text-ink-muted"> · {user.role}</span>}
                   </p>
-                  <p className="text-sm text-ink-muted">
+                  <p className="break-all text-sm text-ink-muted">
                     {user.email}
                     {user.phone && ` · ${user.phone}`}
                   </p>
@@ -161,7 +161,7 @@ export default async function ClientDetailPage({
                     defaultValues={{ phone: user.phone, role: user.role }}
                   />
                 </div>
-                <div className="flex shrink-0 items-center gap-4">
+                <div className="flex flex-wrap items-center gap-3">
                   <ClientUserEmailToggle
                     clientUserId={user.id}
                     clientId={client.id}
