@@ -18,7 +18,14 @@ import { AttachmentUploadForm } from "@/components/admin/attachment-upload-form"
 import { SendDeliverablesButton } from "@/components/admin/send-deliverables-button";
 import { FileGrid } from "@/components/file-grid";
 import { TaskCommentThread } from "@/components/task-comment-thread";
-import { updateTask, archiveTask, unarchiveTask, deleteTask } from "@/lib/actions/tasks";
+import {
+  updateTask,
+  archiveTask,
+  unarchiveTask,
+  deleteTask,
+  duplicateTask,
+} from "@/lib/actions/tasks";
+import { TaskChecklist } from "@/components/admin/task-checklist";
 import {
   uploadDeliverable,
   deleteDeliverable,
@@ -66,6 +73,7 @@ export default async function TaskDetailPage({
         refusalHistory: { orderBy: { refusedAt: "desc" } },
         statusHistory: { orderBy: { changedAt: "desc" } },
         timeEntries: { orderBy: { startedAt: "desc" } },
+        checklistItems: { orderBy: { sortOrder: "asc" } },
       },
     }),
     db.dropdownList.findUnique({
@@ -131,6 +139,14 @@ export default async function TaskDetailPage({
               </button>
             </form>
           )}
+          <form action={duplicateTask.bind(null, task.id)}>
+            <button
+              type="submit"
+              className="text-sm text-ink-muted transition-colors hover:text-ink"
+            >
+              Dupliquer
+            </button>
+          </form>
           <DeleteButton
             action={deleteTask.bind(null, task.id)}
             confirmMessage={`Supprimer définitivement "${task.title}" ? Cette action efface aussi tous ses livrables du stockage et ne peut pas être annulée.`}
@@ -178,6 +194,23 @@ export default async function TaskDetailPage({
           }}
         />
       </div>
+
+      <section className="mt-12">
+        <h2 className="text-sm font-medium text-ink-muted">
+          Checklist ({task.checklistItems.filter((item) => item.done).length}/
+          {task.checklistItems.length})
+        </h2>
+        <div className="mt-4">
+          <TaskChecklist
+            taskId={task.id}
+            initialItems={task.checklistItems.map((item) => ({
+              id: item.id,
+              label: item.label,
+              done: item.done,
+            }))}
+          />
+        </div>
+      </section>
 
       <section className="mt-12">
         <h2 className="text-sm font-medium text-ink-muted">Temps passé</h2>

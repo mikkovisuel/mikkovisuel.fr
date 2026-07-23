@@ -6,6 +6,8 @@ import { BrandLogo } from "@/components/brand-logo";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { TimerHeaderWidget } from "@/components/admin/timer-header-widget";
+import { TASK_STATUS } from "@/lib/dropdown-lists";
+import { EXCLUDE_DEMO_CLIENT_TASKS, startOfToday } from "@/lib/tasks";
 
 const navLinks = [
   { href: "/admin", label: "Tableau de bord" },
@@ -28,10 +30,27 @@ export default async function AdminProtectedLayout({
 
   // Chronomètre visible dans tout l'admin (pas seulement la fiche tâche) —
   // au plus une ligne `endedAt: null` à la fois, voir `startTaskTimer`.
-  const runningEntry = await db.taskTimeEntry.findFirst({
-    where: { endedAt: null },
-    include: { task: true },
-  });
+  const [runningEntry, overdueCount, toValidateCount] = await Promise.all([
+    db.taskTimeEntry.findFirst({
+      where: { endedAt: null },
+      include: { task: true },
+    }),
+    // Même logique que les compteurs du tableau de bord — pastille sur
+    // "Tâches" dans le nav pour voir d'un coup d'œil s'il y a des tâches qui
+    // demandent une action, sans avoir à ouvrir la page.
+    db.task.count({
+      where: {
+        ...EXCLUDE_DEMO_CLIENT_TASKS,
+        archivedAt: null,
+        dueDate: { lt: startOfToday() },
+        status: { slug: { not: TASK_STATUS.TERMINE } },
+      },
+    }),
+    db.task.count({
+      where: { ...EXCLUDE_DEMO_CLIENT_TASKS, archivedAt: null, status: { slug: TASK_STATUS.A_VALIDER } },
+    }),
+  ]);
+  const attentionCount = overdueCount + toValidateCount;
 
   return (
     <div className="flex min-h-full flex-1 flex-col">
@@ -70,9 +89,14 @@ export default async function AdminProtectedLayout({
             <Link
               key={link.href}
               href={link.href}
-              className="whitespace-nowrap text-sm text-ink-muted transition-colors hover:text-ink"
+              className="flex items-center gap-1.5 whitespace-nowrap text-sm text-ink-muted transition-colors hover:text-ink"
             >
               {link.label}
+              {link.href === "/admin/taches" && attentionCount > 0 && (
+                <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-medium text-accent-ink">
+                  {attentionCount}
+                </span>
+              )}
             </Link>
           ))}
         </nav>

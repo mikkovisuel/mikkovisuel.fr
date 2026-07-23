@@ -4,6 +4,7 @@ import { verifyAdminSession } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { TASK_STATUS, TASK_STATUS_LIST_KEY } from "@/lib/dropdown-lists";
 import { EXCLUDE_DEMO_CLIENT_TASKS, startOfToday } from "@/lib/tasks";
+import { EXCLUDE_DEMO_CLIENT } from "@/lib/clients";
 import { RecentActivity } from "@/components/admin/recent-activity";
 import { PinnedTasks } from "@/components/admin/pinned-tasks";
 import { UpcomingEvents } from "@/components/admin/upcoming-events";
@@ -23,7 +24,7 @@ export default async function AdminDashboardPage() {
   const since = admin.previousLoginAt;
 
   const [clientCount, taskCount, unpaidCount, overdueCount, toValidateCount] = await Promise.all([
-    db.client.count(),
+    db.client.count({ where: EXCLUDE_DEMO_CLIENT }),
     db.task.count({ where: EXCLUDE_DEMO_CLIENT_TASKS }),
     db.document.count({ where: { paymentStatus: "unpaid" } }),
     db.task.count({
@@ -122,6 +123,7 @@ export default async function AdminDashboardPage() {
         _count: { _all: true },
       }),
       db.client.findMany({
+        where: EXCLUDE_DEMO_CLIENT,
         include: {
           tasks: {
             where: { archivedAt: null },

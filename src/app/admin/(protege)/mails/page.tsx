@@ -8,6 +8,7 @@ import {
   GmailNotConnectedError,
   type ClientEmailScope,
 } from "@/lib/gmail";
+import { EXCLUDE_DEMO_CLIENT } from "@/lib/clients";
 
 export const metadata: Metadata = {
   title: "Mail — Admin Mikko Visuel",
@@ -30,6 +31,7 @@ export default async function AdminMailsPage({
   const { q, clientId } = await searchParams;
 
   const clients = await db.client.findMany({
+    where: EXCLUDE_DEMO_CLIENT,
     include: { users: { orderBy: { createdAt: "asc" } } },
     orderBy: { name: "asc" },
   });

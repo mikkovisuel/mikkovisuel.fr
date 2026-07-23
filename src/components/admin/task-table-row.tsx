@@ -36,9 +36,13 @@ interface TaskTableTask {
 export function TaskTableRow({
   task,
   statusOptions,
+  selected = false,
+  onToggleSelect,
 }: {
   task: TaskTableTask;
   statusOptions: { slug: string; label: string }[];
+  selected?: boolean;
+  onToggleSelect?: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
   const overdue = isTaskOverdue(task);
@@ -47,8 +51,17 @@ export function TaskTableRow({
 
   return (
     <>
-      <tr>
+      <tr className={selected ? "bg-accent/5" : undefined}>
         <td className="w-8 py-3 pl-6 align-top">
+          <input
+            type="checkbox"
+            aria-label={`Sélectionner ${task.title}`}
+            checked={selected}
+            onChange={() => onToggleSelect?.()}
+            className="h-4 w-4 accent-accent"
+          />
+        </td>
+        <td className="w-8 py-3 align-top">
           <button
             type="button"
             onClick={() => setExpanded((prev) => !prev)}
@@ -122,7 +135,7 @@ export function TaskTableRow({
       </tr>
       {expanded && (
         <tr className="bg-surface/60">
-          <td colSpan={6} className="px-4 py-3 pl-12">
+          <td colSpan={7} className="px-4 py-3 pl-12">
             {hasDetails ? (
               <div className="flex flex-wrap gap-6">
                 {task.types.length > 0 && (

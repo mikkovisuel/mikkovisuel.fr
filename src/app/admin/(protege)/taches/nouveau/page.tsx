@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { TaskForm } from "@/components/task-form";
 import { createTaskByAdminAnyClient } from "@/lib/actions/tasks";
 import { TASK_TYPE_LIST_KEY, TASK_FORMAT_LIST_KEY } from "@/lib/dropdown-lists";
+import { EXCLUDE_DEMO_CLIENT } from "@/lib/clients";
 
 export const metadata: Metadata = {
   title: "Nouvelle tâche — Admin Mikko Visuel",
@@ -13,7 +14,7 @@ export default async function NewTaskPage() {
   await verifyAdminSession();
 
   const [clients, typeList, formatList] = await Promise.all([
-    db.client.findMany({ orderBy: { name: "asc" } }),
+    db.client.findMany({ where: EXCLUDE_DEMO_CLIENT, orderBy: { name: "asc" } }),
     db.dropdownList.findUnique({
       where: { key: TASK_TYPE_LIST_KEY },
       include: { items: { orderBy: { sortOrder: "asc" } } },

@@ -222,6 +222,23 @@ model Task {
   refusalHistory TaskRefusalHistory[]
   statusHistory  TaskStatusHistory[]
   timeEntries    TaskTimeEntry[]
+  checklistItems TaskChecklistItem[]
+}
+
+// Sous-étapes cochables d'une tâche (ex. "logo reçu", "brief validé") —
+// suivi interne admin uniquement, jamais exposé côté espace client. Même
+// esprit que les checklists du module Notes, mais rattachées à une tâche
+// plutôt qu'à une note libre.
+model TaskChecklistItem {
+  id        String   @id @default(cuid())
+  taskId    String
+  task      Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  label     String
+  done      Boolean  @default(false)
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([taskId])
 }
 
 // Suivi du temps passé sur une tâche (chronomètre visible dans le header

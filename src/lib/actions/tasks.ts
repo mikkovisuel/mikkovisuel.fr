@@ -629,3 +629,82 @@ export async function sendTaskReminder(taskId: string) {
   await db.task.update({ where: { id: taskId }, data: { lastReminderAt: new Date() } });
   revalidateTaskPaths(task.clientId);
 }
+
+// Recrée une tâche similaire (même client, titre, description, types,
+// formats, temps estimé) sans reprendre ce qui est spécifique à l'exécution
+// de l'originale : dates, historique de statut/refus, livrables, pièces
+// jointes, commentaires, temps passé, checklist. Statut remis à "Nouveau".
+export async function duplicateTask(taskId: string) {
+  const admin = await verifyAdminSession();
+
+  const task = await db.task.findUnique({
+    where: { id: taskId },
+    include: { types: true, formats: true },
+  });
+  if (!task) return;
+
+  const statusItem = await getStatusItem(TASK_STATUS.NOUVEAU);
+  const copy = await db.task.create({
+    data: {
+      clientId: task.clientId,
+      title: `${task.title} (copie)`,
+      description: task.description,
+      estimatedMinutes: task.estimatedMinutes,
+      statusId: statusItem.id,
+      types: { connect: task.types.map((type) => ({ id: type.id })) },
+      formats: { connect: task.formats.map((format) => ({ id: format.id })) },
+      createdByType: "ADMIN",
+      createdById: admin.id,
+    },
+  });
+  await logTaskStatusChange(copy.id, statusItem, { type: "ADMIN", id: admin.id, name: "Mikko" });
+
+  revalidateTaskPaths(task.clientId);
+  redirect(`/admin/taches/${copy.id}`);
+}
+
+// Checklist par tâche (sous-étapes cochables, ex. "logo reçu") — jamais
+// exposée côté espace client. Ajoutée en fin de liste (`sortOrder` = max+1),
+// pas de réordonnancement manuel pour l'instant.
+export async function addChecklistItem(taskId: string, label: string) {
+  await verifyAdminSession();
+  const trimmed = label.trim();
+  if (!trimmed) throw new Error("Le libellé est requis.");
+
+  const last = await db.taskChecklistItem.findFirst({
+    where: { taskId },
+    orderBy: { sortOrder: "desc" },
+  });
+  const item = await db.taskChecklistItem.create({
+    data: { taskId, label: trimmed, sortOrder: (last?.sortOrder ?? -1) + 1 },
+  });
+  revalidatePath(`/admin/taches/${taskId}`);
+  return item;
+}
+
+export async function toggleChecklistItem(id: string) {
+  await verifyAdminSession();
+  const item = await db.taskChecklistItem.findUnique({ where: { id } });
+  if (!item) return;
+  await db.taskChecklistItem.update({ where: { id }, data: { done: !item.done } });
+  revalidatePath(`/admin/taches/${item.taskId}`);
+}
+
+export async function deleteChecklistItem(id: string) {
+  await verifyAdminSession();
+  const item = await db.taskChecklistItem.findUnique({ where: { id } });
+  if (!item) return;
+  await db.taskChecklistItem.delete({ where: { id } });
+  revalidatePath(`/admin/taches/${item.taskId}`);
+}
+
+// Actions groupées de la vue Liste (sélection multi-lignes) — enveloppent
+// simplement `setTaskStatus`/`archiveTask` par tâche plutôt que dupliquer
+// leur logique (notifications, historique, jauge de temps remise à zéro...).
+export async function bulkSetTaskStatus(taskIds: string[], statusSlug: TaskStatusSlug) {
+  await Promise.all(taskIds.map((id) => setTaskStatus(id, statusSlug)));
+}
+
+export async function bulkArchiveTasks(taskIds: string[]) {
+  await Promise.all(taskIds.map((id) => archiveTask(id)));
+}

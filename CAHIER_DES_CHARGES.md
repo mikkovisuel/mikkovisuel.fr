@@ -904,6 +904,37 @@ appliquée à l'ensemble du site :
   toujours visibles — dépliage indépendant par ligne, pas de mémorisation
   entre rechargements. Le lien "Modifier" (dernière colonne) a été retiré :
   redondant avec le titre de la tâche, déjà cliquable vers sa fiche.
+- Client de démo caché partout dans l'admin (2026-07-23), même logique que
+  `EXCLUDE_DEMO_CLIENT_TASKS` mais appliquée aux requêtes qui listent des
+  *clients* plutôt que des tâches (nouveau filtre partagé
+  `EXCLUDE_DEMO_CLIENT`, `src/lib/clients.ts`) : liste `/admin/clients`,
+  tableau de bord (compteur et "clients sans activité récente"), sélecteurs
+  "Client" (Tâches, Documents, Notes, Mail, création de tâche), Réglages, et
+  l'export CSV clients. Reste géré normalement depuis sa propre fiche
+  (`/admin/clients/[clientId]`, qui n'utilise pas ce filtre).
+- Nouvelles suggestions gestion des tâches (2026-07-23, proposées par Claude
+  Code à la demande du client, 5 retenues sur 6 proposées) :
+  - **Dupliquer une tâche** : bouton "Dupliquer" sur la fiche tâche
+    (`duplicateTask`), recrée une tâche "Nouveau" pour le même client avec
+    titre (suffixé " (copie)"), description, types, formats et temps estimé
+    — sans dates ni historique/livrables/pièces jointes/commentaires/temps
+    passé, spécifiques à l'exécution de l'originale. Redirige vers la copie.
+  - **Checklist par tâche** : nouveau modèle `TaskChecklistItem`, section
+    "Checklist" sur la fiche tâche (sous-étapes cochables, ex. "logo reçu"),
+    ajout/coche/suppression, jamais exposée côté espace client.
+  - **Actions groupées sur la vue Liste** : case à cocher par ligne + "tout
+    sélectionner", barre d'actions apparaissant dès qu'une tâche est
+    sélectionnée (changer le statut ou archiver plusieurs tâches en une
+    fois) — `bulkSetTaskStatus`/`bulkArchiveTasks`, qui réutilisent
+    `setTaskStatus`/`archiveTask` par tâche (mêmes notifications et
+    historique que les actions individuelles).
+  - **Pastille de compteur sur "Tâches" dans le nav admin** : nombre de
+    tâches en retard + à valider, visible sans ouvrir la page (même calcul
+    que les compteurs du tableau de bord).
+  - **Glisser-déposer dans le Kanban** : déjà livré précédemment (pas une
+    nouvelle demande, juste reconfirmé) — chaque carte est `draggable`,
+    dépose sur une colonne = `setTaskStatus`, avec repli clavier/tactile via
+    le menu déroulant de statut sur la carte.
 
 ## Décisions techniques déléguées à Claude Code
 
@@ -1057,3 +1088,5 @@ Le client a explicitement délégué ces choix :
 | 2026-07-23 | Ajouter un module de notes internes qui se comporte comme Apple Notes | Livré : nouvel onglet "Notes" (admin uniquement, jamais visible côté espace client), dossiers + épinglage, rattachement optionnel à un client, éditeur de texte riche (Tiptap) avec checklists, sauvegarde automatique sans bouton ni rechargement — voir section "Backend interne" |
 | 2026-07-23 | Rendre tout le côté admin utilisable jusqu'à mobile/tablette (pas seulement une fenêtre desktop réduite) | Livré : en-tête admin corrigé, ligne d'actions et email trop long corrigés sur la fiche client, vue Calendrier des tâches contenue dans son propre défilement horizontal (au lieu de faire défiler toute la page), module Notes passé en navigation à un seul panneau sous 768px façon Apple Notes iPhone — voir section "Backend interne" |
 | 2026-07-23 | Sur la vue Liste des tâches, replier Type/Format/Temps derrière un triangle par ligne et retirer le bouton "Modifier" (redondant avec le titre, déjà cliquable) | Livré : nouveau composant `TaskTableRow`, tableau réduit à Évènement/Échéance/Client/Tâche/Statut par défaut, détails dépliables par ligne — voir section "Backend interne" |
+| 2026-07-23 | Cacher le client "Espace de démonstration" partout dans l'admin | Livré : nouveau filtre partagé `EXCLUDE_DEMO_CLIENT` (miroir de `EXCLUDE_DEMO_CLIENT_TASKS`), appliqué à la liste Clients, au tableau de bord, aux sélecteurs "Client" (Tâches/Documents/Notes/Mail/nouvelle tâche), à Réglages et à l'export CSV clients ; reste géré normalement depuis sa propre fiche — voir section "Backend interne" |
+| 2026-07-23 | Suggestions gestion des tâches : dupliquer une tâche, checklist par tâche (fonctionnalités) + actions groupées, pastille de compteur nav, glisser-déposer Kanban (ergonomie) — 5 retenues sur 6 proposées | Livré (les 5, glisser-déposer déjà existant reconfirmé) : bouton "Dupliquer" + `duplicateTask`, nouveau modèle `TaskChecklistItem` + section Checklist sur la fiche tâche, sélection multi-lignes + barre d'actions groupées sur la vue Liste, pastille "en retard + à valider" sur "Tâches" dans le nav — voir section "Backend interne" |

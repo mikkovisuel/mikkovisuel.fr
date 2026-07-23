@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { getAdminSession } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { toCsv } from "@/lib/csv";
+import { EXCLUDE_DEMO_CLIENT } from "@/lib/clients";
 
 export async function GET() {
   const admin = await getAdminSession();
@@ -10,6 +11,7 @@ export async function GET() {
   }
 
   const clients = await db.client.findMany({
+    where: EXCLUDE_DEMO_CLIENT,
     include: { _count: { select: { users: true, tasks: true } } },
     orderBy: { createdAt: "asc" },
   });

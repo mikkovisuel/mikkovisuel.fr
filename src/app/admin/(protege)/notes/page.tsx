@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { verifyAdminSession } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { NotesApp } from "@/components/admin/notes-app";
+import { EXCLUDE_DEMO_CLIENT } from "@/lib/clients";
 
 export const metadata: Metadata = {
   title: "Notes — Admin Mikko Visuel",
@@ -13,7 +14,7 @@ export default async function AdminNotesPage() {
   const [folders, notes, clients] = await Promise.all([
     db.noteFolder.findMany({ orderBy: { sortOrder: "asc" } }),
     db.note.findMany({ orderBy: { updatedAt: "desc" } }),
-    db.client.findMany({ orderBy: { name: "asc" } }),
+    db.client.findMany({ where: EXCLUDE_DEMO_CLIENT, orderBy: { name: "asc" } }),
   ]);
 
   return (

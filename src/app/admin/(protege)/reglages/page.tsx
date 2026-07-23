@@ -4,6 +4,7 @@ import { WarningCircle, CheckCircle } from "@phosphor-icons/react/dist/ssr";
 import { verifyAdminSession } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { getAppSettings } from "@/lib/settings";
+import { EXCLUDE_DEMO_CLIENT } from "@/lib/clients";
 import { SettingsForm } from "@/components/admin/settings-form";
 import { GmailConnectionCard } from "@/components/admin/gmail-connection-card";
 import { ClientUserEmailToggle } from "@/components/admin/client-user-email-toggle";
@@ -22,7 +23,7 @@ export default async function AdminSettingsPage({
   const { gmail } = await searchParams;
 
   const clients = await db.client.findMany({
-    where: { users: { some: {} } },
+    where: { ...EXCLUDE_DEMO_CLIENT, users: { some: {} } },
     include: { users: { orderBy: { createdAt: "asc" } } },
     orderBy: { name: "asc" },
   });

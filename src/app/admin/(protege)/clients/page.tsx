@@ -7,6 +7,7 @@ import { ClientSortControl } from "@/components/admin/client-sort-control";
 import {
   isClientSortField,
   buildClientOrderBy,
+  EXCLUDE_DEMO_CLIENT,
   type ClientSortField,
   type ClientSortDir,
 } from "@/lib/clients";
@@ -26,6 +27,7 @@ export default async function AdminClientsPage({
   const sortDir: ClientSortDir = dir === "asc" ? "asc" : "desc";
 
   const clients = await db.client.findMany({
+    where: EXCLUDE_DEMO_CLIENT,
     orderBy: buildClientOrderBy(sortField, sortDir),
     include: { _count: { select: { users: true, tasks: true } } },
   });
