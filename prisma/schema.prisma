@@ -64,9 +64,12 @@ model Client {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  users     ClientUser[]
-  tasks     Task[]
-  documents Document[]
+  users       ClientUser[]
+  tasks       Task[]
+  documents   Document[]
+  // Nommé différemment du champ `notes` (texte libre juste au-dessus) —
+  // celui-ci est la relation vers le module de notes internes (Note[]).
+  linkedNotes Note[]
 }
 
 model ClientUser {
@@ -443,4 +446,36 @@ model HomepageContent {
   portfolioTitle    String?
   portfolioSubtitle String?
   updatedAt         DateTime @updatedAt
+}
+
+// Module de notes internes ("Notes" dans le nav admin), pensé pour se
+// comporter comme Apple Notes : dossiers + épinglage, pas de lien avec
+// l'espace client (aucune vue client n'expose ces modèles).
+model NoteFolder {
+  id        String   @id @default(cuid())
+  name      String
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  notes Note[]
+}
+
+model Note {
+  id        String      @id @default(cuid())
+  title     String      @default("")
+  // HTML produit par l'éditeur Tiptap (voir src/components/admin/note-editor.tsx).
+  content   String      @default("") @db.Text
+  pinned    Boolean     @default(false)
+  folderId  String?
+  folder    NoteFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  // Rattachement optionnel à un client — reste interne à l'admin, jamais
+  // exposé côté espace client.
+  clientId  String?
+  client    Client?     @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  @@index([folderId])
+  @@index([clientId])
 }

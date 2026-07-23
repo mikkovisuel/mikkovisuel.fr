@@ -155,3 +155,77 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     grid-area: e;
   }
 }
+
+/* Corps de texte de l'éditeur Tiptap du module Notes (src/components/admin/note-editor.tsx). */
+.note-prose {
+  color: var(--color-ink);
+  line-height: 1.6;
+}
+
+.note-prose p.is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  color: var(--color-ink-muted);
+  float: left;
+  height: 0;
+  pointer-events: none;
+}
+
+.note-prose h2 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  font-size: 1.25rem;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+}
+
+.note-prose p {
+  margin-bottom: 0.6rem;
+}
+
+.note-prose ul,
+.note-prose ol {
+  margin-bottom: 0.6rem;
+  padding-left: 1.4rem;
+}
+
+.note-prose ul {
+  list-style: disc;
+}
+
+.note-prose ol {
+  list-style: decimal;
+}
+
+.note-prose blockquote {
+  border-left: 2px solid var(--color-accent);
+  padding-left: 0.75rem;
+  color: var(--color-ink-muted);
+  margin-bottom: 0.6rem;
+}
+
+.note-prose ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 0;
+}
+
+.note-prose ul[data-type="taskList"] li {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+}
+
+.note-prose ul[data-type="taskList"] li > label {
+  margin-top: 0.2rem;
+  user-select: none;
+}
+
+.note-prose ul[data-type="taskList"] li[data-checked="true"] > div > p {
+  color: var(--color-ink-muted);
+  text-decoration: line-through;
+}
+
+.note-prose ul[data-type="taskList"] input[type="checkbox"] {
+  accent-color: var(--color-accent);
+  width: 1rem;
+  height: 1rem;
+}

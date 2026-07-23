@@ -12,6 +12,7 @@ const navLinks = [
   { href: "/admin/clients", label: "Clients" },
   { href: "/admin/taches", label: "Tâches" },
   { href: "/admin/documents", label: "Documents" },
+  { href: "/admin/notes", label: "Notes" },
   { href: "/admin/mails", label: "Mail" },
   { href: "/admin/portfolio", label: "Portfolio" },
   { href: "/admin/listes", label: "Listes" },

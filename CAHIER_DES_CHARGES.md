@@ -862,6 +862,20 @@ appliquée à l'ensemble du site :
   courantes (2026-07-21) — déjà livré le 2026-07-20 (`EXCLUDE_DEMO_CLIENT_TASKS`
   sur `/admin/taches` et le tableau de bord), confirmé par le client comme
   un doublon, rien à refaire.
+- Module de notes internes façon Apple Notes (2026-07-23), nouvel onglet
+  "Notes" du nav admin, jamais exposé côté espace client (précisé
+  explicitement par le client). Trois choix tranchés avant développement :
+  organisation en dossiers + épinglage (plutôt qu'une simple liste
+  chronologique ou des tags), rattachement optionnel d'une note à un client
+  (filtre par client dans le module, pas d'onglet dédié sur la fiche
+  client), formatage riche complet (titres, gras/italique/souligné/barré,
+  listes à puces/numérotées, checklists cochables, citation) via un éditeur
+  Tiptap plutôt qu'un simple texte + checklists. Nouveaux modèles
+  `NoteFolder` et `Note` ; page `/admin/notes` en petite SPA côté client
+  (dossiers/notes/note sélectionnée en state React) avec sauvegarde
+  automatique débouncée (600 ms) — pas de bouton "Enregistrer", pas de
+  rechargement de page à chaque frappe, exactement le comportement d'Apple
+  Notes.
 
 ## Décisions techniques déléguées à Claude Code
 
@@ -1012,3 +1026,4 @@ Le client a explicitement délégué ces choix :
 | 2026-07-21 | Signalement : masquer les tâches de l'espace de démonstration des listes courantes | Confirmé par le client comme doublon de la demande du 2026-07-20, déjà livrée (`EXCLUDE_DEMO_CLIENT_TASKS`) — rien à refaire |
 | 2026-07-21 | Ajouter un statut de tâche "Non commencé" entre "Nouveau" et "En cours" | Livré : rouvre explicitement le cycle des statuts verrouillé le 2026-07-13 (demande explicite du client), se replie sur l'étape "Nouveau" côté timeline espace client — voir section "Backend interne" |
 | 2026-07-21 | Styliser le rapport PDF par client (tâches en cours) pour coller à la DA sombre du site | Livré : fond sombre, accent citron, titres en Clash Display, badges de statut recolorés selon la vraie couleur du statut. Au passage, correction d'un bug de rendu du `.woff2` de Clash Display dans le PDF (espaces parasites dans certains mots) en passant à un `.ttf` du même fichier — voir section "Backend interne" |
+| 2026-07-23 | Ajouter un module de notes internes qui se comporte comme Apple Notes | Livré : nouvel onglet "Notes" (admin uniquement, jamais visible côté espace client), dossiers + épinglage, rattachement optionnel à un client, éditeur de texte riche (Tiptap) avec checklists, sauvegarde automatique sans bouton ni rechargement — voir section "Backend interne" |
