@@ -935,6 +935,19 @@ appliquée à l'ensemble du site :
     nouvelle demande, juste reconfirmé) — chaque carte est `draggable`,
     dépose sur une colonne = `setTaskStatus`, avec repli clavier/tactile via
     le menu déroulant de statut sur la carte.
+- Signalement : page blanche en envoyant un JPG et un MP4 ensemble en
+  livrable (2026-07-24). Le code de validation par type/taille était
+  correct (les deux types sont autorisés), mais rien n'attrapait une
+  exception venant du stockage ou de la mémoire serveur pendant l'envoi —
+  elle remontait donc telle quelle jusqu'à l'écran d'erreur générique de
+  Next.js (page blanche), au lieu d'un message dans le formulaire. Corrigé :
+  `uploadDeliverable` et `uploadAttachment` (src/lib/actions/files.ts)
+  attrapent maintenant ce type d'échec et renvoient un message clair
+  ("réessayez avec moins de fichiers à la fois, ou un par un"). Ajout au
+  passage d'un `src/app/admin/error.tsx` : filet de sécurité pour tout le
+  reste de l'admin, qui n'avait jusqu'ici aucun écran d'erreur habillé
+  (n'importe quelle exception non gérée ailleurs affichait la même page
+  blanche par défaut).
 
 ## Décisions techniques déléguées à Claude Code
 
@@ -1090,3 +1103,4 @@ Le client a explicitement délégué ces choix :
 | 2026-07-23 | Sur la vue Liste des tâches, replier Type/Format/Temps derrière un triangle par ligne et retirer le bouton "Modifier" (redondant avec le titre, déjà cliquable) | Livré : nouveau composant `TaskTableRow`, tableau réduit à Évènement/Échéance/Client/Tâche/Statut par défaut, détails dépliables par ligne — voir section "Backend interne" |
 | 2026-07-23 | Cacher le client "Espace de démonstration" partout dans l'admin | Livré : nouveau filtre partagé `EXCLUDE_DEMO_CLIENT` (miroir de `EXCLUDE_DEMO_CLIENT_TASKS`), appliqué à la liste Clients, au tableau de bord, aux sélecteurs "Client" (Tâches/Documents/Notes/Mail/nouvelle tâche), à Réglages et à l'export CSV clients ; reste géré normalement depuis sa propre fiche — voir section "Backend interne" |
 | 2026-07-23 | Suggestions gestion des tâches : dupliquer une tâche, checklist par tâche (fonctionnalités) + actions groupées, pastille de compteur nav, glisser-déposer Kanban (ergonomie) — 5 retenues sur 6 proposées | Livré (les 5, glisser-déposer déjà existant reconfirmé) : bouton "Dupliquer" + `duplicateTask`, nouveau modèle `TaskChecklistItem` + section Checklist sur la fiche tâche, sélection multi-lignes + barre d'actions groupées sur la vue Liste, pastille "en retard + à valider" sur "Tâches" dans le nav — voir section "Backend interne" |
+| 2026-07-24 | Signalement : page blanche en envoyant un JPG et un MP4 ensemble en livrable | Corrigé : `uploadDeliverable`/`uploadAttachment` attrapent désormais un échec de stockage/mémoire et renvoient un message clair au lieu de laisser planter la page ; ajout d'un écran d'erreur habillé (`src/app/admin/error.tsx`) pour tout le reste de l'admin — voir section "Backend interne" |

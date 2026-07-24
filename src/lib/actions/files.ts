@@ -69,25 +69,37 @@ export async function uploadDeliverable(
   // En parallèle plutôt que fichier par fichier : avec plusieurs livrables
   // en un envoi, un upload séquentiel vers le stockage S3 peut prendre assez
   // de temps pour dépasser le délai d'attente du routeur.
-  await Promise.all(
-    files.map(async (file) => {
-      const storageKey = `deliverables/${randomUUID()}`;
-      const buffer = Buffer.from(await file.arrayBuffer());
-      await storage.save(storageKey, buffer);
+  // Attrapé explicitement : sans ce try/catch, un échec de stockage (S3 hors
+  // service, mémoire serveur saturée par un gros fichier vidéo, etc.) remonte
+  // comme une exception non gérée et fait planter toute la page côté admin
+  // (écran blanc) au lieu d'un message d'erreur clair dans le formulaire.
+  try {
+    await Promise.all(
+      files.map(async (file) => {
+        const storageKey = `deliverables/${randomUUID()}`;
+        const buffer = Buffer.from(await file.arrayBuffer());
+        await storage.save(storageKey, buffer);
 
-      await db.deliverable.create({
-        data: {
-          taskId,
-          fileName: file.name,
-          storageKey,
-          mimeType: file.type,
-          sizeBytes: file.size,
-          storageBackend: storage.backend,
-          kind,
-        },
-      });
-    }),
-  );
+        await db.deliverable.create({
+          data: {
+            taskId,
+            fileName: file.name,
+            storageKey,
+            mimeType: file.type,
+            sizeBytes: file.size,
+            storageBackend: storage.backend,
+            kind,
+          },
+        });
+      }),
+    );
+  } catch (error) {
+    console.error("uploadDeliverable failed", error);
+    return {
+      error:
+        "L'envoi a échoué (fichier trop lourd pour la mémoire du serveur, ou problème de stockage). Réessayez avec moins de fichiers à la fois, ou un par un.",
+    };
+  }
 
   const tabLabel = kind === "bat" ? "À valider" : "Livrables";
   for (const user of task.client.users) {
@@ -220,24 +232,31 @@ export async function uploadAttachment(
 
   const storage = getStorageAdapter();
   // En parallèle plutôt que fichier par fichier — voir uploadDeliverable.
-  await Promise.all(
-    files.map(async (file) => {
-      const storageKey = `attachments/${randomUUID()}`;
-      const buffer = Buffer.from(await file.arrayBuffer());
-      await storage.save(storageKey, buffer);
+  try {
+    await Promise.all(
+      files.map(async (file) => {
+        const storageKey = `attachments/${randomUUID()}`;
+        const buffer = Buffer.from(await file.arrayBuffer());
+        await storage.save(storageKey, buffer);
 
-      await db.attachment.create({
-        data: {
-          taskId,
-          fileName: file.name,
-          storageKey,
-          mimeType: file.type,
-          sizeBytes: file.size,
-          storageBackend: storage.backend,
-        },
-      });
-    }),
-  );
+        await db.attachment.create({
+          data: {
+            taskId,
+            fileName: file.name,
+            storageKey,
+            mimeType: file.type,
+            sizeBytes: file.size,
+            storageBackend: storage.backend,
+          },
+        });
+      }),
+    );
+  } catch (error) {
+    console.error("uploadAttachment failed", error);
+    return {
+      error: "L'envoi a échoué. Réessayez avec moins de fichiers à la fois, ou un par un.",
+    };
+  }
 
   revalidatePath(`/admin/taches/${taskId}`);
   return undefined;
