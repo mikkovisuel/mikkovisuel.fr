@@ -33,6 +33,7 @@ export default async function AdminNotesPage() {
             pinned: n.pinned,
             folderId: n.folderId,
             clientId: n.clientId,
+            reminderAt: n.reminderAt ? n.reminderAt.toISOString() : null,
             updatedAt: n.updatedAt.toISOString(),
           }))}
           clients={clients.map((c) => ({ id: c.id, name: c.name }))}

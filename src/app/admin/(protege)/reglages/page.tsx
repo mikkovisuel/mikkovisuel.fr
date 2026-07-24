@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { WarningCircle, CheckCircle } from "@phosphor-icons/react/dist/ssr";
+import { WarningCircle, CheckCircle, ShieldWarning } from "@phosphor-icons/react/dist/ssr";
 import { verifyAdminSession } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { getAppSettings } from "@/lib/settings";
@@ -12,6 +12,21 @@ import { ClientUserEmailToggle } from "@/components/admin/client-user-email-togg
 export const metadata: Metadata = {
   title: "Réglages — Admin Mikko Visuel",
 };
+
+const SECURITY_DATE_FORMATTER = new Intl.DateTimeFormat("fr-FR", {
+  day: "2-digit",
+  month: "2-digit",
+  hour: "2-digit",
+  minute: "2-digit",
+});
+
+// `new Date()`/`Date.now()` directement dans le corps du composant serait
+// flaggé par la règle react-hooks/purity (appel impur pendant le rendu) —
+// même contournement que `startOfToday()` dans src/lib/tasks.ts : cacher
+// l'appel dans une fonction à part.
+function getSevenDaysAgo(): Date {
+  return new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+}
 
 export default async function AdminSettingsPage({
   searchParams,
@@ -27,6 +42,21 @@ export default async function AdminSettingsPage({
     include: { users: { orderBy: { createdAt: "asc" } } },
     orderBy: { name: "asc" },
   });
+
+  // Tentatives de connexion échouées des 7 derniers jours — la table
+  // `LoginAttempt` sert déjà à bloquer le brute-force (voir src/lib/
+  // rate-limit.ts), mais rien ne l'affichait jusqu'ici. Utile pour un admin
+  // seul détenteur de l'accès à toutes les données clients : un signal
+  // simple si quelqu'un tente de deviner le mot de passe.
+  const sevenDaysAgo = getSevenDaysAgo();
+  const recentFailedAttempts = await db.loginAttempt.findMany({
+    where: { succeeded: false, createdAt: { gte: sevenDaysAgo } },
+    orderBy: { createdAt: "desc" },
+    take: 10,
+  });
+  const adminFailedCount = recentFailedAttempts.filter(
+    (attempt) => attempt.identifier === admin.email.toLowerCase(),
+  ).length;
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-10 sm:px-6 lg:px-8">
@@ -116,6 +146,51 @@ export default async function AdminSettingsPage({
               </div>
             ))}
           </div>
+        )}
+      </div>
+
+      <div className="mt-10 border-t border-line pt-8">
+        <h2 className="flex items-center gap-2 font-display text-lg font-medium tracking-tight text-ink">
+          <ShieldWarning size={18} weight="regular" />
+          Sécurité
+        </h2>
+        <p className="mt-2 text-sm text-ink-muted">
+          Tentatives de connexion échouées (admin et espace client confondus), 7 derniers jours.
+        </p>
+
+        {recentFailedAttempts.length === 0 ? (
+          <p className="mt-4 text-sm text-ink-muted">Aucune tentative échouée récente.</p>
+        ) : (
+          <>
+            <p className="mt-4 text-sm text-ink">
+              <span className="font-medium text-danger">{recentFailedAttempts.length}</span>{" "}
+              tentative{recentFailedAttempts.length > 1 ? "s" : ""} échouée
+              {recentFailedAttempts.length > 1 ? "s" : ""}
+              {adminFailedCount > 0 && (
+                <>
+                  {" "}
+                  dont{" "}
+                  <span className="font-medium text-danger">
+                    {adminFailedCount} sur le compte admin
+                  </span>
+                </>
+              )}
+              .
+            </p>
+            <div className="mt-3 divide-y divide-line rounded-2xl border border-line">
+              {recentFailedAttempts.map((attempt) => (
+                <div
+                  key={attempt.id}
+                  className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 text-sm"
+                >
+                  <span className="text-ink">{attempt.identifier}</span>
+                  <span className="text-xs text-ink-muted">
+                    {SECURITY_DATE_FORMATTER.format(attempt.createdAt)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </>
         )}
       </div>
     </div>

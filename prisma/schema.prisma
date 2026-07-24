@@ -490,6 +490,13 @@ model Note {
   // exposé côté espace client.
   clientId  String?
   client    Client?     @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  // Rappel façon pense-bête (ex. "me rappeler ça le 12/08") — une date, pas
+  // une heure précise. `reminderSentAt` évite qu'un cron quotidien
+  // (src/app/api/cron/note-reminders) renvoie le même rappel plusieurs fois ;
+  // remis à `null` si la date est modifiée (voir updateNote), pour que
+  // décaler un rappel déjà envoyé le renvoie normalement à la nouvelle date.
+  reminderAt     DateTime?
+  reminderSentAt DateTime?
   createdAt DateTime    @default(now())
   updatedAt DateTime    @updatedAt
 

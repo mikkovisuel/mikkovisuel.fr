@@ -2,6 +2,7 @@ import "server-only";
 import { google, gmail_v1 } from "googleapis";
 import { db } from "@/lib/db";
 import { encryptSecret, decryptSecret } from "@/lib/crypto-secrets";
+import { EXCLUDE_DEMO_CLIENT } from "@/lib/clients";
 
 // Scopes volontairement restreints : lecture + envoi, jamais
 // `gmail.modify` (qui permettrait aussi de supprimer/labelliser des
@@ -236,6 +237,43 @@ export async function searchThreadsAcrossClients(
       } satisfies EmailThreadSummaryWithClient;
     })
     .sort((a, b) => (b.lastMessageDate?.getTime() ?? 0) - (a.lastMessageDate?.getTime() ?? 0));
+}
+
+let unreadThreadCountCache: { count: number; expiresAt: number } | null = null;
+const UNREAD_COUNT_CACHE_MS = 60_000;
+
+// Pastille "Mail" du bandeau admin (voir le layout) : nombre de fils non
+// lus, tous clients confondus. Mis en cache 60s en mémoire process (un seul
+// dyno web sur ce projet) pour ne pas déclencher un appel Gmail API à
+// chaque navigation admin — la boîte mail n'a pas besoin d'être temps réel
+// à la seconde près pour un compteur de coin d'écran. Retourne 0 si Gmail
+// n'est pas connecté plutôt que de faire planter le layout.
+export async function getUnreadThreadCount(): Promise<number> {
+  if (unreadThreadCountCache && unreadThreadCountCache.expiresAt > Date.now()) {
+    return unreadThreadCountCache.count;
+  }
+
+  try {
+    const clients = await db.client.findMany({
+      where: { ...EXCLUDE_DEMO_CLIENT, users: { some: {} } },
+      include: { users: { orderBy: { createdAt: "asc" } } },
+    });
+    const scopes: ClientEmailScope[] = clients
+      .filter((client) => client.users.length > 0)
+      .map((client) => ({
+        clientId: client.id,
+        clientName: client.name,
+        emails: client.users.map((user) => user.email),
+      }));
+
+    const threads = await searchThreadsAcrossClients(scopes);
+    const count = threads.filter((thread) => thread.isUnread).length;
+    unreadThreadCountCache = { count, expiresAt: Date.now() + UNREAD_COUNT_CACHE_MS };
+    return count;
+  } catch (error) {
+    if (error instanceof GmailNotConnectedError) return 0;
+    throw error;
+  }
 }
 
 export interface EmailAttachment {

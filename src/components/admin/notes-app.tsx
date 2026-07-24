@@ -13,6 +13,7 @@ import {
   X,
   NotePencil,
   CaretLeft,
+  Bell,
 } from "@phosphor-icons/react";
 import {
   createFolder,
@@ -36,6 +37,7 @@ export interface NoteData {
   pinned: boolean;
   folderId: string | null;
   clientId: string | null;
+  reminderAt: string | null;
   updatedAt: string;
 }
 
@@ -44,7 +46,25 @@ export interface ClientOption {
   name: string;
 }
 
-type View = { type: "all" } | { type: "pinned" } | { type: "folder"; folderId: string };
+type View = { type: "all" } | { type: "pinned" } | { type: "reminders" } | { type: "folder"; folderId: string };
+
+// Comparaison par date calendaire locale (année/mois/jour), pas par
+// timestamp brut — un rappel posé pour "aujourd'hui" est stocké en minuit
+// UTC (`new Date("2026-07-24")`), qui ne tombe pas au même instant que
+// minuit local ; comparer les timestamps directement décale le seuil "dû"
+// de quelques heures selon le fuseau. Même convention que `dueDateKey`
+// (src/lib/tasks.ts) pour les échéances de tâches.
+function dateKey(date: Date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+function isReminderDue(reminderAt: string) {
+  return dateKey(new Date(reminderAt)) <= dateKey(new Date());
+}
+
+function formatReminderDate(iso: string) {
+  return new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
+}
 
 // En dessous de `md`, les 3 colonnes n'ont pas la place de coexister : on
 // n'affiche qu'un panneau à la fois façon Apple Notes sur iPhone (dossiers
@@ -123,6 +143,8 @@ export function NotesApp({
     let result = notes;
     if (view.type === "pinned") {
       result = result.filter((note) => note.pinned);
+    } else if (view.type === "reminders") {
+      result = result.filter((note) => note.reminderAt !== null);
     } else if (view.type === "folder") {
       result = result.filter((note) => note.folderId === view.folderId);
     }
@@ -136,11 +158,23 @@ export function NotesApp({
         return haystack.includes(query);
       });
     }
+    if (view.type === "reminders") {
+      // Rappel le plus proche en premier, plutôt que le tri épinglées/récence
+      // habituel — c'est une file d'attente par échéance, pas par activité.
+      return [...result].sort(
+        (a, b) => new Date(a.reminderAt!).getTime() - new Date(b.reminderAt!).getTime(),
+      );
+    }
     return [...result].sort((a, b) => {
       if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
       return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
     });
   }, [notes, view, clientFilter, search]);
+
+  const dueReminderCount = useMemo(
+    () => notes.filter((note) => note.reminderAt !== null && isReminderDue(note.reminderAt)).length,
+    [notes],
+  );
 
   const selectedNote = notes.find((note) => note.id === selectedNoteId) ?? null;
 
@@ -154,6 +188,7 @@ export function NotesApp({
       pinned: note.pinned,
       folderId: note.folderId,
       clientId: note.clientId,
+      reminderAt: note.reminderAt ? note.reminderAt.toISOString() : null,
       updatedAt: note.updatedAt.toString(),
     };
     setNotes((prev) => [created, ...prev]);
@@ -216,7 +251,9 @@ export function NotesApp({
       ? "Toutes les notes"
       : view.type === "pinned"
         ? "Épinglées"
-        : (folders.find((f) => f.id === view.folderId)?.name ?? "Dossier");
+        : view.type === "reminders"
+          ? "Rappels"
+          : (folders.find((f) => f.id === view.folderId)?.name ?? "Dossier");
 
   return (
     <div className="flex h-[calc(100vh-8rem)] overflow-hidden rounded-xl border border-line bg-surface-elevated">
@@ -241,6 +278,25 @@ export function NotesApp({
           }`}
         >
           <PushPin size={14} weight="fill" /> Épinglées
+        </button>
+        <button
+          onClick={() => selectView({ type: "reminders" })}
+          className={`flex items-center justify-between rounded-md px-2.5 py-1.5 text-left text-sm transition-colors ${
+            view.type === "reminders" ? "bg-accent text-accent-ink" : "text-ink hover:bg-surface"
+          }`}
+        >
+          <span className="flex items-center gap-1.5">
+            <Bell size={14} weight="fill" /> Rappels
+          </span>
+          {dueReminderCount > 0 && (
+            <span
+              className={`inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-medium ${
+                view.type === "reminders" ? "bg-accent-ink/20 text-accent-ink" : "bg-accent text-accent-ink"
+              }`}
+            >
+              {dueReminderCount}
+            </span>
+          )}
         </button>
 
         <div className="mt-3 mb-1 flex items-center justify-between px-2.5">
@@ -402,7 +458,18 @@ export function NotesApp({
                   </span>
                 </div>
                 <div className="mt-0.5 flex items-center gap-1.5 text-xs text-ink-muted">
-                  <span className="shrink-0">{formatNoteDate(note.updatedAt)}</span>
+                  {note.reminderAt ? (
+                    <span
+                      className={`flex shrink-0 items-center gap-1 ${
+                        isReminderDue(note.reminderAt) ? "font-medium text-danger" : ""
+                      }`}
+                    >
+                      <Bell size={11} weight="fill" />
+                      {formatReminderDate(note.reminderAt)}
+                    </span>
+                  ) : (
+                    <span className="shrink-0">{formatNoteDate(note.updatedAt)}</span>
+                  )}
                   <span className="truncate">{snippet(note.content)}</span>
                 </div>
               </button>
@@ -462,6 +529,24 @@ export function NotesApp({
                     ))}
                   </select>
                 )}
+                <label
+                  className={`flex shrink-0 items-center gap-1.5 rounded-md border px-2 py-1 text-xs ${
+                    selectedNote.reminderAt && isReminderDue(selectedNote.reminderAt)
+                      ? "border-danger/40 text-danger"
+                      : "border-line text-ink-muted"
+                  }`}
+                >
+                  <Bell size={13} weight={selectedNote.reminderAt ? "fill" : "regular"} />
+                  <input
+                    type="date"
+                    value={selectedNote.reminderAt ? selectedNote.reminderAt.slice(0, 10) : ""}
+                    onChange={(e) =>
+                      patchNote(selectedNote.id, { reminderAt: e.target.value || null }, true)
+                    }
+                    aria-label="Rappel"
+                    className="w-[6.5rem] bg-transparent focus:outline-none"
+                  />
+                </label>
                 <button
                   onClick={() => patchNote(selectedNote.id, { pinned: !selectedNote.pinned }, true)}
                   aria-label={selectedNote.pinned ? "Désépingler" : "Épingler"}

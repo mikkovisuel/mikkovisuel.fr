@@ -50,10 +50,25 @@ export async function updateNote(
     pinned: boolean;
     folderId: string | null;
     clientId: string | null;
+    // Date seule (pas d'heure), ex. "2026-08-12" — voir NoteEditorHeader.
+    reminderAt: string | null;
   }>,
 ) {
   await verifyAdminSession();
-  return db.note.update({ where: { id: noteId }, data });
+  const { reminderAt, ...rest } = data;
+  return db.note.update({
+    where: { id: noteId },
+    data: {
+      ...rest,
+      // Toute modification de la date de rappel (y compris la suppression)
+      // remet `reminderSentAt` à zéro, pour qu'un rappel décalé après envoi
+      // reparte normalement à la nouvelle date plutôt que de rester "déjà
+      // envoyé" pour toujours.
+      ...(reminderAt !== undefined
+        ? { reminderAt: reminderAt ? new Date(reminderAt) : null, reminderSentAt: null }
+        : {}),
+    },
+  });
 }
 
 export async function deleteNote(noteId: string) {

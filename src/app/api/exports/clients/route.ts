@@ -1,8 +1,6 @@
 import { NextResponse } from "next/server";
 import { getAdminSession } from "@/lib/dal";
-import { db } from "@/lib/db";
-import { toCsv } from "@/lib/csv";
-import { EXCLUDE_DEMO_CLIENT } from "@/lib/clients";
+import { buildClientsCsv } from "@/lib/exports";
 
 export async function GET() {
   const admin = await getAdminSession();
@@ -10,25 +8,7 @@ export async function GET() {
     return new NextResponse(null, { status: 403 });
   }
 
-  const clients = await db.client.findMany({
-    where: EXCLUDE_DEMO_CLIENT,
-    include: { _count: { select: { users: true, tasks: true } } },
-    orderBy: { createdAt: "asc" },
-  });
-
-  const rows = [
-    ["id", "nom", "notes", "nombre_comptes", "nombre_taches", "cree_le"],
-    ...clients.map((client) => [
-      client.id,
-      client.name,
-      client.notes,
-      client._count.users,
-      client._count.tasks,
-      client.createdAt.toISOString(),
-    ]),
-  ];
-
-  return new NextResponse(toCsv(rows), {
+  return new NextResponse(await buildClientsCsv(), {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
       "Content-Disposition": 'attachment; filename="clients.csv"',

@@ -8,6 +8,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { TimerHeaderWidget } from "@/components/admin/timer-header-widget";
 import { TASK_STATUS } from "@/lib/dropdown-lists";
 import { EXCLUDE_DEMO_CLIENT_TASKS, startOfToday } from "@/lib/tasks";
+import { getUnreadThreadCount } from "@/lib/gmail";
 
 const navLinks = [
   { href: "/admin", label: "Tableau de bord" },
@@ -30,7 +31,7 @@ export default async function AdminProtectedLayout({
 
   // Chronomètre visible dans tout l'admin (pas seulement la fiche tâche) —
   // au plus une ligne `endedAt: null` à la fois, voir `startTaskTimer`.
-  const [runningEntry, overdueCount, toValidateCount] = await Promise.all([
+  const [runningEntry, overdueCount, toValidateCount, unreadCount] = await Promise.all([
     db.taskTimeEntry.findFirst({
       where: { endedAt: null },
       include: { task: true },
@@ -49,6 +50,7 @@ export default async function AdminProtectedLayout({
     db.task.count({
       where: { ...EXCLUDE_DEMO_CLIENT_TASKS, archivedAt: null, status: { slug: TASK_STATUS.A_VALIDER } },
     }),
+    getUnreadThreadCount(),
   ]);
   const attentionCount = overdueCount + toValidateCount;
 
@@ -85,20 +87,28 @@ export default async function AdminProtectedLayout({
           </div>
         </div>
         <nav className="mx-auto flex max-w-7xl gap-6 overflow-x-auto px-4 pb-3 sm:px-6 lg:px-8">
-          {navLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className="flex items-center gap-1.5 whitespace-nowrap text-sm text-ink-muted transition-colors hover:text-ink"
-            >
-              {link.label}
-              {link.href === "/admin/taches" && attentionCount > 0 && (
-                <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-medium text-accent-ink">
-                  {attentionCount}
-                </span>
-              )}
-            </Link>
-          ))}
+          {navLinks.map((link) => {
+            const badgeCount =
+              link.href === "/admin/taches"
+                ? attentionCount
+                : link.href === "/admin/mails"
+                  ? unreadCount
+                  : 0;
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                className="flex items-center gap-1.5 whitespace-nowrap text-sm text-ink-muted transition-colors hover:text-ink"
+              >
+                {link.label}
+                {badgeCount > 0 && (
+                  <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-medium text-accent-ink">
+                    {badgeCount}
+                  </span>
+                )}
+              </Link>
+            );
+          })}
         </nav>
       </header>
       <main className="flex-1">{children}</main>

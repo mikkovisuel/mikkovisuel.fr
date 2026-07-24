@@ -15,7 +15,8 @@ export type EmailTrigger =
   | "task_reminder"
   | "contact_form"
   | "feedback_suggestion"
-  | "bat_validated";
+  | "bat_validated"
+  | "note_reminder";
 
 export interface EmailAttachmentInput {
   filename: string;

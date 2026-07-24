@@ -948,6 +948,31 @@ appliquée à l'ensemble du site :
   reste de l'admin, qui n'avait jusqu'ici aucun écran d'erreur habillé
   (n'importe quelle exception non gérée ailleurs affichait la même page
   blanche par défaut).
+- Nouvelles suggestions côté backend (2026-07-24, proposées par Claude Code
+  à la demande du client, 4 retenues sur 5 — la relance automatique de
+  factures impayées écartée) :
+  - **Pastille de compteur sur "Mail" dans le nav** : nombre de fils Gmail
+    non lus, tous clients confondus. `getUnreadThreadCount` (src/lib/
+    gmail.ts) mis en cache 60s en mémoire process pour ne pas déclencher un
+    appel Gmail API à chaque navigation admin ; retourne 0 si Gmail n'est
+    pas connecté plutôt que de faire échouer le layout.
+  - **Panneau sécurité dans Réglages** : les tentatives de connexion
+    échouées (`LoginAttempt`, déjà utilisées pour bloquer le brute-force)
+    n'étaient jusqu'ici affichées nulle part ; nouvelle section "Sécurité"
+    listant les 10 dernières tentatives échouées des 7 derniers jours, avec
+    mise en évidence si le compte admin est concerné.
+  - **Rappels sur une note** : nouveaux champs `Note.reminderAt`/
+    `reminderSentAt`, sélecteur de date dans l'éditeur d'une note, nouvelle
+    vue "Rappels" dans le module Notes (triée par échéance, pastille de
+    compteur pour les rappels du jour ou en retard). Nouveau cron quotidien
+    (`/api/cron/note-reminders`, 7h, même protection `CRON_SECRET` que la
+    purge des livrables) envoyant un email récapitulatif pour les rappels
+    arrivés à échéance.
+  - **Export complet en un clic** : nouveau bouton "Exporter toutes mes
+    données (ZIP)" sur `/admin/exports`, regroupant les 3 CSV (clients,
+    tâches — et un nouvel export documents, qui n'existait pas encore) dans
+    une seule archive. Écriture ZIP maison (`src/lib/zip.ts`, méthode
+    "stored") plutôt qu'une dépendance dédiée, pour quelques fichiers texte.
 
 ## Décisions techniques déléguées à Claude Code
 
@@ -1104,3 +1129,4 @@ Le client a explicitement délégué ces choix :
 | 2026-07-23 | Cacher le client "Espace de démonstration" partout dans l'admin | Livré : nouveau filtre partagé `EXCLUDE_DEMO_CLIENT` (miroir de `EXCLUDE_DEMO_CLIENT_TASKS`), appliqué à la liste Clients, au tableau de bord, aux sélecteurs "Client" (Tâches/Documents/Notes/Mail/nouvelle tâche), à Réglages et à l'export CSV clients ; reste géré normalement depuis sa propre fiche — voir section "Backend interne" |
 | 2026-07-23 | Suggestions gestion des tâches : dupliquer une tâche, checklist par tâche (fonctionnalités) + actions groupées, pastille de compteur nav, glisser-déposer Kanban (ergonomie) — 5 retenues sur 6 proposées | Livré (les 5, glisser-déposer déjà existant reconfirmé) : bouton "Dupliquer" + `duplicateTask`, nouveau modèle `TaskChecklistItem` + section Checklist sur la fiche tâche, sélection multi-lignes + barre d'actions groupées sur la vue Liste, pastille "en retard + à valider" sur "Tâches" dans le nav — voir section "Backend interne" |
 | 2026-07-24 | Signalement : page blanche en envoyant un JPG et un MP4 ensemble en livrable | Corrigé : `uploadDeliverable`/`uploadAttachment` attrapent désormais un échec de stockage/mémoire et renvoient un message clair au lieu de laisser planter la page ; ajout d'un écran d'erreur habillé (`src/app/admin/error.tsx`) pour tout le reste de l'admin — voir section "Backend interne" |
+| 2026-07-24 | Suggestions backend : pastille "Mail" non lus, panneau sécurité (tentatives échouées), rappels sur les notes, export complet en ZIP — 4 retenues sur 5 (relance factures écartée) | Livré : `getUnreadThreadCount` (cache 60s), section "Sécurité" sur `/admin/reglages`, `Note.reminderAt`/`reminderSentAt` + vue "Rappels" + cron quotidien `/api/cron/note-reminders`, export ZIP `/api/exports/tout` (+ nouvel export documents.csv) — voir section "Backend interne" |
