@@ -2,9 +2,10 @@ import { NextResponse } from "next/server";
 import { getAdminSession, getClientSession } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { getStorageAdapter } from "@/lib/storage";
+import { createThumbnail } from "@/lib/thumbnail";
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
@@ -25,6 +26,19 @@ export async function GET(
 
   const storage = getStorageAdapter();
   const buffer = await storage.read(attachment.storageKey);
+
+  // Vignette pour la grille (`FileGrid`, partagée avec les livrables) —
+  // voir src/lib/thumbnail.ts.
+  const wantsThumbnail =
+    new URL(request.url).searchParams.get("thumb") === "1" &&
+    attachment.mimeType.startsWith("image/");
+  if (wantsThumbnail) {
+    const thumbnail = await createThumbnail(buffer);
+    return new NextResponse(new Uint8Array(thumbnail), {
+      headers: { "Content-Type": "image/webp", "Cache-Control": "private, max-age=3600" },
+    });
+  }
+
   const disposition =
     attachment.mimeType.startsWith("image/") || attachment.mimeType === "application/pdf"
       ? "inline"

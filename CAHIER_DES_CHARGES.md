@@ -973,6 +973,25 @@ appliquée à l'ensemble du site :
     tâches — et un nouvel export documents, qui n'existait pas encore) dans
     une seule archive. Écriture ZIP maison (`src/lib/zip.ts`, méthode
     "stored") plutôt qu'une dépendance dédiée, pour quelques fichiers texte.
+- Signalement : l'envoi de plusieurs livrables d'un coup ("13 livrables pour
+  8,4 Mo") faisait ramer l'admin (2026-07-24). Cause : la grille de fichiers
+  (`FileGrid`, livrables et pièces jointes) affichait chaque vignette avec
+  l'image **originale en pleine résolution** (juste réduite en CSS dans un
+  carré de 112px) — une dizaine de photos, c'est une dizaine de téléchargements
+  et décodages d'images complètes rien que pour les aperçus. Corrigé : nouvelle
+  vignette générée à la volée (`src/lib/thumbnail.ts`, `sharp`, 320px, WEBP,
+  orientation EXIF corrigée), servie via `?thumb=1` sur les routes de
+  livrables/pièces jointes (après filigrane le cas échéant pour les BAT vus
+  par le client, jamais avant), plus `loading="lazy"`. Le lightbox (clic sur
+  la vignette) continue d'utiliser l'image d'origine en pleine résolution.
+- Démarrer/arrêter le chronomètre directement depuis la vue Liste des
+  tâches (2026-07-24), sans ouvrir la fiche tâche : nouveau
+  `TaskTimerIconButton` (icône lecture/stop, à côté de l'épingle), même
+  règle qu'ailleurs — démarrer sur une tâche arrête automatiquement le
+  chrono d'une autre tâche s'il y en avait un en cours. Cela rouvre un choix
+  pris le 2026-07-21 ("démarrage/arrêt sur la fiche tâche uniquement") à la
+  demande explicite du client ; la version complète avec le temps écoulé en
+  direct reste sur la fiche tâche.
 
 ## Décisions techniques déléguées à Claude Code
 
@@ -1130,3 +1149,5 @@ Le client a explicitement délégué ces choix :
 | 2026-07-23 | Suggestions gestion des tâches : dupliquer une tâche, checklist par tâche (fonctionnalités) + actions groupées, pastille de compteur nav, glisser-déposer Kanban (ergonomie) — 5 retenues sur 6 proposées | Livré (les 5, glisser-déposer déjà existant reconfirmé) : bouton "Dupliquer" + `duplicateTask`, nouveau modèle `TaskChecklistItem` + section Checklist sur la fiche tâche, sélection multi-lignes + barre d'actions groupées sur la vue Liste, pastille "en retard + à valider" sur "Tâches" dans le nav — voir section "Backend interne" |
 | 2026-07-24 | Signalement : page blanche en envoyant un JPG et un MP4 ensemble en livrable | Corrigé : `uploadDeliverable`/`uploadAttachment` attrapent désormais un échec de stockage/mémoire et renvoient un message clair au lieu de laisser planter la page ; ajout d'un écran d'erreur habillé (`src/app/admin/error.tsx`) pour tout le reste de l'admin — voir section "Backend interne" |
 | 2026-07-24 | Suggestions backend : pastille "Mail" non lus, panneau sécurité (tentatives échouées), rappels sur les notes, export complet en ZIP — 4 retenues sur 5 (relance factures écartée) | Livré : `getUnreadThreadCount` (cache 60s), section "Sécurité" sur `/admin/reglages`, `Note.reminderAt`/`reminderSentAt` + vue "Rappels" + cron quotidien `/api/cron/note-reminders`, export ZIP `/api/exports/tout` (+ nouvel export documents.csv) — voir section "Backend interne" |
+| 2026-07-24 | Signalement : l'envoi de plusieurs livrables d'un coup (13 fichiers, 8,4 Mo) fait ramer l'admin | Corrigé : vignettes redimensionnées (320px, WEBP) générées à la volée pour la grille de fichiers au lieu des images en pleine résolution, plus chargement différé (`loading="lazy"`) — voir section "Backend interne" |
+| 2026-07-24 | Pouvoir démarrer/arrêter le chronomètre par une petite icône directement dans la vue Liste des tâches, avant de déployer | Livré : `TaskTimerIconButton` (icône lecture/stop à côté de l'épingle), rouvre le choix du 2026-07-21 limitant ça à la fiche tâche — voir section "Backend interne" |

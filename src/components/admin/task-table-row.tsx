@@ -5,6 +5,7 @@ import Link from "next/link";
 import { CaretRight, CaretDown } from "@phosphor-icons/react";
 import { TaskStatusSelect } from "@/components/admin/task-status-select";
 import { TaskPinButton } from "@/components/admin/task-pin-button";
+import { TaskTimerIconButton } from "@/components/admin/task-timer-icon-button";
 import { TaskTimeGauge } from "@/components/admin/task-time-gauge";
 import { StatusBadge } from "@/components/status-badge";
 import { AttachmentBadge } from "@/components/attachment-badge";
@@ -48,6 +49,7 @@ export function TaskTableRow({
   const overdue = isTaskOverdue(task);
   const dueToday = isTaskDueToday(task);
   const hasDetails = task.types.length > 0 || task.formats.length > 0 || task.estimatedMinutes !== null;
+  const isTimerRunning = task.timeEntries.some((entry) => entry.endedAt === null);
 
   return (
     <>
@@ -110,6 +112,7 @@ export function TaskTableRow({
         <td className="px-4 py-3 align-top">
           <div className="flex items-center gap-2">
             <TaskPinButton taskId={task.id} pinned={task.pinnedAt !== null} />
+            <TaskTimerIconButton taskId={task.id} isRunning={isTimerRunning} />
             <Link href={`/admin/taches/${task.id}`} className="font-medium text-ink hover:underline">
               {task.title}
             </Link>

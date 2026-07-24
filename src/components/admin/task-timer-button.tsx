@@ -5,10 +5,11 @@ import { Play, Stop } from "@phosphor-icons/react/dist/ssr";
 import { startTaskTimer, stopActiveTimer } from "@/lib/actions/time-tracking";
 import { LiveElapsed } from "@/components/admin/live-elapsed";
 
-// Démarrer/arrêter le chronomètre depuis la fiche tâche — seul endroit
-// prévu pour ça (pas de bouton rapide sur les listes). Démarrer ici arrête
-// automatiquement le chrono d'une autre tâche s'il y en avait un en cours
-// (voir `startTaskTimer`).
+// Démarrer/arrêter le chronomètre depuis la fiche tâche — version complète
+// avec le temps écoulé affiché en direct (voir `TaskTimerIconButton` pour la
+// version compacte de la vue Liste). Démarrer ici arrête automatiquement le
+// chrono d'une autre tâche s'il y en avait un en cours (voir
+// `startTaskTimer`).
 export function TaskTimerButton({
   taskId,
   activeEntry,

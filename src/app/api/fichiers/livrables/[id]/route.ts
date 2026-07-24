@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { getStorageAdapter } from "@/lib/storage";
 import { getAppSettings } from "@/lib/settings";
 import { watermarkImage } from "@/lib/watermark";
+import { createThumbnail } from "@/lib/thumbnail";
 
 export async function GET(
   request: Request,
@@ -34,6 +35,14 @@ export async function GET(
       : "attachment";
   const totalSize = deliverable.sizeBytes;
 
+  // Vignette pour la grille (`FileGrid`) : `?thumb=1`, image uniquement —
+  // voir src/lib/thumbnail.ts. Doit passer après un éventuel filigrane
+  // (ci-dessous) pour qu'un client ne voie jamais le design non filigrané,
+  // même en miniature.
+  const wantsThumbnail =
+    new URL(request.url).searchParams.get("thumb") === "1" &&
+    deliverable.mimeType.startsWith("image/");
+
   // BAT vus par le client : filigrane appliqué à la volée sur le buffer
   // servi, jamais sur le fichier original en stockage. L'admin voit
   // toujours l'original (pour juger la qualité réelle du rendu).
@@ -43,6 +52,12 @@ export async function GET(
     if (settings.batWatermarkEnabled) {
       const original = await storage.read(deliverable.storageKey);
       const watermarked = await watermarkImage(original);
+      if (wantsThumbnail) {
+        const thumbnail = await createThumbnail(watermarked);
+        return new NextResponse(new Uint8Array(thumbnail), {
+          headers: { "Content-Type": "image/webp", "Cache-Control": "private, max-age=3600" },
+        });
+      }
       return new NextResponse(new Uint8Array(watermarked), {
         headers: {
           "Content-Type": deliverable.mimeType,
@@ -51,6 +66,14 @@ export async function GET(
         },
       });
     }
+  }
+
+  if (wantsThumbnail) {
+    const original = await storage.read(deliverable.storageKey);
+    const thumbnail = await createThumbnail(original);
+    return new NextResponse(new Uint8Array(thumbnail), {
+      headers: { "Content-Type": "image/webp", "Cache-Control": "private, max-age=3600" },
+    });
   }
 
   // Range support is what lets the espace-client lightbox scrub a video

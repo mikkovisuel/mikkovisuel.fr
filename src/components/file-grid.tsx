@@ -69,10 +69,17 @@ export function FileGrid({
                   className="group relative block aspect-square w-full overflow-hidden rounded-xl border border-line bg-surface-elevated"
                 >
                   {isImage ? (
+                    // Vignette redimensionnée (`?thumb=1`, voir src/lib/
+                    // thumbnail.ts) plutôt que l'original en pleine
+                    // résolution : une dizaine de photos dans une grille de
+                    // 112px n'a pas besoin de charger l'image complète —
+                    // c'est ce qui ralentissait la page. Le lightbox
+                    // ci-dessous continue d'utiliser `href` (l'original).
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
-                      src={href}
+                      src={`${href}?thumb=1`}
                       alt={file.fileName}
+                      loading="lazy"
                       className="h-full w-full object-cover transition-transform group-hover:scale-105"
                     />
                   ) : (
