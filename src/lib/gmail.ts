@@ -271,8 +271,11 @@ export async function getUnreadThreadCount(): Promise<number> {
     unreadThreadCountCache = { count, expiresAt: Date.now() + UNREAD_COUNT_CACHE_MS };
     return count;
   } catch (error) {
-    if (error instanceof GmailNotConnectedError) return 0;
-    throw error;
+    // N'importe quel échec Gmail (token expiré/révoqué, API en panne, etc.)
+    // ne doit pas faire planter tout le layout admin pour une simple
+    // pastille de coin d'écran — voir le commentaire de la fonction.
+    console.error("getUnreadThreadCount failed", error);
+    return 0;
   }
 }
 
