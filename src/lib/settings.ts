@@ -7,6 +7,7 @@ const DEFAULT_SETTINGS = {
   batWatermarkEnabled: true,
   popupEnabled: false,
   popupMessage: null as string | null,
+  prospectReminderDefaultDays: 14,
 };
 
 // Lecture du singleton AppSettings, avec des valeurs par défaut tant que la

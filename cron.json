@@ -5,6 +5,9 @@
     },
     {
       "command": "0 7 * * * curl -fsS -H \"Authorization: Bearer $CRON_SECRET\" \"${NEXT_PUBLIC_SITE_URL:-https://www.mikkovisuel.fr}/api/cron/note-reminders\" || true"
+    },
+    {
+      "command": "10 7 * * * curl -fsS -H \"Authorization: Bearer $CRON_SECRET\" \"${NEXT_PUBLIC_SITE_URL:-https://www.mikkovisuel.fr}/api/cron/prospect-reminders\" || true"
     }
   ]
 }

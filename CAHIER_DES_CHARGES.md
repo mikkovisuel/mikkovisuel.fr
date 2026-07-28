@@ -992,6 +992,83 @@ appliquée à l'ensemble du site :
   pris le 2026-07-21 ("démarrage/arrêt sur la fiche tâche uniquement") à la
   demande explicite du client ; la version complète avec le temps écoulé en
   direct reste sur la fiche tâche.
+- Compteur "Tâches" du tableau de bord corrigé (2026-07-28) : affichait le
+  total de toutes les tâches, y compris "Terminé" — désormais le grand
+  nombre est celui des tâches **en cours** (hors "Terminé"), le total
+  complet affiché en petit en dessous.
+- **Nouveau module Prospection (CRM léger), 2026-07-28** : nouvel onglet
+  "Prospection" dans le bandeau admin (entre "Clients" et "Tâches"), avec
+  pastille de compteur (relances dues aujourd'hui/en retard, même
+  convention que "Tâches"/"Mail"). Nouveau modèle `Prospect` (nom,
+  entreprise, adresse, téléphone, email, Instagram, notes) et nouvelle liste
+  de statuts verrouillée (5 valeurs, même principe que les statuts de tâche) :
+  **À faire → En cours → Discussions en cours → Fermé / Archivé**. Livré :
+  - `/admin/prospection` : liste avec filtres (statut, recherche texte) et
+    bascule Liste/Kanban (glisser-déposer natif, même pattern que le Kanban
+    des tâches).
+  - `/admin/prospection/nouveau` et fiche prospect
+    (`/admin/prospection/[id]`) : création/édition, changement de statut,
+    suppression (`DeleteButton`, même pattern que documents/livrables).
+  - **Relances** : date de relance par prospect (préremplie depuis un
+    nouveau réglage `AppSettings.prospectReminderDefaultDays`, éditable/
+    effaçable sur `/admin/reglages`), alerte email **à l'admin** (pas au
+    prospect) à échéance via un nouveau cron quotidien
+    (`/api/cron/prospect-reminders`, même garde `CRON_SECRET` que les crons
+    existants), plus un bouton "Envoyer une alerte maintenant" pour une
+    relance manuelle immédiate.
+  - **Envoi d'email** à un prospect directement depuis sa fiche, via le
+    Gmail de l'admin déjà connecté (même composeur que pour les clients) —
+    message de repli clair si Gmail n'est pas connecté.
+  - **Conversion en client** ("Convertir en client") : crée un `Client` (et
+    un `ClientUser` si un email est renseigné, avec mot de passe aléatoire
+    puis email "définissez votre mot de passe" — jamais de mot de passe en
+    clair choisi par l'admin), marque le prospect "Fermé" et le relie au
+    client créé (jamais supprimé).
+  - **Recherche automatique de prospects par IA** : bouton sur
+    `/admin/prospection` qui interroge l'API Anthropic (recherche web) pour
+    trouver et ajouter directement des prospects réels correspondant à une
+    description libre (ex. "photographes de mariage à Lyon") — consigne
+    stricte de ne jamais inventer de coordonnées, déduplication contre les
+    prospects existants. Masqué proprement si `ANTHROPIC_API_KEY` n'est pas
+    configurée (guide dédié : `GUIDE_PROSPECTION_IA.md` — contrairement aux
+    autres services externes du projet, celui-ci n'est pas gratuit, facturé
+    à l'usage par Anthropic).
+  - **Signalement trouvé et corrigé pendant les tests de cette
+    fonctionnalité** : l'envoi d'un email (prospect ou client) plantait
+    entièrement la page si le token Gmail de l'admin était expiré/révoqué
+    (`invalid_grant`) — seul le cas "jamais connecté" était géré proprement
+    avant. Corrigé à la source (`getGmailClient` dans `src/lib/gmail.ts`),
+    ce qui corrige aussi le même risque latent sur l'envoi d'email côté
+    fiche client, pas seulement Prospection.
+  - **Mini fil d'historique par prospect** (2026-07-28, suggestion retenue) :
+    nouveau modèle `ProspectActivity` (une ligne par évènement, jamais
+    réécrite ni supprimée — même esprit que `TaskStatusHistory`), affiché en
+    ordre chronologique inverse sur la fiche prospect, section "Historique".
+    Trace la création, chaque changement de statut (liste, fiche ou Kanban),
+    chaque email envoyé, chaque relance (manuelle ou automatique via le
+    cron) et la conversion en client.
+  - **Lien direct vers la fiche client convertie** (2026-07-28, suggestion
+    retenue) : une fois un prospect converti, "Voir la fiche client →"
+    s'affiche directement sur sa ligne dans la vue Liste et sur sa carte
+    dans le Kanban (pas seulement sur sa propre fiche), pour y accéder sans
+    ouvrir le prospect d'abord.
+- **Guide client PDF ("mode d'emploi"), 2026-07-28** : nouveau bouton
+  "Télécharger le mode d'emploi (PDF)" sur `/admin/reglages`, section "Mode
+  d'emploi client". Document généré à la volée (`@react-pdf/renderer`, même
+  thème/police que le rapport de tâches existant, désormais factorisé dans
+  `src/components/pdf/pdf-theme.ts`) expliquant chaque onglet de l'espace
+  client (connexion, application installable, accueil, à valider, suivi,
+  calendrier, livrables, administratif, suggestion, mon compte) avec une
+  illustration fidèle à l'interface réelle par section. Choix confirmé par
+  le client : PDF téléchargeable uniquement (pas de page d'aide intégrée à
+  l'espace client).
+- **Validation logicielle (VSI) permanente, 2026-07-28** : nouveau document
+  `VALIDATION.md` à la racine, même esprit que `CAHIER_DES_CHARGES.md` —
+  cas passants et cas bloquants réellement testés, par fonctionnalité, mis
+  à jour à chaque livraison désormais (règle ajoutée dans `CLAUDE.md`).
+  Portée de cette première version : les fonctionnalités livrées le
+  2026-07-28 seulement (l'historique complet n'a pas été rejoué
+  rétroactivement).
 
 ## Décisions techniques déléguées à Claude Code
 
@@ -1050,6 +1127,18 @@ Le client a explicitement délégué ces choix :
   hors du code de ce dépôt — à corriger côté client dans son espace OVH,
   ou à reprendre avec Claude Code pour formuler la bonne règle si besoin
   d'aide.
+- Clé API Anthropic pour la recherche automatique de prospects (2026-07-28) :
+  fonctionnalité codée, mais inutilisable tant que le client n'a pas créé
+  son compte console.anthropic.com et sa clé API (guide détaillé fourni :
+  `GUIDE_PROSPECTION_IA.md`) — étape que Claude Code ne peut pas faire à sa
+  place. Contrairement aux autres services externes du projet (Stripe,
+  Resend, Gmail), celui-ci est payant à l'usage, pas seulement gratuit avec
+  un palier. Une fois la clé transmise, il reste à l'ajouter en variable
+  d'environnement (local + Scalingo) et à tester une recherche réelle.
+- Reprise complète de l'historique de validation logicielle (2026-07-28) :
+  `VALIDATION.md` ne couvre pour l'instant que les fonctionnalités livrées
+  ce jour-là — les 150+ fonctionnalités antérieures ne sont pas rejouées
+  rétroactivement (voir la portée notée en tête de ce fichier).
 
 ## Journal des modifications demandées
 
@@ -1151,3 +1240,8 @@ Le client a explicitement délégué ces choix :
 | 2026-07-24 | Suggestions backend : pastille "Mail" non lus, panneau sécurité (tentatives échouées), rappels sur les notes, export complet en ZIP — 4 retenues sur 5 (relance factures écartée) | Livré : `getUnreadThreadCount` (cache 60s), section "Sécurité" sur `/admin/reglages`, `Note.reminderAt`/`reminderSentAt` + vue "Rappels" + cron quotidien `/api/cron/note-reminders`, export ZIP `/api/exports/tout` (+ nouvel export documents.csv) — voir section "Backend interne" |
 | 2026-07-24 | Signalement : l'envoi de plusieurs livrables d'un coup (13 fichiers, 8,4 Mo) fait ramer l'admin | Corrigé : vignettes redimensionnées (320px, WEBP) générées à la volée pour la grille de fichiers au lieu des images en pleine résolution, plus chargement différé (`loading="lazy"`) — voir section "Backend interne" |
 | 2026-07-24 | Pouvoir démarrer/arrêter le chronomètre par une petite icône directement dans la vue Liste des tâches, avant de déployer | Livré : `TaskTimerIconButton` (icône lecture/stop à côté de l'épingle), rouvre le choix du 2026-07-21 limitant ça à la fiche tâche — voir section "Backend interne" |
+| 2026-07-28 | Signalement : le compteur "Tâches" du tableau de bord compte toutes les tâches, y compris "Terminé" | Corrigé : le grand nombre est désormais les tâches en cours (hors "Terminé"), le total en petit en dessous — voir section "Backend interne" |
+| 2026-07-28 | Nouvel onglet "Prospection" (CRM léger) : fiches prospect, statut sur 5 valeurs, envoi d'email, relances configurables, suppression, conversion en client, recherche automatique de prospects par IA | Livré : voir section "Backend interne" pour le détail complet (modèle `Prospect`, pages `/admin/prospection`, cron de relance, intégration Anthropic avec dégradation propre sans clé). Bug latent trouvé et corrigé pendant les tests : plantage de l'envoi d'email si le token Gmail est expiré (corrigé pour Prospection et pour les clients) |
+| 2026-07-28 | Mode d'emploi client illustré, dans la DA du site, en PDF téléchargeable | Livré : bouton sur `/admin/reglages`, généré à la volée (`@react-pdf/renderer`), une section par onglet de l'espace client — voir section "Backend interne" |
+| 2026-07-28 | Validation logicielle (VSI) permanente, à maintenir à chaque nouvelle fonctionnalité | Livré : nouveau `VALIDATION.md` (cas passants/bloquants réellement testés), règle de maintenance ajoutée dans `CLAUDE.md` — portée initiale limitée aux livraisons du 2026-07-28, historique antérieur non rejoué rétroactivement — voir section "Backend interne" et "Points encore ouverts" |
+| 2026-07-28 | Suggestions Prospection : mini fil d'historique par prospect (emails/relances/statuts) + lien direct vers la fiche client convertie — 2 retenues sur 4 proposées | Livré : nouveau modèle `ProspectActivity` (créé/statut/email/relance/converti, ordre chronologique inverse) affiché sur la fiche prospect ; lien "Voir la fiche client →" ajouté sur la ligne (Liste) et la carte (Kanban) une fois converti — voir section "Backend interne" |

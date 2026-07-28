@@ -9,6 +9,7 @@ interface SettingsDefaults {
   batWatermarkEnabled: boolean;
   popupEnabled: boolean;
   popupMessage: string;
+  prospectReminderDefaultDays: number;
 }
 
 export function SettingsForm({ defaultValues }: { defaultValues: SettingsDefaults }) {
@@ -75,6 +76,28 @@ export function SettingsForm({ defaultValues }: { defaultValues: SettingsDefault
             placeholder="Ex. : Nouvelle fonctionnalité disponible dans l'onglet Livrables !"
             className="resize-none rounded-xl border border-line bg-surface-elevated px-4 py-2.5 text-sm text-ink placeholder:text-ink-muted/70 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
           />
+        </section>
+
+        <section className="grid gap-3">
+          <h2 className="text-sm font-medium text-ink">Prospection</h2>
+          <div className="flex flex-col gap-2">
+            <label htmlFor="prospectReminderDefaultDays" className="text-sm text-ink-muted">
+              Délai suggéré (en jours) pour la date de relance d&apos;un nouveau prospect
+            </label>
+            <input
+              id="prospectReminderDefaultDays"
+              name="prospectReminderDefaultDays"
+              type="number"
+              min={1}
+              required
+              defaultValue={defaultValues.prospectReminderDefaultDays}
+              className="w-32 rounded-xl border border-line bg-surface-elevated px-4 py-2.5 text-sm text-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
+            />
+          </div>
+          <p className="text-xs text-ink-muted">
+            Utilisé uniquement pour préremplir la date de relance suggérée à la création d&apos;un
+            prospect — reste modifiable ou effaçable au cas par cas.
+          </p>
         </section>
 
         {state?.error && (

@@ -94,8 +94,13 @@ export class GmailNotConnectedError extends Error {
 
 // Client Gmail authentifié pour l'admin courant (single-admin app — pas de
 // paramètre adminId). Lève `GmailNotConnectedError` si aucun compte n'a
-// encore été connecté, pour que les pages puissent afficher un état vide
-// clair plutôt qu'une erreur 500.
+// encore été connecté, OU si le refresh token stocké a expiré/a été révoqué
+// côté Google (`invalid_grant` — ça arrive, ex. après 6 mois d'inactivité ou
+// une révocation manuelle) : les deux cas doivent afficher le même état
+// "Gmail non connecté" plutôt qu'une erreur 500, donc on force ici la
+// première tentative de rafraîchissement du token pour détecter le cas
+// expiré tout de suite, une seule fois, plutôt que de laisser chaque appel
+// Gmail (recherche, lecture, envoi...) potentiellement planter plus loin.
 async function getGmailClient(): Promise<{ gmail: gmail_v1.Gmail; email: string }> {
   const admin = await db.admin.findFirstOrThrow();
   if (!admin.gmailRefreshTokenEnc || !admin.gmailEmail) {
@@ -104,6 +109,16 @@ async function getGmailClient(): Promise<{ gmail: gmail_v1.Gmail; email: string 
 
   const client = getOAuth2Client();
   client.setCredentials({ refresh_token: decryptSecret(admin.gmailRefreshTokenEnc) });
+
+  try {
+    await client.getAccessToken();
+  } catch (error) {
+    const gaxiosCode = (error as { response?: { data?: { error?: string } } })?.response?.data?.error;
+    if (gaxiosCode === "invalid_grant") {
+      throw new GmailNotConnectedError();
+    }
+    throw error;
+  }
 
   return { gmail: google.gmail({ version: "v1", auth: client }), email: admin.gmailEmail };
 }

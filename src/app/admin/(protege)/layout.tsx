@@ -13,6 +13,7 @@ import { getUnreadThreadCount } from "@/lib/gmail";
 const navLinks = [
   { href: "/admin", label: "Tableau de bord" },
   { href: "/admin/clients", label: "Clients" },
+  { href: "/admin/prospection", label: "Prospection" },
   { href: "/admin/taches", label: "Tâches" },
   { href: "/admin/documents", label: "Documents" },
   { href: "/admin/notes", label: "Notes" },
@@ -31,27 +32,33 @@ export default async function AdminProtectedLayout({
 
   // Chronomètre visible dans tout l'admin (pas seulement la fiche tâche) —
   // au plus une ligne `endedAt: null` à la fois, voir `startTaskTimer`.
-  const [runningEntry, overdueCount, toValidateCount, unreadCount] = await Promise.all([
-    db.taskTimeEntry.findFirst({
-      where: { endedAt: null },
-      include: { task: true },
-    }),
-    // Même logique que les compteurs du tableau de bord — pastille sur
-    // "Tâches" dans le nav pour voir d'un coup d'œil s'il y a des tâches qui
-    // demandent une action, sans avoir à ouvrir la page.
-    db.task.count({
-      where: {
-        ...EXCLUDE_DEMO_CLIENT_TASKS,
-        archivedAt: null,
-        dueDate: { lt: startOfToday() },
-        status: { slug: { not: TASK_STATUS.TERMINE } },
-      },
-    }),
-    db.task.count({
-      where: { ...EXCLUDE_DEMO_CLIENT_TASKS, archivedAt: null, status: { slug: TASK_STATUS.A_VALIDER } },
-    }),
-    getUnreadThreadCount(),
-  ]);
+  const [runningEntry, overdueCount, toValidateCount, unreadCount, prospectReminderCount] =
+    await Promise.all([
+      db.taskTimeEntry.findFirst({
+        where: { endedAt: null },
+        include: { task: true },
+      }),
+      // Même logique que les compteurs du tableau de bord — pastille sur
+      // "Tâches" dans le nav pour voir d'un coup d'œil s'il y a des tâches qui
+      // demandent une action, sans avoir à ouvrir la page.
+      db.task.count({
+        where: {
+          ...EXCLUDE_DEMO_CLIENT_TASKS,
+          archivedAt: null,
+          dueDate: { lt: startOfToday() },
+          status: { slug: { not: TASK_STATUS.TERMINE } },
+        },
+      }),
+      db.task.count({
+        where: { ...EXCLUDE_DEMO_CLIENT_TASKS, archivedAt: null, status: { slug: TASK_STATUS.A_VALIDER } },
+      }),
+      getUnreadThreadCount(),
+      // Pastille "Prospection" — relances dues aujourd'hui ou en retard, pas
+      // encore envoyées.
+      db.prospect.count({
+        where: { nextReminderAt: { lte: new Date() }, reminderSentAt: null },
+      }),
+    ]);
   const attentionCount = overdueCount + toValidateCount;
 
   return (
@@ -93,7 +100,9 @@ export default async function AdminProtectedLayout({
                 ? attentionCount
                 : link.href === "/admin/mails"
                   ? unreadCount
-                  : 0;
+                  : link.href === "/admin/prospection"
+                    ? prospectReminderCount
+                    : 0;
             return (
               <Link
                 key={link.href}

@@ -12,6 +12,8 @@ import {
   DOCUMENT_TYPE_LIST_KEY,
   DOCUMENT_TYPE_SEED,
   PORTFOLIO_CATEGORY_LIST_KEY,
+  PROSPECT_STATUS_LIST_KEY,
+  PROSPECT_STATUS_SEED,
   TASK_FORMAT_LIST_KEY,
   TASK_FORMAT_SEED,
   TASK_STATUS,
@@ -508,6 +510,12 @@ async function main() {
     "Formats",
     true,
     TASK_FORMAT_SEED,
+  );
+  await seedDropdownList(
+    PROSPECT_STATUS_LIST_KEY,
+    "Statuts de prospection",
+    false,
+    PROSPECT_STATUS_SEED,
   );
   await seedAdmin();
   await seedDemoClient();

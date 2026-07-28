@@ -64,12 +64,16 @@ model Client {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  users       ClientUser[]
-  tasks       Task[]
-  documents   Document[]
+  users          ClientUser[]
+  tasks          Task[]
+  documents      Document[]
   // Nommé différemment du champ `notes` (texte libre juste au-dessus) —
   // celui-ci est la relation vers le module de notes internes (Note[]).
-  linkedNotes Note[]
+  linkedNotes    Note[]
+  // Renseigné uniquement quand ce client vient de la conversion d'un
+  // prospect (bouton "Convertir en client" sur /admin/prospection) — voir
+  // Prospect.convertedClient ci-dessous.
+  prospectOrigin Prospect?
 }
 
 model ClientUser {
@@ -170,6 +174,7 @@ model DropdownItem {
 
   tasks     Task[]
   documents Document[]
+  prospects Prospect[]
 
   taskTypeOf   Task[] @relation("TaskTypes")
   taskFormatOf Task[] @relation("TaskFormats")
@@ -223,6 +228,59 @@ model Task {
   statusHistory  TaskStatusHistory[]
   timeEntries    TaskTimeEntry[]
   checklistItems TaskChecklistItem[]
+}
+
+// Fiche de prospection (CRM léger, /admin/prospection). `statusId` pointe
+// vers la liste verrouillée "prospect_status" (5 valeurs, même pattern que
+// les statuts de tâche). `source` distingue une saisie manuelle d'un ajout
+// par la recherche assistée par IA (voir src/lib/prospect-search.ts).
+// `nextReminderAt`/`reminderSentAt` suivent le même pattern que
+// Note.reminderAt/reminderSentAt : remis à null dès que la date change,
+// pour ne jamais rater ou dupliquer une alerte planifiée
+// (src/lib/prospect-reminders.ts, cron quotidien).
+model Prospect {
+  id        String       @id @default(cuid())
+  name      String
+  company   String?
+  address   String?
+  phone     String?
+  email     String?
+  instagram String?
+  notes     String?
+  statusId  String
+  status    DropdownItem @relation(fields: [statusId], references: [id])
+  source    String       @default("manuel")
+
+  nextReminderAt DateTime?
+  reminderSentAt DateTime?
+
+  // Renseignés une fois converti en client via convertProspectToClient —
+  // le prospect n'est jamais supprimé à la conversion, juste marqué "fermé"
+  // et relié au nouveau Client.
+  convertedClientId String?   @unique
+  convertedClient   Client?   @relation(fields: [convertedClientId], references: [id])
+  convertedAt       DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  activity ProspectActivity[]
+}
+
+// Mini fil d'historique par prospect (créé, changement de statut, email
+// envoyé, relance) — même esprit que TaskStatusHistory : une ligne par
+// évènement, jamais réécrite ni supprimée, message dénormalisé (lisible même
+// si le contexte change ensuite). Affiché en ordre chronologique inverse sur
+// la fiche prospect.
+model ProspectActivity {
+  id         String   @id @default(cuid())
+  prospectId String
+  prospect   Prospect @relation(fields: [prospectId], references: [id], onDelete: Cascade)
+  type       String
+  message    String
+  createdAt  DateTime @default(now())
+
+  @@index([prospectId, createdAt])
 }
 
 // Sous-étapes cochables d'une tâche (ex. "logo reçu", "brief validé") —
@@ -372,16 +430,20 @@ model Document {
 // depuis /admin/reglages, sans redéploiement. Même pattern que
 // HomepageContent/HomepageHero ci-dessous.
 model AppSettings {
-  id                       String   @id @default("settings")
+  id                          String   @id @default("settings")
   // Nombre de jours après lesquels un livrable final (tâche "Terminé")
   // est purgé du stockage — voir /api/cron/purge-livrables.
-  deliverableRetentionDays Int      @default(60)
+  deliverableRetentionDays    Int      @default(60)
   // Filigrane à 10% d'opacité appliqué à la volée aux BAT (Deliverable.kind
   // = "bat") vus par le client — voir src/lib/watermark.ts.
-  batWatermarkEnabled      Boolean  @default(true)
-  popupEnabled             Boolean  @default(false)
-  popupMessage             String?
-  updatedAt                DateTime @updatedAt
+  batWatermarkEnabled         Boolean  @default(true)
+  popupEnabled                Boolean  @default(false)
+  popupMessage                String?
+  // Délai (en jours) utilisé uniquement pour préremplir la date de relance
+  // suggérée à la création d'un prospect (/admin/prospection/nouveau) — pas
+  // une automatisation cachée, le champ reste éditable ou vidable.
+  prospectReminderDefaultDays Int      @default(14)
+  updatedAt                   DateTime @updatedAt
 }
 
 model EmailLog {
@@ -479,17 +541,17 @@ model NoteFolder {
 }
 
 model Note {
-  id        String      @id @default(cuid())
-  title     String      @default("")
+  id             String      @id @default(cuid())
+  title          String      @default("")
   // HTML produit par l'éditeur Tiptap (voir src/components/admin/note-editor.tsx).
-  content   String      @default("") @db.Text
-  pinned    Boolean     @default(false)
-  folderId  String?
-  folder    NoteFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
+  content        String      @default("") @db.Text
+  pinned         Boolean     @default(false)
+  folderId       String?
+  folder         NoteFolder? @relation(fields: [folderId], references: [id], onDelete: SetNull)
   // Rattachement optionnel à un client — reste interne à l'admin, jamais
   // exposé côté espace client.
-  clientId  String?
-  client    Client?     @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  clientId       String?
+  client         Client?     @relation(fields: [clientId], references: [id], onDelete: SetNull)
   // Rappel façon pense-bête (ex. "me rappeler ça le 12/08") — une date, pas
   // une heure précise. `reminderSentAt` évite qu'un cron quotidien
   // (src/app/api/cron/note-reminders) renvoie le même rappel plusieurs fois ;
@@ -497,8 +559,8 @@ model Note {
   // décaler un rappel déjà envoyé le renvoie normalement à la nouvelle date.
   reminderAt     DateTime?
   reminderSentAt DateTime?
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
 
   @@index([folderId])
   @@index([clientId])

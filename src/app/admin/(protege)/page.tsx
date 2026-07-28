@@ -23,21 +23,28 @@ export default async function AdminDashboardPage() {
   const admin = await verifyAdminSession();
   const since = admin.previousLoginAt;
 
-  const [clientCount, taskCount, unpaidCount, overdueCount, toValidateCount] = await Promise.all([
-    db.client.count({ where: EXCLUDE_DEMO_CLIENT }),
-    db.task.count({ where: EXCLUDE_DEMO_CLIENT_TASKS }),
-    db.document.count({ where: { paymentStatus: "unpaid" } }),
-    db.task.count({
-      where: {
-        ...EXCLUDE_DEMO_CLIENT_TASKS,
-        dueDate: { lt: startOfToday() },
-        status: { slug: { not: TASK_STATUS.TERMINE } },
-      },
-    }),
-    db.task.count({
-      where: { ...EXCLUDE_DEMO_CLIENT_TASKS, status: { slug: TASK_STATUS.A_VALIDER } },
-    }),
-  ]);
+  const [clientCount, taskCount, openTaskCount, unpaidCount, overdueCount, toValidateCount] =
+    await Promise.all([
+      db.client.count({ where: EXCLUDE_DEMO_CLIENT }),
+      db.task.count({ where: EXCLUDE_DEMO_CLIENT_TASKS }),
+      // Nombre de tâches en cours (hors "Terminé") — c'est le chiffre le plus
+      // utile en un coup d'œil sur le tableau de bord ; le total (incluant les
+      // tâches terminées) reste affiché en petit en dessous.
+      db.task.count({
+        where: { ...EXCLUDE_DEMO_CLIENT_TASKS, status: { slug: { not: TASK_STATUS.TERMINE } } },
+      }),
+      db.document.count({ where: { paymentStatus: "unpaid" } }),
+      db.task.count({
+        where: {
+          ...EXCLUDE_DEMO_CLIENT_TASKS,
+          dueDate: { lt: startOfToday() },
+          status: { slug: { not: TASK_STATUS.TERMINE } },
+        },
+      }),
+      db.task.count({
+        where: { ...EXCLUDE_DEMO_CLIENT_TASKS, status: { slug: TASK_STATUS.A_VALIDER } },
+      }),
+    ]);
 
   const [batValidatedTasks, refusedTasks, newRequestTasks, newCommentRows] = since
     ? await Promise.all([
@@ -194,8 +201,9 @@ export default async function AdminDashboardPage() {
           <p className="mt-2 font-display text-3xl font-medium text-ink">{clientCount}</p>
         </div>
         <div className="rounded-2xl border border-line p-6">
-          <p className="text-sm text-ink-muted">Tâches</p>
-          <p className="mt-2 font-display text-3xl font-medium text-ink">{taskCount}</p>
+          <p className="text-sm text-ink-muted">Tâches en cours</p>
+          <p className="mt-2 font-display text-3xl font-medium text-ink">{openTaskCount}</p>
+          <p className="mt-1 text-xs text-ink-muted">{taskCount} au total</p>
           {(overdueCount > 0 || toValidateCount > 0) && (
             <div className="mt-3 flex flex-col gap-1 text-sm">
               {overdueCount > 0 && (

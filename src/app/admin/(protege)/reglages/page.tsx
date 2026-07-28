@@ -96,8 +96,25 @@ export default async function AdminSettingsPage({
             batWatermarkEnabled: settings.batWatermarkEnabled,
             popupEnabled: settings.popupEnabled,
             popupMessage: settings.popupMessage ?? "",
+            prospectReminderDefaultDays: settings.prospectReminderDefaultDays,
           }}
         />
+      </div>
+
+      <div className="mt-10 border-t border-line pt-8">
+        <h2 className="font-display text-lg font-medium tracking-tight text-ink">
+          Mode d&apos;emploi client
+        </h2>
+        <p className="mt-2 text-sm text-ink-muted">
+          Guide PDF illustré expliquant chaque onglet de l&apos;espace client, dans la charte du
+          site — à télécharger et transmettre à vos clients.
+        </p>
+        <a
+          href="/api/exports/guide"
+          className="mt-4 inline-flex items-center rounded-full border border-line px-5 py-2.5 text-sm text-ink transition-colors hover:border-accent"
+        >
+          Télécharger le mode d&apos;emploi (PDF)
+        </a>
       </div>
 
       <div className="mt-10 border-t border-line pt-8">

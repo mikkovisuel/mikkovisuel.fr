@@ -27,11 +27,19 @@ export async function updateSettings(
       ? popupMessageRaw.trim()
       : null;
 
+  const reminderDaysRaw = formData.get("prospectReminderDefaultDays");
+  const prospectReminderDefaultDays =
+    typeof reminderDaysRaw === "string" ? Number.parseInt(reminderDaysRaw, 10) : NaN;
+  if (!Number.isInteger(prospectReminderDefaultDays) || prospectReminderDefaultDays < 1) {
+    return { error: "Le délai de relance prospection doit être un entier positif." };
+  }
+
   const data = {
     deliverableRetentionDays: retentionDays,
     batWatermarkEnabled: formData.get("batWatermarkEnabled") === "on",
     popupEnabled: formData.get("popupEnabled") === "on",
     popupMessage,
+    prospectReminderDefaultDays,
   };
 
   await db.appSettings.upsert({

@@ -7,6 +7,7 @@ export const DOCUMENT_TYPE_LIST_KEY = "document_type";
 export const PORTFOLIO_CATEGORY_LIST_KEY = "portfolio_category";
 export const TASK_TYPE_LIST_KEY = "task_type";
 export const TASK_FORMAT_LIST_KEY = "task_format";
+export const PROSPECT_STATUS_LIST_KEY = "prospect_status";
 
 export const TASK_STATUS = {
   NOUVEAU: "nouveau",
@@ -27,6 +28,19 @@ export const DOCUMENT_TYPE = {
 } as const;
 
 export type DocumentTypeSlug = (typeof DOCUMENT_TYPE)[keyof typeof DOCUMENT_TYPE];
+
+// Cycle demandé par le client le 2026-07-28 : 5 statuts verrouillés pour la
+// prospection. "Fermé" = converti en client (voir convertProspectToClient),
+// "Archivé" = abandonné/mis de côté sans suppression.
+export const PROSPECT_STATUS = {
+  A_FAIRE: "a-faire",
+  EN_COURS: "en-cours",
+  DISCUSSIONS_EN_COURS: "discussions-en-cours",
+  FERME: "ferme",
+  ARCHIVE: "archive",
+} as const;
+
+export type ProspectStatusSlug = (typeof PROSPECT_STATUS)[keyof typeof PROSPECT_STATUS];
 
 // The small, fixed color palette admins pick from (§7.2 du cahier des
 // charges). Every Tailwind class below is written out in full so the
@@ -95,6 +109,20 @@ export const TASK_STATUS_SEED: SeedDropdownItem[] = [
   { slug: TASK_STATUS.BAT_VALIDE, label: "BAT validé", color: "emerald", locked: true, sortOrder: 4 },
   { slug: TASK_STATUS.A_MODIFIER, label: "À modifier", color: "rose", locked: true, sortOrder: 5 },
   { slug: TASK_STATUS.TERMINE, label: "Terminé", color: "emerald", locked: true, sortOrder: 6 },
+];
+
+export const PROSPECT_STATUS_SEED: SeedDropdownItem[] = [
+  { slug: PROSPECT_STATUS.A_FAIRE, label: "À faire", color: "slate", locked: true, sortOrder: 0 },
+  { slug: PROSPECT_STATUS.EN_COURS, label: "En cours", color: "blue", locked: true, sortOrder: 1 },
+  {
+    slug: PROSPECT_STATUS.DISCUSSIONS_EN_COURS,
+    label: "Discussions en cours",
+    color: "amber",
+    locked: true,
+    sortOrder: 2,
+  },
+  { slug: PROSPECT_STATUS.FERME, label: "Fermé", color: "emerald", locked: true, sortOrder: 3 },
+  { slug: PROSPECT_STATUS.ARCHIVE, label: "Archivé", color: "cyan", locked: true, sortOrder: 4 },
 ];
 
 // Document types stay open for admins to extend, except "facture" which the

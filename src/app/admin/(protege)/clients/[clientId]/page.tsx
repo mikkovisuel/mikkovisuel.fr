@@ -36,11 +36,11 @@ export default async function ClientDetailPage({
   searchParams,
 }: {
   params: Promise<{ clientId: string }>;
-  searchParams: Promise<{ tri?: string; dir?: string; epingle?: string }>;
+  searchParams: Promise<{ tri?: string; dir?: string; epingle?: string; prospectConversion?: string }>;
 }) {
   await verifyAdminSession();
   const { clientId } = await params;
-  const { tri, dir, epingle } = await searchParams;
+  const { tri, dir, epingle, prospectConversion } = await searchParams;
   const sortField: TaskSortField = isTaskSortField(tri) ? tri : "evenement";
   const sortDir: TaskSortDir = dir === "desc" ? "desc" : "asc";
   const pinnedOnly = epingle === "1";
@@ -115,6 +115,15 @@ export default async function ClientDetailPage({
           Emails
         </Link>
       </div>
+
+      {prospectConversion && prospectConversion !== "ok" && (
+        <p className="mt-4 rounded-xl border border-line bg-surface-elevated px-4 py-3 text-sm text-ink-muted">
+          Client créé depuis un prospect.{" "}
+          {prospectConversion === "no-email"
+            ? "Aucun compte de connexion créé (le prospect n'avait pas d'email) — ajoutez-en un ci-dessous."
+            : "Aucun nouveau compte créé : un compte existait déjà avec cet email."}
+        </p>
+      )}
 
       <section className="mt-8">
         <h2 className="text-sm font-medium text-ink-muted">Informations</h2>
