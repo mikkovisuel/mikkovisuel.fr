@@ -1,6 +1,7 @@
 import "server-only";
 import { db } from "@/lib/db";
 import { sendEmail, getAdminEmail } from "@/lib/email/service";
+import { escapeHtml } from "@/lib/html-escape";
 import { logProspectActivity } from "@/lib/prospect-activity";
 
 // Miroir de sendDueNoteReminders (src/lib/note-reminders.ts) : email
@@ -20,7 +21,9 @@ export async function sendDueProspectReminders() {
 
   const itemsHtml = dueProspects
     .map((prospect) => {
-      const label = prospect.company ? `${prospect.name} (${prospect.company})` : prospect.name;
+      const label = prospect.company
+        ? `${escapeHtml(prospect.name)} (${escapeHtml(prospect.company)})`
+        : escapeHtml(prospect.name);
       return `<li><strong>${label}</strong></li>`;
     })
     .join("");

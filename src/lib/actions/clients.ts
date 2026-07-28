@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { verifyAdminSession, verifyClientSession, assertNotDemo } from "@/lib/dal";
 import { hashPassword } from "@/lib/password";
+import { requireFreshAdminPassword, type StepUpFormState } from "@/lib/step-up-auth";
 import {
   ClientSchema,
   ClientUserSchema,
@@ -64,8 +65,17 @@ export async function updateClient(
   return undefined;
 }
 
-export async function deleteClient(clientId: string) {
-  await verifyAdminSession();
+// Action irréversible (supprime aussi tâches/documents/livrables en
+// cascade) — protégée par une reconfirmation du mot de passe admin juste
+// avant, en plus de la session déjà active (voir requireFreshAdminPassword).
+export async function deleteClient(
+  clientId: string,
+  _prev: StepUpFormState,
+  formData: FormData,
+): Promise<StepUpFormState> {
+  const error = await requireFreshAdminPassword(formData);
+  if (error) return { error };
+
   await db.client.delete({ where: { id: clientId } });
   revalidatePath("/admin/clients");
   redirect("/admin/clients");

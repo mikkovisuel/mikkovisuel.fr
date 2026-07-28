@@ -8,6 +8,7 @@ import { verifyAdminSession } from "@/lib/dal";
 import { getStorageAdapter } from "@/lib/storage";
 import { slugify } from "@/lib/slugify";
 import { computePillarMediaType } from "@/lib/portfolio-media";
+import { contentMatchesDeclaredType } from "@/lib/file-signature";
 import {
   PillarSchema,
   MediaItemSchema,
@@ -78,6 +79,10 @@ export async function createPillar(
   if (!ALLOWED_IMAGE_TYPES.has(cover.type)) {
     return { error: "Format d'image non autorisé (PNG, JPEG ou WebP)." };
   }
+  const coverBuffer = Buffer.from(await cover.arrayBuffer());
+  if (!(await contentMatchesDeclaredType(coverBuffer, cover.type))) {
+    return { error: "Le contenu du fichier ne correspond pas à une image valide." };
+  }
 
   const slug = slugify(parsed.data.title);
   const existing = await db.portfolioPillar.findUnique({ where: { slug } });
@@ -87,7 +92,7 @@ export async function createPillar(
 
   const storage = getStorageAdapter();
   const storageKey = `portfolio/covers/${randomUUID()}`;
-  await storage.save(storageKey, Buffer.from(await cover.arrayBuffer()));
+  await storage.save(storageKey, coverBuffer);
 
   const pillar = await db.portfolioPillar.create({
     data: {
@@ -141,10 +146,14 @@ export async function updatePillar(
     if (!ALLOWED_IMAGE_TYPES.has(cover.type)) {
       return { error: "Format d'image non autorisé (PNG, JPEG ou WebP)." };
     }
+    const coverBuffer = Buffer.from(await cover.arrayBuffer());
+    if (!(await contentMatchesDeclaredType(coverBuffer, cover.type))) {
+      return { error: "Le contenu du fichier ne correspond pas à une image valide." };
+    }
 
     const storage = getStorageAdapter();
     const storageKey = `portfolio/covers/${randomUUID()}`;
-    await storage.save(storageKey, Buffer.from(await cover.arrayBuffer()));
+    await storage.save(storageKey, coverBuffer);
 
     if (pillar.coverStorageKey) {
       await storage.delete(pillar.coverStorageKey).catch(() => {});
@@ -247,6 +256,11 @@ export async function createMediaItem(
     return { error: "Type de fichier non autorisé." };
   }
 
+  const fileBuffer = Buffer.from(await file.arrayBuffer());
+  if (isImage && !(await contentMatchesDeclaredType(fileBuffer, file.type))) {
+    return { error: "Le contenu du fichier ne correspond pas à une image valide." };
+  }
+
   // Videos are always 9:16, regardless of what the form submitted.
   const aspectRatio = isVideo ? "9:16" : parsed.data.aspectRatio;
 
@@ -255,7 +269,7 @@ export async function createMediaItem(
 
   const storage = getStorageAdapter();
   const storageKey = `portfolio/items/${randomUUID()}`;
-  await storage.save(storageKey, Buffer.from(await file.arrayBuffer()));
+  await storage.save(storageKey, fileBuffer);
 
   await db.portfolioMediaItem.create({
     data: {

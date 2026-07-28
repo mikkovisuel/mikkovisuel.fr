@@ -7,8 +7,9 @@ import { db } from "@/lib/db";
 import { verifyAdminSession } from "@/lib/dal";
 import { hashPassword } from "@/lib/password";
 import { sendEmail, getAdminEmail } from "@/lib/email/service";
+import { escapeHtml } from "@/lib/html-escape";
 import { sendMessage, GmailNotConnectedError } from "@/lib/gmail";
-import { adminResetClientPassword } from "@/lib/actions/password-reset";
+import { sendClientPasswordResetEmail } from "@/lib/actions/password-reset";
 import { PROSPECT_STATUS, PROSPECT_STATUS_LIST_KEY, type ProspectStatusSlug } from "@/lib/dropdown-lists";
 import { GmailMessageSchema, type GmailMessageFormState } from "@/lib/validation/gmail-message";
 import {
@@ -230,8 +231,8 @@ export async function sendProspectReminderNow(prospectId: string) {
     trigger: "prospect_reminder",
     to: adminEmail,
     subject: `Relance prospection — ${prospect.name}`,
-    html: `<p>Rappel manuel : il est temps de relancer <strong>${prospect.name}</strong>${
-      prospect.company ? ` (${prospect.company})` : ""
+    html: `<p>Rappel manuel : il est temps de relancer <strong>${escapeHtml(prospect.name)}</strong>${
+      prospect.company ? ` (${escapeHtml(prospect.company)})` : ""
     }.</p>`,
   });
 
@@ -245,8 +246,8 @@ export type ConvertProspectState = { error?: string } | undefined;
 // Bouton "Convertir en client" — crée un Client classique (+ un compte de
 // connexion si un email est renseigné, avec un mot de passe aléatoire suivi
 // immédiatement d'un email "définissez votre mot de passe", réutilisant le
-// même flux que `adminResetClientPassword` plutôt que d'exposer un mot de
-// passe en clair choisi par l'admin). Le prospect n'est jamais supprimé :
+// même flux que `sendClientPasswordResetEmail` plutôt que d'exposer un mot
+// de passe en clair choisi par l'admin). Le prospect n'est jamais supprimé :
 // il passe au statut "Fermé" et garde un lien vers le client créé.
 export async function convertProspectToClient(prospectId: string): Promise<ConvertProspectState> {
   await verifyAdminSession();
@@ -284,7 +285,7 @@ export async function convertProspectToClient(prospectId: string): Promise<Conve
           phone: prospect.phone,
         },
       });
-      await adminResetClientPassword(clientUser.id);
+      await sendClientPasswordResetEmail(clientUser);
     }
   }
 

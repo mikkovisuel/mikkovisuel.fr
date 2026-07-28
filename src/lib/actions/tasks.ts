@@ -6,6 +6,7 @@ import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { verifyAdminSession, verifyClientSession, assertNotDemo } from "@/lib/dal";
 import { sendEmail, getAdminEmail } from "@/lib/email/service";
+import { escapeHtml } from "@/lib/html-escape";
 import { getStorageAdapter } from "@/lib/storage";
 import { isTaskOverdue, taskDateFormatter } from "@/lib/tasks";
 
@@ -297,7 +298,7 @@ async function notifyClientUsersOfNewTaskToValidate(taskId: string) {
       trigger: "new_task_to_validate",
       to: user.email,
       subject: `Nouvelle tâche à valider — ${task.title}`,
-      html: `<p>Une nouvelle tâche "${task.title}" attend votre validation dans votre espace client.</p>`,
+      html: `<p>Une nouvelle tâche "${escapeHtml(task.title)}" attend votre validation dans votre espace client.</p>`,
     });
   }
 }
@@ -403,11 +404,14 @@ async function notifyBatValidated(
   const validatedAtLabel = taskDateFormatter.format(validatedAt);
   const deliverablesHtml =
     deliverableNames.length > 0
-      ? `<ul>${deliverableNames.map((name) => `<li>${name}</li>`).join("")}</ul>`
+      ? `<ul>${deliverableNames.map((name) => `<li>${escapeHtml(name)}</li>`).join("")}</ul>`
       : "<p>Aucun livrable associé.</p>";
-  const validatedByLabel = actor.type === "CLIENT_USER" ? `${actor.name} (${actor.email})` : "Mikko (admin)";
+  const validatedByLabel =
+    actor.type === "CLIENT_USER"
+      ? `${escapeHtml(actor.name)} (${escapeHtml(actor.email)})`
+      : "Mikko (admin)";
   const html = `
-    <p>Le BAT de la tâche "${taskTitle}" a été validé.</p>
+    <p>Le BAT de la tâche "${escapeHtml(taskTitle)}" a été validé.</p>
     <p><strong>Date :</strong> ${validatedAtLabel}</p>
     <p><strong>Validé par :</strong> ${validatedByLabel}</p>
     <p><strong>Livrables validés :</strong></p>
@@ -507,7 +511,7 @@ export async function refuseTask(
     trigger: "refusal_confirmed",
     to: clientUser.email,
     subject: `Refus enregistré — ${task.title}`,
-    html: `<p>Votre refus concernant "${task.title}" a bien été enregistré avec le motif suivant :</p><blockquote>${parsed.data.reason}</blockquote>`,
+    html: `<p>Votre refus concernant "${escapeHtml(task.title)}" a bien été enregistré avec le motif suivant :</p><blockquote>${escapeHtml(parsed.data.reason)}</blockquote>`,
   });
 
   revalidateTaskPaths(clientUser.clientId);
@@ -552,7 +556,7 @@ export async function refuseTaskByAdmin(
       trigger: "refusal_confirmed",
       to: user.email,
       subject: `Refus enregistré — ${task.title}`,
-      html: `<p>Le refus concernant "${task.title}" a bien été enregistré par Mikko, avec le motif suivant :</p><blockquote>${parsed.data.reason}</blockquote>`,
+      html: `<p>Le refus concernant "${escapeHtml(task.title)}" a bien été enregistré par Mikko, avec le motif suivant :</p><blockquote>${escapeHtml(parsed.data.reason)}</blockquote>`,
     });
   }
 
@@ -622,7 +626,7 @@ export async function sendTaskReminder(taskId: string) {
       trigger: "task_reminder",
       to: user.email,
       subject: `Rappel — ${task.title}`,
-      html: `<p>La tâche "${task.title}" a dépassé son échéance de livraison et n'est pas encore terminée. N'hésitez pas à nous recontacter si besoin.</p>`,
+      html: `<p>La tâche "${escapeHtml(task.title)}" a dépassé son échéance de livraison et n'est pas encore terminée. N'hésitez pas à nous recontacter si besoin.</p>`,
     });
   }
 

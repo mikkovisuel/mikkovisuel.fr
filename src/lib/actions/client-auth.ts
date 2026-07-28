@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { verifyPassword } from "@/lib/password";
 import { createSession } from "@/lib/session";
 import { isRateLimited, recordLoginAttempt } from "@/lib/rate-limit";
+import { getClientIp } from "@/lib/request-ip";
 import { setThemeCookie } from "@/lib/actions/theme";
 import { LoginSchema, type LoginFormState } from "@/lib/validation/auth";
 
@@ -24,15 +25,16 @@ export async function clientLogin(
   }
 
   const { email, password } = parsed.data;
+  const ipAddress = await getClientIp();
 
-  if (await isRateLimited(email)) {
+  if (await isRateLimited(email, ipAddress)) {
     return { error: "Trop de tentatives. Réessayez dans quelques minutes." };
   }
 
   const clientUser = await db.clientUser.findUnique({ where: { email } });
   const valid = clientUser ? await verifyPassword(password, clientUser.passwordHash) : false;
 
-  await recordLoginAttempt(email, valid);
+  await recordLoginAttempt(email, valid, ipAddress);
 
   if (!clientUser || !valid) {
     return { error: GENERIC_ERROR };

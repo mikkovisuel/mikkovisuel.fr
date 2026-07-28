@@ -3,9 +3,9 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
-import { verifyAdminSession } from "@/lib/dal";
 import { createSession, destroySession, findSessionByToken, COOKIE_NAME } from "@/lib/session";
 import { setThemeCookie } from "@/lib/actions/theme";
+import { requireFreshAdminPassword, type StepUpFormState } from "@/lib/step-up-auth";
 
 const RETURN_TOKEN_COOKIE = "admin_return_token";
 const RETURN_CLIENT_COOKIE = "admin_return_client_id";
@@ -25,15 +25,20 @@ const cookieOptions = {
 // copy. Deliberately skips lastLoginAt/ClientLoginEvent so this doesn't
 // pollute the "journal de connexion" dashboard panel, which tracks real
 // client logins only.
-export async function impersonateClient(clientUserId: string) {
-  await verifyAdminSession();
+export async function impersonateClient(
+  clientUserId: string,
+  _prev: StepUpFormState,
+  formData: FormData,
+): Promise<StepUpFormState> {
+  const error = await requireFreshAdminPassword(formData);
+  if (error) return { error };
 
   const clientUser = await db.clientUser.findUnique({ where: { id: clientUserId } });
-  if (!clientUser) return;
+  if (!clientUser) return { error: "Compte introuvable." };
 
   const cookieStore = await cookies();
   const adminToken = cookieStore.get(COOKIE_NAME)?.value;
-  if (!adminToken) return;
+  if (!adminToken) return { error: "Session admin introuvable." };
 
   cookieStore.set(RETURN_TOKEN_COOKIE, adminToken, cookieOptions);
   cookieStore.set(RETURN_CLIENT_COOKIE, clientUser.clientId, cookieOptions);

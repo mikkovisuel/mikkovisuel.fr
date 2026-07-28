@@ -9,6 +9,7 @@ import { ClientUserForm } from "@/components/admin/client-user-form";
 import { ClientUserEditForm } from "@/components/admin/client-user-edit-form";
 import { ClientUserEmailToggle } from "@/components/admin/client-user-email-toggle";
 import { DeleteButton } from "@/components/admin/delete-button";
+import { StepUpButton } from "@/components/admin/step-up-button";
 import { ResetPasswordButton } from "@/components/admin/reset-password-button";
 import { ImpersonateButton } from "@/components/admin/impersonate-button";
 import { TaskForm } from "@/components/task-form";
@@ -275,10 +276,12 @@ export default async function ClientDetailPage({
       </section>
 
       <section className="mt-12 border-t border-line pt-8">
-        <DeleteButton
+        <StepUpButton
           action={deleteThisClient}
-          confirmMessage={`Supprimer définitivement ${client.name} et toutes ses données (comptes, tâches, documents) ?`}
           label="Supprimer ce client"
+          confirmMessage={`Confirmez votre mot de passe admin pour supprimer définitivement ${client.name} et toutes ses données (comptes, tâches, documents).`}
+          submitLabel="Supprimer définitivement"
+          danger
         />
       </section>
     </div>

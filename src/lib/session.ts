@@ -75,3 +75,21 @@ export async function destroySession() {
 export async function destroyAllSessionsForSubject(subjectType: SubjectType, subjectId: string) {
   await db.session.deleteMany({ where: { subjectType, subjectId } });
 }
+
+// Comme destroyAllSessionsForSubject, mais garde la session en cours active
+// — utilisé quand on change son propre mot de passe en étant déjà connecté
+// (contrairement à la réinitialisation par email, qui part d'un état
+// "déconnecté" et peut tout révoquer sans distinction). Sans ça, un
+// changement de mot de passe légitime ne ferme jamais les sessions
+// potentiellement volées sur d'autres appareils.
+export async function destroyOtherSessionsForSubject(subjectType: SubjectType, subjectId: string) {
+  const currentToken = await getSessionToken();
+  const currentTokenHash = currentToken ? hashToken(currentToken) : null;
+  await db.session.deleteMany({
+    where: {
+      subjectType,
+      subjectId,
+      ...(currentTokenHash ? { tokenHash: { not: currentTokenHash } } : {}),
+    },
+  });
+}

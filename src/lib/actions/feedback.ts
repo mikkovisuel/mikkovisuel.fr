@@ -2,6 +2,7 @@
 
 import { verifyClientSession, assertNotDemo } from "@/lib/dal";
 import { sendEmail, getAdminEmail } from "@/lib/email/service";
+import { escapeHtml } from "@/lib/html-escape";
 import { FeedbackSchema, type FeedbackFormState } from "@/lib/validation/feedback";
 
 export async function submitInterfaceFeedback(
@@ -26,9 +27,9 @@ export async function submitInterfaceFeedback(
     to: adminEmail,
     subject: `Suggestion d'amélioration interface — ${clientUser.client.name}`,
     html: `
-      <p><strong>De :</strong> ${clientUser.name} (${clientUser.email}) — ${clientUser.client.name}</p>
+      <p><strong>De :</strong> ${escapeHtml(clientUser.name)} (${escapeHtml(clientUser.email)}) — ${escapeHtml(clientUser.client.name)}</p>
       <p><strong>Message :</strong></p>
-      <blockquote>${parsed.data.message.replace(/\n/g, "<br>")}</blockquote>
+      <blockquote>${escapeHtml(parsed.data.message).replace(/\n/g, "<br>")}</blockquote>
     `,
   });
 

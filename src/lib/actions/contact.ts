@@ -1,6 +1,7 @@
 "use server";
 
 import { sendEmail, getAdminEmail } from "@/lib/email/service";
+import { escapeHtml } from "@/lib/html-escape";
 import { ContactSchema, type ContactFormState } from "@/lib/validation/contact";
 
 const SUBJECT_LABELS: Record<string, string> = {
@@ -35,10 +36,10 @@ export async function submitContactForm(
     to: adminEmail,
     subject: `Nouveau message de contact — ${subjectLabel}`,
     html: `
-      <p><strong>De :</strong> ${parsed.data.name} (${parsed.data.email})</p>
-      <p><strong>Type de demande :</strong> ${subjectLabel}</p>
+      <p><strong>De :</strong> ${escapeHtml(parsed.data.name)} (${escapeHtml(parsed.data.email)})</p>
+      <p><strong>Type de demande :</strong> ${escapeHtml(subjectLabel)}</p>
       <p><strong>Message :</strong></p>
-      <blockquote>${parsed.data.message.replace(/\n/g, "<br>")}</blockquote>
+      <blockquote>${escapeHtml(parsed.data.message).replace(/\n/g, "<br>")}</blockquote>
     `,
   });
 

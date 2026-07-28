@@ -146,6 +146,19 @@ model LoginAttempt {
   createdAt  DateTime @default(now())
 
   @@index([identifier, createdAt])
+  @@index([ipAddress, createdAt])
+}
+
+// Limite la fréquence des demandes de réinitialisation de mot de passe
+// (voir requestReset dans src/lib/actions/password-reset.ts) — sans ça,
+// ce formulaire public peut être utilisé pour spammer n'importe quelle
+// adresse email de rappels "mot de passe oublié".
+model PasswordResetAttempt {
+  id         String   @id @default(cuid())
+  identifier String
+  createdAt  DateTime @default(now())
+
+  @@index([identifier, createdAt])
 }
 
 model DropdownList {

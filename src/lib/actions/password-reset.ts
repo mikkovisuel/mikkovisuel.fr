@@ -5,9 +5,18 @@ import { randomBytes, createHash } from "node:crypto";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { hashPassword, verifyPassword } from "@/lib/password";
-import { destroyAllSessionsForSubject, type SubjectType } from "@/lib/session";
+import {
+  destroyAllSessionsForSubject,
+  destroyOtherSessionsForSubject,
+  type SubjectType,
+} from "@/lib/session";
 import { sendEmail } from "@/lib/email/service";
-import { verifyAdminSession, verifyClientSession, assertNotDemo } from "@/lib/dal";
+import { verifyClientSession, assertNotDemo } from "@/lib/dal";
+import {
+  isPasswordResetRateLimited,
+  recordPasswordResetRequest,
+} from "@/lib/rate-limit";
+import { requireFreshAdminPassword, type StepUpFormState } from "@/lib/step-up-auth";
 import { ChangePasswordSchema, type ChangePasswordState } from "@/lib/validation/auth";
 
 const RESET_TOKEN_DURATION_MS = 60 * 60 * 1000;
@@ -25,12 +34,27 @@ async function requestReset(subjectType: SubjectType, rawEmail: string) {
   if (!parsed.success) return { message: GENERIC_MESSAGE };
   const email = parsed.data;
 
+  // Limité par email, indépendamment du fait que le compte existe ou non —
+  // sinon ce formulaire public sert à spammer n'importe quelle boîte mail
+  // de rappels "mot de passe oublié" sans limite.
+  if (await isPasswordResetRateLimited(email)) {
+    return { message: GENERIC_MESSAGE };
+  }
+  await recordPasswordResetRequest(email);
+
   const subject =
     subjectType === "ADMIN"
       ? await db.admin.findUnique({ where: { email } })
       : await db.clientUser.findUnique({ where: { email } });
 
   if (subject) {
+    // Invalide les liens de réinitialisation précédents non utilisés :
+    // sans ça, demander plusieurs fois laisse plusieurs tokens valides en
+    // parallèle jusqu'à leur expiration (1h chacun).
+    await db.passwordResetToken.deleteMany({
+      where: { subjectType, subjectId: subject.id, usedAt: null },
+    });
+
     const token = randomBytes(32).toString("base64url");
     await db.passwordResetToken.create({
       data: {
@@ -146,19 +170,23 @@ export async function changeClientPassword(
 
   const passwordHash = await hashPassword(parsed.data.newPassword);
   await db.clientUser.update({ where: { id: clientUser.id }, data: { passwordHash } });
+  // Révoque les autres sessions actives (autres appareils/navigateurs) sans
+  // déconnecter celle en cours — voir destroyOtherSessionsForSubject.
+  await destroyOtherSessionsForSubject("CLIENT_USER", clientUser.id);
 
   return { success: true };
 }
 
-// Bouton "Réinitialiser" sur la fiche client admin (à côté de chaque compte
-// de connexion) : envoie le même email de réinitialisation que le
-// formulaire "mot de passe oublié" public, sans passer par la ressaisie de
-// l'email — l'admin connaît déjà le compte.
-export async function adminResetClientPassword(clientUserId: string) {
-  await verifyAdminSession();
-
-  const clientUser = await db.clientUser.findUnique({ where: { id: clientUserId } });
-  if (!clientUser) return;
+// Logique partagée entre le bouton "Réinitialiser" (step-up, ci-dessous) et
+// la conversion automatique d'un prospect en client
+// (convertProspectToClient dans src/lib/actions/prospects.ts), qui doit
+// envoyer le même email sans jamais avoir de mot de passe admin à
+// revérifier (c'est déjà une étape interne d'une action elle-même protégée
+// par verifyAdminSession).
+export async function sendClientPasswordResetEmail(clientUser: { id: string; email: string }) {
+  await db.passwordResetToken.deleteMany({
+    where: { subjectType: "CLIENT_USER", subjectId: clientUser.id, usedAt: null },
+  });
 
   const token = randomBytes(32).toString("base64url");
   await db.passwordResetToken.create({
@@ -179,4 +207,24 @@ export async function adminResetClientPassword(clientUserId: string) {
     subject: "Réinitialisation de votre mot de passe — Mikko Visuel",
     html: `<p>Un lien de réinitialisation de mot de passe a été généré pour vous par Mikko Visuel. Cliquez pour choisir un nouveau mot de passe (valable 1 heure) :</p><p><a href="${resetUrl}">${resetUrl}</a></p>`,
   });
+}
+
+// Bouton "Réinitialiser" sur la fiche client admin (à côté de chaque compte
+// de connexion) : envoie le même email de réinitialisation que le
+// formulaire "mot de passe oublié" public, sans passer par la ressaisie de
+// l'email — l'admin connaît déjà le compte. Protégé par une reconfirmation
+// du mot de passe admin (voir requireFreshAdminPassword).
+export async function adminResetClientPassword(
+  clientUserId: string,
+  _prev: StepUpFormState,
+  formData: FormData,
+): Promise<StepUpFormState> {
+  const error = await requireFreshAdminPassword(formData);
+  if (error) return { error };
+
+  const clientUser = await db.clientUser.findUnique({ where: { id: clientUserId } });
+  if (!clientUser) return { error: "Compte introuvable." };
+
+  await sendClientPasswordResetEmail(clientUser);
+  return { success: true };
 }

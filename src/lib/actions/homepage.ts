@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { verifyAdminSession } from "@/lib/dal";
 import { getStorageAdapter } from "@/lib/storage";
+import { contentMatchesDeclaredType } from "@/lib/file-signature";
 
 const MAX_IMAGE_SIZE = 20 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
@@ -26,6 +27,7 @@ export async function updateHomepageHero(
   if (!mainFile && !detailFile) {
     return { error: "Choisissez au moins une image." };
   }
+  const buffers = new Map<File, Buffer>();
   for (const file of [mainFile, detailFile]) {
     if (!file) continue;
     if (file.size > MAX_IMAGE_SIZE) {
@@ -34,6 +36,11 @@ export async function updateHomepageHero(
     if (!ALLOWED_IMAGE_TYPES.has(file.type)) {
       return { error: `"${file.name}" : format non autorisé (PNG, JPEG ou WebP).` };
     }
+    const buffer = Buffer.from(await file.arrayBuffer());
+    if (!(await contentMatchesDeclaredType(buffer, file.type))) {
+      return { error: `"${file.name}" : le contenu du fichier ne correspond pas à une image valide.` };
+    }
+    buffers.set(file, buffer);
   }
 
   const storage = getStorageAdapter();
@@ -50,7 +57,7 @@ export async function updateHomepageHero(
 
   if (mainFile) {
     const storageKey = `homepage-hero/${randomUUID()}`;
-    await storage.save(storageKey, Buffer.from(await mainFile.arrayBuffer()));
+    await storage.save(storageKey, buffers.get(mainFile)!);
     if (existing?.mainStorageKey) await storage.delete(existing.mainStorageKey);
     data.mainStorageKey = storageKey;
     data.mainMimeType = mainFile.type;
@@ -58,7 +65,7 @@ export async function updateHomepageHero(
   }
   if (detailFile) {
     const storageKey = `homepage-hero/${randomUUID()}`;
-    await storage.save(storageKey, Buffer.from(await detailFile.arrayBuffer()));
+    await storage.save(storageKey, buffers.get(detailFile)!);
     if (existing?.detailStorageKey) await storage.delete(existing.detailStorageKey);
     data.detailStorageKey = storageKey;
     data.detailMimeType = detailFile.type;

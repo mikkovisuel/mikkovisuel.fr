@@ -6,8 +6,10 @@ import { db } from "@/lib/db";
 import { verifyAdminSession } from "@/lib/dal";
 import { getStorageAdapter } from "@/lib/storage";
 import { sendEmail } from "@/lib/email/service";
+import { escapeHtml } from "@/lib/html-escape";
 import { formatFileSize } from "@/lib/files";
 import { taskDateFormatterShort } from "@/lib/tasks";
+import { contentMatchesDeclaredType } from "@/lib/file-signature";
 
 const MAX_DOCUMENT_SIZE = 20 * 1024 * 1024;
 const MAX_DELIVERABLE_SIZE = 500 * 1024 * 1024;
@@ -47,6 +49,7 @@ export async function uploadDeliverable(
   if (files.length === 0) {
     return { error: "Choisissez au moins un fichier." };
   }
+  const buffers = new Map<File, Buffer>();
   for (const file of files) {
     if (file.size > MAX_DELIVERABLE_SIZE) {
       return { error: `"${file.name}" est trop volumineux (500 Mo maximum).` };
@@ -54,6 +57,11 @@ export async function uploadDeliverable(
     if (!ALLOWED_DELIVERABLE_TYPES.has(file.type)) {
       return { error: `"${file.name}" : type de fichier non autorisé.` };
     }
+    const buffer = Buffer.from(await file.arrayBuffer());
+    if (!(await contentMatchesDeclaredType(buffer, file.type))) {
+      return { error: `"${file.name}" : le contenu du fichier ne correspond pas à son type déclaré.` };
+    }
+    buffers.set(file, buffer);
   }
 
   const kindRaw = formData.get("kind");
@@ -77,7 +85,7 @@ export async function uploadDeliverable(
     await Promise.all(
       files.map(async (file) => {
         const storageKey = `deliverables/${randomUUID()}`;
-        const buffer = Buffer.from(await file.arrayBuffer());
+        const buffer = buffers.get(file)!;
         await storage.save(storageKey, buffer);
 
         await db.deliverable.create({
@@ -115,7 +123,7 @@ export async function uploadDeliverable(
         files.length > 1
           ? `${files.length} nouveaux fichiers sont disponibles`
           : "Un nouveau fichier est disponible"
-      } dans l'onglet ${tabLabel} pour "${task.title}".</p>`,
+      } dans l'onglet ${tabLabel} pour "${escapeHtml(task.title)}".</p>`,
     });
   }
 
@@ -193,7 +201,7 @@ export async function sendDeliverablesByEmail(
     trigger: "deliverables_sent",
     to: task.client.billingEmail,
     subject,
-    html: `<p>Bonjour,</p><p>Vous trouverez ci-joint les livrables finaux de la tâche "${task.title}".</p><p>Je reste à disposition pour tout renseignement complémentaire.</p><p>Par avance, merci.</p>`,
+    html: `<p>Bonjour,</p><p>Vous trouverez ci-joint les livrables finaux de la tâche "${escapeHtml(task.title)}".</p><p>Je reste à disposition pour tout renseignement complémentaire.</p><p>Par avance, merci.</p>`,
     attachments,
   });
 
@@ -218,6 +226,7 @@ export async function uploadAttachment(
   if (files.length === 0) {
     return { error: "Choisissez au moins un fichier." };
   }
+  const buffers = new Map<File, Buffer>();
   for (const file of files) {
     if (file.size > MAX_ATTACHMENT_SIZE) {
       return { error: `"${file.name}" est trop volumineux (20 Mo maximum).` };
@@ -225,6 +234,11 @@ export async function uploadAttachment(
     if (!ALLOWED_ATTACHMENT_TYPES.has(file.type)) {
       return { error: `"${file.name}" : type de fichier non autorisé.` };
     }
+    const buffer = Buffer.from(await file.arrayBuffer());
+    if (!(await contentMatchesDeclaredType(buffer, file.type))) {
+      return { error: `"${file.name}" : le contenu du fichier ne correspond pas à son type déclaré.` };
+    }
+    buffers.set(file, buffer);
   }
 
   const task = await db.task.findUnique({ where: { id: taskId } });
@@ -236,7 +250,7 @@ export async function uploadAttachment(
     await Promise.all(
       files.map(async (file) => {
         const storageKey = `attachments/${randomUUID()}`;
-        const buffer = Buffer.from(await file.arrayBuffer());
+        const buffer = buffers.get(file)!;
         await storage.save(storageKey, buffer);
 
         await db.attachment.create({
@@ -300,6 +314,10 @@ export async function uploadDocument(
   if (!ALLOWED_DOCUMENT_TYPES.has(file.type)) {
     return { error: "Seuls les fichiers PDF sont acceptés." };
   }
+  const buffer = Buffer.from(await file.arrayBuffer());
+  if (!(await contentMatchesDeclaredType(buffer, file.type))) {
+    return { error: "Le contenu du fichier ne correspond pas à un PDF valide." };
+  }
   if (typeof typeId !== "string" || !typeId) {
     return { error: "Choisissez un type de document." };
   }
@@ -327,7 +345,6 @@ export async function uploadDocument(
 
   const storage = getStorageAdapter();
   const storageKey = `documents/${randomUUID()}`;
-  const buffer = Buffer.from(await file.arrayBuffer());
   await storage.save(storageKey, buffer);
 
   await db.document.create({

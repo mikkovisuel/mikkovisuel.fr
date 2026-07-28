@@ -1100,6 +1100,112 @@ Le client a explicitement délégué ces choix :
 
 ## Points encore ouverts
 
+- **Renforcement de la sécurité — livré le 2026-07-28.** Audit complet mené
+  en lecture seule le 2026-07-28 ("renforcer la sécurité au max"), 3 volets :
+  authentification/sessions, en-têtes HTTP/infra, injections/XSS/IDOR.
+  **Aucune faille critique trouvée** : pas d'IDOR (vérifié sur toutes les
+  actions client-facing), pas de XSS via `dangerouslySetInnerHTML`, pas
+  d'injection SQL, webhook Stripe correctement vérifié, iframe email
+  correctement sandboxée, aucun secret en clair dans le dépôt. Plan de
+  durcissement discuté et validé par le client sur 4 arbitrages (2FA en
+  chantier séparé ; sessions gardées à 30 jours + reconfirmation du mot de
+  passe avant les actions sensibles ; en-têtes simples tout de suite + CSP
+  en mode Report-Only ; mise à jour Next.js), mis de côté une session puis
+  repris et livré intégralement ("tu peux reprendre") :
+  1. **Échappement HTML dans les emails transactionnels** (`escapeHtml`,
+     nouveau `src/lib/html-escape.ts`) : faille XSS-via-email réelle
+     corrigée sur 9 points d'interpolation (titre de tâche, motif de refus,
+     nom de fichier, champs prospect) dans `contact.ts`, `feedback.ts`,
+     `files.ts`, `tasks.ts`, `prospects.ts`, `prospect-reminders.ts`.
+  2. `.env.example` complété (`CRON_SECRET`, `ENCRYPTION_KEY`,
+     `GOOGLE_CLIENT_ID`/`SECRET`/`REDIRECT_URI`, `NEXT_PUBLIC_SITE_URL`).
+  3. **Rate limiting des demandes de réinitialisation de mot de passe**
+     (nouveau modèle `PasswordResetAttempt`, 3 demandes/15 min par email) —
+     empêche le spam email via le formulaire public "mot de passe oublié".
+  4. **Anciens tokens de réinitialisation invalidés** à chaque nouvelle
+     demande (un seul lien valide à la fois) ; **autres sessions révoquées**
+     au changement de mot de passe en étant connecté
+     (`destroyOtherSessionsForSubject`, nouveau dans `src/lib/session.ts`),
+     sans déconnecter la session en cours.
+  5. **En-têtes de sécurité HTTP** (`next.config.ts` : HSTS,
+     X-Content-Type-Options, X-Frame-Options, Referrer-Policy,
+     Permissions-Policy) + **CSP en mode Report-Only** sur tout le site —
+     aucune violation détectée sur les parcours public/admin/espace client
+     testés.
+  6. **Anti-bruteforce étendu par IP**, en plus de l'email
+     (`LoginAttempt.ipAddress`, jusqu'ici jamais rempli) — seuil séparé (20
+     échecs/15 min par IP, contre 8/15 min par compte) pour freiner une
+     attaque distribuée sur plusieurs comptes depuis une même IP sans
+     bloquer un réseau partagé sur une simple faute de frappe.
+  7. **Reconfirmation du mot de passe admin (step-up)** avant les 3 actions
+     les plus sensibles : suppression définitive d'un client
+     (`deleteClient`), réinitialisation du mot de passe d'un client
+     (`adminResetClientPassword`), usurpation d'espace client
+     (`impersonateClient`) — nouveau composant partagé
+     `StepUpButton`/`requireFreshAdminPassword`, remplace le simple
+     `window.confirm` sur ces 3 actions précises uniquement.
+  8. **Vérification par signature binaire (magic bytes)** des fichiers
+     uploadés (`src/lib/file-signature.ts`, via `sharp` pour les images et
+     l'en-tête `%PDF-` pour les PDF), en plus du type déclaré par le
+     navigateur — appliquée aux livrables, pièces jointes, documents,
+     couvertures et médias du portfolio, visuels du Hero.
+  9. **Next.js mis à jour 16.2.10 → 16.2.12** (corrige plusieurs failles
+     réelles : DoS, divulgation d'endpoints Server Actions, confirmées sur
+     la base d'avis GitHub officiels). Dépendances restées volontairement
+     en l'état par décision documentée (pas des oublis) : `@aws-sdk/
+     client-s3` toujours figé à `3.726.1` (compatibilité OVH non confirmée
+     comme résolue), `sharp`/`postcss` empaquetés en interne par `next`
+     (aucun correctif sûr disponible côté projet), `prisma` gardé en
+     dépendance de production (nécessaire au `postdeploy` Scalingo, qui
+     élague les devDependencies après le build).
+  10. (Priorité basse, non traité) rate limiting général au-delà du
+      login/réinitialisation, sur les routes API les plus coûteuses.
+  11. (Chantier séparé, non traité) 2FA/TOTP pour le compte admin.
+
+  Détails des tests réels effectués (rate limiting déclenché en conditions
+  réelles, step-up testé avec mot de passe correct/incorrect, en-têtes
+  inspectés, etc.) : voir `VALIDATION.md`, section "Renforcement de la
+  sécurité".
+- Suggestions de gestion globale proposées par Claude Code (2026-07-28, pas
+  encore priorisées ni construites — "à reprendre plus tard" selon le
+  client) :
+  1. Sauvegardes automatiques de la base de données — aucune stratégie de
+     backup n'existe aujourd'hui à part l'export CSV/ZIP manuel.
+  2. Vue financière consolidée — chiffre d'affaires facturé/encaissé, par
+     mois ou par client, au-delà du seul compteur "factures en attente".
+  3. Recherche globale — une seule barre pour chercher un client, une
+     tâche, un prospect ou un document, plutôt que naviguer entre les
+     onglets.
+  4. Résumé hebdomadaire par email — digest du lundi matin (tâches de la
+     semaine, relances prospection dues, factures en retard).
+  5. Authentification à deux facteurs sur le compte admin — un seul compte,
+     accès à toutes les données clients, protégé aujourd'hui par email +
+     mot de passe seuls.
+  6. Journal d'audit global — historique unique de "qui a fait quoi" sur
+     toute l'app, au-delà du fil d'historique par prospect (2026-07-28).
+  7. Planning de charge — vue "combien de tâches actives par semaine/mois"
+     pour repérer une surcharge à l'avance.
+  8. Rôles multi-admin — un seul compte admin en dur aujourd'hui ; utile
+     seulement si le client embauche un assistant.
+
+  (Une 9ᵉ piste, modèles de tâches réutilisables pour les prestations
+  récurrentes, a été proposée puis explicitement écartée par le client le
+  2026-07-28 — ne pas la reproposer.)
+- Suggestions fonctionnalité/design proposées par Claude Code (2026-07-28,
+  pas encore construites) :
+  1. Devis signables en ligne — signature électronique simple pour accélérer
+     le cycle devis → accord, à la place du PDF téléchargé actuel.
+  2. Vérification du mode clair sur Prospection — le module n'a été testé
+     qu'en thème sombre lors de sa construction ; à repasser en clair pour
+     confirmer que rien ne casse (contraste des badges de statut notamment).
+  3. Mini visite guidée à la première connexion client — info-bulles
+     ponctuelles au premier login, en complément du guide PDF déjà livré.
+
+  (Trois autres pistes — pages "étude de cas" sur le portfolio public, avis
+  client à la clôture d'une tâche, lien de partage temporaire d'un BAT sans
+  compte complet — ont été proposées le même jour puis explicitement
+  écartées par le client pour l'instant : "pas le moment" — ne pas les
+  reproposer sans qu'il les redemande.)
 - Contenu détaillé de la page Contact.
 - Contenu des Conditions de vente / grille tarifaire (actuellement : "tarifs
   et modalités établis au cas par cas").
@@ -1245,3 +1351,7 @@ Le client a explicitement délégué ces choix :
 | 2026-07-28 | Mode d'emploi client illustré, dans la DA du site, en PDF téléchargeable | Livré : bouton sur `/admin/reglages`, généré à la volée (`@react-pdf/renderer`), une section par onglet de l'espace client — voir section "Backend interne" |
 | 2026-07-28 | Validation logicielle (VSI) permanente, à maintenir à chaque nouvelle fonctionnalité | Livré : nouveau `VALIDATION.md` (cas passants/bloquants réellement testés), règle de maintenance ajoutée dans `CLAUDE.md` — portée initiale limitée aux livraisons du 2026-07-28, historique antérieur non rejoué rétroactivement — voir section "Backend interne" et "Points encore ouverts" |
 | 2026-07-28 | Suggestions Prospection : mini fil d'historique par prospect (emails/relances/statuts) + lien direct vers la fiche client convertie — 2 retenues sur 4 proposées | Livré : nouveau modèle `ProspectActivity` (créé/statut/email/relance/converti, ordre chronologique inverse) affiché sur la fiche prospect ; lien "Voir la fiche client →" ajouté sur la ligne (Liste) et la carte (Kanban) une fois converti — voir section "Backend interne" |
+| 2026-07-28 | "As-tu des suggestions pour la gestion globale ?" | Pas construit — 9 pistes proposées, 8 retenues et notées dans "Points encore ouverts" pour être reprises plus tard (sauvegardes auto, vue financière, recherche globale, digest hebdomadaire, 2FA admin, journal d'audit global, planning de charge, rôles multi-admin) ; "modèles de tâches réutilisables" explicitement écartée par le client |
+| 2026-07-28 | "Vois-tu autre chose à améliorer côté fonctionnalité ou design ?" | Pas construit — 6 pistes proposées, 3 retenues et notées dans "Points encore ouverts" (devis signables en ligne, vérification du mode clair sur Prospection, mini visite guidée à la première connexion client) ; 3 explicitement écartées pour l'instant par le client (pages "étude de cas" portfolio, avis client à la clôture d'une tâche, lien de partage temporaire d'un BAT) |
+| 2026-07-28 | "Peux-tu voir pour renforcer la sécurité au max du site ?" | Audit complet mené (lecture seule) — aucune faille critique trouvée (pas d'IDOR, pas de XSS via `dangerouslySetInnerHTML`, pas d'injection SQL, webhook Stripe et sandbox email intacts). Plan de durcissement (11 points) discuté et validé sur 4 arbitrages avec le client, mis de côté une session ("quand les tokens seront rechargés") — voir ligne suivante pour la reprise |
+| 2026-07-28 | "Tu peux reprendre" (renforcement de la sécurité) | Livré : les 9 points du plan (hors 2FA et rate limiting général, explicitement hors périmètre) — voir section "Points encore ouverts" pour le détail complet et `VALIDATION.md` pour les résultats de test réels (rate limiting déclenché en conditions réelles, step-up testé mot de passe correct/incorrect, en-têtes HTTP inspectés, CSP Report-Only sans violation sur les parcours testés) |

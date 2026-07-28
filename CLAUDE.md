@@ -1,5 +1,3 @@
-@AGENTS.md
-
 # Cahier des charges
 
 `CAHIER_DES_CHARGES.md` is the living spec for this project. Whenever the
