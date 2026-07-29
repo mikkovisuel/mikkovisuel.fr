@@ -7,6 +7,7 @@ import { createSession } from "@/lib/session";
 import { isRateLimited, recordLoginAttempt } from "@/lib/rate-limit";
 import { getClientIp } from "@/lib/request-ip";
 import { setThemeCookie } from "@/lib/actions/theme";
+import { logAuditEvent } from "@/lib/audit-log";
 import { LoginSchema, type LoginFormState } from "@/lib/validation/auth";
 
 const GENERIC_ERROR = "Email ou mot de passe incorrect.";
@@ -37,8 +38,22 @@ export async function adminLogin(
   await recordLoginAttempt(email, valid, ipAddress);
 
   if (!admin || !valid) {
+    await logAuditEvent({
+      actorType: "SYSTEM",
+      actorLabel: email,
+      action: "admin_login_failed",
+      ipAddress,
+    });
     return { error: GENERIC_ERROR };
   }
+
+  await logAuditEvent({
+    actorType: "ADMIN",
+    actorId: admin.id,
+    actorLabel: admin.email,
+    action: "admin_login_success",
+    ipAddress,
+  });
 
   await createSession("ADMIN", admin.id);
   await setThemeCookie(admin.themePreference === "dark" ? "dark" : "light");

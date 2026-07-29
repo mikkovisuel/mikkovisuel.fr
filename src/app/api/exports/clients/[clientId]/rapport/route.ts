@@ -5,6 +5,8 @@ import { getAdminSession } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { TASK_STATUS } from "@/lib/dropdown-lists";
 import { TaskReportDocument } from "@/components/pdf/task-report-document";
+import { logAuditEvent } from "@/lib/audit-log";
+import { getClientIp } from "@/lib/request-ip";
 
 // Rapport d'état PDF, par client — toutes les tâches non terminées (hors
 // archivées), pour que l'admin puisse envoyer un point d'avancement sans
@@ -54,6 +56,16 @@ export async function GET(
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-|-$/g, "");
   const fileName = `rapport-${slug}.pdf`;
+
+  await logAuditEvent({
+    actorType: "ADMIN",
+    actorId: admin.id,
+    actorLabel: admin.email,
+    action: "data_export",
+    targetType: "Export",
+    targetLabel: fileName,
+    ipAddress: await getClientIp(),
+  });
 
   return new NextResponse(new Uint8Array(buffer), {
     headers: {

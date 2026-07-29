@@ -6,7 +6,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { verifyAdminSession } from "@/lib/dal";
 import { hashPassword } from "@/lib/password";
-import { sendEmail, getAdminEmail } from "@/lib/email/service";
+import { sendEmailToAdmins, getAdminEmails } from "@/lib/email/service";
 import { escapeHtml } from "@/lib/html-escape";
 import { sendMessage, GmailNotConnectedError } from "@/lib/gmail";
 import { sendClientPasswordResetEmail } from "@/lib/actions/password-reset";
@@ -224,12 +224,11 @@ export async function sendProspectReminderNow(prospectId: string) {
   const prospect = await db.prospect.findUnique({ where: { id: prospectId } });
   if (!prospect) return;
 
-  const adminEmail = await getAdminEmail();
-  if (!adminEmail) return;
+  const adminEmails = await getAdminEmails();
+  if (adminEmails.length === 0) return;
 
-  await sendEmail({
+  await sendEmailToAdmins({
     trigger: "prospect_reminder",
-    to: adminEmail,
     subject: `Relance prospection — ${prospect.name}`,
     html: `<p>Rappel manuel : il est temps de relancer <strong>${escapeHtml(prospect.name)}</strong>${
       prospect.company ? ` (${escapeHtml(prospect.company)})` : ""

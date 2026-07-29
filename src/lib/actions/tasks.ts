@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { verifyAdminSession, verifyClientSession, assertNotDemo } from "@/lib/dal";
-import { sendEmail, getAdminEmail } from "@/lib/email/service";
+import { sendEmail, getAdminEmails } from "@/lib/email/service";
 import { escapeHtml } from "@/lib/html-escape";
 import { getStorageAdapter } from "@/lib/storage";
 import { isTaskOverdue, taskDateFormatter } from "@/lib/tasks";
@@ -424,8 +424,7 @@ async function notifyBatValidated(
     // valider ne la reçoit que si ses notifications email sont actives (la
     // préférence s'applique même à sa propre action, pas seulement aux
     // relances).
-    const adminEmail = await getAdminEmail();
-    if (adminEmail) recipients.push(adminEmail);
+    recipients.push(...(await getAdminEmails()));
     if (actor.emailNotificationsEnabled) recipients.push(actor.email);
   } else {
     for (const user of actor.clientUsers) {

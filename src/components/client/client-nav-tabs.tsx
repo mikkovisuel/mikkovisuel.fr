@@ -12,6 +12,9 @@ interface NavTab {
   // nouvel onglet, jamais surligné comme "actif" (le pathname interne ne
   // matchera jamais son href).
   external?: boolean;
+  // Sélecteur stable pour `FirstLoginTour`, qui cible chaque onglet par
+  // `data-tour`.
+  tourId?: string;
 }
 
 export function ClientNavTabs({ tabs }: { tabs: NavTab[] }) {
@@ -44,6 +47,7 @@ export function ClientNavTabs({ tabs }: { tabs: NavTab[] }) {
           <Link
             key={tab.href}
             href={tab.href}
+            data-tour={tab.tourId}
             className={`flex items-center gap-1.5 whitespace-nowrap border-b-2 py-3 text-sm transition-colors ${
               isActive ? "border-accent text-ink" : "border-transparent text-ink-muted hover:text-ink"
             }`}

@@ -1,7 +1,7 @@
 "use server";
 
 import { verifyClientSession, assertNotDemo } from "@/lib/dal";
-import { sendEmail, getAdminEmail } from "@/lib/email/service";
+import { sendEmailToAdmins, getAdminEmails } from "@/lib/email/service";
 import { escapeHtml } from "@/lib/html-escape";
 import { FeedbackSchema, type FeedbackFormState } from "@/lib/validation/feedback";
 
@@ -17,14 +17,13 @@ export async function submitInterfaceFeedback(
     return { error: parsed.error.issues[0]?.message ?? "Formulaire invalide." };
   }
 
-  const adminEmail = await getAdminEmail();
-  if (!adminEmail) {
+  const adminEmails = await getAdminEmails();
+  if (adminEmails.length === 0) {
     return { error: "Une erreur est survenue, merci de réessayer." };
   }
 
-  await sendEmail({
+  await sendEmailToAdmins({
     trigger: "feedback_suggestion",
-    to: adminEmail,
     subject: `Suggestion d'amélioration interface — ${clientUser.client.name}`,
     html: `
       <p><strong>De :</strong> ${escapeHtml(clientUser.name)} (${escapeHtml(clientUser.email)}) — ${escapeHtml(clientUser.client.name)}</p>

@@ -1,6 +1,6 @@
 import "server-only";
 import { db } from "@/lib/db";
-import { sendEmail, getAdminEmail } from "@/lib/email/service";
+import { sendEmailToAdmins, getAdminEmails } from "@/lib/email/service";
 import { escapeHtml } from "@/lib/html-escape";
 import { logProspectActivity } from "@/lib/prospect-activity";
 
@@ -16,8 +16,8 @@ export async function sendDueProspectReminders() {
   });
   if (dueProspects.length === 0) return { sentCount: 0 };
 
-  const adminEmail = await getAdminEmail();
-  if (!adminEmail) return { sentCount: 0 };
+  const adminEmails = await getAdminEmails();
+  if (adminEmails.length === 0) return { sentCount: 0 };
 
   const itemsHtml = dueProspects
     .map((prospect) => {
@@ -28,9 +28,8 @@ export async function sendDueProspectReminders() {
     })
     .join("");
 
-  await sendEmail({
+  await sendEmailToAdmins({
     trigger: "prospect_reminder",
-    to: adminEmail,
     subject:
       dueProspects.length > 1
         ? `${dueProspects.length} relances de prospection aujourd'hui`

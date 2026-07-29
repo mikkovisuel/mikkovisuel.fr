@@ -6,6 +6,9 @@ import { db } from "@/lib/db";
 import { createSession, destroySession, findSessionByToken, COOKIE_NAME } from "@/lib/session";
 import { setThemeCookie } from "@/lib/actions/theme";
 import { requireFreshAdminPassword, type StepUpFormState } from "@/lib/step-up-auth";
+import { verifyAdminSession } from "@/lib/dal";
+import { logAuditEvent } from "@/lib/audit-log";
+import { getClientIp } from "@/lib/request-ip";
 
 const RETURN_TOKEN_COOKIE = "admin_return_token";
 const RETURN_CLIENT_COOKIE = "admin_return_client_id";
@@ -30,6 +33,7 @@ export async function impersonateClient(
   _prev: StepUpFormState,
   formData: FormData,
 ): Promise<StepUpFormState> {
+  const admin = await verifyAdminSession();
   const error = await requireFreshAdminPassword(formData);
   if (error) return { error };
 
@@ -42,6 +46,17 @@ export async function impersonateClient(
 
   cookieStore.set(RETURN_TOKEN_COOKIE, adminToken, cookieOptions);
   cookieStore.set(RETURN_CLIENT_COOKIE, clientUser.clientId, cookieOptions);
+
+  await logAuditEvent({
+    actorType: "ADMIN",
+    actorId: admin.id,
+    actorLabel: admin.email,
+    action: "impersonation_start",
+    targetType: "ClientUser",
+    targetId: clientUser.id,
+    targetLabel: clientUser.email,
+    ipAddress: await getClientIp(),
+  });
 
   await createSession("CLIENT_USER", clientUser.id, PREVIEW_DURATION_MS);
   await setThemeCookie(clientUser.themePreference === "dark" ? "dark" : "light");

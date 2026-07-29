@@ -11,6 +11,7 @@ import { ClientNavTabs } from "@/components/client/client-nav-tabs";
 import { ImpersonationBanner } from "@/components/client/impersonation-banner";
 import { DemoModeBanner } from "@/components/client/demo-mode-banner";
 import { AnnouncementPopup } from "@/components/client/announcement-popup";
+import { FirstLoginTour } from "@/components/client/first-login-tour";
 import { getAppSettings } from "@/lib/settings";
 
 export default async function ClientProtectedLayout({
@@ -31,17 +32,27 @@ export default async function ClientProtectedLayout({
   ]);
 
   const tabs = [
-    { href: "/espace-client", label: "Accueil" },
-    { href: "/espace-client/a-valider", label: "À valider", count: toValidateCount },
-    { href: "/espace-client/suivi", label: "Suivi" },
-    { href: "/espace-client/calendrier", label: "Calendrier" },
-    { href: "/espace-client/livrables", label: "Livrables" },
-    { href: "/espace-client/administratif", label: "Administratif", count: unpaidCount },
-    { href: "/espace-client/suggestion", label: "Suggestion" },
+    { href: "/espace-client", label: "Accueil", tourId: "accueil" },
+    { href: "/espace-client/a-valider", label: "À valider", count: toValidateCount, tourId: "a-valider" },
+    { href: "/espace-client/suivi", label: "Suivi", tourId: "suivi" },
+    { href: "/espace-client/calendrier", label: "Calendrier", tourId: "calendrier" },
+    { href: "/espace-client/livrables", label: "Livrables", tourId: "livrables" },
+    {
+      href: "/espace-client/administratif",
+      label: "Administratif",
+      count: unpaidCount,
+      tourId: "administratif",
+    },
+    { href: "/espace-client/suggestion", label: "Suggestion", tourId: "suggestion" },
     ...(clientUser.client.driveUrl
       ? [{ href: clientUser.client.driveUrl, label: "Google Drive", external: true }]
       : []),
   ];
+
+  // Compte de démo public partagé entre visiteurs (voir Client.isDemo) : ne
+  // jamais afficher/marquer la visite guidée pour ce compte, sinon un
+  // visiteur la marquerait "vue" pour tous les suivants.
+  const showTour = !clientUser.hasSeenTour && !clientUser.client.isDemo;
 
   return (
     <div className="flex min-h-full flex-1 flex-col">
@@ -81,6 +92,7 @@ export default async function ClientProtectedLayout({
       {settings.popupEnabled && settings.popupMessage && (
         <AnnouncementPopup message={settings.popupMessage} />
       )}
+      {showTour && <FirstLoginTour />}
     </div>
   );
 }

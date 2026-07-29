@@ -1,6 +1,6 @@
 "use server";
 
-import { sendEmail, getAdminEmail } from "@/lib/email/service";
+import { sendEmailToAdmins, getAdminEmails } from "@/lib/email/service";
 import { escapeHtml } from "@/lib/html-escape";
 import { ContactSchema, type ContactFormState } from "@/lib/validation/contact";
 
@@ -24,16 +24,15 @@ export async function submitContactForm(
     return { error: parsed.error.issues[0]?.message ?? "Formulaire invalide." };
   }
 
-  const adminEmail = await getAdminEmail();
-  if (!adminEmail) {
+  const adminEmails = await getAdminEmails();
+  if (adminEmails.length === 0) {
     return { error: "Une erreur est survenue, merci de réessayer." };
   }
 
   const subjectLabel = SUBJECT_LABELS[parsed.data.subject] ?? parsed.data.subject;
 
-  await sendEmail({
+  await sendEmailToAdmins({
     trigger: "contact_form",
-    to: adminEmail,
     subject: `Nouveau message de contact — ${subjectLabel}`,
     html: `
       <p><strong>De :</strong> ${escapeHtml(parsed.data.name)} (${escapeHtml(parsed.data.email)})</p>

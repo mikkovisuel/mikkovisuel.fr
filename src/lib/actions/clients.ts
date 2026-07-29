@@ -6,6 +6,8 @@ import { db } from "@/lib/db";
 import { verifyAdminSession, verifyClientSession, assertNotDemo } from "@/lib/dal";
 import { hashPassword } from "@/lib/password";
 import { requireFreshAdminPassword, type StepUpFormState } from "@/lib/step-up-auth";
+import { logAuditEvent } from "@/lib/audit-log";
+import { getClientIp } from "@/lib/request-ip";
 import {
   ClientSchema,
   ClientUserSchema,
@@ -73,10 +75,24 @@ export async function deleteClient(
   _prev: StepUpFormState,
   formData: FormData,
 ): Promise<StepUpFormState> {
+  const admin = await verifyAdminSession();
   const error = await requireFreshAdminPassword(formData);
   if (error) return { error };
 
+  const client = await db.client.findUnique({ where: { id: clientId } });
   await db.client.delete({ where: { id: clientId } });
+
+  await logAuditEvent({
+    actorType: "ADMIN",
+    actorId: admin.id,
+    actorLabel: admin.email,
+    action: "client_deleted",
+    targetType: "Client",
+    targetId: clientId,
+    targetLabel: client?.name,
+    ipAddress: await getClientIp(),
+  });
+
   revalidatePath("/admin/clients");
   redirect("/admin/clients");
 }

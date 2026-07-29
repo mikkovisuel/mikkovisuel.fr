@@ -1,6 +1,7 @@
 import "server-only";
 import { google, gmail_v1 } from "googleapis";
 import { db } from "@/lib/db";
+import { getAdminSession } from "@/lib/dal";
 import { encryptSecret, decryptSecret } from "@/lib/crypto-secrets";
 import { EXCLUDE_DEMO_CLIENT } from "@/lib/clients";
 
@@ -48,9 +49,17 @@ export function getGmailAuthUrl(): string {
 }
 
 // Échange le code retourné par Google contre les tokens, récupère
-// l'adresse Gmail connectée, chiffre le refresh token et le stocke sur
-// l'unique compte Admin.
+// l'adresse Gmail connectée, chiffre le refresh token et le stocke sur le
+// compte Admin courant — chaque admin connecte sa propre boîte Gmail
+// (multi-admin, 2026-07-29), d'où l'appel à `getAdminSession()` plutôt que
+// `db.admin.findFirstOrThrow()`. Les appelants (route de callback OAuth,
+// Server Action) ont déjà vérifié la session via `verifyAdminSession()` en
+// amont, donc `getAdminSession()` la retrouve ici sans coût (mise en cache
+// React) plutôt que de la revérifier.
 export async function connectGmailAccount(code: string) {
+  const admin = await getAdminSession();
+  if (!admin) throw new Error("Session admin introuvable.");
+
   const client = getOAuth2Client();
   const { tokens } = await client.getToken(code);
   if (!tokens.refresh_token) {
@@ -66,7 +75,6 @@ export async function connectGmailAccount(code: string) {
     throw new Error("Impossible de récupérer l'adresse email du compte Google connecté.");
   }
 
-  const admin = await db.admin.findFirstOrThrow();
   await db.admin.update({
     where: { id: admin.id },
     data: {
@@ -78,7 +86,8 @@ export async function connectGmailAccount(code: string) {
 }
 
 export async function disconnectGmailAccount() {
-  const admin = await db.admin.findFirstOrThrow();
+  const admin = await getAdminSession();
+  if (!admin) throw new Error("Session admin introuvable.");
   await db.admin.update({
     where: { id: admin.id },
     data: { gmailEmail: null, gmailRefreshTokenEnc: null, gmailConnectedAt: null },
@@ -92,18 +101,20 @@ export class GmailNotConnectedError extends Error {
   }
 }
 
-// Client Gmail authentifié pour l'admin courant (single-admin app — pas de
-// paramètre adminId). Lève `GmailNotConnectedError` si aucun compte n'a
-// encore été connecté, OU si le refresh token stocké a expiré/a été révoqué
-// côté Google (`invalid_grant` — ça arrive, ex. après 6 mois d'inactivité ou
-// une révocation manuelle) : les deux cas doivent afficher le même état
-// "Gmail non connecté" plutôt qu'une erreur 500, donc on force ici la
-// première tentative de rafraîchissement du token pour détecter le cas
-// expiré tout de suite, une seule fois, plutôt que de laisser chaque appel
-// Gmail (recherche, lecture, envoi...) potentiellement planter plus loin.
+// Client Gmail authentifié pour l'admin courant — chaque admin connecte sa
+// propre boîte (multi-admin, 2026-07-29), donc `getAdminSession()` (pas
+// `db.admin.findFirstOrThrow()`) détermine de quel compte il s'agit. Lève
+// `GmailNotConnectedError` si aucun compte n'a encore été connecté, OU si
+// le refresh token stocké a expiré/a été révoqué côté Google
+// (`invalid_grant` — ça arrive, ex. après 6 mois d'inactivité ou une
+// révocation manuelle) : les deux cas doivent afficher le même état "Gmail
+// non connecté" plutôt qu'une erreur 500, donc on force ici la première
+// tentative de rafraîchissement du token pour détecter le cas expiré tout
+// de suite, une seule fois, plutôt que de laisser chaque appel Gmail
+// (recherche, lecture, envoi...) potentiellement planter plus loin.
 async function getGmailClient(): Promise<{ gmail: gmail_v1.Gmail; email: string }> {
-  const admin = await db.admin.findFirstOrThrow();
-  if (!admin.gmailRefreshTokenEnc || !admin.gmailEmail) {
+  const admin = await getAdminSession();
+  if (!admin || !admin.gmailRefreshTokenEnc || !admin.gmailEmail) {
     throw new GmailNotConnectedError();
   }
 

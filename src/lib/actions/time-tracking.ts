@@ -14,23 +14,26 @@ function revalidateTimeTrackingPaths(taskId: string) {
   revalidatePath("/admin/taches");
 }
 
-// Un seul admin dans ce projet, donc un seul chronomètre actif à la fois :
-// démarrer un nouveau chrono arrête automatiquement celui en cours, sur
-// n'importe quelle tâche (même si c'est la même tâche — repart à zéro pour
-// la session en cours, l'ancienne session est déjà comptée).
+// Un chrono actif à la fois PAR ADMIN (depuis le multi-admin, 2026-07-29) :
+// démarrer un nouveau chrono arrête automatiquement celui de CET admin déjà
+// en cours, sur n'importe quelle tâche (même si c'est la même tâche — repart
+// à zéro pour la session en cours, l'ancienne session est déjà comptée). Le
+// chrono d'un autre admin n'est jamais affecté.
 export async function startTaskTimer(taskId: string) {
-  await verifyAdminSession();
+  const admin = await verifyAdminSession();
 
   const task = await db.task.findUnique({ where: { id: taskId } });
   if (!task || task.archivedAt) return;
 
-  const runningEntry = await db.taskTimeEntry.findFirst({ where: { endedAt: null } });
+  const runningEntry = await db.taskTimeEntry.findFirst({
+    where: { endedAt: null, startedByAdminId: admin.id },
+  });
   const now = new Date();
 
   if (runningEntry) {
     await db.taskTimeEntry.update({ where: { id: runningEntry.id }, data: { endedAt: now } });
   }
-  await db.taskTimeEntry.create({ data: { taskId, startedAt: now } });
+  await db.taskTimeEntry.create({ data: { taskId, startedAt: now, startedByAdminId: admin.id } });
 
   revalidateTimeTrackingPaths(taskId);
   if (runningEntry && runningEntry.taskId !== taskId) {
@@ -39,9 +42,11 @@ export async function startTaskTimer(taskId: string) {
 }
 
 export async function stopActiveTimer() {
-  await verifyAdminSession();
+  const admin = await verifyAdminSession();
 
-  const runningEntry = await db.taskTimeEntry.findFirst({ where: { endedAt: null } });
+  const runningEntry = await db.taskTimeEntry.findFirst({
+    where: { endedAt: null, startedByAdminId: admin.id },
+  });
   if (!runningEntry) return;
 
   await db.taskTimeEntry.update({

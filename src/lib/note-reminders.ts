@@ -1,6 +1,6 @@
 import "server-only";
 import { db } from "@/lib/db";
-import { sendEmail, getAdminEmail } from "@/lib/email/service";
+import { sendEmailToAdmins, getAdminEmails } from "@/lib/email/service";
 
 function plainTextSnippet(html: string, maxLength = 140) {
   const text = html
@@ -23,8 +23,8 @@ export async function sendDueNoteReminders() {
   });
   if (dueNotes.length === 0) return { sentCount: 0 };
 
-  const adminEmail = await getAdminEmail();
-  if (!adminEmail) return { sentCount: 0 };
+  const adminEmails = await getAdminEmails();
+  if (adminEmails.length === 0) return { sentCount: 0 };
 
   const itemsHtml = dueNotes
     .map((note) => {
@@ -34,9 +34,8 @@ export async function sendDueNoteReminders() {
     })
     .join("");
 
-  await sendEmail({
+  await sendEmailToAdmins({
     trigger: "note_reminder",
-    to: adminEmail,
     subject:
       dueNotes.length > 1
         ? `${dueNotes.length} rappels de notes aujourd'hui`

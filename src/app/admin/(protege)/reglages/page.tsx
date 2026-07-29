@@ -8,6 +8,7 @@ import { EXCLUDE_DEMO_CLIENT } from "@/lib/clients";
 import { SettingsForm } from "@/components/admin/settings-form";
 import { GmailConnectionCard } from "@/components/admin/gmail-connection-card";
 import { ClientUserEmailToggle } from "@/components/admin/client-user-email-toggle";
+import { AdminAccountsPanel } from "@/components/admin/admin-accounts-panel";
 
 export const metadata: Metadata = {
   title: "Réglages — Admin Mikko Visuel",
@@ -57,6 +58,11 @@ export default async function AdminSettingsPage({
   const adminFailedCount = recentFailedAttempts.filter(
     (attempt) => attempt.identifier === admin.email.toLowerCase(),
   ).length;
+
+  const admins = await db.admin.findMany({
+    select: { id: true, email: true, lastLoginAt: true },
+    orderBy: { createdAt: "asc" },
+  });
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-10 sm:px-6 lg:px-8">
@@ -164,6 +170,17 @@ export default async function AdminSettingsPage({
             ))}
           </div>
         )}
+      </div>
+
+      <div className="mt-10 border-t border-line pt-8">
+        <h2 className="font-display text-lg font-medium tracking-tight text-ink">Comptes admin</h2>
+        <p className="mt-2 text-sm text-ink-muted">
+          Accès complet, identique pour chaque compte — pas de permissions par module. Un admin ne
+          peut pas révoquer son propre accès.
+        </p>
+        <div className="mt-4">
+          <AdminAccountsPanel admins={admins} currentAdminId={admin.id} />
+        </div>
       </div>
 
       <div className="mt-10 border-t border-line pt-8">

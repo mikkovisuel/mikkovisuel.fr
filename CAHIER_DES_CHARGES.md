@@ -1166,46 +1166,73 @@ Le client a explicitement délégué ces choix :
   réelles, step-up testé avec mot de passe correct/incorrect, en-têtes
   inspectés, etc.) : voir `VALIDATION.md`, section "Renforcement de la
   sécurité".
-- Suggestions de gestion globale proposées par Claude Code (2026-07-28, pas
-  encore priorisées ni construites — "à reprendre plus tard" selon le
-  client) :
-  1. Sauvegardes automatiques de la base de données — aucune stratégie de
-     backup n'existe aujourd'hui à part l'export CSV/ZIP manuel.
-  2. Vue financière consolidée — chiffre d'affaires facturé/encaissé, par
-     mois ou par client, au-delà du seul compteur "factures en attente".
-  3. Recherche globale — une seule barre pour chercher un client, une
-     tâche, un prospect ou un document, plutôt que naviguer entre les
-     onglets.
-  4. Résumé hebdomadaire par email — digest du lundi matin (tâches de la
-     semaine, relances prospection dues, factures en retard).
-  5. Authentification à deux facteurs sur le compte admin — un seul compte,
-     accès à toutes les données clients, protégé aujourd'hui par email +
-     mot de passe seuls.
-  6. Journal d'audit global — historique unique de "qui a fait quoi" sur
-     toute l'app, au-delà du fil d'historique par prospect (2026-07-28).
-  7. Planning de charge — vue "combien de tâches actives par semaine/mois"
-     pour repérer une surcharge à l'avance.
-  8. Rôles multi-admin — un seul compte admin en dur aujourd'hui ; utile
-     seulement si le client embauche un assistant.
+- **Suggestions de gestion globale du 2026-07-28 — 7 sur 8 livrées le
+  2026-07-29** ("Peux tu aller sur ça" — le client a explicitement laissé le
+  2FA de côté, chantier séparé) :
+  1. **Sauvegardes automatiques de la base de données** — vérifié déjà
+     couvert par l'addon Scalingo `postgresql-starter-512` (backups
+     quotidiens automatiques, confirmé via `scalingo backups`). Aucun code
+     nécessaire. Lacune restante : les fichiers OVH Object Storage
+     (documents/livrables/médias portfolio) n'ont aucune sauvegarde
+     automatisée — piste future non construite (cron `aws s3 sync` vers un
+     second bucket).
+  2. **Vue financière consolidée** (`/admin/finances`) — facturé/encaissé/
+     reste dû, par mois (12 derniers) et par client, agrégé sur `Document`
+     (factures uniquement, client démo exclu).
+  3. **Recherche globale** — barre dans le header admin (`GlobalSearchBar`),
+     `Promise.all` sur Client/Task/Prospect/Document, route
+     `/api/admin/search` protégée (403 sans session).
+  4. **Résumé hebdomadaire par email** — cron du lundi 7h
+     (`/api/cron/weekly-digest`), tâches de la semaine + relances
+     prospection dues + factures en retard, envoyé à tous les admins.
+  5. *(Authentification à deux facteurs — explicitement laissée de côté par
+     le client cette fois-ci aussi, reste un chantier séparé.)*
+  6. **Journal d'audit global** (`/admin/audit`) — actions sensibles
+     uniquement (connexions réussies/échouées, suppression client,
+     réinitialisations de mot de passe, usurpation, invitation/révocation
+     admin, exports), nouveau modèle `AuditLogEntry`, filtrable par type
+     d'action.
+  7. **Planning de charge** (`/admin/planning`) — nombre de tâches actives
+     par semaine ISO (16 dernières), seuil de couleur vert/orange/rouge,
+     basé sur `Task.eventDate`.
+  8. **Rôles multi-admin** — décision validée avec le client : accès complet
+     identique pour chaque compte, pas de permissions par module. Comptes
+     gérés depuis `/admin/reglages` (invitation par email réutilisant le
+     flux de réinitialisation de mot de passe existant, révocation protégée
+     par reconfirmation du mot de passe). Chronomètre de tâche et connexion
+     Gmail désormais par compte admin (`TaskTimeEntry.startedByAdminId`,
+     `Admin.gmailEmail`/`gmailRefreshTokenEnc` déjà par compte) ; les
+     notifications système (contact, feedback, relances, digest, devis
+     signé) partent désormais vers tous les comptes admin
+     (`getAdminEmails()`), plus un seul.
 
-  (Une 9ᵉ piste, modèles de tâches réutilisables pour les prestations
-  récurrentes, a été proposée puis explicitement écartée par le client le
+  (La 9ᵉ piste, modèles de tâches réutilisables pour les prestations
+  récurrentes, reste explicitement écartée par le client depuis le
   2026-07-28 — ne pas la reproposer.)
-- Suggestions fonctionnalité/design proposées par Claude Code (2026-07-28,
-  pas encore construites) :
-  1. Devis signables en ligne — signature électronique simple pour accélérer
-     le cycle devis → accord, à la place du PDF téléchargé actuel.
-  2. Vérification du mode clair sur Prospection — le module n'a été testé
-     qu'en thème sombre lors de sa construction ; à repasser en clair pour
-     confirmer que rien ne casse (contraste des badges de statut notamment).
-  3. Mini visite guidée à la première connexion client — info-bulles
-     ponctuelles au premier login, en complément du guide PDF déjà livré.
+- **Suggestions fonctionnalité/design du 2026-07-28 — les 3 retenues,
+  livrées le 2026-07-29** :
+  1. **Devis signables en ligne** — décision validée avec le client :
+     signature légère sur le PDF déjà uploadé (pas de générateur de devis
+     avec lignes de prix). Le client dessine sa signature à l'écran + tape
+     son nom sur le devis existant dans son espace, horodatage + IP
+     enregistrés (`Document.acceptedAt/acceptedByName/signatureDataUrl/
+     acceptedFromIp`), admin notifié par email, badge "Accepté le ... par
+     ..." affiché côté client et admin, re-signature bloquée.
+  2. **Vérification du mode clair sur Prospection** — vérifié en navigateur
+     (liste, Kanban, fiche détail, formulaire, fil d'activité) : les
+     composants utilisent déjà les tokens de design partagés
+     (`PALETTE_BADGE_CLASSES`, `text-ink-muted`), aucun défaut de contraste
+     trouvé, rien à corriger.
+  3. **Mini visite guidée à la première connexion client** — tooltips
+     maison (pas de lib externe) pointant chaque onglet de nav dans l'ordre
+     du guide PDF, affichée une seule fois (`ClientUser.hasSeenTour`),
+     jamais affichée pour le compte de démonstration public partagé.
 
-  (Trois autres pistes — pages "étude de cas" sur le portfolio public, avis
-  client à la clôture d'une tâche, lien de partage temporaire d'un BAT sans
-  compte complet — ont été proposées le même jour puis explicitement
-  écartées par le client pour l'instant : "pas le moment" — ne pas les
-  reproposer sans qu'il les redemande.)
+  (Les trois autres pistes — pages "étude de cas" sur le portfolio public,
+  avis client à la clôture d'une tâche, lien de partage temporaire d'un BAT
+  sans compte complet — restent explicitement écartées par le client depuis
+  le 2026-07-28 : "pas le moment" — ne pas les reproposer sans qu'il les
+  redemande.)
 - Contenu détaillé de la page Contact.
 - Contenu des Conditions de vente / grille tarifaire (actuellement : "tarifs
   et modalités établis au cas par cas").
@@ -1355,3 +1382,4 @@ Le client a explicitement délégué ces choix :
 | 2026-07-28 | "Vois-tu autre chose à améliorer côté fonctionnalité ou design ?" | Pas construit — 6 pistes proposées, 3 retenues et notées dans "Points encore ouverts" (devis signables en ligne, vérification du mode clair sur Prospection, mini visite guidée à la première connexion client) ; 3 explicitement écartées pour l'instant par le client (pages "étude de cas" portfolio, avis client à la clôture d'une tâche, lien de partage temporaire d'un BAT) |
 | 2026-07-28 | "Peux-tu voir pour renforcer la sécurité au max du site ?" | Audit complet mené (lecture seule) — aucune faille critique trouvée (pas d'IDOR, pas de XSS via `dangerouslySetInnerHTML`, pas d'injection SQL, webhook Stripe et sandbox email intacts). Plan de durcissement (11 points) discuté et validé sur 4 arbitrages avec le client, mis de côté une session ("quand les tokens seront rechargés") — voir ligne suivante pour la reprise |
 | 2026-07-28 | "Tu peux reprendre" (renforcement de la sécurité) | Livré : les 9 points du plan (hors 2FA et rate limiting général, explicitement hors périmètre) — voir section "Points encore ouverts" pour le détail complet et `VALIDATION.md` pour les résultats de test réels (rate limiting déclenché en conditions réelles, step-up testé mot de passe correct/incorrect, en-têtes HTTP inspectés, CSP Report-Only sans violation sur les parcours testés) |
+| 2026-07-29 | Reprise des 7 pistes "gestion globale" + 3 pistes "fonctionnalité/design" du 2026-07-28 (2FA explicitement laissé de côté, reste un chantier séparé) | Livré : les 10 points (sauvegardes déjà couvertes par Scalingo, vue financière, planning de charge, recherche globale, rôles multi-admin, journal d'audit global, digest hebdomadaire, devis signables en ligne, mode clair Prospection vérifié, visite guidée première connexion) — voir section "Points encore ouverts" pour le détail complet et `VALIDATION.md` pour les résultats de test réels |

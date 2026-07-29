@@ -17,7 +17,10 @@ export type EmailTrigger =
   | "feedback_suggestion"
   | "bat_validated"
   | "note_reminder"
-  | "prospect_reminder";
+  | "prospect_reminder"
+  | "admin_invite"
+  | "weekly_digest"
+  | "devis_accepted";
 
 export interface EmailAttachmentInput {
   filename: string;
@@ -32,11 +35,21 @@ export interface SendEmailInput {
   attachments?: EmailAttachmentInput[];
 }
 
-// Single-admin app: the destination for contact/feedback/BAT-copy emails is
-// whichever address the admin account currently uses, not a hardcoded string.
-export async function getAdminEmail(): Promise<string | null> {
-  const admin = await db.admin.findFirst();
-  return admin?.email ?? null;
+// Multi-admin (2026-07-29): every admin account has equal access, so
+// system notifications (contact form, feedback, reminders...) must reach
+// all of them, not just whichever row `findFirst` happens to return.
+export async function getAdminEmails(): Promise<string[]> {
+  const admins = await db.admin.findMany({ select: { email: true } });
+  return admins.map((admin) => admin.email);
+}
+
+// Convenience wrapper for the common "one notification, sent to every
+// admin" case — sends one email per admin address rather than a single
+// multi-recipient email, so each admin's copy is independently logged/
+// retried by `sendEmail`.
+export async function sendEmailToAdmins(input: Omit<SendEmailInput, "to">): Promise<void> {
+  const emails = await getAdminEmails();
+  await Promise.all(emails.map((to) => sendEmail({ ...input, to })));
 }
 
 // Resend is used when RESEND_API_KEY is set; otherwise emails are logged to

@@ -6,6 +6,7 @@ import { BrandLogo } from "@/components/brand-logo";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { TimerHeaderWidget } from "@/components/admin/timer-header-widget";
+import { GlobalSearchBar } from "@/components/admin/global-search-bar";
 import { TASK_STATUS } from "@/lib/dropdown-lists";
 import { EXCLUDE_DEMO_CLIENT_TASKS, startOfToday } from "@/lib/tasks";
 import { getUnreadThreadCount } from "@/lib/gmail";
@@ -21,6 +22,9 @@ const navLinks = [
   { href: "/admin/portfolio", label: "Portfolio" },
   { href: "/admin/listes", label: "Listes" },
   { href: "/admin/exports", label: "Exports" },
+  { href: "/admin/finances", label: "Finances" },
+  { href: "/admin/planning", label: "Planning" },
+  { href: "/admin/audit", label: "Audit" },
 ];
 
 export default async function AdminProtectedLayout({
@@ -31,11 +35,12 @@ export default async function AdminProtectedLayout({
   const admin = await verifyAdminSession();
 
   // Chronomètre visible dans tout l'admin (pas seulement la fiche tâche) —
-  // au plus une ligne `endedAt: null` à la fois, voir `startTaskTimer`.
+  // au plus une ligne `endedAt: null` à la fois PAR ADMIN, voir
+  // `startTaskTimer` (chaque admin a son propre chrono, indépendant).
   const [runningEntry, overdueCount, toValidateCount, unreadCount, prospectReminderCount] =
     await Promise.all([
       db.taskTimeEntry.findFirst({
-        where: { endedAt: null },
+        where: { endedAt: null, startedByAdminId: admin.id },
         include: { task: true },
       }),
       // Même logique que les compteurs du tableau de bord — pastille sur
@@ -72,6 +77,9 @@ export default async function AdminProtectedLayout({
             </span>
           </Link>
           <div className="flex items-center gap-4">
+            <div className="hidden md:block">
+              <GlobalSearchBar />
+            </div>
             {runningEntry && (
               <TimerHeaderWidget
                 activeTimer={{

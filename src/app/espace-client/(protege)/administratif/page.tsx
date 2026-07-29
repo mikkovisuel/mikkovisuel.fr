@@ -4,6 +4,14 @@ import { verifyClientSession } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { isStripeConfigured } from "@/lib/stripe";
 import { PayButton } from "@/components/client/pay-button";
+import { AcceptDevisDialog } from "@/components/client/accept-devis-dialog";
+import { DOCUMENT_TYPE } from "@/lib/dropdown-lists";
+
+const DEVIS_DATE_FORMATTER = new Intl.DateTimeFormat("fr-FR", {
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+});
 
 export const metadata: Metadata = {
   title: "Administratif — Espace client Mikko Visuel",
@@ -60,17 +68,28 @@ export default async function ClientAdministrativePage() {
                   {doc.paymentStatus === "paid" && " · payée"}
                 </p>
               </div>
-              <div className="flex items-center gap-2 self-start">
-                {doc.paymentStatus === "unpaid" && stripeEnabled && !clientUser.client.isDemo && (
-                  <PayButton documentId={doc.id} />
+              <div className="flex flex-col items-start gap-2">
+                <div className="flex items-center gap-2 self-start">
+                  {doc.paymentStatus === "unpaid" && stripeEnabled && !clientUser.client.isDemo && (
+                    <PayButton documentId={doc.id} />
+                  )}
+                  <a
+                    href={`/api/fichiers/documents/${doc.id}`}
+                    className="inline-flex items-center gap-2 rounded-full border border-line px-4 py-2 text-sm text-ink transition-colors hover:border-accent hover:bg-accent hover:text-accent-ink"
+                  >
+                    <DownloadSimple size={16} weight="regular" />
+                    Télécharger
+                  </a>
+                </div>
+                {doc.type.slug === DOCUMENT_TYPE.DEVIS && !clientUser.client.isDemo && (
+                  doc.acceptedAt ? (
+                    <span className="text-xs text-ink-muted">
+                      Accepté le {DEVIS_DATE_FORMATTER.format(doc.acceptedAt)} par {doc.acceptedByName}
+                    </span>
+                  ) : (
+                    <AcceptDevisDialog documentId={doc.id} fileName={doc.fileName} />
+                  )
                 )}
-                <a
-                  href={`/api/fichiers/documents/${doc.id}`}
-                  className="inline-flex items-center gap-2 rounded-full border border-line px-4 py-2 text-sm text-ink transition-colors hover:border-accent hover:bg-accent hover:text-accent-ink"
-                >
-                  <DownloadSimple size={16} weight="regular" />
-                  Télécharger
-                </a>
               </div>
             </div>
           ))}

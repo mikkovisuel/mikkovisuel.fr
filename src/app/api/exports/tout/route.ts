@@ -2,6 +2,8 @@ import { NextResponse } from "next/server";
 import { getAdminSession } from "@/lib/dal";
 import { buildClientsCsv, buildTasksCsv, buildDocumentsCsv } from "@/lib/exports";
 import { createZip } from "@/lib/zip";
+import { logAuditEvent } from "@/lib/audit-log";
+import { getClientIp } from "@/lib/request-ip";
 
 // Export groupé "en un clic" (bouton sur /admin/exports) — les 3 CSV
 // existants (clients, tâches, documents), zippés ensemble plutôt que 3
@@ -26,6 +28,16 @@ export async function GET() {
   ]);
 
   const dateStamp = new Date().toISOString().slice(0, 10);
+
+  await logAuditEvent({
+    actorType: "ADMIN",
+    actorId: admin.id,
+    actorLabel: admin.email,
+    action: "data_export",
+    targetType: "Export",
+    targetLabel: `mikko-visuel-export-${dateStamp}.zip`,
+    ipAddress: await getClientIp(),
+  });
 
   return new NextResponse(new Uint8Array(zip), {
     headers: {

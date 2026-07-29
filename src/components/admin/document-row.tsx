@@ -6,6 +6,7 @@ import {
 } from "@/lib/actions/payments";
 import { DeleteButton } from "@/components/admin/delete-button";
 import { formatAmount, isOverdue, dueDateFormatter } from "@/lib/documents";
+import { DOCUMENT_TYPE } from "@/lib/dropdown-lists";
 
 const SENT_AT_FORMATTER = new Intl.DateTimeFormat("fr-FR", {
   day: "2-digit",
@@ -22,7 +23,9 @@ interface DocumentRowProps {
     paymentStatus: string;
     dueDate: Date | null;
     sentAt: Date | null;
-    type: { label: string };
+    acceptedAt?: Date | null;
+    acceptedByName?: string | null;
+    type: { label: string; slug?: string };
     client?: { name: string };
   };
   showClient?: boolean;
@@ -67,6 +70,12 @@ export function DocumentRow({
             ? `Envoyé le ${SENT_AT_FORMATTER.format(document.sentAt)}`
             : "Non envoyé"}
         </p>
+        {document.type.slug === DOCUMENT_TYPE.DEVIS && document.acceptedAt && (
+          <p className="mt-1 text-sm text-accent">
+            Accepté et signé le {SENT_AT_FORMATTER.format(document.acceptedAt)}
+            {document.acceptedByName && ` par ${document.acceptedByName}`}
+          </p>
+        )}
       </div>
       <div className="flex flex-wrap items-center gap-3">
         {document.amountCents !== null && (

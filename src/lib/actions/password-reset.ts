@@ -11,12 +11,14 @@ import {
   type SubjectType,
 } from "@/lib/session";
 import { sendEmail } from "@/lib/email/service";
-import { verifyClientSession, assertNotDemo } from "@/lib/dal";
+import { verifyClientSession, verifyAdminSession, assertNotDemo } from "@/lib/dal";
 import {
   isPasswordResetRateLimited,
   recordPasswordResetRequest,
 } from "@/lib/rate-limit";
 import { requireFreshAdminPassword, type StepUpFormState } from "@/lib/step-up-auth";
+import { logAuditEvent } from "@/lib/audit-log";
+import { getClientIp } from "@/lib/request-ip";
 import { ChangePasswordSchema, type ChangePasswordState } from "@/lib/validation/auth";
 
 const RESET_TOKEN_DURATION_MS = 60 * 60 * 1000;
@@ -133,7 +135,17 @@ export async function resetPassword(
   const subjectType = resetToken.subjectType as SubjectType;
 
   if (subjectType === "ADMIN") {
-    await db.admin.update({ where: { id: resetToken.subjectId }, data: { passwordHash } });
+    const admin = await db.admin.update({
+      where: { id: resetToken.subjectId },
+      data: { passwordHash },
+    });
+    await logAuditEvent({
+      actorType: "ADMIN",
+      actorId: admin.id,
+      actorLabel: admin.email,
+      action: "admin_password_reset_completed",
+      ipAddress: await getClientIp(),
+    });
   } else {
     await db.clientUser.update({ where: { id: resetToken.subjectId }, data: { passwordHash } });
   }
@@ -219,6 +231,7 @@ export async function adminResetClientPassword(
   _prev: StepUpFormState,
   formData: FormData,
 ): Promise<StepUpFormState> {
+  const admin = await verifyAdminSession();
   const error = await requireFreshAdminPassword(formData);
   if (error) return { error };
 
@@ -226,5 +239,15 @@ export async function adminResetClientPassword(
   if (!clientUser) return { error: "Compte introuvable." };
 
   await sendClientPasswordResetEmail(clientUser);
+  await logAuditEvent({
+    actorType: "ADMIN",
+    actorId: admin.id,
+    actorLabel: admin.email,
+    action: "client_password_reset",
+    targetType: "ClientUser",
+    targetId: clientUser.id,
+    targetLabel: clientUser.email,
+    ipAddress: await getClientIp(),
+  });
   return { success: true };
 }

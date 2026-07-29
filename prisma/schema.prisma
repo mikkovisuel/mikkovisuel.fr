@@ -40,6 +40,7 @@ model Admin {
   updatedAt            DateTime  @updatedAt
 
   uploadedDocuments Document[]
+  timeEntries       TaskTimeEntry[]
 }
 
 model Client {
@@ -98,6 +99,10 @@ model ClientUser {
   emailNotificationsEnabled Boolean   @default(false)
   themePreference           String    @default("light")
   lastLoginAt               DateTime?
+  // Visite guidée affichée au tout premier login (voir
+  // `FirstLoginTour`) — passe à `true` dès qu'elle est terminée ou passée,
+  // pour ne plus jamais la réafficher ensuite.
+  hasSeenTour               Boolean   @default(false)
   createdAt                 DateTime  @default(now())
   updatedAt                 DateTime  @updatedAt
 
@@ -330,6 +335,11 @@ model TaskTimeEntry {
   endedAt   DateTime?
   manual    Boolean   @default(false)
   createdAt DateTime  @default(now())
+  // Admin qui a démarré ce chrono — nullable pour ne pas casser l'historique
+  // pré-multi-admin (2026-07-29). Un chrono actif (`endedAt: null`) est
+  // maintenant par admin, pas global : voir `startTaskTimer`.
+  startedByAdminId String?
+  startedByAdmin   Admin?  @relation(fields: [startedByAdminId], references: [id], onDelete: SetNull)
 }
 
 // Audit trail des changements de statut d'une tâche (qui, quand, vers quel
@@ -434,9 +444,21 @@ model Document {
   // document" sur la fiche client / la liste des documents) — sert
   // uniquement d'indicateur "envoyé/non envoyé", pas un accusé de réception.
   sentAt                  DateTime?
-  uploadedByAdminId       String
-  uploadedByAdmin         Admin        @relation(fields: [uploadedByAdminId], references: [id])
+  // Nullable + SetNull (multi-admin, 2026-07-29) : révoquer un compte admin
+  // (voir `revokeAdmin`) ne doit jamais échouer parce qu'il a uploadé des
+  // documents par le passé — l'historique du document reste intact, juste
+  // sans auteur retrouvable.
+  uploadedByAdminId       String?
+  uploadedByAdmin         Admin?       @relation(fields: [uploadedByAdminId], references: [id], onDelete: SetNull)
   uploadedAt              DateTime     @default(now())
+  // Signature client sur un devis (type.slug === "devis" uniquement) —
+  // signature légère, pas une valeur légale certifiée : nom tapé + dessin à
+  // l'écran + horodatage + IP, suffisant pour accélérer le cycle devis →
+  // accord. `acceptedAt` sert aussi de garde anti-re-signature.
+  acceptedAt              DateTime?
+  acceptedByName          String?
+  signatureDataUrl        String?      @db.Text
+  acceptedFromIp          String?
 }
 
 // Singleton (toujours id "settings") pour les réglages ajustables en direct
@@ -577,4 +599,27 @@ model Note {
 
   @@index([folderId])
   @@index([clientId])
+}
+
+// Journal d'audit global — actions sensibles uniquement (connexions,
+// suppressions définitives, changements/réinitialisations de mot de passe,
+// exports de données, usurpation d'espace client), pas une trace de toute
+// modification (voir /admin/audit). `actorLabel`/`targetLabel` sont
+// dénormalisés pour rester lisibles même si le compte/l'entité visée est
+// supprimé ensuite (même raisonnement que `TaskComment.authorName`).
+model AuditLogEntry {
+  id          String   @id @default(cuid())
+  actorType   String // "ADMIN" | "SYSTEM"
+  actorId     String?
+  actorLabel  String
+  action      String
+  targetType  String?
+  targetId    String?
+  targetLabel String?
+  metadata    String? @db.Text
+  ipAddress   String?
+  createdAt   DateTime @default(now())
+
+  @@index([createdAt])
+  @@index([actorId, createdAt])
 }
