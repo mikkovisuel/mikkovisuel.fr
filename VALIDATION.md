@@ -27,6 +27,12 @@
   garde-fou existant et déjà éprouvé ailleurs dans le projet, non re-testé
   isolément cette fois-ci.
 
+## Notes (module interne)
+
+| Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |
+|---|---|---|---|---|---|
+| Suppression d'une note (`deleteNote`) | Bouton "Supprimer la note" cliqué → note retirée de la liste | ✅ Testé de bout en bout après correctif : note créée, supprimée, "Aucune note." affiché | Signalé par le client : bouton de suppression inaccessible | ✅ **Bug trouvé et corrigé** : la barre d'outils de l'éditeur (dossier/client/rappel/épingler/supprimer, `src/components/admin/notes-app.tsx`) était forcée sur une seule ligne (`md:shrink-0 md:flex-nowrap`) sans pouvoir rétrécir ni passer à la ligne ; dès que le conteneur de l'éditeur n'était pas assez large (cas courant — reproduit y compris à 1800px et 1280px de large dès qu'une note n'a ni dossier ni client lié), les boutons "Épingler"/"Supprimer" débordaient et étaient coupés par le conteneur parent (`overflow-hidden`) — présents dans le DOM et signalés "visibles" par le navigateur, mais physiquement inatteignables au clic. Corrigé en autorisant la barre d'outils à passer à la ligne (`flex flex-wrap`, sans les forçages `md:`) ; reproduit puis re-testé après correctif à 1800px et 1280px, bouton cliquable dans les deux cas | 2026-07-29 |
+
 ## Tableau de bord admin
 
 | Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |

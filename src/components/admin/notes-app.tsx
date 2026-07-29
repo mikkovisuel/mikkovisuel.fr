@@ -502,7 +502,7 @@ export function NotesApp({
                   className="min-w-0 flex-1 font-display text-xl font-semibold text-ink focus:outline-none"
                 />
               </div>
-              <div className="flex flex-wrap items-center gap-2 md:shrink-0 md:flex-nowrap">
+              <div className="flex flex-wrap items-center gap-2">
                 <select
                   value={selectedNote.folderId ?? ""}
                   onChange={(e) => patchNote(selectedNote.id, { folderId: e.target.value || null }, true)}
