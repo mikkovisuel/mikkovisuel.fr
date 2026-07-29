@@ -6,6 +6,7 @@ import { PROSPECT_STATUS_LIST_KEY } from "@/lib/dropdown-lists";
 import { ProspectRow } from "@/components/admin/prospect-row";
 import { ProspectKanbanBoard } from "@/components/admin/prospect-kanban-board";
 import { ProspectSearchForm } from "@/components/admin/prospect-search-form";
+import { ProspectImportForm } from "@/components/admin/prospect-import-form";
 
 export const metadata: Metadata = {
   title: "Prospection — Admin Mikko Visuel",
@@ -69,6 +70,10 @@ export default async function ProspectionPage({
           l&apos;activer.
         </p>
       )}
+
+      <div className="mt-3">
+        <ProspectImportForm />
+      </div>
 
       <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
         <form className="flex flex-wrap items-end gap-3">

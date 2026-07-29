@@ -53,6 +53,7 @@ export default async function NewProspectPage() {
             phone: null,
             email: null,
             instagram: null,
+            website: null,
             notes: null,
             statusSlug: PROSPECT_STATUS.A_FAIRE,
             nextReminderAt: suggestedReminder,

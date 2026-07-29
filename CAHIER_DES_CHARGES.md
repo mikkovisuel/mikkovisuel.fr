@@ -1247,13 +1247,10 @@ Le client a explicitement délégué ces choix :
   mémoire) permettrait de la lever sans risque si des vidéos plus lourdes
   deviennent nécessaires. Non fait par choix du client (option "plafond"
   retenue plutôt que "streaming" ou "conteneur plus gros").
-- Identifiants Google OAuth pour la boîte mail Gmail (2026-07-20) : la
-  fonctionnalité est codée et déployée, mais inutilisable tant que le
-  client n'a pas créé son projet Google Cloud + identifiants OAuth (guide
-  détaillé fourni : `GUIDE_GMAIL.md`) — étape que Claude Code ne peut pas
-  faire à sa place (création de compte/identifiants). Une fois l'ID
-  client et la clé secrète transmis, il reste à les ajouter en variables
-  d'environnement (local + Scalingo) et à tester la connexion réelle.
+- ~~Identifiants Google OAuth pour la boîte mail Gmail~~ — **résolu**, Gmail
+  connecté depuis le 2026-07-20 (confirmé sur `/admin/reglages` : "Connecté :
+  mikko.visuel@gmail.com depuis le 20 juillet 2026"). Point retiré des
+  points ouverts, cette ligne restait obsolète par erreur.
 - Redirection `mikkovisuel.fr` → `www.mikkovisuel.fr` cassée ou incomplète
   (2026-07-20) : le domaine nu affiche un autre site (voir section
   "Backend interne", signalement du 2026-07-20). Configuration DNS/OVH,
@@ -1384,3 +1381,5 @@ Le client a explicitement délégué ces choix :
 | 2026-07-28 | "Tu peux reprendre" (renforcement de la sécurité) | Livré : les 9 points du plan (hors 2FA et rate limiting général, explicitement hors périmètre) — voir section "Points encore ouverts" pour le détail complet et `VALIDATION.md` pour les résultats de test réels (rate limiting déclenché en conditions réelles, step-up testé mot de passe correct/incorrect, en-têtes HTTP inspectés, CSP Report-Only sans violation sur les parcours testés) |
 | 2026-07-29 | Reprise des 7 pistes "gestion globale" + 3 pistes "fonctionnalité/design" du 2026-07-28 (2FA explicitement laissé de côté, reste un chantier séparé) | Livré : les 10 points (sauvegardes déjà couvertes par Scalingo, vue financière, planning de charge, recherche globale, rôles multi-admin, journal d'audit global, digest hebdomadaire, devis signables en ligne, mode clair Prospection vérifié, visite guidée première connexion) — voir section "Points encore ouverts" pour le détail complet et `VALIDATION.md` pour les résultats de test réels |
 | 2026-07-29 | "Peux tu vérifier la partie notes, je n'ai pas accès au bouton de suppression d'une note" | Bug trouvé et corrigé : la barre d'outils de l'éditeur de note (`notes-app.tsx`) était forcée sur une seule ligne sans pouvoir rétrécir ni passer à la ligne, débordait de son conteneur dès qu'une note n'avait ni dossier ni client lié, et le bouton "Supprimer" (dernier de la rangée) se retrouvait coupé/inatteignable au clic — reproduit à plusieurs largeurs d'écran, corrigé en autorisant la barre à passer à la ligne, re-testé après correctif |
+| 2026-07-29 | "Ce ne serait pas un automatisme mais un agent, dans mon application Claude, qui pousse les lignes dans Scalingo" — pour la recherche/qualification automatique de prospects | Expliqué pourquoi un agent Claude Code planifié n'est pas le bon mécanisme (accès direct à la base de production nécessaire, plus risqué qu'utile) — le client a choisi de construire cet agent lui-même dans Cowork plutôt que de le faire développer ici. Demande reformulée en conséquence : fournir un modèle CSV + une fonction d'import sur le site |
+| 2026-07-29 | "Donne-moi un modèle de tableau CSV à remplir, et ajoute une fonction d'import des prospects directement sur le site" | Livré : nouveau champ `Prospect.website` (site web, cohérent avec les 3 sources de prospects — manuel, recherche IA, import), modèle CSV téléchargeable (`public/modele-import-prospects.csv`), import CSV sur `/admin/prospection` (colonnes reconnues avec tolérance accents/casse/synonymes, déduplication contre la base existante et au sein du fichier par email/Instagram, lignes sans nom ignorées proprement) — voir `VALIDATION.md` pour le détail des tests |

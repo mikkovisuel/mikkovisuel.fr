@@ -93,6 +93,7 @@ export default async function ProspectDetailPage({
               phone: prospect.phone,
               email: prospect.email,
               instagram: prospect.instagram,
+              website: prospect.website,
               notes: prospect.notes,
               statusSlug: prospect.status.slug,
               nextReminderAt: prospect.nextReminderAt

@@ -17,9 +17,11 @@ import {
   ProspectSearchSchema,
   type ProspectFormState,
   type ProspectSearchState,
+  type ImportProspectsState,
 } from "@/lib/validation/prospect";
 import { findProspectsWithAI } from "@/lib/prospect-search";
 import { logProspectActivity } from "@/lib/prospect-activity";
+import { parseCsv } from "@/lib/csv";
 
 // Miroir de `textToHtml` dans src/lib/actions/gmail-messages.ts — le
 // composeur est un simple <textarea>, converti en un minimum de HTML pour
@@ -51,6 +53,7 @@ function parseProspectForm(formData: FormData) {
     phone: formData.get("phone"),
     email: formData.get("email"),
     instagram: formData.get("instagram"),
+    website: formData.get("website"),
     notes: formData.get("notes"),
     statusSlug: formData.get("statusSlug"),
     nextReminderAt: formData.get("nextReminderAt"),
@@ -78,6 +81,7 @@ export async function createProspect(
       phone: parsed.data.phone || null,
       email: parsed.data.email,
       instagram: parsed.data.instagram || null,
+      website: parsed.data.website || null,
       notes: parsed.data.notes || null,
       statusId: statusItem.id,
       nextReminderAt: parsed.data.nextReminderAt ? new Date(parsed.data.nextReminderAt) : null,
@@ -121,6 +125,7 @@ export async function updateProspect(
       phone: parsed.data.phone || null,
       email: parsed.data.email,
       instagram: parsed.data.instagram || null,
+      website: parsed.data.website || null,
       notes: parsed.data.notes || null,
       statusId: statusItem.id,
       nextReminderAt,
@@ -370,6 +375,7 @@ export async function searchProspectsWithAI(
         phone: prospect.phone,
         email: prospect.email,
         instagram: prospect.instagram,
+        website: prospect.website,
         notes: searchNote,
         statusId: statusItem.id,
         source: "recherche_ia",
@@ -381,5 +387,167 @@ export async function searchProspectsWithAI(
 
   const parts = [`${newProspects.length} prospect${newProspects.length > 1 ? "s" : ""} ajouté${newProspects.length > 1 ? "s" : ""}`];
   if (duplicateCount > 0) parts.push(`${duplicateCount} doublon${duplicateCount > 1 ? "s" : ""} ignoré${duplicateCount > 1 ? "s" : ""}`);
+  return { message: parts.join(", ") + "." };
+}
+
+const MAX_CSV_SIZE = 2 * 1024 * 1024;
+
+// Tolère plusieurs libellés de colonne par champ (le fichier peut venir
+// d'un autre outil que le modèle fourni, ex. un agent externe) — normalisé
+// sans accents/casse/espaces avant comparaison.
+const COLUMN_SYNONYMS: Record<string, string[]> = {
+  name: ["nom", "name"],
+  company: ["entreprise", "societe", "company", "activite"],
+  address: ["adresse", "address"],
+  phone: ["telephone", "tel", "phone"],
+  email: ["email", "mail", "e-mail"],
+  instagram: ["instagram", "insta"],
+  website: ["siteweb", "site web", "siteinternet", "site internet", "website", "site"],
+  notes: ["notes", "note", "commentaire", "commentaires"],
+};
+
+function normalizeHeader(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")
+    .trim()
+    .toLowerCase()
+    .replace(/[\s_-]+/g, " ");
+}
+
+function buildColumnIndex(header: string[]): Map<string, number> {
+  const normalized = header.map(normalizeHeader);
+  const index = new Map<string, number>();
+  for (const [field, synonyms] of Object.entries(COLUMN_SYNONYMS)) {
+    const normalizedSynonyms = synonyms.map(normalizeHeader);
+    const found = normalized.findIndex((h) => normalizedSynonyms.includes(h));
+    if (found !== -1) index.set(field, found);
+  }
+  return index;
+}
+
+function getCell(row: string[], columnIndex: Map<string, number>, field: string): string | null {
+  const idx = columnIndex.get(field);
+  if (idx === undefined) return null;
+  const value = row[idx]?.trim();
+  return value ? value : null;
+}
+
+// Import CSV depuis le bouton "Importer un fichier CSV" sur
+// /admin/prospection — pense notamment au cas d'un fichier produit par un
+// agent de recherche externe (cowork), pas seulement le modèle fourni en
+// téléchargement, d'où la tolérance sur les intitulés de colonnes
+// (COLUMN_SYNONYMS) plutôt qu'un format strict.
+export async function importProspectsFromCsv(
+  _prev: ImportProspectsState,
+  formData: FormData,
+): Promise<ImportProspectsState> {
+  await verifyAdminSession();
+
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) {
+    return { error: "Choisissez un fichier CSV." };
+  }
+  if (file.size > MAX_CSV_SIZE) {
+    return { error: "Fichier trop volumineux (2 Mo maximum)." };
+  }
+
+  const text = await file.text();
+  const rows = parseCsv(text);
+  if (rows.length < 2) {
+    return { error: "Fichier vide ou sans ligne de données." };
+  }
+
+  const [header, ...dataRows] = rows;
+  const columnIndex = buildColumnIndex(header);
+  if (!columnIndex.has("name")) {
+    return { error: "Colonne \"nom\" introuvable — utilisez le modèle fourni." };
+  }
+
+  let skippedNoName = 0;
+  const candidates: {
+    name: string;
+    company: string | null;
+    address: string | null;
+    phone: string | null;
+    email: string | null;
+    instagram: string | null;
+    website: string | null;
+    notes: string | null;
+  }[] = [];
+
+  for (const row of dataRows) {
+    if (row.every((cell) => cell.trim() === "")) continue;
+    const name = getCell(row, columnIndex, "name");
+    if (!name) {
+      skippedNoName++;
+      continue;
+    }
+    const email = getCell(row, columnIndex, "email");
+    candidates.push({
+      name,
+      company: getCell(row, columnIndex, "company"),
+      address: getCell(row, columnIndex, "address"),
+      phone: getCell(row, columnIndex, "phone"),
+      email: email ? email.toLowerCase() : null,
+      instagram: getCell(row, columnIndex, "instagram"),
+      website: getCell(row, columnIndex, "website"),
+      notes: getCell(row, columnIndex, "notes"),
+    });
+  }
+
+  if (candidates.length === 0) {
+    return { error: "Aucune ligne exploitable (nom manquant sur toutes les lignes)." };
+  }
+
+  const existing = await db.prospect.findMany({ select: { email: true, instagram: true } });
+  const existingEmails = new Set(existing.map((p) => p.email?.toLowerCase()).filter(Boolean));
+  const existingInstagrams = new Set(existing.map((p) => p.instagram?.toLowerCase()).filter(Boolean));
+  const seenEmails = new Set<string>();
+  const seenInstagrams = new Set<string>();
+
+  const toInsert = candidates.filter((candidate) => {
+    const emailKey = candidate.email ?? undefined;
+    const instaKey = candidate.instagram?.toLowerCase();
+    const isDuplicate =
+      (emailKey && (existingEmails.has(emailKey) || seenEmails.has(emailKey))) ||
+      (instaKey && (existingInstagrams.has(instaKey) || seenInstagrams.has(instaKey)));
+    if (isDuplicate) return false;
+    if (emailKey) seenEmails.add(emailKey);
+    if (instaKey) seenInstagrams.add(instaKey);
+    return true;
+  });
+  const duplicateCount = candidates.length - toInsert.length;
+
+  if (toInsert.length > 0) {
+    const statusItem = await getProspectStatusItem(PROSPECT_STATUS.A_FAIRE);
+    const importDate = new Date().toLocaleDateString("fr-FR");
+    await db.prospect.createMany({
+      data: toInsert.map((candidate) => ({
+        name: candidate.name,
+        company: candidate.company,
+        address: candidate.address,
+        phone: candidate.phone,
+        email: candidate.email,
+        instagram: candidate.instagram,
+        website: candidate.website,
+        notes: [candidate.notes, `Importé via CSV le ${importDate}.`].filter(Boolean).join(" — "),
+        statusId: statusItem.id,
+        source: "import_csv",
+      })),
+    });
+  }
+
+  revalidateProspectPaths();
+
+  const parts = [
+    `${toInsert.length} prospect${toInsert.length > 1 ? "s" : ""} importé${toInsert.length > 1 ? "s" : ""}`,
+  ];
+  if (duplicateCount > 0) {
+    parts.push(`${duplicateCount} doublon${duplicateCount > 1 ? "s" : ""} ignoré${duplicateCount > 1 ? "s" : ""}`);
+  }
+  if (skippedNoName > 0) {
+    parts.push(`${skippedNoName} ligne${skippedNoName > 1 ? "s" : ""} sans nom ignorée${skippedNoName > 1 ? "s" : ""}`);
+  }
   return { message: parts.join(", ") + "." };
 }

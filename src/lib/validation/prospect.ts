@@ -15,6 +15,7 @@ export const ProspectSchema = z.object({
     z.string().trim().toLowerCase().email({ message: "Adresse email invalide." }).nullable(),
   ),
   instagram: z.string().trim().optional(),
+  website: z.string().trim().optional(),
   notes: z.string().trim().optional(),
   statusSlug: z.string().trim().min(1, { message: "Le statut est requis." }),
   nextReminderAt: z.preprocess(emptyToNull, z.string().nullable()),
@@ -30,3 +31,5 @@ export const ProspectSearchSchema = z.object({
 export type ProspectSearchState =
   | { error?: string; message?: string }
   | undefined;
+
+export type ImportProspectsState = { error?: string; message?: string } | undefined;

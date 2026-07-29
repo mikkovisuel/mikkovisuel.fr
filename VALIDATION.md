@@ -27,6 +27,15 @@
   garde-fou existant et déjà éprouvé ailleurs dans le projet, non re-testé
   isolément cette fois-ci.
 
+## Import CSV de prospects (2026-07-29)
+
+| Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |
+|---|---|---|---|---|---|
+| Parseur CSV (`parseCsv`) | Champs entre guillemets avec virgules/guillemets échappés/retours à la ligne | ✅ Testé en isolation (script autonome) : parsing correct, round-trip `toCsv`→`parseCsv` identique à l'entrée | — | — | 2026-07-29 |
+| Import (`importProspectsFromCsv`) | Fichier avec 4 lignes (2 valides, 1 doublon interne au fichier, 1 sans nom), en-têtes avec accents/majuscules ("Nom", "Site Web") | ✅ Testé de bout en bout (injection de fichier via `DataTransfer`, pas de sélecteur natif disponible dans cet outil) : "2 prospects importés, 1 doublon ignoré, 1 ligne sans nom ignorée" — les 2 prospects corrects apparaissent dans la liste avec les bons champs, y compris `website` | Réimport du même fichier (doublons contre la base, pas seulement au sein du fichier) | ✅ Testé : "0 prospect importé, 2 doublons ignorés" | 2026-07-29 |
+| Import — fichier sans colonne "nom" | — | — | Fichier avec seulement "entreprise"/"email" | ✅ Testé : "Colonne \"nom\" introuvable — utilisez le modèle fourni.", aucune insertion | 2026-07-29 |
+| Champ `website` (recherche IA + création/édition manuelle) | Formulaire manuel avec un site renseigné | ✅ Vérifié par relecture de code (`ProspectForm`, `createProspect`/`updateProspect`) — même chemin que les autres champs optionnels déjà testés, non re-testé isolément | — | — | 2026-07-29 |
+
 ## Notes (module interne)
 
 | Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |

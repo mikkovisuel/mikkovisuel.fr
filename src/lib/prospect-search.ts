@@ -15,6 +15,7 @@ export interface FoundProspect {
   phone: string | null;
   email: string | null;
   instagram: string | null;
+  website: string | null;
 }
 
 const SYSTEM_PROMPT = `Tu aides un graphiste freelance français (Mikko Visuel) à trouver de nouveaux
@@ -24,9 +25,11 @@ Règles strictes :
 - N'invente JAMAIS de coordonnées. Si une information n'est pas trouvée publiquement, laisse le
   champ correspondant à null plutôt que de deviner.
 - Ne retourne que des entités réelles trouvées via la recherche web, jamais des exemples génériques.
+- Indique si un site internet a été trouvé (champ "website"), ou null si l'entité n'en a pas /
+  n'a pas été trouvé.
 - Réponds UNIQUEMENT avec un tableau JSON valide, sans texte avant ni après, au format exact :
   [{"name": string, "company": string|null, "address": string|null, "phone": string|null,
-    "email": string|null, "instagram": string|null}]`;
+    "email": string|null, "instagram": string|null, "website": string|null}]`;
 
 function extractJsonArray(text: string): unknown {
   const trimmed = text.trim();
@@ -53,6 +56,7 @@ function normalizeProspect(raw: unknown): FoundProspect | null {
     phone: isNonEmptyString(record.phone) ? record.phone.trim() : null,
     email: isNonEmptyString(record.email) ? record.email.trim().toLowerCase() : null,
     instagram: isNonEmptyString(record.instagram) ? record.instagram.trim() : null,
+    website: isNonEmptyString(record.website) ? record.website.trim() : null,
   };
 }
 

@@ -19,6 +19,7 @@ export function ProspectForm({
     phone: string | null;
     email: string | null;
     instagram: string | null;
+    website: string | null;
     notes: string | null;
     statusSlug: string;
     nextReminderAt: string | null;
@@ -116,6 +117,22 @@ export function ProspectForm({
             placeholder="@compte"
           />
         </div>
+        <div className="flex flex-col gap-2">
+          <label htmlFor="website" className="text-sm font-medium text-ink">
+            Site web
+          </label>
+          <input
+            id="website"
+            name="website"
+            type="text"
+            defaultValue={defaultValues?.website ?? ""}
+            className="rounded-xl border border-line bg-surface-elevated px-4 py-3 text-sm text-ink placeholder:text-ink-muted/70 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
+            placeholder="https://exemple.com"
+          />
+        </div>
+      </div>
+
+      <div className="grid gap-5 sm:grid-cols-2">
         <div className="flex flex-col gap-2">
           <label htmlFor="statusSlug" className="text-sm font-medium text-ink">
             Statut

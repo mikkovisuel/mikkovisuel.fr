@@ -264,6 +264,7 @@ model Prospect {
   phone     String?
   email     String?
   instagram String?
+  website   String?
   notes     String?
   statusId  String
   status    DropdownItem @relation(fields: [statusId], references: [id])
