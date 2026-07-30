@@ -4,7 +4,7 @@ import { sendEmailToAdmins, getAdminEmails } from "@/lib/email/service";
 import { escapeHtml } from "@/lib/html-escape";
 import { DOCUMENT_TYPE } from "@/lib/dropdown-lists";
 import { ACTIVE_CLIENTS } from "@/lib/clients";
-import { EXCLUDE_DEMO_CLIENT_TASKS, taskDateFormatter } from "@/lib/tasks";
+import { ACTIVE_TASKS, taskDateFormatter } from "@/lib/tasks";
 
 function startOfWeek(date: Date) {
   const result = new Date(date);
@@ -38,8 +38,7 @@ export async function sendWeeklyDigest() {
   const [tasksThisWeek, dueProspects, overdueInvoices] = await Promise.all([
     db.task.findMany({
       where: {
-        ...EXCLUDE_DEMO_CLIENT_TASKS,
-        archivedAt: null,
+        ...ACTIVE_TASKS,
         OR: [
           { dueDate: { gte: from, lt: to } },
           { eventDate: { gte: from, lt: to } },

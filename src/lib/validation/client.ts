@@ -31,7 +31,7 @@ export const ClientSchema = z.object({
 // - `none`     : simple entrée au carnet d'adresses, aucun accès à l'espace client
 // - `invite`   : accès ouvert, le contact reçoit un lien pour choisir son mot de passe
 // - `password` : accès ouvert avec un mot de passe défini par l'admin
-export const CONTACT_ACCESS_MODES = ["none", "invite", "password"] as const;
+const CONTACT_ACCESS_MODES = ["none", "invite", "password"] as const;
 export type ContactAccessMode = (typeof CONTACT_ACCESS_MODES)[number];
 
 const contactBaseFields = {

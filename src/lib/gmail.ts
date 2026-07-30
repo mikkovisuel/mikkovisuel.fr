@@ -9,7 +9,7 @@ import { encryptSecret, decryptSecret } from "@/lib/crypto-secrets";
 // messages dans le vrai Gmail de l'admin — inutile pour cette
 // fonctionnalité, et un écran de consentement Google plus simple à
 // valider en mode Testing).
-export const GMAIL_SCOPES = [
+const GMAIL_SCOPES = [
   "https://www.googleapis.com/auth/gmail.readonly",
   "https://www.googleapis.com/auth/gmail.send",
   "https://www.googleapis.com/auth/userinfo.email",
@@ -207,60 +207,6 @@ export async function searchThreadsForEmails(
   return results
     .filter((result): result is NonNullable<typeof result> => result !== null)
     .map((result) => result.summary)
-    .sort((a, b) => (b.lastMessageDate?.getTime() ?? 0) - (a.lastMessageDate?.getTime() ?? 0));
-}
-
-export interface ClientEmailScope {
-  clientId: string;
-  clientName: string;
-  emails: string[];
-}
-
-export interface EmailThreadSummaryWithClient extends EmailThreadSummary {
-  clientId: string | null;
-  clientName: string | null;
-}
-
-// Boîte mail globale (section "Mail" du bandeau admin) : regroupe les fils
-// Gmail de tous les clients en une seule recherche, puis rattache chaque
-// fil au client dont une adresse de compte apparaît dans l'expéditeur ou
-// les destinataires du dernier message (comparaison sur le texte brut des
-// en-têtes, pas un parsing strict — robuste aux listes de destinataires
-// multiples en `To`/`Cc`).
-export async function searchThreadsAcrossClients(
-  scopes: ClientEmailScope[],
-  keyword?: string,
-): Promise<EmailThreadSummaryWithClient[]> {
-  const allEmails = scopes.flatMap((scope) => scope.emails);
-  if (allEmails.length === 0) return [];
-  const { gmail } = await getGmailClient();
-
-  const emailQuery = allEmails.map((email) => `(from:${email} OR to:${email})`).join(" OR ");
-  const query = keyword?.trim() ? `(${emailQuery}) ${keyword.trim()}` : emailQuery;
-  const { data } = await gmail.users.threads.list({ userId: "me", q: query, maxResults: 50 });
-  const threads = data.threads ?? [];
-
-  const results = await Promise.all(
-    threads.map((thread) => (thread.id ? fetchThreadSummary(gmail, thread.id) : null)),
-  );
-
-  return results
-    .filter((result): result is NonNullable<typeof result> => result !== null)
-    .map(({ summary, fromHeader, toHeader }) => {
-      const from = fromHeader.toLowerCase();
-      const to = toHeader.toLowerCase();
-      const match = scopes.find((scope) =>
-        scope.emails.some((email) => {
-          const needle = email.toLowerCase();
-          return from.includes(needle) || to.includes(needle);
-        }),
-      );
-      return {
-        ...summary,
-        clientId: match?.clientId ?? null,
-        clientName: match?.clientName ?? null,
-      } satisfies EmailThreadSummaryWithClient;
-    })
     .sort((a, b) => (b.lastMessageDate?.getTime() ?? 0) - (a.lastMessageDate?.getTime() ?? 0));
 }
 

@@ -27,6 +27,16 @@ export function formatDurationShort(ms: number): string {
   return `${hours}h ${minutes}`;
 }
 
+// "2 h 15" / "45 min" — format long, pour les tableaux et graphiques agrégés
+// (rapport de rentabilité, planning de charge), là où `formatDurationShort`
+// reste réservé aux colonnes compactes.
+export function formatHoursFromMinutes(totalMinutes: number): string {
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = Math.round(totalMinutes % 60);
+  if (hours === 0) return `${minutes} min`;
+  return minutes === 0 ? `${hours} h` : `${hours} h ${String(minutes).padStart(2, "0")}`;
+}
+
 // "1:23:07" — pour le chronomètre en direct (header, bouton démarrer/
 // arrêter), qui a besoin des secondes pour donner l'impression de tourner.
 export function formatElapsedClock(ms: number): string {

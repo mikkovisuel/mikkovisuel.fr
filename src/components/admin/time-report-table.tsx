@@ -1,5 +1,6 @@
 import Link from "next/link";
-import { formatHoursLong, type ClientTimeRow } from "@/lib/time-report";
+import type { ClientTimeRow } from "@/lib/time-report";
+import { formatHoursFromMinutes } from "@/lib/time-tracking";
 
 export function TimeReportTable({
   rows,
@@ -62,7 +63,7 @@ export function TimeReportTable({
                 )}
               </td>
               <td className="px-5 py-3 text-right tabular-nums text-ink">
-                {row.spentMs > 0 ? formatHoursLong(row.spentMs) : "—"}
+                {row.spentMs > 0 ? formatHoursFromMinutes(row.spentMs / 60000) : "—"}
               </td>
               <td className="px-5 py-3 text-right tabular-nums text-ink">
                 {row.billedCents > 0 ? money.format(row.billedCents / 100) : "—"}
@@ -96,7 +97,7 @@ export function TimeReportTable({
           <tr className="border-t border-line text-ink">
             <td className="px-5 py-3 font-medium">Total</td>
             <td className="px-5 py-3 text-right font-medium tabular-nums">
-              {formatHoursLong(totalMs)}
+              {formatHoursFromMinutes(totalMs / 60000)}
             </td>
             <td className="px-5 py-3 text-right font-medium tabular-nums">
               {money.format(totalBilled / 100)}

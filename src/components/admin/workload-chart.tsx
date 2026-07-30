@@ -1,3 +1,5 @@
+import { formatHoursFromMinutes } from "@/lib/time-tracking";
+
 type WeekEntry = {
   key: string;
   label: string;
@@ -34,14 +36,6 @@ const BAR_CLASSES = {
   red: "bg-danger",
 };
 
-function formatHours(minutes: number) {
-  if (minutes === 0) return "0 h";
-  const hours = Math.floor(minutes / 60);
-  const rest = minutes % 60;
-  if (hours === 0) return `${rest} min`;
-  return rest === 0 ? `${hours} h` : `${hours} h ${String(rest).padStart(2, "0")}`;
-}
-
 export function WorkloadChart({ data }: { data: WeekEntry[] }) {
   // Plancher à 60 min pour que quelques semaines très légères ne produisent
   // pas des barres factices occupant toute la hauteur.
@@ -68,10 +62,10 @@ export function WorkloadChart({ data }: { data: WeekEntry[] }) {
       <div className="flex items-end gap-3 overflow-x-auto pb-2">
         {data.map((entry) => (
           <div key={entry.key} className="flex min-w-[52px] flex-col items-center gap-2">
-            <span className="text-xs text-ink-muted">{formatHours(entry.estimatedMinutes)}</span>
+            <span className="text-xs text-ink-muted">{formatHoursFromMinutes(entry.estimatedMinutes)}</span>
             <div
               className="flex h-40 w-7 items-end overflow-hidden rounded-t-md bg-surface-elevated"
-              title={`${entry.taskCount} tâche${entry.taskCount > 1 ? "s" : ""} · ${formatHours(entry.estimatedMinutes)} estimées`}
+              title={`${entry.taskCount} tâche${entry.taskCount > 1 ? "s" : ""} · ${formatHoursFromMinutes(entry.estimatedMinutes)} estimées`}
             >
               <div
                 className={`w-full rounded-t-md ${BAR_CLASSES[loadColor(entry.estimatedMinutes / 60)]}`}

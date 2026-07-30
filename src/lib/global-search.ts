@@ -50,6 +50,10 @@ export async function searchAll(query: string): Promise<SearchResults> {
       orderBy: { name: "asc" },
     }),
     db.task.findMany({
+      // `EXCLUDE_DEMO_CLIENT_TASKS` et non `ACTIVE_TASKS` : la recherche
+      // globale retrouve aussi les tâches **archivées**, comme elle retrouve
+      // les clients archivés. C'est justement le chemin par lequel on va
+      // rechercher quelque chose de rangé.
       where: {
         ...EXCLUDE_DEMO_CLIENT_TASKS,
         title: { contains: q, mode: "insensitive" },

@@ -1,4 +1,4 @@
-import { PALETTE_COLORS, PALETTE_SWATCH_CLASSES } from "@/lib/dropdown-lists";
+import { PALETTE_COLORS } from "@/lib/dropdown-lists";
 
 export function ColorSelect({
   name,
@@ -20,9 +20,4 @@ export function ColorSelect({
       ))}
     </select>
   );
-}
-
-export function ColorSwatch({ color }: { color: string }) {
-  const swatchClass = PALETTE_SWATCH_CLASSES[color as keyof typeof PALETTE_SWATCH_CLASSES];
-  return <span className={`inline-block h-3 w-3 rounded-full ${swatchClass ?? "bg-ink-muted"}`} />;
 }

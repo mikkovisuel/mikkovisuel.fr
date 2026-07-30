@@ -8,7 +8,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { TimerHeaderWidget } from "@/components/admin/timer-header-widget";
 import { GlobalSearchBar } from "@/components/admin/global-search-bar";
 import { TASK_STATUS } from "@/lib/dropdown-lists";
-import { EXCLUDE_DEMO_CLIENT_TASKS } from "@/lib/tasks";
+import { ACTIVE_TASKS } from "@/lib/tasks";
 
 const navLinks = [
   { href: "/admin", label: "Tableau de bord" },
@@ -48,11 +48,7 @@ export default async function AdminProtectedLayout({
     // Les archivées sont exclues comme partout : elles ne sont plus dans le
     // flux de travail.
     db.task.count({
-      where: {
-        ...EXCLUDE_DEMO_CLIENT_TASKS,
-        archivedAt: null,
-        status: { slug: { not: TASK_STATUS.TERMINE } },
-      },
+      where: { ...ACTIVE_TASKS, status: { slug: { not: TASK_STATUS.TERMINE } } },
     }),
     // Pastille "Prospection" — relances dues aujourd'hui ou en retard, pas
     // encore envoyées.

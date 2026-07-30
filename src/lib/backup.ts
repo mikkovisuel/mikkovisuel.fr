@@ -9,11 +9,11 @@ import { buildClientsCsv, buildTasksCsv, buildDocumentsCsv } from "@/lib/exports
 
 // Sauvegarde complète : les CSV de métadonnées **et** les fichiers réels.
 //
-// Pourquoi `archiver` plutôt que `src/lib/zip.ts` maison : ce dernier
-// construit l'archive entière en mémoire et renvoie un `Buffer`. Suffisant
-// pour trois CSV, intenable ici — un seul livrable peut peser 500 Mo et ferait
-// tomber le conteneur. `archiver` écrit en flux, la mémoire reste plate quelle
-// que soit la taille. `zip.ts` reste utilisé pour les petits exports CSV.
+// Pourquoi `archiver` : l'écriture ZIP maison qui servait auparavant
+// (`src/lib/zip.ts`, supprimée depuis) construisait l'archive entière en
+// mémoire et renvoyait un `Buffer`. Suffisant pour trois CSV, intenable ici —
+// un seul livrable peut peser 500 Mo et ferait tomber le conteneur.
+// `archiver` écrit en flux, la mémoire reste plate quelle que soit la taille.
 //
 // Constat à l'origine (2026-07-30) : `/api/exports/tout` ne contenait que des
 // CSV. La "réversibilité" mise en avant côté commercial était donc fausse —
@@ -51,7 +51,7 @@ function safeName(name: string): string {
   return name.replace(/[/\\]/g, "-").replace(/^\.+/, "").trim() || "sans-nom";
 }
 
-export async function collectBackupFiles(): Promise<BackupFile[]> {
+async function collectBackupFiles(): Promise<BackupFile[]> {
   const taken = new Set<string>();
   const files: BackupFile[] = [];
 
@@ -129,18 +129,6 @@ export async function backupInventory() {
     fileCount: files.length,
     totalBytes: files.reduce((sum, file) => sum + file.sizeBytes, 0),
   };
-}
-
-export function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} o`;
-  const units = ["Ko", "Mo", "Go"];
-  let value = bytes / 1024;
-  let unit = 0;
-  while (value >= 1024 && unit < units.length - 1) {
-    value /= 1024;
-    unit += 1;
-  }
-  return `${value.toFixed(value >= 10 ? 0 : 1)} ${units[unit]}`;
 }
 
 export async function createBackupStream(): Promise<ReadableStream<Uint8Array>> {

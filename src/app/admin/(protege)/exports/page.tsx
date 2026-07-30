@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import { DownloadSimple, Archive } from "@phosphor-icons/react/dist/ssr";
 import { verifyAdminSession } from "@/lib/dal";
-import { backupInventory, formatBytes } from "@/lib/backup";
+import { backupInventory } from "@/lib/backup";
+import { formatFileSize } from "@/lib/files";
 
 export const metadata: Metadata = {
   title: "Exports — Admin Mikko Visuel",
@@ -59,7 +60,7 @@ export default async function AdminExportsPage() {
         <p className="mt-2 text-sm text-ink-muted">
           {fileCount === 0
             ? "Aucun fichier stocké pour l'instant : l'archive ne contiendra que les CSV."
-            : `${fileCount} fichier${fileCount > 1 ? "s" : ""} · environ ${formatBytes(totalBytes)}. La préparation peut prendre un moment sur un gros volume.`}
+            : `${fileCount} fichier${fileCount > 1 ? "s" : ""} · environ ${formatFileSize(totalBytes)}. La préparation peut prendre un moment sur un gros volume.`}
         </p>
         <a
           href="/api/exports/tout"

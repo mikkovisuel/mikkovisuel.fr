@@ -200,26 +200,6 @@ export async function deletePillar(pillarId: string) {
   redirect("/admin/portfolio");
 }
 
-export async function movePillar(pillarId: string, direction: "up" | "down") {
-  await verifyAdminSession();
-
-  const pillars = await db.portfolioPillar.findMany({ orderBy: { sortOrder: "asc" } });
-  const index = pillars.findIndex((pillar) => pillar.id === pillarId);
-  const swapIndex = direction === "up" ? index - 1 : index + 1;
-  if (index === -1 || swapIndex < 0 || swapIndex >= pillars.length) return;
-
-  const current = pillars[index];
-  const swapWith = pillars[swapIndex];
-
-  await db.$transaction([
-    db.portfolioPillar.update({ where: { id: current.id }, data: { sortOrder: swapWith.sortOrder } }),
-    db.portfolioPillar.update({ where: { id: swapWith.id }, data: { sortOrder: current.sortOrder } }),
-  ]);
-
-  revalidatePath("/");
-  revalidatePath("/admin/portfolio");
-}
-
 export async function createMediaItem(
   pillarId: string,
   _prev: MediaItemFormState,

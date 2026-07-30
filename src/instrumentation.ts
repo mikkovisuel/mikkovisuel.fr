@@ -7,6 +7,15 @@ export async function onRequestError(
   request: { path?: string },
   context: { renderSource?: string; routerKind?: string },
 ) {
+  // Next compile `instrumentation.ts` pour les deux runtimes, Node **et**
+  // Edge (le proxy de `src/proxy.ts` tourne sur Edge). Sans ce garde, l'import
+  // dynamique ci-dessous entraînait Prisma dans le bundle Edge, qui ne
+  // supporte pas les modules Node (`node:url`) : le build affichait
+  // "Ecmascript file had an error" avant de conclure malgré tout par
+  // "Compiled successfully", et l'alerte était de toute façon inopérante côté
+  // Edge. `NEXT_RUNTIME` est remplacé statiquement par le bundler, donc cette
+  // branche — et tout ce qu'elle importe — disparaît du bundle Edge.
+  if (process.env.NEXT_RUNTIME !== "nodejs") return;
   if (process.env.NODE_ENV !== "production") return;
 
   const { reportServerError } = await import("@/lib/error-alert");

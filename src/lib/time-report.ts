@@ -48,7 +48,7 @@ export interface ClientTimeRow {
 // arrêté par erreur ne produise un taux astronomique.
 const MIN_TRACKED_MS = 60_000;
 
-export function hourlyRateCents(spentMs: number, billedCents: number): number | null {
+function hourlyRateCents(spentMs: number, billedCents: number): number | null {
   if (spentMs < MIN_TRACKED_MS || billedCents <= 0) return null;
   return Math.round(billedCents / (spentMs / 3_600_000));
 }
@@ -100,12 +100,4 @@ export function buildClientTimeRows(input: {
     })
     .filter((row) => row.spentMs > 0 || row.billedCents > 0)
     .sort((a, b) => b.spentMs - a.spentMs);
-}
-
-export function formatHoursLong(ms: number): string {
-  const totalMinutes = Math.round(ms / 60000);
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-  if (hours === 0) return `${minutes} min`;
-  return minutes === 0 ? `${hours} h` : `${hours} h ${String(minutes).padStart(2, "0")}`;
 }
