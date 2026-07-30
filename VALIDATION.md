@@ -164,6 +164,24 @@
 | Tâches terminées repliées | Section "Terminées (n)" fermée par défaut | ✅ Testé sur la fiche client : le dépliant affiche "Terminées 1", s'ouvre au clic et révèle le tableau des terminées. Bâti sur `<details>/<summary>` natifs, donc fonctionnel sans JavaScript | — | — | 2026-07-30 |
 | Typage, lint, build | Ensemble du projet | ✅ `tsc --noEmit` sans erreur, `eslint` sans erreur (2 avertissements préexistants), build de production réussi | — | — | 2026-07-30 |
 
+## Planning en heures, archivage client, rapport de rentabilité (2026-07-30)
+
+> Jeu de test construit pour couvrir les quatre combinaisons du rapport :
+> un client avec temps **et** facture, un avec du temps seul, un avec une
+> facture seule, et un client archivé ayant les deux. Session admin créée en
+> base ; données et session supprimées ensuite.
+
+| Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |
+|---|---|---|---|---|---|
+| Planning pondéré par le temps | Semaine avec des tâches estimées | ✅ Testé : S32 affiche **30 h** et passe en orange ("Chargée 25 h+"), là où l'ancien graphique n'aurait montré qu'un nombre de tâches. Légende et seuils exprimés en heures | Tâches **sans** temps estimé | ✅ Testé : S31 affiche 0 h avec une pastille "+5", et une note récapitule "7 tâches sans temps estimé sur la période, donc absentes de la hauteur des barres". Elles ne disparaissent pas silencieusement — c'était le risque principal de ce changement | 2026-07-30 |
+| Archivage d'un client | Bouton "Archiver" depuis la fiche | ✅ Testé : le client sort de `/admin/clients` (4 clients au lieu de 5), une bascule "Archivés 1" apparaît, et sa fiche affiche le bandeau "Client archivé depuis le 30 juillet 2026" | Vérifier que rien n'est détruit | ✅ Testé : après un cycle archiver → désarchiver, la tâche, le document et la session de chronomètre du client sont toujours en base (1/1/1). C'est toute la différence avec `deleteClient`, qui supprime en cascade | 2026-07-30 |
+| Archivage — périmètre du masquage | Vue "Archivés" | ✅ Testé : la vue dédiée liste bien le client archivé et lui seul | Finances et exports | ✅ Vérifié : le client archivé reste présent dans les Finances (300 € toujours comptés) et dans le rapport de rentabilité, avec un badge "archivé". Choix délibéré : archiver ne doit pas réécrire l'historique comptable ni amputer une sauvegarde | 2026-07-30 |
+| Rapport Temps & rentabilité — cas nominal | Client avec 10 h suivies et 1 200 € facturés | ✅ Testé : **120,00 €/h** affiché, calcul exact | — | — | 2026-07-30 |
+| Rapport — grandeurs manquantes | — | — | Client avec du temps mais aucune facture ; client facturé mais sans temps suivi | ✅ Testé, les deux affichent **"—"** et non un chiffre : un taux de 0 €/h ou un taux infini auraient été trompeurs. Infobulle distincte selon le cas ("Pas encore facturé" / "Temps non suivi") | 2026-07-30 |
+| **Rapport — taux horaire global** | Total du pied de tableau | ✅ **Défaut trouvé et corrigé pendant ce test** : le total divisait d'abord le facturé total (4 400 €) par le temps total (16 h), soit **275 €/h** — un chiffre gonflé, puisque deux clients facturés n'avaient aucun temps suivi et apportaient du chiffre d'affaires sans apporter d'heures. C'était exactement l'erreur évitée ligne par ligne, réintroduite en pied de tableau. Corrigé pour n'agréger que les clients où les deux grandeurs sont suivies : **125,00 €/h** (1 500 € / 12 h), avec une note expliquant les lignes exclues | — | — | 2026-07-30 |
+| Typage, lint, build, console | Ensemble du projet | ✅ `tsc --noEmit` sans erreur, `eslint` sans erreur (2 avertissements préexistants), build de production réussi, aucune erreur console sur les pages visitées | — | — | 2026-07-30 |
+| Coquilles de rendu JSX | — | — | Espaces avalés autour d'une expression `{}` en fin de ligne | ✅ Deux occurrences trouvées à la relecture du rendu ("absentesde", "2026— masqué") et corrigées par un `{" "}` explicite, puis revérifiées dans le DOM | 2026-07-30 |
+
 ## Points restant ouverts pour une prochaine passe de validation
 
 - Glisser-déposer et `<select>` natif du Kanban Prospection (limite outil, voir ci-dessus).
@@ -182,6 +200,9 @@
 - Digest hebdomadaire (`sendWeeklyDigest`) en conditions cron réelles sur Scalingo (testé manuellement en local avec le bon secret, pas encore observé via le planificateur Scalingo lui-même).
 - Sauvegarde des fichiers OVH Object Storage (documents/livrables/médias) — aucune solution automatisée à ce jour, piste notée dans le cahier des charges.
 - Cas `createAdmin` avec un email déjà utilisé par un admin existant — vérifié par relecture de code uniquement.
+- **Assignation des tâches à un administrateur** : non construit (le client travaille seul aujourd'hui, "prévu mais pas encore"). Constat à reprendre le jour où un second compte est actif — les comptes multi-admin existent depuis le 2026-07-29 mais `Task` n'a aucun champ de responsable.
+- Rapport Temps & rentabilité : le rattachement d'une session de chronomètre à une période se fait sur sa date de **début**. Une session à cheval sur une borne compte donc entièrement pour le jour où elle a commencé — acceptable à ce volume, à revoir si des sessions de plusieurs jours apparaissent.
+- Seuils du planning de charge (25 h "chargée", 40 h "surcharge") : valeurs posées par défaut pour une activité solo, jamais confrontées au rythme réel. À ajuster dans `workload-chart.tsx` après quelques semaines d'usage.
 - Bouton "Préparer le mail" sur la fiche tâche (`SendDeliverablesButton`) — rendu non observé en navigateur, voir la ligne correspondante ci-dessus.
 - Ouverture réelle du brouillon dans un client de messagerie (Mail, Gmail web, Outlook) — le lien `mailto:` a été vérifié dans le DOM et décodé, mais aucun client mail n'est pilotable depuis cette session : à confirmer une fois en usage réel, en particulier le rendu des guillemets français et du tiret cadratin dans l'objet.
 - Création et édition d'un contact en navigateur (les deux formulaires ont été affichés, aucune soumission exercée) — voir les deux lignes ⚠️ ci-dessus.

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { verifyAdminSession } from "@/lib/dal";
 import { db } from "@/lib/db";
-import { EXCLUDE_DEMO_CLIENT_TASKS, isoWeekNumber } from "@/lib/tasks";
+import { ACTIVE_TASKS, isoWeekNumber } from "@/lib/tasks";
 import { WorkloadChart } from "@/components/admin/workload-chart";
 
 export const metadata: Metadata = {
@@ -20,18 +20,31 @@ export default async function PlanningPage() {
   await verifyAdminSession();
 
   const tasks = await db.task.findMany({
-    where: { ...EXCLUDE_DEMO_CLIENT_TASKS, archivedAt: null, eventDate: { not: null } },
-    select: { id: true, eventDate: true },
+    where: { ...ACTIVE_TASKS, eventDate: { not: null } },
+    select: { id: true, eventDate: true, estimatedMinutes: true },
     orderBy: { eventDate: "asc" },
   });
 
-  const byWeek = new Map<string, { label: string; count: number }>();
+  // Charge pondérée par le temps estimé plutôt que par le nombre de tâches
+  // (2026-07-30) : les tâches sans estimation sont comptées à part au lieu
+  // d'être noyées à zéro, pour que leur absence se voie.
+  const byWeek = new Map<
+    string,
+    { label: string; estimatedMinutes: number; taskCount: number; unestimatedCount: number }
+  >();
   for (const task of tasks) {
     const date = task.eventDate!;
     const key = weekKey(date);
-    const entry = byWeek.get(key);
-    if (entry) entry.count += 1;
-    else byWeek.set(key, { label: weekLabel(date), count: 1 });
+    const entry =
+      byWeek.get(key) ??
+      { label: weekLabel(date), estimatedMinutes: 0, taskCount: 0, unestimatedCount: 0 };
+    entry.taskCount += 1;
+    if (task.estimatedMinutes && task.estimatedMinutes > 0) {
+      entry.estimatedMinutes += task.estimatedMinutes;
+    } else {
+      entry.unestimatedCount += 1;
+    }
+    byWeek.set(key, entry);
   }
 
   const weekData = Array.from(byWeek.entries())
@@ -43,9 +56,9 @@ export default async function PlanningPage() {
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
       <h1 className="font-display text-2xl font-medium tracking-tight text-ink">Planning de charge</h1>
       <p className="mt-2 text-sm text-ink-muted">
-        Nombre de tâches actives par semaine, selon leur date d&apos;évènement — pour repérer une
-        surcharge à l&apos;avance. Client de démonstration exclu, tâches sans date d&apos;évènement
-        non comptées.
+        Temps de travail estimé par semaine, selon la date d&apos;évènement des tâches — pour
+        repérer une surcharge à l&apos;avance. Client de démonstration exclu, tâches archivées et
+        tâches sans date d&apos;évènement non comptées.
       </p>
 
       {weekData.length === 0 ? (

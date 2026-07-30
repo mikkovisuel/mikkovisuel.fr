@@ -148,6 +148,30 @@ export async function removeClientAvatar(clientId: string) {
   revalidatePath("/admin/clients");
 }
 
+// Archivage réversible d'un client, alternative non destructive à
+// `deleteClient` : le client sort des listes et des sélecteurs de travail
+// (voir `ACTIVE_CLIENTS`) mais conserve tâches, contacts, documents et
+// historique, et reste compté dans les Finances et les exports.
+//
+// Les accès à l'espace client ne sont volontairement **pas** touchés :
+// archiver est un geste de rangement, pas une révocation. Couper l'accès
+// reste un geste explicite, contact par contact.
+export async function toggleClientArchived(clientId: string) {
+  await verifyAdminSession();
+
+  const client = await db.client.findUnique({ where: { id: clientId } });
+  if (!client) return;
+
+  await db.client.update({
+    where: { id: clientId },
+    data: { archivedAt: client.archivedAt ? null : new Date() },
+  });
+
+  revalidatePath(`/admin/clients/${clientId}`);
+  revalidatePath("/admin/clients");
+  revalidatePath("/admin");
+}
+
 // Action irréversible (supprime aussi tâches/documents/livrables en
 // cascade) — protégée par une reconfirmation du mot de passe admin juste
 // avant, en plus de la session déjà active (voir requireFreshAdminPassword).

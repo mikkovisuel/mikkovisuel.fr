@@ -78,6 +78,13 @@ model Client {
   avatarStorageKey     String?
   avatarMimeType       String?
   avatarStorageBackend String?
+  // Client archivé (ancien client) : sorti des listes et sélecteurs de
+  // travail, mais **rien n'est détruit** — c'est l'alternative réversible à
+  // `deleteClient`, qui supprime en cascade tâches, documents et livrables.
+  // Reste volontairement compté dans les Finances et les exports : archiver
+  // un client ne doit pas réécrire l'historique comptable ni amputer une
+  // sauvegarde. Voir `ACTIVE_CLIENTS` (src/lib/clients.ts).
+  archivedAt   DateTime?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

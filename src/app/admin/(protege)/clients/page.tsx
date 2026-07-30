@@ -10,7 +10,7 @@ import {
   isClientSortField,
   buildClientOrderBy,
   buildClientWhere,
-  EXCLUDE_DEMO_CLIENT,
+  ACTIVE_CLIENTS,
   type ClientSortField,
   type ClientSortDir,
 } from "@/lib/clients";
@@ -27,18 +27,19 @@ export const metadata: Metadata = {
 export default async function AdminClientsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ tri?: string; dir?: string; q?: string; categorie?: string }>;
+  searchParams: Promise<{ tri?: string; dir?: string; q?: string; categorie?: string; archives?: string }>;
 }) {
   await verifyAdminSession();
-  const { tri, dir, q, categorie } = await searchParams;
+  const { tri, dir, q, categorie, archives } = await searchParams;
   const sortField: ClientSortField = isClientSortField(tri) ? tri : "date_ajout";
   const sortDir: ClientSortDir = dir === "asc" ? "asc" : "desc";
   const search = q?.trim() ?? "";
   const categoryId = categorie ?? "";
+  const showArchived = archives === "1";
 
-  const [clients, categoryList, categoryCounts, uncategorizedCount] = await Promise.all([
+  const [clients, categoryList, categoryCounts, uncategorizedCount, archivedCount] = await Promise.all([
     db.client.findMany({
-      where: buildClientWhere({ search, categoryId }),
+      where: buildClientWhere({ search, categoryId, archived: showArchived }),
       orderBy: buildClientOrderBy(sortField, sortDir),
       include: { category: true },
     }),
@@ -51,10 +52,11 @@ export default async function AdminClientsPage({
     // catégorie ferait tomber à zéro le compteur de toutes les autres.
     db.client.groupBy({
       by: ["categoryId"],
-      where: EXCLUDE_DEMO_CLIENT,
+      where: ACTIVE_CLIENTS,
       _count: { _all: true },
     }),
-    db.client.count({ where: { ...EXCLUDE_DEMO_CLIENT, categoryId: null } }),
+    db.client.count({ where: { ...ACTIVE_CLIENTS, categoryId: null } }),
+    db.client.count({ where: { isDemo: false, archivedAt: { not: null } } }),
   ]);
 
   const countByCategoryId = new Map(
@@ -86,6 +88,34 @@ export default async function AdminClientsPage({
         </Link>
       </div>
 
+      {/* Bascule "en activité" / "archivés" : un client archivé n'est pas
+          supprimé, il reste consultable ici (2026-07-30). */}
+      {(archivedCount > 0 || showArchived) && (
+        <div className="mt-6 flex flex-wrap items-center gap-1.5 text-sm">
+          <Link
+            href="/admin/clients"
+            className={`rounded-full border px-3 py-1 transition-colors ${
+              showArchived
+                ? "border-line text-ink-muted hover:text-ink"
+                : "border-accent bg-accent/10 text-ink"
+            }`}
+          >
+            En activité
+          </Link>
+          <Link
+            href="/admin/clients?archives=1"
+            className={`rounded-full border px-3 py-1 transition-colors ${
+              showArchived
+                ? "border-accent bg-accent/10 text-ink"
+                : "border-line text-ink-muted hover:text-ink"
+            }`}
+          >
+            Archivés
+            <span className="ml-1.5 text-xs opacity-70">{archivedCount}</span>
+          </Link>
+        </div>
+      )}
+
       <div className="mt-6 flex flex-col gap-4">
         <ClientFilterBar
           search={search}
@@ -107,7 +137,9 @@ export default async function AdminClientsPage({
         <p className="mt-8 text-sm text-ink-muted">
           {isFiltered
             ? "Aucun client ne correspond à cette recherche."
-            : "Aucun client pour le moment."}
+            : showArchived
+              ? "Aucun client archivé."
+              : "Aucun client pour le moment."}
         </p>
       ) : (
         <>

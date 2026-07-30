@@ -24,7 +24,7 @@ import {
   type TaskSortField,
   type TaskSortDir,
 } from "@/lib/tasks";
-import { EXCLUDE_DEMO_CLIENT } from "@/lib/clients";
+import { ACTIVE_CLIENTS } from "@/lib/clients";
 
 export const metadata: Metadata = {
   title: "Tâches — Admin Mikko Visuel",
@@ -92,7 +92,7 @@ export default async function AdminTasksPage({
       where: { key: TASK_FORMAT_LIST_KEY },
       include: { items: { orderBy: { sortOrder: "asc" } } },
     }),
-    db.client.findMany({ where: EXCLUDE_DEMO_CLIENT, orderBy: { name: "asc" } }),
+    db.client.findMany({ where: ACTIVE_CLIENTS, orderBy: { name: "asc" } }),
   ]);
 
   const statusOptions =

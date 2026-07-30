@@ -4,7 +4,7 @@ import { verifyAdminSession } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { TASK_STATUS, TASK_STATUS_LIST_KEY } from "@/lib/dropdown-lists";
 import { ACTIVE_TASKS, startOfToday } from "@/lib/tasks";
-import { EXCLUDE_DEMO_CLIENT } from "@/lib/clients";
+import { ACTIVE_CLIENTS } from "@/lib/clients";
 import { RecentActivity } from "@/components/admin/recent-activity";
 import { PinnedTasks } from "@/components/admin/pinned-tasks";
 import { UpcomingEvents } from "@/components/admin/upcoming-events";
@@ -25,7 +25,7 @@ export default async function AdminDashboardPage() {
 
   const [clientCount, taskCount, openTaskCount, unpaidCount, overdueCount, toValidateCount] =
     await Promise.all([
-      db.client.count({ where: EXCLUDE_DEMO_CLIENT }),
+      db.client.count({ where: ACTIVE_CLIENTS }),
       db.task.count({ where: ACTIVE_TASKS }),
       // Nombre de tâches en cours (hors "Terminé") — c'est le chiffre le plus
       // utile en un coup d'œil sur le tableau de bord ; le total (incluant les
@@ -130,7 +130,7 @@ export default async function AdminDashboardPage() {
         _count: { _all: true },
       }),
       db.client.findMany({
-        where: EXCLUDE_DEMO_CLIENT,
+        where: ACTIVE_CLIENTS,
         include: {
           tasks: {
             where: { archivedAt: null },

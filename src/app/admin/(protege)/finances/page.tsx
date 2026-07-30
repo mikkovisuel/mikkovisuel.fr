@@ -5,6 +5,15 @@ import { DOCUMENT_TYPE } from "@/lib/dropdown-lists";
 import { EXCLUDE_DEMO_CLIENT } from "@/lib/clients";
 import { FinancesMonthlyChart } from "@/components/admin/finances-monthly-chart";
 import { FinancesByClientTable } from "@/components/admin/finances-by-client-table";
+import { TimeReportTable } from "@/components/admin/time-report-table";
+import {
+  REPORT_PERIODS,
+  buildClientTimeRows,
+  isReportPeriod,
+  periodStart,
+  type ReportPeriod,
+} from "@/lib/time-report";
+import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "Finances — Admin Mikko Visuel",
@@ -16,8 +25,15 @@ function monthKey(date: Date) {
 
 const MONTH_LABEL = new Intl.DateTimeFormat("fr-FR", { month: "short", year: "numeric" });
 
-export default async function FinancesPage() {
+export default async function FinancesPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ periode?: string }>;
+}) {
   await verifyAdminSession();
+  const { periode } = await searchParams;
+  const period: ReportPeriod = isReportPeriod(periode) ? periode : "12m";
+  const since = periodStart(period);
 
   const invoices = await db.document.findMany({
     where: {
@@ -27,6 +43,38 @@ export default async function FinancesPage() {
     include: { client: true },
     orderBy: { uploadedAt: "asc" },
   });
+
+  // Rapport temps/rentabilité — les clients archivés y figurent comme dans le
+  // reste des Finances : archiver ne doit pas réécrire l'historique.
+  const [timeEntries, periodInvoices] = await Promise.all([
+    db.taskTimeEntry.findMany({
+      // Rattachement d'une session à la période par sa date de **début** :
+      // règle simple et lisible, une session à cheval sur la borne compte
+      // pour le jour où elle a commencé.
+      where: {
+        ...(since ? { startedAt: { gte: since } } : {}),
+        task: { client: EXCLUDE_DEMO_CLIENT },
+      },
+      select: {
+        startedAt: true,
+        endedAt: true,
+        task: { select: { clientId: true, client: { select: { name: true, archivedAt: true } } } },
+      },
+    }),
+    db.document.findMany({
+      where: {
+        type: { slug: DOCUMENT_TYPE.FACTURE },
+        client: EXCLUDE_DEMO_CLIENT,
+        ...(since ? { uploadedAt: { gte: since } } : {}),
+      },
+      select: {
+        clientId: true,
+        amountCents: true,
+        client: { select: { name: true, archivedAt: true } },
+      },
+    }),
+  ]);
+  const timeRows = buildClientTimeRows({ timeEntries, invoices: periodInvoices });
 
   const monthly = new Map<string, { billedCents: number; collectedCents: number }>();
   const byClient = new Map<
@@ -118,6 +166,35 @@ export default async function FinancesPage() {
           </div>
         </>
       )}
+
+      <section className="mt-12 border-t border-line pt-8">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="font-display text-lg font-medium text-ink">Temps &amp; rentabilité</h2>
+            <p className="mt-1 max-w-2xl text-sm text-ink-muted">
+              Temps réellement chronométré sur les tâches, rapproché du montant facturé sur la
+              même période. Le taux horaire n&apos;est affiché que si les deux sont renseignés.
+            </p>
+          </div>
+          <div className="flex flex-wrap items-center gap-1.5 text-sm">
+            {REPORT_PERIODS.map((option) => (
+              <Link
+                key={option.value}
+                href={`/admin/finances?periode=${option.value}`}
+                className={`rounded-full border px-3 py-1 transition-colors ${
+                  period === option.value
+                    ? "border-accent bg-accent/10 text-ink"
+                    : "border-line text-ink-muted hover:text-ink"
+                }`}
+              >
+                {option.label}
+              </Link>
+            ))}
+          </div>
+        </div>
+
+        <TimeReportTable rows={timeRows} currency={currency} />
+      </section>
     </div>
   );
 }

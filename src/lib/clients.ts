@@ -12,6 +12,23 @@ export const EXCLUDE_DEMO_CLIENT = {
   isDemo: false,
 } satisfies Prisma.ClientWhereInput;
 
+// Le filtre des clients "en activité" : démo exclu **et** clients archivés
+// exclus. À utiliser partout où l'on travaille — listes, sélecteurs de
+// création, compteurs du tableau de bord, digest hebdomadaire.
+//
+// Deux endroits gardent délibérément `EXCLUDE_DEMO_CLIENT` seul, et il ne
+// faut pas les "corriger" :
+//   - **Finances** : les factures d'un ancien client font toujours partie du
+//     chiffre d'affaires. L'archiver ne doit pas réécrire l'historique.
+//   - **Exports** : une sauvegarde amputée des anciens clients n'en est pas
+//     une, et la réversibilité promise au client en dépend.
+// La **recherche globale** les garde aussi : c'est justement le chemin par
+// lequel on retrouve un ancien client.
+export const ACTIVE_CLIENTS = {
+  isDemo: false,
+  archivedAt: null,
+} satisfies Prisma.ClientWhereInput;
+
 // Trois conditions pour recevoir une notification automatique, et pas
 // seulement l'interrupteur `emailNotificationsEnabled` comme avant le
 // 2026-07-30 :
@@ -98,9 +115,16 @@ export function buildClientOrderBy(
 export function buildClientWhere(options: {
   search?: string;
   categoryId?: string;
+  /** `true` = ne lister que les clients archivés (vue dédiée), `false` (par
+   * défaut) = ne lister que les clients en activité. */
+  archived?: boolean;
 }): Prisma.ClientWhereInput {
   const search = options.search?.trim();
-  const filters: Prisma.ClientWhereInput[] = [EXCLUDE_DEMO_CLIENT];
+  const filters: Prisma.ClientWhereInput[] = [
+    options.archived
+      ? { isDemo: false, archivedAt: { not: null } }
+      : ACTIVE_CLIENTS,
+  ];
 
   if (search) {
     filters.push({

@@ -783,6 +783,42 @@ appliquée à l'ensemble du site :
   valider" — logique déjà existante de `setTaskStatus`, désormais aussi
   déclenchable depuis cette page). Désactivé si la tâche est déjà "À
   valider", pour éviter un second envoi accidentel.
+- **Archivage d'un client (2026-07-30).** Jusque-là, le seul moyen de sortir
+  un ancien client des listes était `deleteClient`, qui supprime en cascade
+  ses tâches, documents et livrables. Nouveau champ `Client.archivedAt` et
+  bouton "Archiver / Désarchiver" sur la fiche : le client disparaît des
+  listes et des sélecteurs de création, un bandeau le signale sur sa fiche,
+  et **rien n'est détruit** — un clic suffit à revenir en arrière.
+  Trois endroits gardent délibérément les clients archivés, et ce n'est pas
+  un oubli : les **Finances** (les factures d'un ancien client font toujours
+  partie du chiffre d'affaires — archiver ne doit pas réécrire l'historique
+  comptable), les **exports** (une sauvegarde amputée n'en est pas une, et la
+  réversibilité promise en dépend) et la **recherche globale** (c'est le
+  chemin par lequel on retrouve un ancien client). La distinction est portée
+  par deux constantes voisines, `ACTIVE_CLIENTS` et `EXCLUDE_DEMO_CLIENT`
+  (src/lib/clients.ts). Les accès à l'espace client ne sont pas touchés :
+  archiver est un geste de rangement, couper un accès reste explicite.
+- **Planning de charge pondéré par le temps (2026-07-30).** Le graphique
+  comptait des tâches à l'unité : trois flyers pesaient autant que trois
+  aftermovies, ce qui le rendait inutilisable pour anticiper une surcharge.
+  Il additionne désormais les `estimatedMinutes`, déjà saisis sur chaque
+  tâche mais jusque-là exploités par la seule jauge d'une fiche. Seuils
+  passés en heures (chargée à 25 h, surcharge à 40 h). Les tâches **sans**
+  estimation ne peuvent pas être converties en hauteur de barre sans inventer
+  une durée : elles sont signalées par un "+n" sous la semaine concernée et
+  récapitulées sous le graphique, plutôt que de peser zéro en silence.
+- **Temps & rentabilité par client (2026-07-30)**, nouvelle section en bas de
+  `/admin/finances`. Le temps était chronométré depuis le 2026-07-21 mais
+  n'était lisible que tâche par tâche. Cette vue rapproche, sur une période
+  au choix (30 jours / 12 mois / depuis le début), le temps réellement passé
+  et le montant facturé, pour faire apparaître le **taux horaire réel** par
+  client. Deux précautions structurantes : le taux n'est affiché que si les
+  deux grandeurs sont renseignées (du temps sans facture n'est pas "0 €/h"
+  mais "pas encore facturé" ; une facture sans temps suivi n'est pas un taux
+  infini), et le taux global du pied de tableau n'agrège que les clients où
+  les deux sont suivis — sinon un client facturé sans chrono gonflerait
+  mécaniquement la moyenne. Une session à cheval sur la borne de période
+  compte pour le jour où elle a commencé.
 - **Carnet de contacts et accès à l'espace client dissociés (2026-07-30).**
   Jusque-là, `ClientUser` confondait deux choses : le contact chez le client
   (nom, fonction, email, téléphone) et son compte de connexion — impossible
@@ -1520,3 +1556,5 @@ Le client a explicitement délégué ces choix :
 | 2026-07-30 | "J'aimerais gérer mes clients d'une meilleure façon, notamment en termes de tri, catégorisation, contacts (prendre les profils d'espace client, mais ajouter la possibilité d'ouvrir ou non un espace client). Il faudrait également retrouver une section Contacts dans le bandeau du haut. Tu peux par contre supprimer l'onglet Mail qui ne me sert à rien." | Livré, 4 volets — voir section "Backend interne" pour le détail : (1) **contacts dissociés de l'accès** (`ClientUser.email`/`passwordHash` nullables + `portalAccessEnabled`, trois états d'accès, ouverture/fermeture et invitation par boutons séparés, création en 3 modes) ; (2) **catégorisation** (`Client.categoryId` sur la liste ouverte `client_category`, gérable depuis `/admin/listes`) ; (3) **tri/recherche/filtres** sur `/admin/clients` (recherche incluant les contacts, filtre par catégorie avec compteurs, tri par nombre de tâches) et nouvel onglet `/admin/contacts` ; (4) **suppression de l'onglet et de la page Mail** (le reste du module Gmail conservé). Migration corrigée à la main pour ne pas couper l'accès des comptes existants. Voir `VALIDATION.md` pour les tests réellement exercés |
 | 2026-07-30 | Arbitrages pris avant construction (3 questions posées) | Périmètre Gmail : **onglet + page seulement**, fils par client et composeur prospect conservés. Catégories : **une catégorie unique** par client (les étiquettes multiples et la combinaison des deux ont été écartées). Ouverture d'accès : **les deux au choix** — invitation par email *et* mot de passe défini par l'admin |
 | 2026-07-30 | Cinq demandes de réglage après la refonte clients : (1) pastille "Tâches" du bandeau, (2) tâche en retard fantôme sur le tableau de bord, (3) allègement de la liste clients + avatar, (4) refonte de la mise en page de la fiche client, (5) regroupement des tâches terminées | Livré, les 5 — voir section "Backend interne". (1) La pastille compte désormais toutes les tâches hors "Terminé" au lieu de "en retard + à valider". (2) **Bug trouvé, la piste du client était fausse** : ce n'était pas une tâche de l'espace de démo (déjà correctement exclu) mais une tâche **archivée** — le tableau de bord ne filtrait pas `archivedAt`, contrairement à la pastille et à la liste. Nouveau filtre partagé `ACTIVE_TASKS` appliqué aux 12 requêtes du tableau de bord. (3) Avatar rond (nouveau champ `Client.avatar*`, upload validé jusqu'à la signature binaire), catégorie affichée, compteurs de contacts/tâches et tri par nombre de tâches retirés. (4) Bandeau collant avec "Enregistrer" en haut à droite, informations sur deux colonnes (identité / facturation), contacts compacts et dépliables, création de contact et de tâche en modale `<dialog>` native, tâches affichées avec le même tableau que `/admin/taches`. (5) Tâches terminées repliées par défaut, sur la liste globale comme sur la fiche client. Voir `VALIDATION.md` — un second bug a été trouvé et corrigé pendant les tests |
+| 2026-07-30 | "Peux-tu me donner des améliorations dans la gestion clients / tâches ?" | 6 pistes proposées après lecture du code (pas des généralités) : planning en heures, assignation des tâches, rapport de temps/rentabilité, archivage client, relance client, fil d'activité client. **3 retenues et livrées** : planning pondéré par le temps estimé, archivage réversible d'un client, rapport Temps & rentabilité sur `/admin/finances`. Écartées pour l'instant : relance client et fil d'activité. Les **dépendances entre tâches** ont été déconseillées (lourdes à maintenir, volume insuffisant) et les **tâches récurrentes** signalées comme voisines des "modèles de tâches réutilisables" déjà écartés le 2026-07-28 |
+| 2026-07-30 | Assignation des tâches à un administrateur | Pas construit — le client a répondu "pas encore, mais c'est prévu" (il travaille seul aujourd'hui). Constat à l'origine de la proposition : les comptes multi-admin existent depuis le 2026-07-29 mais `Task` n'a aucun champ de responsable, donc à plusieurs personne ne sait qui fait quoi. À reprendre le jour où un second compte est réellement actif — voir "Points encore ouverts" |

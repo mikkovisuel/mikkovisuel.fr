@@ -4,7 +4,7 @@ import { WarningCircle, CheckCircle, ShieldWarning } from "@phosphor-icons/react
 import { verifyAdminSession } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { getAppSettings } from "@/lib/settings";
-import { EXCLUDE_DEMO_CLIENT } from "@/lib/clients";
+import { ACTIVE_CLIENTS } from "@/lib/clients";
 import { SettingsForm } from "@/components/admin/settings-form";
 import { GmailConnectionCard } from "@/components/admin/gmail-connection-card";
 import { ClientUserEmailToggle } from "@/components/admin/client-user-email-toggle";
@@ -42,7 +42,7 @@ export default async function AdminSettingsPage({
     // Seuls les contacts ayant un accès ouvert : les notifications parlent
     // toutes de "votre espace client", proposer de les activer pour un simple
     // contact du carnet d'adresses n'aurait pas de sens.
-    where: { ...EXCLUDE_DEMO_CLIENT, users: { some: { portalAccessEnabled: true } } },
+    where: { ...ACTIVE_CLIENTS, users: { some: { portalAccessEnabled: true } } },
     include: {
       users: { where: { portalAccessEnabled: true }, orderBy: { createdAt: "asc" } },
     },

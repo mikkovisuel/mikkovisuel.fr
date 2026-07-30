@@ -8,6 +8,7 @@ import { ClientForm } from "@/components/admin/client-form";
 import { ClientAvatar } from "@/components/admin/client-avatar";
 import { ClientAvatarForm } from "@/components/admin/client-avatar-form";
 import { FormSubmitButton } from "@/components/admin/form-submit-button";
+import { ClientArchiveButton } from "@/components/admin/client-archive-button";
 import { ContactCard } from "@/components/admin/contact-card";
 import { NewContactButton } from "@/components/admin/new-contact-button";
 import { NewTaskButton } from "@/components/admin/new-task-button";
@@ -35,7 +36,13 @@ import {
   TASK_TYPE_LIST_KEY,
   TASK_FORMAT_LIST_KEY,
 } from "@/lib/dropdown-lists";
-import { buildTaskOrderBy, isTaskSortField, type TaskSortField, type TaskSortDir } from "@/lib/tasks";
+import {
+  buildTaskOrderBy,
+  isTaskSortField,
+  taskDateFormatter,
+  type TaskSortField,
+  type TaskSortDir,
+} from "@/lib/tasks";
 import { contactAccessState } from "@/lib/clients";
 
 export const metadata: Metadata = {
@@ -115,6 +122,10 @@ export default async function ClientDetailPage({
   const categoryOptions =
     categoryList?.items.map((item) => ({ id: item.id, label: item.label })) ?? [];
 
+  const archivedAtLabel = client.archivedAt
+    ? taskDateFormatter.format(client.archivedAt)
+    : null;
+
   const updateThisClient = updateClient.bind(null, client.id);
   const updateAvatarForThisClient = updateClientAvatar.bind(null, client.id);
   const createContactForThisClient = createClientContact.bind(null, client.id);
@@ -158,6 +169,18 @@ export default async function ClientDetailPage({
           <FormSubmitButton formId={CLIENT_FORM_ID} label="Enregistrer" />
         </div>
       </div>
+
+      {client.archivedAt && (
+        <p className="mt-4 flex flex-wrap items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-ink">
+          <strong className="font-medium">Client archivé</strong>
+          <span className="text-ink-muted">
+            depuis le {archivedAtLabel}
+            {" — "}
+            masqué des listes et des sélecteurs, mais toujours compté dans les Finances et les
+            exports. Rien n&apos;a été supprimé.
+          </span>
+        </p>
+      )}
 
       {prospectConversion && prospectConversion !== "ok" && (
         <p className="mt-4 rounded-xl border border-line bg-surface-elevated px-4 py-3 text-sm text-ink-muted">
@@ -342,7 +365,8 @@ export default async function ClientDetailPage({
         )}
       </section>
 
-      <section className="mt-12 border-t border-line pt-8">
+      <section className="mt-12 flex flex-wrap items-center gap-4 border-t border-line pt-8">
+        <ClientArchiveButton clientId={client.id} archived={Boolean(client.archivedAt)} />
         <StepUpButton
           action={deleteThisClient}
           label="Supprimer ce client"

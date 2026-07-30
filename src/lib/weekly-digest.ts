@@ -3,7 +3,7 @@ import { db } from "@/lib/db";
 import { sendEmailToAdmins, getAdminEmails } from "@/lib/email/service";
 import { escapeHtml } from "@/lib/html-escape";
 import { DOCUMENT_TYPE } from "@/lib/dropdown-lists";
-import { EXCLUDE_DEMO_CLIENT } from "@/lib/clients";
+import { ACTIVE_CLIENTS } from "@/lib/clients";
 import { EXCLUDE_DEMO_CLIENT_TASKS, taskDateFormatter } from "@/lib/tasks";
 
 function startOfWeek(date: Date) {
@@ -55,7 +55,7 @@ export async function sendWeeklyDigest() {
     db.document.findMany({
       where: {
         type: { slug: DOCUMENT_TYPE.FACTURE },
-        client: EXCLUDE_DEMO_CLIENT,
+        client: ACTIVE_CLIENTS,
         paymentStatus: "unpaid",
         dueDate: { lt: now },
       },

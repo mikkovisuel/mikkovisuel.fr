@@ -7,7 +7,7 @@ import { DocumentRow } from "@/components/admin/document-row";
 import { deleteDocument } from "@/lib/actions/files";
 import { DOCUMENT_TYPE_LIST_KEY } from "@/lib/dropdown-lists";
 import { formatAmount } from "@/lib/documents";
-import { EXCLUDE_DEMO_CLIENT } from "@/lib/clients";
+import { ACTIVE_CLIENTS } from "@/lib/clients";
 
 export const metadata: Metadata = {
   title: "Documents — Admin Mikko Visuel",
@@ -37,7 +37,7 @@ export default async function AdminDocumentsPage({
       include: { client: true, type: true },
       orderBy: { uploadedAt: "desc" },
     }),
-    db.client.findMany({ where: EXCLUDE_DEMO_CLIENT, orderBy: { name: "asc" } }),
+    db.client.findMany({ where: ACTIVE_CLIENTS, orderBy: { name: "asc" } }),
     db.dropdownList.findUnique({
       where: { key: DOCUMENT_TYPE_LIST_KEY },
       include: { items: { orderBy: { sortOrder: "asc" } } },
