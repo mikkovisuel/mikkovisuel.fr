@@ -8,6 +8,7 @@ export const PORTFOLIO_CATEGORY_LIST_KEY = "portfolio_category";
 export const TASK_TYPE_LIST_KEY = "task_type";
 export const TASK_FORMAT_LIST_KEY = "task_format";
 export const PROSPECT_STATUS_LIST_KEY = "prospect_status";
+export const CLIENT_CATEGORY_LIST_KEY = "client_category";
 
 export const TASK_STATUS = {
   NOUVEAU: "nouveau",
@@ -145,6 +146,19 @@ export const TASK_TYPE_SEED: SeedDropdownItem[] = [
   { slug: "motion", label: "Motion", color: "violet", locked: false, sortOrder: 5 },
   { slug: "3d", label: "3D", color: "cyan", locked: false, sortOrder: 6 },
   { slug: "psd", label: "PSD", color: "slate", locked: false, sortOrder: 7 },
+];
+
+// Catégories de client (2026-07-30) — liste entièrement ouverte, aucun code
+// ne branche sur un slug particulier : ces valeurs ne sont qu'un point de
+// départ raisonnable pour l'activité (clubs, marques, artistes...), à
+// renommer/compléter librement depuis /admin/listes.
+export const CLIENT_CATEGORY_SEED: SeedDropdownItem[] = [
+  { slug: "club", label: "Club", color: "violet", locked: false, sortOrder: 0 },
+  { slug: "marque", label: "Marque", color: "blue", locked: false, sortOrder: 1 },
+  { slug: "artiste", label: "Artiste", color: "rose", locked: false, sortOrder: 2 },
+  { slug: "agence", label: "Agence", color: "amber", locked: false, sortOrder: 3 },
+  { slug: "evenementiel", label: "Événementiel", color: "orange", locked: false, sortOrder: 4 },
+  { slug: "particulier", label: "Particulier", color: "slate", locked: false, sortOrder: 5 },
 ];
 
 export const TASK_FORMAT_SEED: SeedDropdownItem[] = [

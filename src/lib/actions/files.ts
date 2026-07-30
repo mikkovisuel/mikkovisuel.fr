@@ -10,6 +10,7 @@ import { escapeHtml } from "@/lib/html-escape";
 import { formatFileSize } from "@/lib/files";
 import { taskDateFormatterShort } from "@/lib/tasks";
 import { contentMatchesDeclaredType } from "@/lib/file-signature";
+import { notifiableEmails } from "@/lib/clients";
 
 const MAX_DOCUMENT_SIZE = 20 * 1024 * 1024;
 const MAX_DELIVERABLE_SIZE = 500 * 1024 * 1024;
@@ -110,11 +111,10 @@ export async function uploadDeliverable(
   }
 
   const tabLabel = kind === "bat" ? "À valider" : "Livrables";
-  for (const user of task.client.users) {
-    if (!user.emailNotificationsEnabled) continue;
+  for (const to of notifiableEmails(task.client.users)) {
     await sendEmail({
       trigger: "new_deliverable",
-      to: user.email,
+      to,
       subject:
         kind === "bat"
           ? `Nouveau BAT à valider — ${task.title}`
@@ -363,11 +363,10 @@ export async function uploadDocument(
     },
   });
 
-  for (const user of client.users) {
-    if (!user.emailNotificationsEnabled) continue;
+  for (const to of notifiableEmails(client.users)) {
     await sendEmail({
       trigger: "new_document",
-      to: user.email,
+      to,
       subject: `Nouveau document disponible — ${docType.label}`,
       html: `<p>Un nouveau document (${docType.label}) est disponible dans votre espace client, onglet Administratif.</p>`,
     });

@@ -8,13 +8,15 @@ import { hashPassword } from "@/lib/password";
 import { requireFreshAdminPassword, type StepUpFormState } from "@/lib/step-up-auth";
 import { logAuditEvent } from "@/lib/audit-log";
 import { getClientIp } from "@/lib/request-ip";
+import { destroyAllSessionsForSubject } from "@/lib/session";
+import { sendClientPasswordResetEmail } from "@/lib/actions/password-reset";
 import {
   ClientSchema,
-  ClientUserSchema,
-  ClientUserEditSchema,
+  ContactCreateSchema,
+  ContactEditSchema,
   type ClientFormState,
-  type ClientUserFormState,
-  type ClientUserEditFormState,
+  type ContactFormState,
+  type ContactEditFormState,
 } from "@/lib/validation/client";
 
 export async function createClient(
@@ -31,6 +33,7 @@ export async function createClient(
     vatNumber: formData.get("vatNumber"),
     billingEmail: formData.get("billingEmail"),
     driveUrl: formData.get("driveUrl"),
+    categoryId: formData.get("categoryId"),
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Formulaire invalide." };
@@ -56,6 +59,7 @@ export async function updateClient(
     vatNumber: formData.get("vatNumber"),
     billingEmail: formData.get("billingEmail"),
     driveUrl: formData.get("driveUrl"),
+    categoryId: formData.get("categoryId"),
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Formulaire invalide." };
@@ -97,17 +101,76 @@ export async function deleteClient(
   redirect("/admin/clients");
 }
 
-export async function createClientUser(
+function revalidateContactPaths(clientId: string) {
+  revalidatePath(`/admin/clients/${clientId}`);
+  revalidatePath("/admin/contacts");
+  revalidatePath("/admin/clients");
+}
+
+// Création d'un contact. Selon `access`, il reste une simple entrée du carnet
+// d'adresses, reçoit une invitation à choisir son mot de passe, ou se voit
+// attribuer un mot de passe défini par l'admin (voir `ContactCreateSchema`).
+export async function createClientContact(
   clientId: string,
-  _prev: ClientUserFormState,
+  _prev: ContactFormState,
   formData: FormData,
-): Promise<ClientUserFormState> {
+): Promise<ContactFormState> {
   await verifyAdminSession();
 
-  const parsed = ClientUserSchema.safeParse({
+  const parsed = ContactCreateSchema.safeParse({
     name: formData.get("name"),
     email: formData.get("email"),
+    phone: formData.get("phone"),
+    role: formData.get("role"),
+    access: formData.get("access"),
     password: formData.get("password"),
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Formulaire invalide." };
+  }
+  const { name, email, phone, role, access, password } = parsed.data;
+
+  if (email) {
+    const existing = await db.clientUser.findUnique({ where: { email } });
+    if (existing) {
+      return { error: "Un contact existe déjà avec cet email." };
+    }
+  }
+
+  const contact = await db.clientUser.create({
+    data: {
+      clientId,
+      name,
+      email,
+      phone: phone || null,
+      role: role || null,
+      portalAccessEnabled: access !== "none",
+      // Seul le mode "password" définit un mot de passe tout de suite. En mode
+      // "invite", l'accès est ouvert mais le hash reste nul jusqu'à ce que le
+      // contact suive son lien — c'est l'état "invitation à envoyer".
+      passwordHash: access === "password" ? await hashPassword(password as string) : null,
+    },
+  });
+
+  if (access === "invite") {
+    await sendClientPasswordResetEmail(contact);
+  }
+
+  revalidateContactPaths(clientId);
+  return undefined;
+}
+
+export async function updateClientContact(
+  clientUserId: string,
+  clientId: string,
+  _prev: ContactEditFormState,
+  formData: FormData,
+): Promise<ContactEditFormState> {
+  await verifyAdminSession();
+
+  const parsed = ContactEditSchema.safeParse({
+    name: formData.get("name"),
+    email: formData.get("email"),
     phone: formData.get("phone"),
     role: formData.get("role"),
   });
@@ -115,49 +178,94 @@ export async function createClientUser(
     return { error: parsed.error.issues[0]?.message ?? "Formulaire invalide." };
   }
 
-  const existing = await db.clientUser.findUnique({ where: { email: parsed.data.email } });
-  if (existing) {
-    return { error: "Un compte existe déjà avec cet email." };
+  const contact = await db.clientUser.findUnique({ where: { id: clientUserId } });
+  if (!contact) return { error: "Contact introuvable." };
+
+  // Retirer l'email d'un contact qui se connecte lui couperait l'accès sans
+  // que l'admin l'ait demandé (l'email EST l'identifiant) — on refuse plutôt
+  // que de fermer l'accès en douce.
+  if (!parsed.data.email && contact.portalAccessEnabled) {
+    return {
+      error: "Ce contact a un accès à l'espace client : son email ne peut pas être retiré.",
+    };
   }
 
-  const passwordHash = await hashPassword(parsed.data.password);
-  await db.clientUser.create({
+  if (parsed.data.email && parsed.data.email !== contact.email) {
+    const existing = await db.clientUser.findUnique({ where: { email: parsed.data.email } });
+    if (existing) {
+      return { error: "Un contact existe déjà avec cet email." };
+    }
+  }
+
+  await db.clientUser.update({
+    where: { id: clientUserId },
     data: {
-      clientId,
       name: parsed.data.name,
       email: parsed.data.email,
-      passwordHash,
       phone: parsed.data.phone || null,
       role: parsed.data.role || null,
     },
   });
 
-  revalidatePath(`/admin/clients/${clientId}`);
-  return undefined;
+  revalidateContactPaths(clientId);
+  return { success: true };
 }
 
-export async function updateClientUser(
-  clientUserId: string,
-  clientId: string,
-  _prev: ClientUserEditFormState,
-  formData: FormData,
-): Promise<ClientUserEditFormState> {
-  await verifyAdminSession();
+// Ouvre ou ferme l'accès à l'espace client. Fermer ne supprime ni le contact
+// ni son mot de passe : rouvrir plus tard restaure l'accès tel quel, sans
+// nouvelle invitation. Les sessions en cours sont en revanche révoquées —
+// sinon fermer un accès ne prendrait effet qu'à la prochaine déconnexion.
+export async function toggleContactPortalAccess(clientUserId: string, clientId: string) {
+  const admin = await verifyAdminSession();
 
-  const parsed = ClientUserEditSchema.safeParse({
-    phone: formData.get("phone"),
-    role: formData.get("role"),
-  });
-  if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Formulaire invalide." };
-  }
+  const contact = await db.clientUser.findUnique({ where: { id: clientUserId } });
+  if (!contact) return;
+
+  const enabled = !contact.portalAccessEnabled;
+  if (enabled && !contact.email) return;
 
   await db.clientUser.update({
     where: { id: clientUserId },
-    data: { phone: parsed.data.phone || null, role: parsed.data.role || null },
+    data: { portalAccessEnabled: enabled },
   });
 
-  revalidatePath(`/admin/clients/${clientId}`);
+  if (!enabled) {
+    await destroyAllSessionsForSubject("CLIENT_USER", clientUserId);
+  }
+
+  await logAuditEvent({
+    actorType: "ADMIN",
+    actorId: admin.id,
+    actorLabel: admin.email,
+    action: enabled ? "client_portal_access_opened" : "client_portal_access_closed",
+    targetType: "ClientUser",
+    targetId: contact.id,
+    targetLabel: contact.email ?? contact.name,
+    ipAddress: await getClientIp(),
+  });
+
+  revalidateContactPaths(clientId);
+}
+
+// Envoi (ou renvoi) du lien d'invitation. Même email que la réinitialisation
+// de mot de passe — c'est le même geste côté contact : suivre un lien et
+// choisir un mot de passe.
+export async function sendContactInvitation(
+  clientUserId: string,
+  clientId: string,
+): Promise<{ error?: string; success?: boolean }> {
+  await verifyAdminSession();
+
+  const contact = await db.clientUser.findUnique({ where: { id: clientUserId } });
+  if (!contact) return { error: "Contact introuvable." };
+  if (!contact.portalAccessEnabled) {
+    return { error: "Ouvrez d'abord l'accès à l'espace client." };
+  }
+
+  const sent = await sendClientPasswordResetEmail(contact);
+  if (!sent) return { error: "Ce contact n'a pas d'adresse email." };
+
+  revalidateContactPaths(clientId);
   return { success: true };
 }
 

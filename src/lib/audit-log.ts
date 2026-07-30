@@ -16,7 +16,9 @@ export type AuditAction =
   | "impersonation_start"
   | "admin_invited"
   | "admin_revoked"
-  | "data_export";
+  | "data_export"
+  | "client_portal_access_opened"
+  | "client_portal_access_closed";
 
 export async function logAuditEvent(input: {
   actorType: "ADMIN" | "SYSTEM";
@@ -54,4 +56,6 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   admin_invited: "Administrateur invité",
   admin_revoked: "Administrateur révoqué",
   data_export: "Export de données",
+  client_portal_access_opened: "Accès à l'espace client ouvert",
+  client_portal_access_closed: "Accès à l'espace client fermé",
 };

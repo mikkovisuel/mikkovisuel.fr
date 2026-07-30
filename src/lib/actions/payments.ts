@@ -8,6 +8,7 @@ import { getStripeClient } from "@/lib/stripe";
 import { sendEmail } from "@/lib/email/service";
 import { formatAmount } from "@/lib/documents";
 import { getStorageAdapter } from "@/lib/storage";
+import { notifiableEmails } from "@/lib/clients";
 
 export async function createCheckoutSession(documentId: string) {
   const clientUser = await verifyClientSession();
@@ -87,11 +88,10 @@ export async function sendPaymentReminder(documentId: string) {
 
   const amount = formatAmount(document.amountCents, document.currency);
 
-  for (const user of document.client.users) {
-    if (!user.emailNotificationsEnabled) continue;
+  for (const to of notifiableEmails(document.client.users)) {
     await sendEmail({
       trigger: "payment_reminder",
-      to: user.email,
+      to,
       subject: `Rappel de paiement — ${document.fileName}`,
       html: `<p>Un document (${document.fileName}${
         amount ? `, ${amount}` : ""

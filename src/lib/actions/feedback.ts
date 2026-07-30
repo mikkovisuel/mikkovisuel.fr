@@ -26,7 +26,7 @@ export async function submitInterfaceFeedback(
     trigger: "feedback_suggestion",
     subject: `Suggestion d'amélioration interface — ${clientUser.client.name}`,
     html: `
-      <p><strong>De :</strong> ${escapeHtml(clientUser.name)} (${escapeHtml(clientUser.email)}) — ${escapeHtml(clientUser.client.name)}</p>
+      <p><strong>De :</strong> ${escapeHtml(clientUser.name)}${clientUser.email ? ` (${escapeHtml(clientUser.email)})` : ""} — ${escapeHtml(clientUser.client.name)}</p>
       <p><strong>Message :</strong></p>
       <blockquote>${escapeHtml(parsed.data.message).replace(/\n/g, "<br>")}</blockquote>
     `,

@@ -7,6 +7,7 @@ import type { SearchResults } from "@/lib/global-search";
 
 const GROUPS: { key: keyof SearchResults; label: string }[] = [
   { key: "clients", label: "Clients" },
+  { key: "contacts", label: "Contacts" },
   { key: "tasks", label: "Tâches" },
   { key: "prospects", label: "Prospects" },
   { key: "documents", label: "Documents" },

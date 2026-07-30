@@ -39,8 +39,13 @@ export default async function AdminSettingsPage({
   const { gmail } = await searchParams;
 
   const clients = await db.client.findMany({
-    where: { ...EXCLUDE_DEMO_CLIENT, users: { some: {} } },
-    include: { users: { orderBy: { createdAt: "asc" } } },
+    // Seuls les contacts ayant un accès ouvert : les notifications parlent
+    // toutes de "votre espace client", proposer de les activer pour un simple
+    // contact du carnet d'adresses n'aurait pas de sens.
+    where: { ...EXCLUDE_DEMO_CLIENT, users: { some: { portalAccessEnabled: true } } },
+    include: {
+      users: { where: { portalAccessEnabled: true }, orderBy: { createdAt: "asc" } },
+    },
     orderBy: { name: "asc" },
   });
 
@@ -128,13 +133,14 @@ export default async function AdminSettingsPage({
           Notifications email par profil
         </h2>
         <p className="mt-2 text-sm text-ink-muted">
-          Vue consolidée de tous les comptes de connexion, tous clients confondus. Bascule
-          identique à celle de chaque fiche client — désactivée par défaut pour un nouveau
-          profil, pour éviter de spammer un contact qui n&apos;a pas besoin d&apos;être notifié.
+          Vue consolidée des contacts ayant un accès à l&apos;espace client, tous clients
+          confondus. Bascule identique à celle de chaque fiche client — désactivée par défaut
+          pour un nouveau contact, pour éviter de spammer quelqu&apos;un qui n&apos;a pas besoin
+          d&apos;être notifié.
         </p>
 
         {clients.length === 0 ? (
-          <p className="mt-4 text-sm text-ink-muted">Aucun compte de connexion pour l&apos;instant.</p>
+          <p className="mt-4 text-sm text-ink-muted">Aucun accès à l&apos;espace client ouvert pour l&apos;instant.</p>
         ) : (
           <div className="mt-4 flex flex-col gap-6">
             {clients.map((client) => (

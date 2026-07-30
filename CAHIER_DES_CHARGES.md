@@ -651,8 +651,17 @@ appliquée à l'ensemble du site :
   "non connecté", écran de réglages, garde-fous) mais l'usage réel dépend
   de la création d'identifiants Google côté client — voir "Points encore
   ouverts" et `GUIDE_GMAIL.md`.
-- Boîte mail globale "Mail" dans le bandeau admin (2026-07-20) : nouvel
-  onglet "Mail" entre "Documents" et "Portfolio" (`/admin/mails`),
+- ~~Boîte mail globale "Mail" dans le bandeau admin (2026-07-20)~~ —
+  **supprimée le 2026-07-30** à la demande du client ("l'onglet Mail ne me
+  sert à rien") : l'onglet, la page `/admin/mails` et la pastille de
+  compteur de non-lus ont été retirés. Le reste du module Gmail est
+  **conservé** : bouton "Emails" par client, fil de discussion, réponse et
+  transfert, composeur d'email prospect, connexion Gmail dans Réglages.
+  Effet de bord bénéfique : `getUnreadThreadCount` déclenchait un appel à
+  l'API Gmail à *chaque* chargement de page admin (malgré son cache 60s) —
+  cet appel a entièrement disparu. Description d'origine conservée
+  ci-dessous pour mémoire : nouvel onglet "Mail" entre "Documents" et
+  "Portfolio" (`/admin/mails`),
   regroupant en une seule vue les fils Gmail échangés avec l'ensemble des
   clients (même principe que le bouton "Emails" par client — recherche
   `from:`/`to:` en direct, toujours aucun email stocké en base). Chaque fil
@@ -696,6 +705,21 @@ appliquée à l'ensemble du site :
   date du dernier envoi). Le service d'email (`src/lib/email/service.ts`)
   gère désormais les pièces jointes (support déjà présent chez Resend),
   avec repli console habituel si `RESEND_API_KEY` n'est pas configurée.
+- Brouillon de mail manuel (2026-07-30) : bouton "Préparer le mail" ajouté
+  **à côté** de "Envoyer le document", aux mêmes conditions d'affichage
+  (email de facturation renseigné). Il n'envoie rien : il ouvre la
+  messagerie de l'admin sur un brouillon `mailto:` prérempli (destinataire,
+  objet = nom du fichier, corps dans le même ton que l'envoi Resend). Le
+  mail part ainsi de la vraie boîte de l'admin, se retrouve dans ses
+  "Envoyés", et le client répond à une adresse humaine plutôt qu'à
+  `no-reply@`. **Contrainte assumée** : `mailto:` ne peut pas porter de
+  pièce jointe (limite du protocole, RFC 6068) — le corps renvoie donc vers
+  l'espace client, où le destinataire retrouve le document après connexion,
+  plutôt que vers un lien de téléchargement public qui circulerait sans
+  contrôle. Pour la même raison, ce bouton ne marque **pas** `Document.sentAt` :
+  on ne peut pas savoir si l'admin a réellement cliqué sur "Envoyer" dans
+  son client mail, et cet indicateur reste réservé à l'envoi Resend, qui est
+  constaté. Voir `src/lib/mail-draft.ts`.
 - Lien Google Drive par client (2026-07-20) : nouveau champ `Client.driveUrl`
   sur la fiche client (un seul lien par client, pas par compte de
   connexion — cohérent avec le fonctionnement "1 client = 1 espace"). Si
@@ -745,6 +769,10 @@ appliquée à l'ensemble du site :
   la limite réelle du fournisseur d'email (Resend, ~40 Mo par email tout
   compris) — le client peut toujours télécharger les fichiers depuis son
   espace client dans ce cas, l'email n'est qu'une commodité de notification.
+  Bouton "Préparer le mail" ajouté à côté (2026-07-30), sur le même modèle
+  que pour les documents (voir plus haut) : brouillon `mailto:` prérempli,
+  sans pièce jointe, renvoyant vers l'espace client, et sans marquage de
+  `Task.deliverablesSentAt`.
 - Statut modifiable + bouton "Mettre en validation" sur la fiche tâche
   (2026-07-20) : `/admin/taches/[taskId]` n'exposait jusqu'ici aucun moyen
   de changer le statut (seul le sélecteur des vues Liste/Kanban/fiche client
@@ -755,6 +783,70 @@ appliquée à l'ensemble du site :
   valider" — logique déjà existante de `setTaskStatus`, désormais aussi
   déclenchable depuis cette page). Désactivé si la tâche est déjà "À
   valider", pour éviter un second envoi accidentel.
+- **Carnet de contacts et accès à l'espace client dissociés (2026-07-30).**
+  Jusque-là, `ClientUser` confondait deux choses : le contact chez le client
+  (nom, fonction, email, téléphone) et son compte de connexion — impossible
+  d'enregistrer un interlocuteur sans lui ouvrir un espace, ni de couper un
+  accès sans supprimer la fiche. Les deux notions sont désormais séparées
+  sur le même modèle, sans table supplémentaire :
+  - `ClientUser.email` et `ClientUser.passwordHash` deviennent **nullables**
+    (un contact peut n'avoir qu'un téléphone), et un nouveau champ
+    `portalAccessEnabled` porte l'interrupteur d'accès.
+  - Trois états lisibles dans l'admin, calculés par `contactAccessState`
+    (src/lib/clients.ts) : **Contact seul** (pas d'accès), **Invitation à
+    envoyer** (accès ouvert, mot de passe pas encore choisi), **Espace
+    client actif**. L'état intermédiaire est volontairement distinct : un
+    contact invité et jamais connecté ne doit pas passer pour opérationnel.
+  - Section "Comptes de connexion" de la fiche client renommée
+    **"Contacts"**. Chaque contact s'édite sur place (nom, email, téléphone,
+    fonction), avec un bouton "Ouvrir/Fermer l'accès" et un bouton
+    "Envoyer l'invitation" séparés — ouvrir sans inviter est un état valide.
+    Fermer l'accès **conserve** le contact et son mot de passe (rouvrir ne
+    demande pas de nouvelle invitation) mais révoque les sessions en cours,
+    sinon la fermeture ne prendrait effet qu'à la déconnexion suivante.
+  - Création d'un contact en trois modes (choix du client le 2026-07-30 :
+    "les deux, au choix") : sans accès, avec invitation par email (lien de
+    choix du mot de passe, même mécanique que "mot de passe oublié"), ou
+    avec un mot de passe défini par l'admin.
+  - Conséquences de sécurité, toutes couvertes : la connexion refuse un
+    contact sans accès ouvert (`canLogIn`, message d'erreur inchangé pour ne
+    pas révéler l'existence du compte) ; le formulaire public "mot de passe
+    oublié" traite un contact sans accès comme inexistant ; l'usurpation
+    d'espace client est refusée ; et les notifications automatiques ne
+    partent qu'aux contacts ayant **à la fois** un email, l'interrupteur de
+    notification activé et un accès ouvert (`notifiableEmails`, seul point
+    de vérité) — ces emails disent tous "c'est disponible dans votre espace
+    client", les envoyer à quelqu'un qui ne peut pas s'y connecter n'aurait
+    aucun sens. La vue consolidée de `/admin/reglages` ne liste donc plus
+    que les contacts ayant un accès.
+  - Migration `20260730113943_contacts_client_category` : `ADD COLUMN
+    portalAccessEnabled BOOLEAN NOT NULL DEFAULT false` aurait coupé l'accès
+    à **tous** les comptes clients existants, un `UPDATE` explicite a été
+    ajouté à la main pour rétablir `true` partout où un mot de passe
+    existait déjà.
+- **Catégorisation et tri des clients (2026-07-30).** Nouveau champ
+  `Client.categoryId` pointant sur un `DropdownItem` de la liste
+  `client_category` — donc gérée depuis `/admin/listes` comme les autres,
+  avec badge coloré et ordre d'affichage gratuits, et aucune migration
+  nécessaire pour ajouter une catégorie. Liste ouverte, aucun code ne
+  branche sur un slug : les 6 valeurs seedées (Club, Marque, Artiste,
+  Agence, Événementiel, Particulier) ne sont qu'un point de départ.
+  `onDelete: SetNull` — supprimer une catégorie ne supprime pas les clients.
+  Sur `/admin/clients` : recherche (portant sur le nom du client, son email
+  de facturation **et** le nom/email de ses contacts — chercher "Julie" doit
+  retrouver le club dont elle est la responsable), filtre par catégorie avec
+  compteurs, pastille "Non catégorisés", et tri étendu à "Nombre de tâches"
+  en plus de l'alphabétique et de la date d'ajout. Les compteurs des
+  pastilles sont calculés sur tous les clients, pas sur le résultat filtré,
+  sinon cliquer une catégorie ferait tomber les autres à zéro. Recherche,
+  filtre et tri se conservent mutuellement dans l'URL.
+- **Onglet "Contacts" dans le bandeau admin (2026-07-30)**, `/admin/contacts`
+  : tous les contacts tous clients confondus, avec recherche (nom, email,
+  téléphone, fonction), filtre par état d'accès et par client, email et
+  téléphone cliquables, et lien vers la fiche du client. Volontairement en
+  lecture seule : un contact se crée et se modifie depuis la fiche de son
+  client, cette page sert à le **retrouver**. Le client de démonstration
+  publique en est exclu (son "contact" est un compte technique).
 - Administration des envois d'email par profil client (2026-07-20), pour
   éviter de spammer un contact qui n'a pas besoin d'être notifié (client
   avec plusieurs comptes de connexion) : nouveau champ
@@ -951,11 +1043,11 @@ appliquée à l'ensemble du site :
 - Nouvelles suggestions côté backend (2026-07-24, proposées par Claude Code
   à la demande du client, 4 retenues sur 5 — la relance automatique de
   factures impayées écartée) :
-  - **Pastille de compteur sur "Mail" dans le nav** : nombre de fils Gmail
-    non lus, tous clients confondus. `getUnreadThreadCount` (src/lib/
-    gmail.ts) mis en cache 60s en mémoire process pour ne pas déclencher un
-    appel Gmail API à chaque navigation admin ; retourne 0 si Gmail n'est
-    pas connecté plutôt que de faire échouer le layout.
+  - ~~**Pastille de compteur sur "Mail" dans le nav**~~ — **supprimée avec
+    l'onglet Mail le 2026-07-30** (voir plus haut), ainsi que la fonction
+    `getUnreadThreadCount` qui la calculait. Description d'origine : nombre
+    de fils Gmail non lus, tous clients confondus, mis en cache 60s en
+    mémoire process pour limiter les appels Gmail API.
   - **Panneau sécurité dans Réglages** : les tentatives de connexion
     échouées (`LoginAttempt`, déjà utilisées pour bloquer le brute-force)
     n'étaient jusqu'ici affichées nulle part ; nouvelle section "Sécurité"
@@ -1269,6 +1361,44 @@ Le client a explicitement délégué ces choix :
   `VALIDATION.md` ne couvre pour l'instant que les fonctionnalités livrées
   ce jour-là — les 150+ fonctionnalités antérieures ne sont pas rejouées
   rétroactivement (voir la portée notée en tête de ce fichier).
+- **Déploiement chez des clients ("white-label") — étudié le 2026-07-30, pas
+  encore construit.** Modèle retenu : une instance par client, hébergée par
+  Mikko Visuel, en abonnement mensuel (voir le journal). Le SaaS
+  multi-tenant est écarté : il faudrait porter un `tenantId` sur les 29
+  modèles et re-cadrer chaque requête des ~40 fichiers de `src/lib`, avec un
+  risque de fuite inter-clients à la moindre requête oubliée. Chantiers
+  restant à traiter avant de pouvoir livrer une première instance :
+  1. **Marque en dur** : ~104 occurrences de "Mikko Visuel" réparties sur
+     ~60 fichiers (surtout des `metadata.title`), le SVG de
+     `brand-logo.tsx`, les deux manifests PWA, les 8 icônes de
+     `public/icons/`, et les jetons de couleur de `globals.css`. À
+     externaliser dans une couche de configuration de marque, idéalement
+     éditable depuis l'admin.
+  2. **Licence de la police Clash Display** : les `.woff2` sont embarqués
+     dans le dépôt. Redistribuer la police sur N sites clients est un
+     sujet juridique à vérifier **avant** toute vente, pas un sujet
+     technique.
+  3. **Pages légales** : `mentions-legales` et `SalesTermsSection` sont
+     encore des textes d'attente. Chez un client, ce sont des contenus
+     obligatoires et propres à lui — à passer en base.
+  4. **Domaine d'envoi des emails** : prévoir un expéditeur Resend unique
+     et mutualisé (`no-reply@` du produit) pour toutes les instances,
+     plutôt qu'un domaine à vérifier en DNS chez chaque client. Les resets
+     de mot de passe imposent de toute façon un envoi serveur.
+  5. **Module Gmail** : à désactiver par configuration dans les instances
+     clientes (déclencherait sinon la vérification Google + l'évaluation
+     CASA annuelle). Aucun code à supprimer, un simple drapeau suffit.
+  6. **Exploitation** : script de provisionnement (créer app + base +
+     bucket + seed + DNS) et intégration continue capable de pousser une
+     mise à jour sur toutes les instances. Sans ça, le modèle tient à 3
+     clients, pas à 15.
+  7. **Cadre contractuel** : contrat de sous-traitance RGPD par client
+     (Mikko Visuel devient sous-traitant), et test réel d'une restauration
+     de sauvegarde Scalingo — jamais vérifié à ce jour.
+  Réserve de marché notée : le vocabulaire du produit (BAT, livrables,
+  piliers portfolio, aftermovie) est structurant dans le code comme dans
+  l'interface. La cible réaliste est le studio ou l'agence créative, pas la
+  PME générique.
 
 ## Journal des modifications demandées
 
@@ -1383,3 +1513,9 @@ Le client a explicitement délégué ces choix :
 | 2026-07-29 | "Peux tu vérifier la partie notes, je n'ai pas accès au bouton de suppression d'une note" | Bug trouvé et corrigé : la barre d'outils de l'éditeur de note (`notes-app.tsx`) était forcée sur une seule ligne sans pouvoir rétrécir ni passer à la ligne, débordait de son conteneur dès qu'une note n'avait ni dossier ni client lié, et le bouton "Supprimer" (dernier de la rangée) se retrouvait coupé/inatteignable au clic — reproduit à plusieurs largeurs d'écran, corrigé en autorisant la barre à passer à la ligne, re-testé après correctif |
 | 2026-07-29 | "Ce ne serait pas un automatisme mais un agent, dans mon application Claude, qui pousse les lignes dans Scalingo" — pour la recherche/qualification automatique de prospects | Expliqué pourquoi un agent Claude Code planifié n'est pas le bon mécanisme (accès direct à la base de production nécessaire, plus risqué qu'utile) — le client a choisi de construire cet agent lui-même dans Cowork plutôt que de le faire développer ici. Demande reformulée en conséquence : fournir un modèle CSV + une fonction d'import sur le site |
 | 2026-07-29 | "Donne-moi un modèle de tableau CSV à remplir, et ajoute une fonction d'import des prospects directement sur le site" | Livré : nouveau champ `Prospect.website` (site web, cohérent avec les 3 sources de prospects — manuel, recherche IA, import), modèle CSV téléchargeable (`public/modele-import-prospects.csv`), import CSV sur `/admin/prospection` (colonnes reconnues avec tolérance accents/casse/synonymes, déduplication contre la base existante et au sein du fichier par email/Instagram, lignes sans nom ignorées proprement) — voir `VALIDATION.md` pour le détail des tests |
+| 2026-07-30 | "J'aimerais pouvoir scaler ce site pour le mettre en place chez des clients, penses-tu que c'est faisable ?" | Étude de faisabilité menée (lecture seule, aucun code produit) : verdict **faisable**, mais uniquement en « une instance par client », pas en SaaS multi-tenant — l'application est mono-tenant par construction (aucune notion d'organisation dans le schéma, singletons `AppSettings`/`HomepageContent`/`HomepageHero`, `Admin` = l'équipe et `Client` = ses clients). Points favorables relevés : couche d'autorisation centralisée (`dal.ts`), stockage déjà abstrait (S3/disque), tous les services externes optionnels avec dégradation propre, déploiement déjà scripté (Procfile + `cron.json`). Chantiers identifiés et arbitrages pris : voir "Points encore ouverts" |
+| 2026-07-30 | Arbitrage sur le modèle commercial des instances clientes | Décidé : **hébergement par Mikko Visuel, en abonnement mensuel** (une app Scalingo par client sur son compte, domaine du client). Écarté : instance sur le compte du client, qui ferait perdre la main sur les mises à jour et le récurrent — conservée uniquement en option facturée plus cher pour un client qui l'exigerait. Implications à traiter : contrat de sous-traitance RGPD par client, test réel de restauration de sauvegarde, coût infra par instance à répercuter dans le prix. Argument commercial déjà en place : la réversibilité (exports CSV/ZIP complets) est déjà codée |
+| 2026-07-30 | Module Gmail : sort dans l'offre client | Laissé **tel quel pour l'instant**, aucun code touché. Précision apportée au client, qui pensait que l'envoi de facture passait par Gmail : ce n'est pas le cas, il passe par Resend en pièce jointe (`sendDocumentByEmail`) — le module Gmail n'est que la boîte mail intégrée `/admin/mails`. Point à retenir pour le chantier white-label : la vérification Google + l'évaluation de sécurité CASA annuelle ne se déclenchent que si le module est distribué à d'autres comptes Google ; sur l'instance de Mikko Visuel seule (projet Cloud en mode Testing), il n'y a aucun coût ni vérification |
+| 2026-07-30 | "Le fait d'appuyer sur envoyer la facture ouvre une nouvelle fenêtre avec le mail préparé" — retenu en **ajout** de l'envoi automatique, pas en remplacement | Livré : nouveau `src/lib/mail-draft.ts`, bouton "Préparer le mail" à côté de "Envoyer le document" (fiche client et `/admin/documents`) et de "Envoyer les livrables finaux" (fiche tâche). Limite du protocole signalée au client avant construction : `mailto:` ne peut pas porter de pièce jointe (RFC 6068) — le corps renvoie donc vers l'espace client (lien authentifié, pas de lien de téléchargement public), et le bouton ne marque ni `Document.sentAt` ni `Task.deliverablesSentAt`. Voir section "Backend interne" et `VALIDATION.md` |
+| 2026-07-30 | "J'aimerais gérer mes clients d'une meilleure façon, notamment en termes de tri, catégorisation, contacts (prendre les profils d'espace client, mais ajouter la possibilité d'ouvrir ou non un espace client). Il faudrait également retrouver une section Contacts dans le bandeau du haut. Tu peux par contre supprimer l'onglet Mail qui ne me sert à rien." | Livré, 4 volets — voir section "Backend interne" pour le détail : (1) **contacts dissociés de l'accès** (`ClientUser.email`/`passwordHash` nullables + `portalAccessEnabled`, trois états d'accès, ouverture/fermeture et invitation par boutons séparés, création en 3 modes) ; (2) **catégorisation** (`Client.categoryId` sur la liste ouverte `client_category`, gérable depuis `/admin/listes`) ; (3) **tri/recherche/filtres** sur `/admin/clients` (recherche incluant les contacts, filtre par catégorie avec compteurs, tri par nombre de tâches) et nouvel onglet `/admin/contacts` ; (4) **suppression de l'onglet et de la page Mail** (le reste du module Gmail conservé). Migration corrigée à la main pour ne pas couper l'accès des comptes existants. Voir `VALIDATION.md` pour les tests réellement exercés |
+| 2026-07-30 | Arbitrages pris avant construction (3 questions posées) | Périmètre Gmail : **onglet + page seulement**, fils par client et composeur prospect conservés. Catégories : **une catégorie unique** par client (les étiquettes multiples et la combinaison des deux ont été écartées). Ouverture d'accès : **les deux au choix** — invitation par email *et* mot de passe défini par l'admin |

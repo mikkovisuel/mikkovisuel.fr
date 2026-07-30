@@ -43,7 +43,9 @@ export default async function ClientEmailsPage({
   });
   if (!client) notFound();
 
-  const emails = client.users.map((user) => user.email);
+  // Seuls les contacts ayant une adresse peuvent apparaître dans une
+  // recherche Gmail — les contacts "téléphone uniquement" sont écartés.
+  const emails = client.users.flatMap((user) => (user.email ? [user.email] : []));
   const sendNewMessageForThisClient = sendNewMessage.bind(null, clientId);
 
   let threads: Awaited<ReturnType<typeof searchThreadsForEmails>> = [];

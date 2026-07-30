@@ -7,6 +7,7 @@ import type { ClientFormState } from "@/lib/validation/client";
 export function ClientForm({
   action,
   defaultValues,
+  categoryOptions,
   submitLabel,
 }: {
   action: (state: ClientFormState, formData: FormData) => Promise<ClientFormState>;
@@ -18,7 +19,9 @@ export function ClientForm({
     vatNumber: string | null;
     billingEmail: string | null;
     driveUrl: string | null;
+    categoryId: string | null;
   };
+  categoryOptions: { id: string; label: string }[];
   submitLabel: string;
 }) {
   const [state, formAction, pending] = useActionState(action, undefined);
@@ -112,6 +115,28 @@ export function ClientForm({
             placeholder="https://drive.google.com/..."
           />
         </div>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <label htmlFor="categoryId" className="text-sm font-medium text-ink">
+          Catégorie <span className="text-ink-muted">(facultatif)</span>
+        </label>
+        <select
+          id="categoryId"
+          name="categoryId"
+          defaultValue={defaultValues?.categoryId ?? ""}
+          className="rounded-xl border border-line bg-surface-elevated px-4 py-3 text-sm text-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
+        >
+          <option value="">Non catégorisé</option>
+          {categoryOptions.map((option) => (
+            <option key={option.id} value={option.id}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+        <p className="text-xs text-ink-muted">
+          Les catégories se gèrent depuis Listes → Catégories de client.
+        </p>
       </div>
 
       <div className="flex flex-col gap-2">

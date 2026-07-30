@@ -47,7 +47,14 @@ async function requestReset(subjectType: SubjectType, rawEmail: string) {
   const subject =
     subjectType === "ADMIN"
       ? await db.admin.findUnique({ where: { email } })
-      : await db.clientUser.findUnique({ where: { email } });
+      : // Un contact sans accès ouvert à l'espace client (voir
+        // `ClientUser.portalAccessEnabled`) n'a pas de mot de passe à
+        // réinitialiser : on le traite comme inexistant, ce qui renvoie le
+        // message générique habituel sans révéler qu'il figure au carnet
+        // d'adresses. Un contact invité mais qui n'a pas encore choisi son
+        // mot de passe passe en revanche bien par ici — c'est le chemin
+        // normal s'il a perdu son lien d'invitation.
+        await db.clientUser.findFirst({ where: { email, portalAccessEnabled: true } });
 
   if (subject) {
     // Invalide les liens de réinitialisation précédents non utilisés :
@@ -175,6 +182,14 @@ export async function changeClientPassword(
     return { error: parsed.error.issues[0]?.message ?? "Formulaire invalide." };
   }
 
+  // `passwordHash` est nullable depuis que les contacts peuvent exister sans
+  // accès (2026-07-30). Ici on est dans une session client valide, donc il y
+  // en a forcément un — mais on le teste plutôt que de forcer le type, pour
+  // que le jour où un chemin d'accès sans mot de passe apparaîtrait, ça
+  // échoue proprement au lieu de planter.
+  if (!clientUser.passwordHash) {
+    return { error: "Aucun mot de passe défini sur ce compte." };
+  }
   const valid = await verifyPassword(parsed.data.currentPassword, clientUser.passwordHash);
   if (!valid) {
     return { error: "Mot de passe actuel incorrect." };
@@ -195,7 +210,15 @@ export async function changeClientPassword(
 // envoyer le même email sans jamais avoir de mot de passe admin à
 // revérifier (c'est déjà une étape interne d'une action elle-même protégée
 // par verifyAdminSession).
-export async function sendClientPasswordResetEmail(clientUser: { id: string; email: string }) {
+// Renvoie `false` sans rien envoyer si le contact n'a pas d'email (possible
+// depuis 2026-07-30 : un contact peut n'avoir qu'un téléphone). Les appelants
+// doivent traiter ce cas plutôt que de supposer l'envoi réussi.
+export async function sendClientPasswordResetEmail(clientUser: {
+  id: string;
+  email: string | null;
+}): Promise<boolean> {
+  if (!clientUser.email) return false;
+
   await db.passwordResetToken.deleteMany({
     where: { subjectType: "CLIENT_USER", subjectId: clientUser.id, usedAt: null },
   });
@@ -219,6 +242,8 @@ export async function sendClientPasswordResetEmail(clientUser: { id: string; ema
     subject: "Réinitialisation de votre mot de passe — Mikko Visuel",
     html: `<p>Un lien de réinitialisation de mot de passe a été généré pour vous par Mikko Visuel. Cliquez pour choisir un nouveau mot de passe (valable 1 heure) :</p><p><a href="${resetUrl}">${resetUrl}</a></p>`,
   });
+
+  return true;
 }
 
 // Bouton "Réinitialiser" sur la fiche client admin (à côté de chaque compte
@@ -238,7 +263,10 @@ export async function adminResetClientPassword(
   const clientUser = await db.clientUser.findUnique({ where: { id: clientUserId } });
   if (!clientUser) return { error: "Compte introuvable." };
 
-  await sendClientPasswordResetEmail(clientUser);
+  const sent = await sendClientPasswordResetEmail(clientUser);
+  if (!sent) {
+    return { error: "Ce contact n'a pas d'adresse email — ajoutez-en une d'abord." };
+  }
   await logAuditEvent({
     actorType: "ADMIN",
     actorId: admin.id,
@@ -246,7 +274,7 @@ export async function adminResetClientPassword(
     action: "client_password_reset",
     targetType: "ClientUser",
     targetId: clientUser.id,
-    targetLabel: clientUser.email,
+    targetLabel: clientUser.email ?? clientUser.name,
     ipAddress: await getClientIp(),
   });
   return { success: true };

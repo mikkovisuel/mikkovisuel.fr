@@ -13,6 +13,7 @@ export type SearchResult = {
 
 export type SearchResults = {
   clients: SearchResult[];
+  contacts: SearchResult[];
   tasks: SearchResult[];
   prospects: SearchResult[];
   documents: SearchResult[];
@@ -20,9 +21,9 @@ export type SearchResults = {
 
 export async function searchAll(query: string): Promise<SearchResults> {
   const q = query.trim();
-  if (!q) return { clients: [], tasks: [], prospects: [], documents: [] };
+  if (!q) return { clients: [], contacts: [], tasks: [], prospects: [], documents: [] };
 
-  const [clients, tasks, prospects, documents] = await Promise.all([
+  const [clients, contacts, tasks, prospects, documents] = await Promise.all([
     db.client.findMany({
       where: {
         ...EXCLUDE_DEMO_CLIENT,
@@ -31,6 +32,20 @@ export async function searchAll(query: string): Promise<SearchResults> {
           { billingEmail: { contains: q, mode: "insensitive" } },
         ],
       },
+      take: RESULT_LIMIT,
+      orderBy: { name: "asc" },
+    }),
+    db.clientUser.findMany({
+      where: {
+        client: { isDemo: false },
+        OR: [
+          { name: { contains: q, mode: "insensitive" } },
+          { email: { contains: q, mode: "insensitive" } },
+          { phone: { contains: q, mode: "insensitive" } },
+          { role: { contains: q, mode: "insensitive" } },
+        ],
+      },
+      include: { client: { select: { id: true, name: true } } },
       take: RESULT_LIMIT,
       orderBy: { name: "asc" },
     }),
@@ -71,6 +86,16 @@ export async function searchAll(query: string): Promise<SearchResults> {
       label: client.name,
       sublabel: client.billingEmail,
       href: `/admin/clients/${client.id}`,
+    })),
+    // Un contact renvoie vers la fiche de son client : c'est là qu'il se
+    // consulte et se modifie, `/admin/contacts` n'étant qu'un annuaire.
+    contacts: contacts.map((contact) => ({
+      id: contact.id,
+      label: contact.name,
+      sublabel: [contact.client.name, contact.email ?? contact.phone]
+        .filter(Boolean)
+        .join(" · "),
+      href: `/admin/clients/${contact.client.id}`,
     })),
     tasks: tasks.map((task) => ({
       id: task.id,

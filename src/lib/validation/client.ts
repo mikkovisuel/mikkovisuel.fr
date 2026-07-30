@@ -22,21 +22,60 @@ export const ClientSchema = z.object({
     emptyToNull,
     z.string().trim().url({ message: "Lien Google Drive invalide." }).nullable(),
   ),
+  // Référence un `DropdownItem` de la liste `client_category`. `null` = client
+  // non catégorisé, un état parfaitement valide.
+  categoryId: z.preprocess(emptyToNull, z.string().nullable()),
 });
 
-export const ClientUserSchema = z.object({
+// Trois façons de créer un contact, choisies dans le formulaire :
+// - `none`     : simple entrée au carnet d'adresses, aucun accès à l'espace client
+// - `invite`   : accès ouvert, le contact reçoit un lien pour choisir son mot de passe
+// - `password` : accès ouvert avec un mot de passe défini par l'admin
+export const CONTACT_ACCESS_MODES = ["none", "invite", "password"] as const;
+export type ContactAccessMode = (typeof CONTACT_ACCESS_MODES)[number];
+
+const contactBaseFields = {
   name: z.string().trim().min(1, { message: "Le nom est requis." }),
-  email: z.string().trim().toLowerCase().email({ message: "Adresse email invalide." }),
-  password: z.string().min(8, { message: "8 caractères minimum." }),
+  // Facultatif : un contact peut n'avoir qu'un téléphone. Il redevient
+  // obligatoire dès qu'un accès est ouvert (c'est l'identifiant de connexion)
+  // — contrainte portée par les `superRefine` ci-dessous.
+  email: z.preprocess(
+    emptyToNull,
+    z.string().trim().toLowerCase().email({ message: "Adresse email invalide." }).nullable(),
+  ),
   phone: z.string().trim().optional(),
   role: z.string().trim().optional(),
-});
+};
 
-export const ClientUserEditSchema = z.object({
-  phone: z.string().trim().optional(),
-  role: z.string().trim().optional(),
-});
+export const ContactCreateSchema = z
+  .object({
+    ...contactBaseFields,
+    access: z.enum(CONTACT_ACCESS_MODES),
+    password: z.string().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.access !== "none" && !data.email) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["email"],
+        message: "Une adresse email est nécessaire pour ouvrir un espace client.",
+      });
+    }
+    if (data.access === "password" && (data.password ?? "").length < 8) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["password"],
+        message: "8 caractères minimum.",
+      });
+    }
+  });
+
+// L'édition ne touche jamais à l'accès ni au mot de passe : ce sont des
+// actions séparées et explicites (interrupteur, bouton d'invitation), pour
+// qu'une correction de numéro de téléphone ne puisse pas fermer un accès par
+// effet de bord.
+export const ContactEditSchema = z.object(contactBaseFields);
 
 export type ClientFormState = { error?: string } | undefined;
-export type ClientUserFormState = { error?: string } | undefined;
-export type ClientUserEditFormState = { error?: string; success?: boolean } | undefined;
+export type ContactFormState = { error?: string } | undefined;
+export type ContactEditFormState = { error?: string; success?: boolean } | undefined;

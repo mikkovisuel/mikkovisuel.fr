@@ -9,6 +9,7 @@ import { sendEmail, getAdminEmails } from "@/lib/email/service";
 import { escapeHtml } from "@/lib/html-escape";
 import { getStorageAdapter } from "@/lib/storage";
 import { isTaskOverdue, taskDateFormatter } from "@/lib/tasks";
+import { notifiableEmails } from "@/lib/clients";
 
 const MAX_ATTACHMENT_SIZE = 20 * 1024 * 1024;
 const ALLOWED_ATTACHMENT_TYPES = new Set([
@@ -292,11 +293,10 @@ async function notifyClientUsersOfNewTaskToValidate(taskId: string) {
   });
   if (!task) return;
 
-  for (const user of task.client.users) {
-    if (!user.emailNotificationsEnabled) continue;
+  for (const to of notifiableEmails(task.client.users)) {
     await sendEmail({
       trigger: "new_task_to_validate",
-      to: user.email,
+      to,
       subject: `Nouvelle tâche à valider — ${task.title}`,
       html: `<p>Une nouvelle tâche "${escapeHtml(task.title)}" attend votre validation dans votre espace client.</p>`,
     });
@@ -386,8 +386,11 @@ export async function validateTask(taskId: string) {
 }
 
 type ValidationActor =
-  | { type: "CLIENT_USER"; name: string; email: string; emailNotificationsEnabled: boolean }
-  | { type: "ADMIN"; clientUsers: { email: string; emailNotificationsEnabled: boolean }[] };
+  | { type: "CLIENT_USER"; name: string; email: string | null; emailNotificationsEnabled: boolean }
+  | {
+      type: "ADMIN";
+      clientUsers: { email: string | null; emailNotificationsEnabled: boolean }[];
+    };
 
 // Deux déclencheurs possibles : le client lui-même (`validateTask`) ou
 // l'admin en son nom (`validateTaskByAdmin`, ex. accord donné par téléphone/
@@ -408,7 +411,7 @@ async function notifyBatValidated(
       : "<p>Aucun livrable associé.</p>";
   const validatedByLabel =
     actor.type === "CLIENT_USER"
-      ? `${escapeHtml(actor.name)} (${escapeHtml(actor.email)})`
+      ? `${escapeHtml(actor.name)}${actor.email ? ` (${escapeHtml(actor.email)})` : ""}`
       : "Mikko (admin)";
   const html = `
     <p>Le BAT de la tâche "${escapeHtml(taskTitle)}" a été validé.</p>
@@ -425,11 +428,9 @@ async function notifyBatValidated(
     // préférence s'applique même à sa propre action, pas seulement aux
     // relances).
     recipients.push(...(await getAdminEmails()));
-    if (actor.emailNotificationsEnabled) recipients.push(actor.email);
+    recipients.push(...notifiableEmails([actor]));
   } else {
-    for (const user of actor.clientUsers) {
-      if (user.emailNotificationsEnabled) recipients.push(user.email);
-    }
+    recipients.push(...notifiableEmails(actor.clientUsers));
   }
 
   for (const to of recipients) {
@@ -506,12 +507,17 @@ export async function refuseTask(
     name: clientUser.name,
   });
 
-  await sendEmail({
-    trigger: "refusal_confirmed",
-    to: clientUser.email,
-    subject: `Refus enregistré — ${task.title}`,
-    html: `<p>Votre refus concernant "${escapeHtml(task.title)}" a bien été enregistré avec le motif suivant :</p><blockquote>${escapeHtml(parsed.data.reason)}</blockquote>`,
-  });
+  // Confirmation au contact qui vient de refuser. Il est connecté, donc il a
+  // forcément une adresse — le test garde malgré tout l'envoi cohérent avec
+  // le reste du fichier plutôt que de forcer le type.
+  if (clientUser.email) {
+    await sendEmail({
+      trigger: "refusal_confirmed",
+      to: clientUser.email,
+      subject: `Refus enregistré — ${task.title}`,
+      html: `<p>Votre refus concernant "${escapeHtml(task.title)}" a bien été enregistré avec le motif suivant :</p><blockquote>${escapeHtml(parsed.data.reason)}</blockquote>`,
+    });
+  }
 
   revalidateTaskPaths(clientUser.clientId);
   return undefined;
@@ -549,11 +555,10 @@ export async function refuseTaskByAdmin(
   });
   await logTaskStatusChange(taskId, statusItem, { type: "ADMIN", id: admin.id, name: "Mikko" });
 
-  for (const user of task.client.users) {
-    if (!user.emailNotificationsEnabled) continue;
+  for (const to of notifiableEmails(task.client.users)) {
     await sendEmail({
       trigger: "refusal_confirmed",
-      to: user.email,
+      to,
       subject: `Refus enregistré — ${task.title}`,
       html: `<p>Le refus concernant "${escapeHtml(task.title)}" a bien été enregistré par Mikko, avec le motif suivant :</p><blockquote>${escapeHtml(parsed.data.reason)}</blockquote>`,
     });
@@ -619,11 +624,10 @@ export async function sendTaskReminder(taskId: string) {
   });
   if (!task || !isTaskOverdue(task)) return;
 
-  for (const user of task.client.users) {
-    if (!user.emailNotificationsEnabled) continue;
+  for (const to of notifiableEmails(task.client.users)) {
     await sendEmail({
       trigger: "task_reminder",
-      to: user.email,
+      to,
       subject: `Rappel — ${task.title}`,
       html: `<p>La tâche "${escapeHtml(task.title)}" a dépassé son échéance de livraison et n'est pas encore terminée. N'hésitez pas à nous recontacter si besoin.</p>`,
     });

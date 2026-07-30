@@ -40,6 +40,7 @@ import {
   TASK_STATUS_LIST_KEY,
 } from "@/lib/dropdown-lists";
 import { taskDateFormatter, taskDateTimeFormatter } from "@/lib/tasks";
+import { buildDeliverablesMailDraft } from "@/lib/mail-draft";
 import { sumTaskTimeMs } from "@/lib/time-tracking";
 
 export const metadata: Metadata = {
@@ -295,6 +296,15 @@ export default async function TaskDetailPage({
               !task.client.billingEmail
                 ? "Ajoutez un email de facturation sur la fiche client pour envoyer les livrables"
                 : "Aucun livrable final à envoyer"
+            }
+            mailDraftHref={
+              task.client.billingEmail
+                ? buildDeliverablesMailDraft({
+                    to: task.client.billingEmail,
+                    taskTitle: task.title,
+                    eventDate: task.eventDate,
+                  })
+                : null
             }
           />
         </div>

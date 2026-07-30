@@ -5,8 +5,10 @@ import { ArrowLeft, EnvelopeSimple } from "@phosphor-icons/react/dist/ssr";
 import { verifyAdminSession } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { ClientForm } from "@/components/admin/client-form";
-import { ClientUserForm } from "@/components/admin/client-user-form";
-import { ClientUserEditForm } from "@/components/admin/client-user-edit-form";
+import { ContactForm } from "@/components/admin/contact-form";
+import { ContactEditForm } from "@/components/admin/contact-edit-form";
+import { ContactAccessBadge } from "@/components/admin/contact-access-badge";
+import { ContactAccessControls } from "@/components/admin/contact-access-controls";
 import { ClientUserEmailToggle } from "@/components/admin/client-user-email-toggle";
 import { DeleteButton } from "@/components/admin/delete-button";
 import { StepUpButton } from "@/components/admin/step-up-button";
@@ -19,14 +21,20 @@ import { deleteDocument } from "@/lib/actions/files";
 import {
   updateClient,
   deleteClient,
-  createClientUser,
-  updateClientUser,
+  createClientContact,
+  updateClientContact,
   deleteClientUser,
 } from "@/lib/actions/clients";
 import { createTaskByAdmin } from "@/lib/actions/tasks";
-import { TASK_STATUS_LIST_KEY, TASK_TYPE_LIST_KEY, TASK_FORMAT_LIST_KEY } from "@/lib/dropdown-lists";
+import {
+  CLIENT_CATEGORY_LIST_KEY,
+  TASK_STATUS_LIST_KEY,
+  TASK_TYPE_LIST_KEY,
+  TASK_FORMAT_LIST_KEY,
+} from "@/lib/dropdown-lists";
 import { buildTaskOrderBy, isTaskSortField, type TaskSortField, type TaskSortDir } from "@/lib/tasks";
 import { TaskSortControl } from "@/components/admin/task-sort-control";
+import { contactAccessState } from "@/lib/clients";
 
 export const metadata: Metadata = {
   title: "Client — Admin Mikko Visuel",
@@ -46,7 +54,7 @@ export default async function ClientDetailPage({
   const sortDir: TaskSortDir = dir === "desc" ? "desc" : "asc";
   const pinnedOnly = epingle === "1";
 
-  const [client, statusList, typeList, formatList] = await Promise.all([
+  const [client, statusList, typeList, formatList, categoryList] = await Promise.all([
     db.client.findUnique({
       where: { id: clientId },
       include: {
@@ -82,6 +90,10 @@ export default async function ClientDetailPage({
       where: { key: TASK_FORMAT_LIST_KEY },
       include: { items: { orderBy: { sortOrder: "asc" } } },
     }),
+    db.dropdownList.findUnique({
+      where: { key: CLIENT_CATEGORY_LIST_KEY },
+      include: { items: { orderBy: { sortOrder: "asc" } } },
+    }),
   ]);
 
   if (!client) notFound();
@@ -89,8 +101,11 @@ export default async function ClientDetailPage({
   const statusOptions =
     statusList?.items.map((item) => ({ slug: item.slug, label: item.label })) ?? [];
 
+  const categoryOptions =
+    categoryList?.items.map((item) => ({ id: item.id, label: item.label })) ?? [];
+
   const updateThisClient = updateClient.bind(null, client.id);
-  const createUserForThisClient = createClientUser.bind(null, client.id);
+  const createContactForThisClient = createClientContact.bind(null, client.id);
   const deleteThisClient = deleteClient.bind(null, client.id);
   const createTaskForThisClient = createTaskByAdmin.bind(null, client.id);
 
@@ -139,7 +154,9 @@ export default async function ClientDetailPage({
               vatNumber: client.vatNumber,
               billingEmail: client.billingEmail,
               driveUrl: client.driveUrl,
+              categoryId: client.categoryId,
             }}
+            categoryOptions={categoryOptions}
             submitLabel="Enregistrer"
           />
         </div>
@@ -147,50 +164,79 @@ export default async function ClientDetailPage({
 
       <section className="mt-12">
         <h2 className="text-sm font-medium text-ink-muted">
-          Comptes de connexion ({client.users.length})
+          Contacts ({client.users.length})
         </h2>
         <p className="mt-1 text-sm text-ink-muted">
-          Plusieurs comptes peuvent accéder au même espace client, avec le même niveau d&apos;accès.
+          Le carnet d&apos;adresses du client. Un contact n&apos;a pas d&apos;accès à
+          l&apos;espace client par défaut — ouvrez-le au cas par cas. Plusieurs accès
+          ouverts partagent le même espace, avec le même niveau de droits.
         </p>
 
         {client.users.length > 0 && (
           <div className="mt-4 divide-y divide-line rounded-2xl border border-line">
-            {client.users.map((user) => (
-              <div key={user.id} className="flex flex-wrap items-start justify-between gap-4 px-6 py-4">
-                <div className="min-w-0">
-                  <p className="font-medium text-ink">
-                    {user.name}
-                    {user.role && <span className="text-ink-muted"> · {user.role}</span>}
-                  </p>
-                  <p className="break-all text-sm text-ink-muted">
-                    {user.email}
-                    {user.phone && ` · ${user.phone}`}
-                  </p>
-                  <ClientUserEditForm
-                    action={updateClientUser.bind(null, user.id, client.id)}
-                    defaultValues={{ phone: user.phone, role: user.role }}
-                  />
+            {client.users.map((user) => {
+              const accessState = contactAccessState(user);
+              return (
+                <div
+                  key={user.id}
+                  className="flex flex-wrap items-start justify-between gap-4 px-6 py-4"
+                >
+                  <div className="min-w-0">
+                    <p className="flex flex-wrap items-center gap-2 font-medium text-ink">
+                      {user.name}
+                      {user.role && <span className="text-ink-muted">· {user.role}</span>}
+                      <ContactAccessBadge state={accessState} />
+                    </p>
+                    <p className="break-all text-sm text-ink-muted">
+                      {user.email ?? "Pas d'email"}
+                      {user.phone && ` · ${user.phone}`}
+                    </p>
+                    <ContactEditForm
+                      action={updateClientContact.bind(null, user.id, client.id)}
+                      defaultValues={{
+                        name: user.name,
+                        email: user.email,
+                        phone: user.phone,
+                        role: user.role,
+                      }}
+                    />
+                    <div className="mt-3">
+                      <ContactAccessControls
+                        clientUserId={user.id}
+                        clientId={client.id}
+                        state={accessState}
+                        hasEmail={Boolean(user.email)}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex flex-wrap items-center gap-3">
+                    {/* Notifications, usurpation et réinitialisation n'ont de
+                        sens que pour un contact qui a réellement un espace :
+                        les masquer évite des boutons qui échouent. */}
+                    {accessState !== "none" && (
+                      <>
+                        <ClientUserEmailToggle
+                          clientUserId={user.id}
+                          clientId={client.id}
+                          enabled={user.emailNotificationsEnabled}
+                        />
+                        {accessState === "active" && <ImpersonateButton clientUserId={user.id} />}
+                        <ResetPasswordButton clientUserId={user.id} />
+                      </>
+                    )}
+                    <DeleteButton
+                      action={deleteClientUser.bind(null, user.id, client.id)}
+                      confirmMessage={`Supprimer le contact ${user.name} ?`}
+                    />
+                  </div>
                 </div>
-                <div className="flex flex-wrap items-center gap-3">
-                  <ClientUserEmailToggle
-                    clientUserId={user.id}
-                    clientId={client.id}
-                    enabled={user.emailNotificationsEnabled}
-                  />
-                  <ImpersonateButton clientUserId={user.id} />
-                  <ResetPasswordButton clientUserId={user.id} />
-                  <DeleteButton
-                    action={deleteClientUser.bind(null, user.id, client.id)}
-                    confirmMessage={`Supprimer le compte ${user.email} ?`}
-                  />
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
 
         <div className="mt-6 rounded-2xl border border-line p-6">
-          <ClientUserForm action={createUserForThisClient} />
+          <ContactForm action={createContactForThisClient} />
         </div>
       </section>
 

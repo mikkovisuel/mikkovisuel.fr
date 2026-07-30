@@ -1,4 +1,4 @@
-import { DownloadSimple, PaperPlaneTilt } from "@phosphor-icons/react/dist/ssr";
+import { DownloadSimple, PaperPlaneTilt, PencilSimpleLine } from "@phosphor-icons/react/dist/ssr";
 import {
   setDocumentPaymentStatus,
   sendPaymentReminder,
@@ -7,6 +7,7 @@ import {
 import { DeleteButton } from "@/components/admin/delete-button";
 import { formatAmount, isOverdue, dueDateFormatter } from "@/lib/documents";
 import { DOCUMENT_TYPE } from "@/lib/dropdown-lists";
+import { buildDocumentMailDraft } from "@/lib/mail-draft";
 
 const SENT_AT_FORMATTER = new Intl.DateTimeFormat("fr-FR", {
   day: "2-digit",
@@ -105,14 +106,29 @@ export function DocumentRow({
           </form>
         )}
         {billingEmail ? (
-          <form action={sendDocumentByEmail.bind(null, document.id)}>
-            <button
-              type="submit"
-              className="rounded-full border border-line px-4 py-2 text-sm text-ink transition-colors hover:border-accent hover:bg-accent hover:text-accent-ink"
+          <>
+            <form action={sendDocumentByEmail.bind(null, document.id)}>
+              <button
+                type="submit"
+                className="rounded-full border border-line px-4 py-2 text-sm text-ink transition-colors hover:border-accent hover:bg-accent hover:text-accent-ink"
+              >
+                Envoyer le document
+              </button>
+            </form>
+            {/* Ouvre la messagerie de l'admin avec un brouillon prérempli —
+                sans pièce jointe, impossible en `mailto:` (voir
+                src/lib/mail-draft.ts). Ne marque donc pas `sentAt`. */}
+            <a
+              href={buildDocumentMailDraft({
+                to: billingEmail,
+                fileName: document.fileName,
+              })}
+              className="inline-flex items-center gap-2 self-start rounded-full border border-line px-4 py-2 text-sm text-ink transition-colors hover:border-accent hover:bg-accent hover:text-accent-ink"
             >
-              Envoyer le document
-            </button>
-          </form>
+              <PencilSimpleLine size={16} weight="regular" />
+              Préparer le mail
+            </a>
+          </>
         ) : (
           <span className="text-xs text-ink-muted">
             Ajoutez un email de facturation pour envoyer ce document

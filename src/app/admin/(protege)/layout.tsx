@@ -9,16 +9,15 @@ import { TimerHeaderWidget } from "@/components/admin/timer-header-widget";
 import { GlobalSearchBar } from "@/components/admin/global-search-bar";
 import { TASK_STATUS } from "@/lib/dropdown-lists";
 import { EXCLUDE_DEMO_CLIENT_TASKS, startOfToday } from "@/lib/tasks";
-import { getUnreadThreadCount } from "@/lib/gmail";
 
 const navLinks = [
   { href: "/admin", label: "Tableau de bord" },
   { href: "/admin/clients", label: "Clients" },
+  { href: "/admin/contacts", label: "Contacts" },
   { href: "/admin/prospection", label: "Prospection" },
   { href: "/admin/taches", label: "Tâches" },
   { href: "/admin/documents", label: "Documents" },
   { href: "/admin/notes", label: "Notes" },
-  { href: "/admin/mails", label: "Mail" },
   { href: "/admin/portfolio", label: "Portfolio" },
   { href: "/admin/listes", label: "Listes" },
   { href: "/admin/exports", label: "Exports" },
@@ -37,7 +36,7 @@ export default async function AdminProtectedLayout({
   // Chronomètre visible dans tout l'admin (pas seulement la fiche tâche) —
   // au plus une ligne `endedAt: null` à la fois PAR ADMIN, voir
   // `startTaskTimer` (chaque admin a son propre chrono, indépendant).
-  const [runningEntry, overdueCount, toValidateCount, unreadCount, prospectReminderCount] =
+  const [runningEntry, overdueCount, toValidateCount, prospectReminderCount] =
     await Promise.all([
       db.taskTimeEntry.findFirst({
         where: { endedAt: null, startedByAdminId: admin.id },
@@ -57,7 +56,6 @@ export default async function AdminProtectedLayout({
       db.task.count({
         where: { ...EXCLUDE_DEMO_CLIENT_TASKS, archivedAt: null, status: { slug: TASK_STATUS.A_VALIDER } },
       }),
-      getUnreadThreadCount(),
       // Pastille "Prospection" — relances dues aujourd'hui ou en retard, pas
       // encore envoyées.
       db.prospect.count({
@@ -106,11 +104,9 @@ export default async function AdminProtectedLayout({
             const badgeCount =
               link.href === "/admin/taches"
                 ? attentionCount
-                : link.href === "/admin/mails"
-                  ? unreadCount
-                  : link.href === "/admin/prospection"
-                    ? prospectReminderCount
-                    : 0;
+                : link.href === "/admin/prospection"
+                  ? prospectReminderCount
+                  : 0;
             return (
               <Link
                 key={link.href}

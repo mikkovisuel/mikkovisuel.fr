@@ -9,6 +9,7 @@ import { requireFreshAdminPassword, type StepUpFormState } from "@/lib/step-up-a
 import { verifyAdminSession } from "@/lib/dal";
 import { logAuditEvent } from "@/lib/audit-log";
 import { getClientIp } from "@/lib/request-ip";
+import { canLogIn } from "@/lib/clients";
 
 const RETURN_TOKEN_COOKIE = "admin_return_token";
 const RETURN_CLIENT_COOKIE = "admin_return_client_id";
@@ -39,6 +40,13 @@ export async function impersonateClient(
 
   const clientUser = await db.clientUser.findUnique({ where: { id: clientUserId } });
   if (!clientUser) return { error: "Compte introuvable." };
+  // Usurper un contact sans accès ouvert créerait une session vers un espace
+  // auquel il ne peut pas se connecter lui-même — l'aperçu ne refléterait
+  // aucune réalité. Le bouton est déjà masqué dans ce cas côté fiche client,
+  // ce garde couvre l'appel direct de l'action.
+  if (!canLogIn(clientUser)) {
+    return { error: "Ce contact n'a pas d'accès actif à l'espace client." };
+  }
 
   const cookieStore = await cookies();
   const adminToken = cookieStore.get(COOKIE_NAME)?.value;
@@ -54,7 +62,7 @@ export async function impersonateClient(
     action: "impersonation_start",
     targetType: "ClientUser",
     targetId: clientUser.id,
-    targetLabel: clientUser.email,
+    targetLabel: clientUser.email ?? clientUser.name,
     ipAddress: await getClientIp(),
   });
 

@@ -7,6 +7,7 @@ import { createSession } from "@/lib/session";
 import { isRateLimited, recordLoginAttempt } from "@/lib/rate-limit";
 import { getClientIp } from "@/lib/request-ip";
 import { setThemeCookie } from "@/lib/actions/theme";
+import { canLogIn } from "@/lib/clients";
 import { LoginSchema, type LoginFormState } from "@/lib/validation/auth";
 
 const GENERIC_ERROR = "Email ou mot de passe incorrect.";
@@ -32,7 +33,16 @@ export async function clientLogin(
   }
 
   const clientUser = await db.clientUser.findUnique({ where: { email } });
-  const valid = clientUser ? await verifyPassword(password, clientUser.passwordHash) : false;
+  // `canLogIn` couvre les contacts sans accès ouvert et ceux qui n'ont pas
+  // encore défini de mot de passe (invitation en attente) — on ne vérifie le
+  // mot de passe que si le contact a effectivement le droit d'entrer. Le
+  // message d'erreur reste le même message générique dans tous les cas : dire
+  // "cet accès est fermé" renseignerait un attaquant sur l'existence du
+  // compte.
+  const valid =
+    clientUser && canLogIn(clientUser)
+      ? await verifyPassword(password, clientUser.passwordHash as string)
+      : false;
 
   await recordLoginAttempt(email, valid, ipAddress);
 

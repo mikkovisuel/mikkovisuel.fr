@@ -62,6 +62,14 @@ model Client {
   // côté client le vérifient (assertNotDemo dans src/lib/dal.ts) pour
   // rester en lecture seule malgré l'accès public.
   isDemo       Boolean  @default(false)
+  // Catégorie du client (Club, Marque, Artiste...) — liste ouverte gérée
+  // depuis /admin/listes comme les autres (`client_category`), donc un
+  // `DropdownItem` plutôt qu'une colonne texte : on récupère gratuitement le
+  // badge coloré, l'ordre d'affichage et l'édition sans migration. Nullable :
+  // un client peut rester non catégorisé, et `onDelete: SetNull` évite qu'une
+  // suppression de catégorie emporte des clients avec elle.
+  categoryId   String?
+  category     DropdownItem? @relation("ClientCategory", fields: [categoryId], references: [id], onDelete: SetNull)
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
@@ -77,12 +85,33 @@ model Client {
   prospectOrigin Prospect?
 }
 
+// Contact chez le client. Depuis le 2026-07-30, ce modèle porte deux choses
+// distinctes qu'il confondait jusque-là : le **contact** (nom, fonction,
+// email, téléphone — le carnet d'adresses) et l'**accès à l'espace client**
+// (facultatif, voir `portalAccessEnabled`). Un contact peut donc exister sans
+// pouvoir se connecter, ce qui était impossible avant.
 model ClientUser {
   id                        String    @id @default(cuid())
   clientId                  String
   client                    Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  email                     String    @unique
-  passwordHash              String
+  // Nullable depuis le 2026-07-30 : un contact peut n'avoir qu'un téléphone.
+  // Reste unique (Postgres autorise plusieurs NULL sur un index unique), et
+  // reste obligatoire dès qu'un accès à l'espace client est ouvert — c'est
+  // l'identifiant de connexion (contrainte portée par la validation, voir
+  // src/lib/validation/client.ts).
+  email                     String?   @unique
+  // Nullable depuis le 2026-07-30 : `null` = aucun mot de passe défini. Ce
+  // n'est PAS l'interrupteur d'accès (voir `portalAccessEnabled`) — un
+  // contact fraîchement invité a un accès ouvert et un `passwordHash` encore
+  // nul tant qu'il n'a pas suivi son lien d'invitation.
+  passwordHash              String?
+  // Interrupteur d'accès à l'espace client, décorrélé de l'existence d'un mot
+  // de passe pour pouvoir couper l'accès sans détruire le compte (et le
+  // rouvrir sans refaire une invitation). `false` par défaut : un contact
+  // créé depuis le carnet d'adresses n'ouvre pas un espace client par
+  // accident, l'admin le décide explicitement. La migration passe les
+  // comptes existants à `true` (voir 20260730_contacts_client_category).
+  portalAccessEnabled       Boolean   @default(false)
   name                      String
   phone                     String?
   // Fonction du contact chez le client (ex. "Directeur", "DJ",
@@ -193,6 +222,7 @@ model DropdownItem {
   tasks     Task[]
   documents Document[]
   prospects Prospect[]
+  clients   Client[] @relation("ClientCategory")
 
   taskTypeOf   Task[] @relation("TaskTypes")
   taskFormatOf Task[] @relation("TaskFormats")

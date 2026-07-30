@@ -9,6 +9,8 @@ import { PrismaClient } from "../src/generated/prisma/client";
 import { PrismaBetterSqlite3 } from "@prisma/adapter-better-sqlite3";
 import { PrismaPg } from "@prisma/adapter-pg";
 import {
+  CLIENT_CATEGORY_LIST_KEY,
+  CLIENT_CATEGORY_SEED,
   DOCUMENT_TYPE_LIST_KEY,
   DOCUMENT_TYPE_SEED,
   PORTFOLIO_CATEGORY_LIST_KEY,
@@ -516,6 +518,12 @@ async function main() {
     "Statuts de prospection",
     false,
     PROSPECT_STATUS_SEED,
+  );
+  await seedDropdownList(
+    CLIENT_CATEGORY_LIST_KEY,
+    "Catégories de client",
+    true,
+    CLIENT_CATEGORY_SEED,
   );
   await seedAdmin();
   await seedDemoClient();

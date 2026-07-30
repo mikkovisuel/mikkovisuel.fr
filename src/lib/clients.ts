@@ -12,14 +12,115 @@ export const EXCLUDE_DEMO_CLIENT = {
   isDemo: false,
 } satisfies Prisma.ClientWhereInput;
 
-// Tri de la vue `/admin/clients` — voir `ClientSortControl`.
-export type ClientSortField = "nom" | "date_ajout";
-export type ClientSortDir = "asc" | "desc";
-
-export function isClientSortField(value: string | undefined): value is ClientSortField {
-  return value === "nom" || value === "date_ajout";
+// Trois conditions pour recevoir une notification automatique, et pas
+// seulement l'interrupteur `emailNotificationsEnabled` comme avant le
+// 2026-07-30 :
+//  1. avoir une adresse (un contact peut n'avoir qu'un téléphone) ;
+//  2. avoir l'interrupteur activé ;
+//  3. avoir un accès ouvert à l'espace client — toutes ces notifications
+//     disent "c'est disponible dans votre espace client", les envoyer à
+//     quelqu'un qui ne peut pas s'y connecter n'a aucun sens.
+// Seul point de vérité : grep `notifiableEmails` pour retrouver les envois.
+export function notifiableEmails(
+  users: {
+    email: string | null;
+    emailNotificationsEnabled: boolean;
+    portalAccessEnabled?: boolean;
+  }[],
+): string[] {
+  return users
+    .filter(
+      (user) =>
+        user.emailNotificationsEnabled &&
+        user.email &&
+        // `undefined` = l'appelant ne connaît pas ce champ (cas de l'acteur
+        // d'une validation, déjà authentifié donc forcément avec un accès).
+        user.portalAccessEnabled !== false,
+    )
+    .map((user) => user.email as string);
 }
 
-export function buildClientOrderBy(field: ClientSortField, dir: ClientSortDir) {
-  return field === "nom" ? { name: dir } : { createdAt: dir };
+// Un contact ne peut se connecter que si l'accès a été explicitement ouvert
+// **et** qu'il a un email (identifiant) et un mot de passe défini. Les trois
+// conditions sont distinctes : un contact invité mais qui n'a pas encore
+// suivi son lien a l'accès ouvert et pas encore de mot de passe.
+export function canLogIn(user: {
+  email: string | null;
+  passwordHash: string | null;
+  portalAccessEnabled: boolean;
+}): boolean {
+  return user.portalAccessEnabled && Boolean(user.email) && Boolean(user.passwordHash);
+}
+
+// État d'accès d'un contact, tel qu'affiché dans l'admin. Les trois états
+// sont distincts et se lisent dans cet ordre : pas d'accès → accès ouvert
+// mais mot de passe pas encore choisi (invitation en attente) → accès
+// opérationnel.
+export type ContactAccessState = "none" | "pending" | "active";
+
+export function contactAccessState(user: {
+  passwordHash: string | null;
+  portalAccessEnabled: boolean;
+}): ContactAccessState {
+  if (!user.portalAccessEnabled) return "none";
+  return user.passwordHash ? "active" : "pending";
+}
+
+export const CONTACT_ACCESS_LABELS: Record<ContactAccessState, string> = {
+  none: "Contact seul",
+  pending: "Invitation à envoyer",
+  active: "Espace client actif",
+};
+
+// Tri de la vue `/admin/clients` — voir `ClientSortControl`.
+export type ClientSortField = "nom" | "date_ajout" | "taches";
+export type ClientSortDir = "asc" | "desc";
+
+const CLIENT_SORT_FIELDS: ClientSortField[] = ["nom", "date_ajout", "taches"];
+
+export function isClientSortField(value: string | undefined): value is ClientSortField {
+  return CLIENT_SORT_FIELDS.includes(value as ClientSortField);
+}
+
+export function buildClientOrderBy(
+  field: ClientSortField,
+  dir: ClientSortDir,
+): Prisma.ClientOrderByWithRelationInput {
+  if (field === "nom") return { name: dir };
+  // Tri sur le nombre de tâches liées — `_count` sur la relation, pas une
+  // colonne dénormalisée : le compte reste juste sans rien à maintenir.
+  if (field === "taches") return { tasks: { _count: dir } };
+  return { createdAt: dir };
+}
+
+// Filtres de la vue `/admin/clients`. La recherche porte sur le nom du client
+// **et** sur ses contacts (nom/email) : chercher "Julie" doit retrouver le
+// club dont Julie est la responsable, pas seulement un client nommé Julie.
+export function buildClientWhere(options: {
+  search?: string;
+  categoryId?: string;
+}): Prisma.ClientWhereInput {
+  const search = options.search?.trim();
+  const filters: Prisma.ClientWhereInput[] = [EXCLUDE_DEMO_CLIENT];
+
+  if (search) {
+    filters.push({
+      OR: [
+        { name: { contains: search, mode: "insensitive" } },
+        { billingEmail: { contains: search, mode: "insensitive" } },
+        { users: { some: { name: { contains: search, mode: "insensitive" } } } },
+        { users: { some: { email: { contains: search, mode: "insensitive" } } } },
+      ],
+    });
+  }
+
+  if (options.categoryId) {
+    // "aucune" est la valeur réservée pour filtrer les clients non catégorisés
+    // — un `categoryId` vide en URL voudrait dire "pas de filtre".
+    filters.push(
+      options.categoryId === "aucune" ? { categoryId: null } : { categoryId: options.categoryId },
+    );
+  }
+
+  return { AND: filters };
 }
