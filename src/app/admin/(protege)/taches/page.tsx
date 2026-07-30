@@ -5,6 +5,7 @@ import { verifyAdminSession } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { TaskTable } from "@/components/admin/task-table";
 import { TaskViewTabs, type TaskView } from "@/components/admin/task-view-tabs";
+import { CollapsibleSection } from "@/components/admin/collapsible-section";
 import { TaskKanbanBoard } from "@/components/admin/task-kanban-board";
 import { TaskCalendarView } from "@/components/admin/task-calendar-view";
 import { TaskByClientView } from "@/components/admin/task-by-client-view";
@@ -298,19 +299,21 @@ export default async function AdminTasksPage({
                 status={status}
                 emptyMessage="Aucune tâche en cours."
               />
+              {/* Repliées par défaut (demande du client le 2026-07-30) : les
+                  tâches terminées n'appellent plus d'action et poussaient le
+                  reste de la liste hors de l'écran. */}
               {doneTasks.length > 0 && (
                 <div className="mt-10">
-                  <h2 className="text-sm font-medium text-ink-muted">
-                    Terminées ({doneTasks.length})
-                  </h2>
-                  <TaskTable
-                    tasks={doneTasks}
-                    statusOptions={statusOptions}
-                    sortField={sortField}
-                    sortDir={sortDir}
-                    clientId={clientId}
-                    status={status}
-                  />
+                  <CollapsibleSection title="Terminées" count={doneTasks.length}>
+                    <TaskTable
+                      tasks={doneTasks}
+                      statusOptions={statusOptions}
+                      sortField={sortField}
+                      sortDir={sortDir}
+                      clientId={clientId}
+                      status={status}
+                    />
+                  </CollapsibleSection>
                 </div>
               )}
             </>

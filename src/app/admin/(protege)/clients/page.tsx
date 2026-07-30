@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Plus, Users } from "@phosphor-icons/react/dist/ssr";
+import { Plus } from "@phosphor-icons/react/dist/ssr";
 import { verifyAdminSession } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { ClientSortControl } from "@/components/admin/client-sort-control";
 import { ClientFilterBar } from "@/components/admin/client-filter-bar";
+import { ClientAvatar } from "@/components/admin/client-avatar";
 import {
   isClientSortField,
   buildClientOrderBy,
@@ -39,10 +40,7 @@ export default async function AdminClientsPage({
     db.client.findMany({
       where: buildClientWhere({ search, categoryId }),
       orderBy: buildClientOrderBy(sortField, sortDir),
-      include: {
-        category: true,
-        _count: { select: { users: true, tasks: true } },
-      },
+      include: { category: true },
     }),
     db.dropdownList.findUnique({
       where: { key: CLIENT_CATEGORY_LIST_KEY },
@@ -124,7 +122,15 @@ export default async function AdminClientsPage({
                 href={`/admin/clients/${client.id}`}
                 className="flex items-center justify-between gap-4 px-6 py-4 transition-colors hover:bg-surface-elevated"
               >
-                <div className="min-w-0">
+                {/* Compteurs de contacts et de tâches retirés le 2026-07-30
+                    (demande du client) : la ligne se limite à l'avatar, au nom
+                    et à la catégorie. */}
+                <div className="flex min-w-0 items-center gap-3">
+                  <ClientAvatar
+                    clientId={client.id}
+                    name={client.name}
+                    hasAvatar={Boolean(client.avatarStorageKey)}
+                  />
                   <p className="flex flex-wrap items-center gap-2 font-medium text-ink">
                     {client.name}
                     {client.category && (
@@ -136,11 +142,6 @@ export default async function AdminClientsPage({
                         {client.category.label}
                       </span>
                     )}
-                  </p>
-                  <p className="mt-0.5 flex items-center gap-1.5 text-sm text-ink-muted">
-                    <Users size={14} weight="regular" />
-                    {client._count.users} contact{client._count.users > 1 ? "s" : ""} ·{" "}
-                    {client._count.tasks} tâche{client._count.tasks > 1 ? "s" : ""}
                   </p>
                 </div>
               </Link>

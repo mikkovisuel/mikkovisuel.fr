@@ -24,8 +24,12 @@ const ACCESS_OPTIONS: { value: ContactAccessMode; label: string; hint: string }[
 
 export function ContactForm({
   action,
+  onSuccess,
 }: {
   action: (state: ContactFormState, formData: FormData) => Promise<ContactFormState>;
+  /** Appelé après une création réussie — sert à refermer la modale
+   * (voir NewContactButton). Absent = formulaire en flux, simple reset. */
+  onSuccess?: () => void;
 }) {
   const [state, formAction, pending] = useActionState(action, undefined);
   const [access, setAccess] = useState<ContactAccessMode>("none");
@@ -36,9 +40,10 @@ export function ContactForm({
     if (wasPending.current && !pending && !state?.error) {
       formRef.current?.reset();
       setAccess("none");
+      onSuccess?.();
     }
     wasPending.current = pending;
-  }, [pending, state]);
+  }, [pending, state, onSuccess]);
 
   const fieldClass =
     "rounded-xl border border-line bg-surface-elevated px-4 py-2.5 text-sm text-ink placeholder:text-ink-muted/70 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30";

@@ -19,6 +19,7 @@ export function TaskForm({
   clients,
   allowAttachments,
   successMessage,
+  onSuccess,
 }: {
   action: (state: TaskFormState, formData: FormData) => Promise<TaskFormState>;
   typeOptions: DropdownOption[];
@@ -32,6 +33,9 @@ export function TaskForm({
   /** Si fourni, affiche ce message dans un pop-up de confirmation après un
    * envoi réussi (cas client). Absent côté admin : reset silencieux. */
   successMessage?: string;
+  /** Appelé après une création réussie — sert à refermer la modale
+   * (voir NewTaskButton). */
+  onSuccess?: () => void;
 }) {
   const [state, formAction, pending] = useActionState(action, undefined);
   const formRef = useRef<HTMLFormElement>(null);
@@ -42,9 +46,10 @@ export function TaskForm({
     if (wasPending.current && !pending && !state?.error) {
       formRef.current?.reset();
       setResetKey((key) => key + 1);
+      onSuccess?.();
     }
     wasPending.current = pending;
-  }, [pending, state]);
+  }, [pending, state, onSuccess]);
 
   // Render-phase state adjustment (React's recommended alternative to
   // setState-in-effect) so showing the pop-up doesn't need its own effect.

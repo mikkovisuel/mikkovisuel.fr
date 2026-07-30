@@ -3,7 +3,7 @@ import Link from "next/link";
 import { verifyAdminSession } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { TASK_STATUS, TASK_STATUS_LIST_KEY } from "@/lib/dropdown-lists";
-import { EXCLUDE_DEMO_CLIENT_TASKS, startOfToday } from "@/lib/tasks";
+import { ACTIVE_TASKS, startOfToday } from "@/lib/tasks";
 import { EXCLUDE_DEMO_CLIENT } from "@/lib/clients";
 import { RecentActivity } from "@/components/admin/recent-activity";
 import { PinnedTasks } from "@/components/admin/pinned-tasks";
@@ -26,40 +26,40 @@ export default async function AdminDashboardPage() {
   const [clientCount, taskCount, openTaskCount, unpaidCount, overdueCount, toValidateCount] =
     await Promise.all([
       db.client.count({ where: EXCLUDE_DEMO_CLIENT }),
-      db.task.count({ where: EXCLUDE_DEMO_CLIENT_TASKS }),
+      db.task.count({ where: ACTIVE_TASKS }),
       // Nombre de tâches en cours (hors "Terminé") — c'est le chiffre le plus
       // utile en un coup d'œil sur le tableau de bord ; le total (incluant les
       // tâches terminées) reste affiché en petit en dessous.
       db.task.count({
-        where: { ...EXCLUDE_DEMO_CLIENT_TASKS, status: { slug: { not: TASK_STATUS.TERMINE } } },
+        where: { ...ACTIVE_TASKS, status: { slug: { not: TASK_STATUS.TERMINE } } },
       }),
       db.document.count({ where: { paymentStatus: "unpaid" } }),
       db.task.count({
         where: {
-          ...EXCLUDE_DEMO_CLIENT_TASKS,
+          ...ACTIVE_TASKS,
           dueDate: { lt: startOfToday() },
           status: { slug: { not: TASK_STATUS.TERMINE } },
         },
       }),
       db.task.count({
-        where: { ...EXCLUDE_DEMO_CLIENT_TASKS, status: { slug: TASK_STATUS.A_VALIDER } },
+        where: { ...ACTIVE_TASKS, status: { slug: TASK_STATUS.A_VALIDER } },
       }),
     ]);
 
   const [batValidatedTasks, refusedTasks, newRequestTasks, newCommentRows] = since
     ? await Promise.all([
         db.task.findMany({
-          where: { ...EXCLUDE_DEMO_CLIENT_TASKS, batValidatedAt: { gte: since } },
+          where: { ...ACTIVE_TASKS, batValidatedAt: { gte: since } },
           include: { client: true },
           orderBy: { batValidatedAt: "desc" },
         }),
         db.task.findMany({
-          where: { ...EXCLUDE_DEMO_CLIENT_TASKS, refusedAt: { gte: since } },
+          where: { ...ACTIVE_TASKS, refusedAt: { gte: since } },
           include: { client: true },
           orderBy: { refusedAt: "desc" },
         }),
         db.task.findMany({
-          where: { ...EXCLUDE_DEMO_CLIENT_TASKS, createdByType: "CLIENT_USER", createdAt: { gte: since } },
+          where: { ...ACTIVE_TASKS, createdByType: "CLIENT_USER", createdAt: { gte: since } },
           include: { client: true },
           orderBy: { createdAt: "desc" },
         }),
@@ -67,7 +67,7 @@ export default async function AdminDashboardPage() {
           where: {
             authorType: "CLIENT_USER",
             createdAt: { gte: since },
-            task: EXCLUDE_DEMO_CLIENT_TASKS,
+            task: ACTIVE_TASKS,
           },
           include: { task: { include: { client: true } } },
           orderBy: { createdAt: "desc" },
@@ -110,12 +110,12 @@ export default async function AdminDashboardPage() {
   const [pinnedTaskRows, upcomingTaskRows, statusList, statusGroups, clientsWithLastTask, loginEventRows] =
     await Promise.all([
       db.task.findMany({
-        where: { ...EXCLUDE_DEMO_CLIENT_TASKS, pinnedAt: { not: null }, archivedAt: null },
+        where: { ...ACTIVE_TASKS, pinnedAt: { not: null } },
         include: { client: true, status: true },
         orderBy: { pinnedAt: "desc" },
       }),
       db.task.findMany({
-        where: { ...EXCLUDE_DEMO_CLIENT_TASKS, eventDate: { gte: new Date() }, archivedAt: null },
+        where: { ...ACTIVE_TASKS, eventDate: { gte: new Date() } },
         include: { client: true, status: true },
         orderBy: { eventDate: "asc" },
         take: 6,
@@ -126,7 +126,7 @@ export default async function AdminDashboardPage() {
       }),
       db.task.groupBy({
         by: ["statusId"],
-        where: { ...EXCLUDE_DEMO_CLIENT_TASKS, archivedAt: null },
+        where: ACTIVE_TASKS,
         _count: { _all: true },
       }),
       db.client.findMany({

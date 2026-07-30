@@ -8,7 +8,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { TimerHeaderWidget } from "@/components/admin/timer-header-widget";
 import { GlobalSearchBar } from "@/components/admin/global-search-bar";
 import { TASK_STATUS } from "@/lib/dropdown-lists";
-import { EXCLUDE_DEMO_CLIENT_TASKS, startOfToday } from "@/lib/tasks";
+import { EXCLUDE_DEMO_CLIENT_TASKS } from "@/lib/tasks";
 
 const navLinks = [
   { href: "/admin", label: "Tableau de bord" },
@@ -36,33 +36,30 @@ export default async function AdminProtectedLayout({
   // Chronomètre visible dans tout l'admin (pas seulement la fiche tâche) —
   // au plus une ligne `endedAt: null` à la fois PAR ADMIN, voir
   // `startTaskTimer` (chaque admin a son propre chrono, indépendant).
-  const [runningEntry, overdueCount, toValidateCount, prospectReminderCount] =
-    await Promise.all([
-      db.taskTimeEntry.findFirst({
-        where: { endedAt: null, startedByAdminId: admin.id },
-        include: { task: true },
-      }),
-      // Même logique que les compteurs du tableau de bord — pastille sur
-      // "Tâches" dans le nav pour voir d'un coup d'œil s'il y a des tâches qui
-      // demandent une action, sans avoir à ouvrir la page.
-      db.task.count({
-        where: {
-          ...EXCLUDE_DEMO_CLIENT_TASKS,
-          archivedAt: null,
-          dueDate: { lt: startOfToday() },
-          status: { slug: { not: TASK_STATUS.TERMINE } },
-        },
-      }),
-      db.task.count({
-        where: { ...EXCLUDE_DEMO_CLIENT_TASKS, archivedAt: null, status: { slug: TASK_STATUS.A_VALIDER } },
-      }),
-      // Pastille "Prospection" — relances dues aujourd'hui ou en retard, pas
-      // encore envoyées.
-      db.prospect.count({
-        where: { nextReminderAt: { lte: new Date() }, reminderSentAt: null },
-      }),
-    ]);
-  const attentionCount = overdueCount + toValidateCount;
+  const [runningEntry, openTaskCount, prospectReminderCount] = await Promise.all([
+    db.taskTimeEntry.findFirst({
+      where: { endedAt: null, startedByAdminId: admin.id },
+      include: { task: true },
+    }),
+    // Pastille "Tâches" : nombre de tâches restant à traiter, c'est-à-dire
+    // toutes sauf celles au statut "Terminé" (demande du client le
+    // 2026-07-30 — auparavant la pastille additionnait "en retard" et "à
+    // valider", ce qui ne correspondait à aucun chiffre affiché ailleurs).
+    // Les archivées sont exclues comme partout : elles ne sont plus dans le
+    // flux de travail.
+    db.task.count({
+      where: {
+        ...EXCLUDE_DEMO_CLIENT_TASKS,
+        archivedAt: null,
+        status: { slug: { not: TASK_STATUS.TERMINE } },
+      },
+    }),
+    // Pastille "Prospection" — relances dues aujourd'hui ou en retard, pas
+    // encore envoyées.
+    db.prospect.count({
+      where: { nextReminderAt: { lte: new Date() }, reminderSentAt: null },
+    }),
+  ]);
 
   return (
     <div className="flex min-h-full flex-1 flex-col">
@@ -103,7 +100,7 @@ export default async function AdminProtectedLayout({
           {navLinks.map((link) => {
             const badgeCount =
               link.href === "/admin/taches"
-                ? attentionCount
+                ? openTaskCount
                 : link.href === "/admin/prospection"
                   ? prospectReminderCount
                   : 0;

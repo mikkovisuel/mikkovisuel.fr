@@ -5,10 +5,9 @@ import type { ClientSortField, ClientSortDir } from "@/lib/clients";
 const FIELD_LABELS: Record<ClientSortField, string> = {
   nom: "Alphabétique",
   date_ajout: "Date d'ajout",
-  taches: "Nombre de tâches",
 };
 
-const SORT_FIELDS: ClientSortField[] = ["date_ajout", "nom", "taches"];
+const SORT_FIELDS: ClientSortField[] = ["date_ajout", "nom"];
 
 // Même pattern que `TaskSortControl` (dédié plutôt que généralisé, une seule
 // page l'utilise) : liens `?tri=...&dir=...`, bascule croissant/décroissant

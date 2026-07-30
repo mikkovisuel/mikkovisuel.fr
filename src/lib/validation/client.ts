@@ -51,7 +51,12 @@ export const ContactCreateSchema = z
   .object({
     ...contactBaseFields,
     access: z.enum(CONTACT_ACCESS_MODES),
-    password: z.string().optional(),
+    // `nullish` et non `optional` : le champ mot de passe n'est rendu que
+    // pour le mode "password", donc `formData.get("password")` renvoie `null`
+    // dans les deux autres modes — et `optional()` n'accepte que `undefined`,
+    // ce qui faisait échouer toute création de contact sans mot de passe avec
+    // un "expected string, received null" incompréhensible pour l'admin.
+    password: z.string().nullish(),
   })
   .superRefine((data, ctx) => {
     if (data.access !== "none" && !data.email) {

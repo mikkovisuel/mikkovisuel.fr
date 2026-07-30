@@ -1,8 +1,11 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
+import { getStorageAdapter } from "@/lib/storage";
+import { contentMatchesDeclaredType } from "@/lib/file-signature";
 import { verifyAdminSession, verifyClientSession, assertNotDemo } from "@/lib/dal";
 import { hashPassword } from "@/lib/password";
 import { requireFreshAdminPassword, type StepUpFormState } from "@/lib/step-up-auth";
@@ -69,6 +72,80 @@ export async function updateClient(
   revalidatePath(`/admin/clients/${clientId}`);
   revalidatePath("/admin/clients");
   return undefined;
+}
+
+const MAX_AVATAR_SIZE = 5 * 1024 * 1024;
+const ALLOWED_AVATAR_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
+
+// Avatar du client (logo ou photo), affiché en rond dans la liste des
+// clients. Action séparée du formulaire d'informations : un envoi de fichier
+// et une mise à jour de champs texte n'ont ni les mêmes contraintes de taille
+// ni le même besoin de revalidation, et les mélanger obligerait à renvoyer
+// l'image à chaque simple changement de nom.
+//
+// Même validation que les autres envois d'image du projet : taille, type
+// MIME déclaré, **et** signature binaire réelle (`contentMatchesDeclaredType`)
+// — un fichier renommé en `.png` ne passe pas.
+export async function updateClientAvatar(
+  clientId: string,
+  _prev: ClientFormState,
+  formData: FormData,
+): Promise<ClientFormState> {
+  await verifyAdminSession();
+
+  const file = formData.get("avatar");
+  if (!(file instanceof File) || file.size === 0) {
+    return { error: "Choisissez une image." };
+  }
+  if (file.size > MAX_AVATAR_SIZE) {
+    return { error: "Image trop volumineuse (5 Mo maximum)." };
+  }
+  if (!ALLOWED_AVATAR_TYPES.has(file.type)) {
+    return { error: "Format non autorisé (PNG, JPEG ou WebP)." };
+  }
+  const buffer = Buffer.from(await file.arrayBuffer());
+  if (!(await contentMatchesDeclaredType(buffer, file.type))) {
+    return { error: "Le contenu du fichier ne correspond pas à une image valide." };
+  }
+
+  const client = await db.client.findUnique({ where: { id: clientId } });
+  if (!client) return { error: "Client introuvable." };
+
+  const storage = getStorageAdapter();
+  const storageKey = `client-avatars/${randomUUID()}`;
+  await storage.save(storageKey, buffer);
+  // L'ancienne image n'est supprimée qu'une fois la nouvelle écrite : en cas
+  // d'échec de l'envoi, le client garde son avatar précédent.
+  if (client.avatarStorageKey) await storage.delete(client.avatarStorageKey);
+
+  await db.client.update({
+    where: { id: clientId },
+    data: {
+      avatarStorageKey: storageKey,
+      avatarMimeType: file.type,
+      avatarStorageBackend: storage.backend,
+    },
+  });
+
+  revalidatePath(`/admin/clients/${clientId}`);
+  revalidatePath("/admin/clients");
+  return undefined;
+}
+
+export async function removeClientAvatar(clientId: string) {
+  await verifyAdminSession();
+
+  const client = await db.client.findUnique({ where: { id: clientId } });
+  if (!client?.avatarStorageKey) return;
+
+  await getStorageAdapter().delete(client.avatarStorageKey);
+  await db.client.update({
+    where: { id: clientId },
+    data: { avatarStorageKey: null, avatarMimeType: null, avatarStorageBackend: null },
+  });
+
+  revalidatePath(`/admin/clients/${clientId}`);
+  revalidatePath("/admin/clients");
 }
 
 // Action irréversible (supprime aussi tâches/documents/livrables en

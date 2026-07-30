@@ -70,6 +70,14 @@ model Client {
   // suppression de catégorie emporte des clients avec elle.
   categoryId   String?
   category     DropdownItem? @relation("ClientCategory", fields: [categoryId], references: [id], onDelete: SetNull)
+  // Avatar du client (logo ou photo), affiché en rond dans la liste
+  // `/admin/clients` et sur sa fiche. Même trio de colonnes que
+  // `HomepageHero`/`PortfolioPillar` : la clé de stockage, le type MIME (pour
+  // servir le fichier) et le backend d'origine, servi par
+  // `/api/clients/[clientId]/avatar`.
+  avatarStorageKey     String?
+  avatarMimeType       String?
+  avatarStorageBackend String?
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 

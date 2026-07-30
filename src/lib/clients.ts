@@ -73,10 +73,13 @@ export const CONTACT_ACCESS_LABELS: Record<ContactAccessState, string> = {
 };
 
 // Tri de la vue `/admin/clients` — voir `ClientSortControl`.
-export type ClientSortField = "nom" | "date_ajout" | "taches";
+// Le tri par nombre de tâches a été retiré le 2026-07-30 en même temps que
+// les compteurs de chaque ligne (demande du client) : trier sur un chiffre
+// qui ne s'affiche plus nulle part n'avait plus de sens.
+export type ClientSortField = "nom" | "date_ajout";
 export type ClientSortDir = "asc" | "desc";
 
-const CLIENT_SORT_FIELDS: ClientSortField[] = ["nom", "date_ajout", "taches"];
+const CLIENT_SORT_FIELDS: ClientSortField[] = ["nom", "date_ajout"];
 
 export function isClientSortField(value: string | undefined): value is ClientSortField {
   return CLIENT_SORT_FIELDS.includes(value as ClientSortField);
@@ -86,11 +89,7 @@ export function buildClientOrderBy(
   field: ClientSortField,
   dir: ClientSortDir,
 ): Prisma.ClientOrderByWithRelationInput {
-  if (field === "nom") return { name: dir };
-  // Tri sur le nombre de tâches liées — `_count` sur la relation, pas une
-  // colonne dénormalisée : le compte reste juste sans rien à maintenir.
-  if (field === "taches") return { tasks: { _count: dir } };
-  return { createdAt: dir };
+  return field === "nom" ? { name: dir } : { createdAt: dir };
 }
 
 // Filtres de la vue `/admin/clients`. La recherche porte sur le nom du client

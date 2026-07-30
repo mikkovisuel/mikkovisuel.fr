@@ -13,6 +13,21 @@ export const EXCLUDE_DEMO_CLIENT_TASKS = {
   client: { isDemo: false },
 } satisfies Prisma.TaskWhereInput;
 
+// Le filtre à utiliser pour tout compteur ou toute liste représentant le
+// travail en cours : client de démo exclu **et** tâches archivées exclues.
+//
+// Les deux doivent aller ensemble. Le tableau de bord n'excluait que le
+// client de démo alors que la pastille du bandeau et la liste des tâches
+// excluaient aussi les archivées : une tâche archivée en retard était donc
+// comptée sur le tableau de bord sans apparaître nulle part ailleurs
+// (signalé par le client le 2026-07-30 — "une tâche en retard affichée en
+// plus"). Passer par cette constante plutôt que de réécrire le filtre à la
+// main évite que les deux conventions redivergent.
+export const ACTIVE_TASKS = {
+  ...EXCLUDE_DEMO_CLIENT_TASKS,
+  archivedAt: null,
+} satisfies Prisma.TaskWhereInput;
+
 // Minuit aujourd'hui (heure locale) — sert de seuil pour "en retard" au lieu
 // de `new Date()` : une échéance fixée à aujourd'hui ne doit pas compter
 // comme en retard tant que la journée n'est pas terminée (voir

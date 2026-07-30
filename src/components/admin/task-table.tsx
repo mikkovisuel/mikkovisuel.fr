@@ -40,16 +40,19 @@ function sortHref(
   field: TaskSortField,
   activeField: TaskSortField,
   activeDir: TaskSortDir,
+  basePath: string,
   clientId?: string,
   status?: string,
 ) {
   const nextDir: TaskSortDir = field === activeField && activeDir === "asc" ? "desc" : "asc";
   const params = new URLSearchParams();
+  // Sur la fiche client, le client est déjà celui de la page : le repasser en
+  // paramètre n'aurait aucun effet et alourdirait l'URL.
   if (clientId) params.set("clientId", clientId);
   if (status) params.set("status", status);
   params.set("tri", field);
   params.set("dir", nextDir);
-  return `/admin/taches?${params.toString()}`;
+  return `${basePath}?${params.toString()}`;
 }
 
 // Vue tableau, plus compacte que les cartes empilées de `TaskRow` : une
@@ -66,6 +69,7 @@ export function TaskTable({
   clientId,
   status,
   emptyMessage = "Aucune tâche pour le moment.",
+  basePath = "/admin/taches",
 }: {
   tasks: TaskTableTask[];
   statusOptions: { slug: string; label: string }[];
@@ -74,6 +78,9 @@ export function TaskTable({
   clientId?: string;
   status?: string;
   emptyMessage?: string;
+  /** Page cible des liens de tri. La fiche client réutilise ce tableau et
+   * doit rester sur elle-même plutôt que renvoyer vers /admin/taches. */
+  basePath?: string;
 }) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkStatusKey, setBulkStatusKey] = useState(0);
@@ -174,7 +181,7 @@ export function TaskTable({
                     <span className="sr-only">Détails</span>
                   ) : column.field ? (
                     <Link
-                      href={sortHref(column.field, sortField, sortDir, clientId, status)}
+                      href={sortHref(column.field, sortField, sortDir, basePath, clientId, status)}
                       className="inline-flex items-center gap-1 transition-colors hover:text-ink"
                     >
                       {column.label}
