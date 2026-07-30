@@ -3,6 +3,7 @@ import {
   S3Client,
   PutObjectCommand,
   GetObjectCommand,
+  HeadObjectCommand,
   DeleteObjectCommand,
 } from "@aws-sdk/client-s3";
 import type { StorageAdapter } from "@/lib/storage/adapter";
@@ -70,6 +71,18 @@ export function createS3Storage(): StorageAdapter {
       // ReadableStream regardless of runtime, instead of manually branching
       // on Node Readable vs Blob.
       return response.Body!.transformToWebStream() as ReadableStream<Uint8Array>;
+    },
+
+    async exists(key) {
+      try {
+        await client.send(new HeadObjectCommand({ Bucket: bucket, Key: key }));
+        return true;
+      } catch {
+        // 404/403 comme n'importe quelle autre erreur : on considère l'objet
+        // indisponible. La sauvegarde le consignera comme manquant plutôt que
+        // de bloquer sur un flux qui n'arrivera jamais.
+        return false;
+      }
     },
 
     async delete(key) {

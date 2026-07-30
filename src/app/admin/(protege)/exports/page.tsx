@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { DownloadSimple, Archive } from "@phosphor-icons/react/dist/ssr";
 import { verifyAdminSession } from "@/lib/dal";
+import { backupInventory, formatBytes } from "@/lib/backup";
 
 export const metadata: Metadata = {
   title: "Exports — Admin Mikko Visuel",
@@ -8,6 +9,10 @@ export const metadata: Metadata = {
 
 export default async function AdminExportsPage() {
   await verifyAdminSession();
+
+  // Inventaire affiché avant le téléchargement : sur un gros volume, une
+  // archive de plusieurs Go ne doit pas être une surprise.
+  const { fileCount, totalBytes } = await backupInventory();
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
@@ -44,15 +49,24 @@ export default async function AdminExportsPage() {
         <h2 className="font-display text-lg font-medium tracking-tight text-ink">
           Sauvegarde complète
         </h2>
+        <p className="mt-2 max-w-2xl text-sm text-ink-muted">
+          Les 3 exports ci-dessus <strong className="font-medium text-ink">et tous les
+          fichiers</strong> : documents, livrables, pièces jointes, avatars et médias du
+          portfolio, rangés par client. C&apos;est une vraie sauvegarde — jusqu&apos;au
+          2026-07-30 l&apos;archive ne contenait que les CSV, donc des lignes pointant vers des
+          fichiers absents.
+        </p>
         <p className="mt-2 text-sm text-ink-muted">
-          Les 3 exports ci-dessus regroupés dans une seule archive, pour tes propres archives.
+          {fileCount === 0
+            ? "Aucun fichier stocké pour l'instant : l'archive ne contiendra que les CSV."
+            : `${fileCount} fichier${fileCount > 1 ? "s" : ""} · environ ${formatBytes(totalBytes)}. La préparation peut prendre un moment sur un gros volume.`}
         </p>
         <a
           href="/api/exports/tout"
           className="mt-4 inline-flex items-center gap-2 rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-accent-ink transition-transform active:scale-[0.98]"
         >
           <Archive size={16} weight="regular" />
-          Exporter toutes mes données (ZIP)
+          Télécharger la sauvegarde complète (ZIP)
         </a>
       </div>
     </div>

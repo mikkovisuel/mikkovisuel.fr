@@ -99,13 +99,29 @@ export default async function TaskDetailPage({
 
   return (
     <div className="mx-auto max-w-2xl px-4 py-10 sm:px-6 lg:px-8">
-      <Link
-        href={`/admin/clients/${task.clientId}`}
-        className="inline-flex items-center gap-2 text-sm text-ink-muted transition-colors hover:text-ink"
-      >
-        <ArrowLeft size={16} weight="regular" />
-        Retour à {task.client.name}
-      </Link>
+      {/* Le retour pointait vers la fiche client, alors qu'on arrive presque
+          toujours ici depuis la liste des tâches (signalé le 2026-07-30).
+          Le client reste accessible juste à côté : c'était le seul lien vers
+          lui sur cette page, le remplacer purement et simplement l'aurait
+          rendu injoignable. */}
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
+        <Link
+          href="/admin/taches"
+          className="inline-flex items-center gap-2 text-ink-muted transition-colors hover:text-ink"
+        >
+          <ArrowLeft size={16} weight="regular" />
+          Retour aux tâches
+        </Link>
+        <span aria-hidden="true" className="text-ink-muted/40">
+          ·
+        </span>
+        <Link
+          href={`/admin/clients/${task.clientId}`}
+          className="text-ink-muted transition-colors hover:text-ink"
+        >
+          {task.client.name}
+        </Link>
+      </div>
 
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">

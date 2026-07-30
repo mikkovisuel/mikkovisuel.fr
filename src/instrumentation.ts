@@ -1,3 +1,21 @@
+// Hook appelé par Next pour toute erreur serveur non gérée — composants
+// serveur, Server Actions, routes API. C'est le seul point de passage commun,
+// d'où l'alerte email posée ici plutôt que dans chaque `error.tsx` (qui, lui,
+// est côté client et ne voit pas les erreurs de rendu serveur).
+export async function onRequestError(
+  error: unknown,
+  request: { path?: string },
+  context: { renderSource?: string; routerKind?: string },
+) {
+  if (process.env.NODE_ENV !== "production") return;
+
+  const { reportServerError } = await import("@/lib/error-alert");
+  await reportServerError(error, {
+    path: request.path,
+    kind: context.renderSource ?? context.routerKind,
+  });
+}
+
 export async function register() {
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
   if (process.env.NODE_ENV !== "production") return;

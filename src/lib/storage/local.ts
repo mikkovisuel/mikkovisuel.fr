@@ -1,5 +1,5 @@
 import "server-only";
-import { mkdir, readFile, writeFile, unlink } from "node:fs/promises";
+import { mkdir, readFile, writeFile, unlink, access } from "node:fs/promises";
 import { createReadStream } from "node:fs";
 import { Readable } from "node:stream";
 import path from "node:path";
@@ -38,6 +38,12 @@ export const localStorage: StorageAdapter = {
       ? createReadStream(resolvePath(key), { start: range.start, end: range.end })
       : createReadStream(resolvePath(key));
     return Readable.toWeb(nodeStream) as ReadableStream<Uint8Array>;
+  },
+
+  async exists(key) {
+    return access(resolvePath(key))
+      .then(() => true)
+      .catch(() => false);
   },
 
   async delete(key) {

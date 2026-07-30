@@ -783,6 +783,36 @@ appliquée à l'ensemble du site :
   valider" — logique déjà existante de `setTaskStatus`, désormais aussi
   déclenchable depuis cette page). Désactivé si la tâche est déjà "À
   valider", pour éviter un second envoi accidentel.
+- **Sauvegarde complète, fichiers inclus (2026-07-30).** `/api/exports/tout`
+  ne zippait que trois CSV de métadonnées : l'archive décrivait des documents,
+  livrables et médias qu'elle **ne contenait pas**. La réversibilité mise en
+  avant côté commercial était donc fausse — un client repartait avec des
+  lignes pointant vers des fichiers absents. L'archive embarque désormais tous
+  les fichiers réels, rangés par client (`documents/`, `livrables/`,
+  `pieces-jointes/`, `avatars/`, `portfolio/`), et un inventaire (nombre de
+  fichiers, volume) est affiché sur `/admin/exports` avant le téléchargement.
+  Deux contraintes techniques : l'archive est produite **en flux** (un seul
+  livrable peut peser 500 Mo, le zippeur maison `src/lib/zip.ts` la
+  construisait entièrement en mémoire et ferait tomber le conteneur — d'où
+  l'ajout de `archiver`, `zip.ts` restant utilisé pour les petits exports
+  CSV) ; et une méthode `exists()` a été ajoutée aux adaptateurs de stockage,
+  parce que `readStream` ne rejette pas sur un fichier absent — il rend un
+  flux qui échoue plus tard, ce qui figeait l'archive et produisait une
+  sauvegarde silencieusement tronquée. Tout fichier absent ou illisible est
+  désormais consigné dans un `RAPPORT-SAUVEGARDE.txt` joint à l'archive.
+- **Alerte email en cas d'erreur serveur (2026-07-30).** Une erreur en
+  production n'allait nulle part : trois `console.error` et les logs Scalingo,
+  que personne ne lit. Un 500 chez un client restait invisible jusqu'à ce
+  qu'il le signale. Le hook `onRequestError` de Next (`src/instrumentation.ts`)
+  couvre désormais composants serveur, Server Actions et routes API, et
+  prévient tous les comptes admin par email via l'infrastructure existante.
+  Trois garde-fous, parce qu'une alerte qui s'emballe est pire que pas
+  d'alerte : une même erreur (message + route) n'est notifiée qu'une fois par
+  heure, un plafond global de 10 alertes/heure évite qu'une panne de base ne
+  noie la boîte mail au pire moment, et l'ensemble est encapsulé pour ne
+  jamais aggraver ni masquer l'incident d'origine. État en mémoire du
+  processus, remis à zéro à chaque déploiement — voulu : après un correctif,
+  on veut être renotifié si le problème persiste.
 - **Archivage d'un client (2026-07-30).** Jusque-là, le seul moyen de sortir
   un ancien client des listes était `deleteClient`, qui supprime en cascade
   ses tâches, documents et livrables. Nouveau champ `Client.archivedAt` et
@@ -1558,3 +1588,6 @@ Le client a explicitement délégué ces choix :
 | 2026-07-30 | Cinq demandes de réglage après la refonte clients : (1) pastille "Tâches" du bandeau, (2) tâche en retard fantôme sur le tableau de bord, (3) allègement de la liste clients + avatar, (4) refonte de la mise en page de la fiche client, (5) regroupement des tâches terminées | Livré, les 5 — voir section "Backend interne". (1) La pastille compte désormais toutes les tâches hors "Terminé" au lieu de "en retard + à valider". (2) **Bug trouvé, la piste du client était fausse** : ce n'était pas une tâche de l'espace de démo (déjà correctement exclu) mais une tâche **archivée** — le tableau de bord ne filtrait pas `archivedAt`, contrairement à la pastille et à la liste. Nouveau filtre partagé `ACTIVE_TASKS` appliqué aux 12 requêtes du tableau de bord. (3) Avatar rond (nouveau champ `Client.avatar*`, upload validé jusqu'à la signature binaire), catégorie affichée, compteurs de contacts/tâches et tri par nombre de tâches retirés. (4) Bandeau collant avec "Enregistrer" en haut à droite, informations sur deux colonnes (identité / facturation), contacts compacts et dépliables, création de contact et de tâche en modale `<dialog>` native, tâches affichées avec le même tableau que `/admin/taches`. (5) Tâches terminées repliées par défaut, sur la liste globale comme sur la fiche client. Voir `VALIDATION.md` — un second bug a été trouvé et corrigé pendant les tests |
 | 2026-07-30 | "Peux-tu me donner des améliorations dans la gestion clients / tâches ?" | 6 pistes proposées après lecture du code (pas des généralités) : planning en heures, assignation des tâches, rapport de temps/rentabilité, archivage client, relance client, fil d'activité client. **3 retenues et livrées** : planning pondéré par le temps estimé, archivage réversible d'un client, rapport Temps & rentabilité sur `/admin/finances`. Écartées pour l'instant : relance client et fil d'activité. Les **dépendances entre tâches** ont été déconseillées (lourdes à maintenir, volume insuffisant) et les **tâches récurrentes** signalées comme voisines des "modèles de tâches réutilisables" déjà écartés le 2026-07-28 |
 | 2026-07-30 | Assignation des tâches à un administrateur | Pas construit — le client a répondu "pas encore, mais c'est prévu" (il travaille seul aujourd'hui). Constat à l'origine de la proposition : les comptes multi-admin existent depuis le 2026-07-29 mais `Task` n'a aucun champ de responsable, donc à plusieurs personne ne sait qui fait quoi. À reprendre le jour où un second compte est réellement actif — voir "Points encore ouverts" |
+| 2026-07-30 | "Penses-tu à d'autres améliorations globales ?" | 6 constats remontés après audit du projet (au-delà des clients/tâches) : absence totale de tests automatisés, absence de sauvegarde des fichiers, absence de remontée d'erreur en production, CSP en Report-Only qui ne collecte rien, dépendances à mettre à jour, mentions légales et CGV toujours en texte d'attente. **Correction apportée au passage** : la "réversibilité déjà codée" annoncée le 2026-07-30 dans le contexte white-label était inexacte — l'export ne contenait aucun fichier |
+| 2026-07-30 | Retenu sur ces constats : sauvegarde des fichiers + alerte d'erreur en production | Livré (2 sur 6) — voir section "Backend interne". **Non retenus** : les tests automatisés (proposés en priorité n°1, écartés par le client), la CSP, les dépendances et les pages légales. Le constat sur les tests reste noté : les 3 dernières sessions ont chacune révélé en test manuel un bug qu'un test unitaire aurait attrapé immédiatement |
+| 2026-07-30 | "Lorsque je suis sur l'écran d'une tâche, le retour se fait sur le client et non retour à la liste des tâches" | Corrigé : le lien de retour de `/admin/taches/[taskId]` pointait en dur vers la fiche client. Il renvoie désormais vers la liste des tâches, et le client reste accessible par un second lien juste à côté — c'était le seul lien vers lui sur cette page, le remplacer purement et simplement l'aurait rendu injoignable |

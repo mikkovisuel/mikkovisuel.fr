@@ -20,7 +20,8 @@ export type EmailTrigger =
   | "prospect_reminder"
   | "admin_invite"
   | "weekly_digest"
-  | "devis_accepted";
+  | "devis_accepted"
+  | "server_error";
 
 export interface EmailAttachmentInput {
   filename: string;
