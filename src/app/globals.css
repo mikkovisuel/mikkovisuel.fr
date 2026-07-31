@@ -170,16 +170,70 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   pointer-events: none;
 }
 
-.note-prose h2 {
+.note-prose h1,
+.note-prose h2,
+.note-prose h3 {
   font-family: var(--font-display);
   font-weight: 600;
-  font-size: 1.25rem;
   margin-top: 1rem;
   margin-bottom: 0.5rem;
 }
 
+/* h1 et h3 ajoutés le 2026-07-31 avec le sélecteur de taille de texte :
+   seul h2 était stylé jusque-là, les deux autres niveaux se seraient
+   affichés à la taille par défaut du navigateur. */
+.note-prose h1 {
+  font-size: 1.6rem;
+}
+
+.note-prose h2 {
+  font-size: 1.25rem;
+}
+
+.note-prose h3 {
+  font-size: 1.05rem;
+}
+
+/* Surlignage : la couleur choisie arrive en `style` inline posé par TipTap
+   (extension Highlight en mode multicolore) et l'emporte donc sur le fond
+   défini ici, qui ne sert que de repli pour une marque sans couleur.
+   `color: inherit` est le point important : sans lui, le navigateur
+   imposerait sa règle par défaut (fond jaune, texte noir), illisible en
+   thème sombre. Les teintes proposées sont à 40% d'opacité, ce qui laisse
+   le texte du thème lisible sur les deux fonds. */
+.note-prose mark {
+  background-color: color-mix(in srgb, var(--color-accent) 40%, transparent);
+  color: inherit;
+  border-radius: 0.2rem;
+  padding: 0.05rem 0.15rem;
+}
+
 .note-prose p {
   margin-bottom: 0.6rem;
+}
+
+/* Sans cette règle, un lien dans une note est indiscernable du texte
+   courant : le reset de Tailwind remet `color: inherit` et
+   `text-decoration: inherit` sur les `<a>`, donc l'autolink de TipTap
+   fonctionnait mais restait invisible. Ajouté le 2026-07-31.
+   Couleur de base `ink` et non l'accent citron, qui est pensé comme fond
+   dans ce projet et passerait mal en texte sur la surface claire. L'accent
+   n'est utilisé qu'au survol, où il signale l'interaction sans avoir à
+   être lu — c'est déjà la convention des liens en ligne du projet
+   (`LinkifiedText`, page de connexion). */
+.note-prose a,
+.note-link {
+  color: var(--color-ink);
+  font-weight: 500;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  cursor: pointer;
+  word-break: break-word;
+}
+
+.note-prose a:hover,
+.note-link:hover {
+  color: var(--color-accent);
 }
 
 .note-prose ul,

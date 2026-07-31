@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { GearSix } from "@phosphor-icons/react/dist/ssr";
 import { verifyAdminSession } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { BrandLogo } from "@/components/brand-logo";
@@ -7,9 +6,14 @@ import { LogoutButton } from "@/components/auth/logout-button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { TimerHeaderWidget } from "@/components/admin/timer-header-widget";
 import { GlobalSearchBar } from "@/components/admin/global-search-bar";
+import { SettingsMenu } from "@/components/admin/settings-menu";
 import { TASK_STATUS } from "@/lib/dropdown-lists";
 import { ACTIVE_TASKS } from "@/lib/tasks";
 
+// "Listes", "Exports" et "Audit" ont été retirés d'ici le 2026-07-31 et
+// déplacés sous la roue crantée (voir `SettingsMenu`) : ce sont des écrans
+// de paramétrage ou de consultation ponctuelle, alors que cette barre est
+// le travail quotidien. 13 onglets -> 10.
 const navLinks = [
   { href: "/admin", label: "Tableau de bord" },
   { href: "/admin/clients", label: "Clients" },
@@ -19,11 +23,8 @@ const navLinks = [
   { href: "/admin/documents", label: "Documents" },
   { href: "/admin/notes", label: "Notes" },
   { href: "/admin/portfolio", label: "Portfolio" },
-  { href: "/admin/listes", label: "Listes" },
-  { href: "/admin/exports", label: "Exports" },
   { href: "/admin/finances", label: "Finances" },
   { href: "/admin/planning", label: "Planning" },
-  { href: "/admin/audit", label: "Audit" },
 ];
 
 export default async function AdminProtectedLayout({
@@ -81,13 +82,7 @@ export default async function AdminProtectedLayout({
               />
             )}
             <span className="hidden text-sm text-ink-muted sm:inline">{admin.email}</span>
-            <Link
-              href="/admin/reglages"
-              aria-label="Réglages"
-              className="rounded-full border border-line p-2 text-ink-muted transition-colors hover:border-accent hover:text-ink"
-            >
-              <GearSix size={18} weight="regular" />
-            </Link>
+            <SettingsMenu />
             <ThemeToggle />
             <LogoutButton />
           </div>
