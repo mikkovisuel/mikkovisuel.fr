@@ -298,6 +298,14 @@ Chantier le plus sensible de la session (touche l'authentification et les sessio
 | Alerte sur le champ Échéance de la fiche tâche | Échéance saisie avec de la capacité disponible | (non exercé en navigateur — page admin) | Échéance saisie sans aucune capacité renseignée sur la période | Vérifié par lecture de code : `coverageDays > 0` est requis avant d'afficher toute alerte — une capacité absente n'est jamais interprétée comme une surcharge silencieuse |
 | Charge non répartie | Tâches actives sans date d'évènement | Vérifié par lecture de code : la page Planning interroge désormais aussi `eventDate: null` (exclues du graphique hebdomadaire, qui ne lit que les tâches datées) | Tâche non répartie déjà **Terminée** | Vérifié par lecture de code : exclue par le filtre `status.slug !== TERMINE`, comme le calcul de charge engagée du moteur |
 
+## Désalignement des colonnes sur /admin/contacts (2026-07-31)
+
+Signalé par le client via une capture d'écran de production. Page inaccessible sans mot de passe admin — vérifié via une reproduction HTML isolée (mêmes classes Tailwind, mêmes largeurs de contenu réelles issues de la capture), pas dans l'admin lui-même.
+
+| Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |
+|---|---|---|---|---|---|
+| Alignement des colonnes entre lignes | 3 lignes avec badges d'accès de longueurs différentes ("Contact seul", "Espace client actif", "Invitation à envoyer") | ✅ **Testé par reproduction isolée** : avant correction, la colonne "téléphone" démarre à des abscisses différentes selon la ligne (jusqu'à ~35 px d'écart, mesuré par marqueur positionné via `getBoundingClientRect`) ; après correction (largeur fixe sur la colonne du badge), les trois lignes démarrent exactement à la même abscisse | Contenu le plus long de chaque colonne (téléphone suisse avec espaces, libellé de badge le plus long) | ✅ Testé dans la même reproduction : aucun débordement ni retour à la ligne inattendu avec le contenu réel le plus large observé en production |
+
 ## Points restant ouverts pour une prochaine passe de validation
 
 - Glisser-déposer et `<select>` natif du Kanban Prospection (limite outil, voir ci-dessus).
