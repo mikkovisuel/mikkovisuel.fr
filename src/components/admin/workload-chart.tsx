@@ -1,4 +1,5 @@
 import { formatHoursFromMinutes } from "@/lib/time-tracking";
+import { capacityAlertLevel } from "@/lib/capacity";
 
 type WeekEntry = {
   key: string;
@@ -10,6 +11,8 @@ type WeekEntry = {
   /** Tâches sans estimation : elles ne pèsent rien dans la hauteur de barre,
    * il faut donc les signaler séparément plutôt que de les perdre. */
   unestimatedCount: number;
+  /** Capacité réellement saisie sur la semaine (minutes), si disponible. */
+  capacityMinutes?: number;
 };
 
 // Seuils exprimés en **heures de travail estimées** par semaine, et non plus
@@ -24,7 +27,18 @@ type WeekEntry = {
 const BUSY_HOURS = 25;
 const OVERLOAD_HOURS = 40;
 
-function loadColor(hours: number): "green" | "orange" | "red" {
+// Priorité à la capacité réellement saisie (`WorkCapacityDay`) quand elle
+// existe pour la semaine ; repli sur les seuils fixes ci-dessus sinon
+// (demande du 2026-07-31 : le moteur de capacité vient compléter le
+// graphique existant, pas le remplacer tant qu'aucune capacité n'est saisie).
+function loadColor(entry: Pick<WeekEntry, "estimatedMinutes" | "capacityMinutes">): "green" | "orange" | "red" {
+  if (entry.capacityMinutes !== undefined && entry.capacityMinutes > 0) {
+    const level = capacityAlertLevel(entry.capacityMinutes, entry.estimatedMinutes);
+    if (level === "overload") return "red";
+    if (level === "warning") return "orange";
+    return "green";
+  }
+  const hours = entry.estimatedMinutes / 60;
   if (hours >= OVERLOAD_HOURS) return "red";
   if (hours >= BUSY_HOURS) return "orange";
   return "green";
@@ -41,6 +55,7 @@ export function WorkloadChart({ data }: { data: WeekEntry[] }) {
   // pas des barres factices occupant toute la hauteur.
   const max = Math.max(60, ...data.map((entry) => entry.estimatedMinutes));
   const totalUnestimated = data.reduce((sum, entry) => sum + entry.unestimatedCount, 0);
+  const hasCapacityData = data.some((entry) => entry.capacityMinutes !== undefined && entry.capacityMinutes > 0);
 
   return (
     <div className="rounded-2xl border border-line p-5">
@@ -57,6 +72,12 @@ export function WorkloadChart({ data }: { data: WeekEntry[] }) {
           <span className="inline-block h-2.5 w-2.5 rounded-full bg-danger" />
           Surcharge ({OVERLOAD_HOURS} h+)
         </span>
+        {hasCapacityData && (
+          <span>
+            Seuils {BUSY_HOURS} h / {OVERLOAD_HOURS} h utilisés à défaut de capacité saisie ; les
+            semaines avec capacité renseignée sont comparées à celle-ci.
+          </span>
+        )}
       </div>
 
       <div className="flex items-end gap-3 overflow-x-auto pb-2">
@@ -65,10 +86,14 @@ export function WorkloadChart({ data }: { data: WeekEntry[] }) {
             <span className="text-xs text-ink-muted">{formatHoursFromMinutes(entry.estimatedMinutes)}</span>
             <div
               className="flex h-40 w-7 items-end overflow-hidden rounded-t-md bg-surface-elevated"
-              title={`${entry.taskCount} tâche${entry.taskCount > 1 ? "s" : ""} · ${formatHoursFromMinutes(entry.estimatedMinutes)} estimées`}
+              title={`${entry.taskCount} tâche${entry.taskCount > 1 ? "s" : ""} · ${formatHoursFromMinutes(entry.estimatedMinutes)} estimées${
+                entry.capacityMinutes !== undefined && entry.capacityMinutes > 0
+                  ? ` · ${formatHoursFromMinutes(entry.capacityMinutes)} de capacité saisie`
+                  : ""
+              }`}
             >
               <div
-                className={`w-full rounded-t-md ${BAR_CLASSES[loadColor(entry.estimatedMinutes / 60)]}`}
+                className={`w-full rounded-t-md ${BAR_CLASSES[loadColor(entry)]}`}
                 style={{ height: `${(entry.estimatedMinutes / max) * 100}%` }}
               />
             </div>

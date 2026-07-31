@@ -216,6 +216,7 @@ export default async function TaskDetailPage({
           <div>
             <TaskEditForm
               action={updateThisTask}
+              taskId={task.id}
               typeOptions={typeList?.items ?? []}
               formatOptions={formatList?.items ?? []}
               defaultValues={{

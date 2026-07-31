@@ -617,6 +617,19 @@ model NoteImage {
 // Singleton (toujours id "settings") pour les réglages ajustables en direct
 // depuis /admin/reglages, sans redéploiement. Même pattern que
 // HomepageContent/HomepageHero ci-dessous.
+// Capacité de travail disponible pour un jour donné (ajouté le 2026-07-31,
+// "je rentre mes plannings de charge par semaine et au jour" — la saisie
+// se fait semaine par semaine dans la pop-up, mais chaque jour reste sa
+// propre ligne : un jour sans ligne ici = capacité inconnue pour ce
+// jour, pas "0 h" (voir `remainingCapacity` dans src/lib/capacity.ts, qui
+// traite les deux cas différemment). `date` toujours à minuit UTC, jamais
+// d'heure — une capacité se raisonne par jour entier, pas par instant.
+model WorkCapacityDay {
+  date             DateTime @id
+  availableMinutes Int
+  updatedAt        DateTime @updatedAt
+}
+
 model AppSettings {
   id                          String   @id @default("settings")
   // Nombre de jours après lesquels un livrable final (tâche "Terminé")

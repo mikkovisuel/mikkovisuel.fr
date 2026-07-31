@@ -1,9 +1,12 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useEffect, useState } from "react";
 import { WarningCircle } from "@phosphor-icons/react/dist/ssr";
 import { MultiSelectChips } from "@/components/multi-select-chips";
 import type { TaskFormState } from "@/lib/validation/task";
+import { checkTaskDueDateCapacity } from "@/lib/actions/capacity";
+import type { DueDateCapacityCheck } from "@/lib/capacity";
+import { formatHoursFromMinutes } from "@/lib/time-tracking";
 
 interface DropdownOption {
   slug: string;
@@ -13,11 +16,13 @@ interface DropdownOption {
 
 export function TaskEditForm({
   action,
+  taskId,
   typeOptions,
   formatOptions,
   defaultValues,
 }: {
   action: (state: TaskFormState, formData: FormData) => Promise<TaskFormState>;
+  taskId?: string;
   typeOptions: DropdownOption[];
   formatOptions: DropdownOption[];
   defaultValues: {
@@ -31,6 +36,31 @@ export function TaskEditForm({
   };
 }) {
   const [state, formAction, pending] = useActionState(action, undefined);
+  const [dueDate, setDueDate] = useState(defaultValues.dueDate);
+  const [capacityCheck, setCapacityCheck] = useState<DueDateCapacityCheck | null>(null);
+
+  // Alerte de capacité à la saisie de l'échéance (demande du 2026-07-31) :
+  // vérifiée côté serveur avec un léger débounce plutôt qu'à chaque frappe,
+  // et seulement quand une capacité a réellement été saisie sur la période
+  // (`coverageDays > 0`) — sans donnée de capacité, on ne peut rien conclure,
+  // donc pas d'alerte plutôt qu'une fausse alerte silencieuse.
+  useEffect(() => {
+    if (!dueDate) return;
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      checkTaskDueDateCapacity(dueDate, taskId).then((result) => {
+        if (!cancelled) setCapacityCheck(result);
+      });
+    }, 400);
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [dueDate, taskId]);
+
+  // Pas d'alerte tant qu'il n'y a pas d'échéance saisie : dérivé au rendu
+  // plutôt que remis à `null` depuis l'effet ci-dessus.
+  const activeCapacityCheck = dueDate ? capacityCheck : null;
 
   return (
     <form action={formAction} className="grid gap-4">
@@ -79,8 +109,21 @@ export function TaskEditForm({
           name="dueDate"
           type="date"
           defaultValue={defaultValues.dueDate}
+          onChange={(event) => setDueDate(event.target.value)}
           className="rounded-xl border border-line bg-surface-elevated px-4 py-2.5 text-sm text-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
         />
+        {activeCapacityCheck && activeCapacityCheck.coverageDays > 0 && activeCapacityCheck.level !== "ok" && (
+          <p
+            className={`flex items-center gap-2 text-sm ${
+              activeCapacityCheck.level === "overload" ? "text-danger" : "text-amber-600 dark:text-amber-400"
+            }`}
+          >
+            <WarningCircle size={16} weight="fill" />
+            {activeCapacityCheck.level === "overload"
+              ? `Surcharge : la capacité restante d'ici cette échéance est dépassée de ${formatHoursFromMinutes(-activeCapacityCheck.remainingMinutes)}.`
+              : `Charge proche de la capacité disponible d'ici cette échéance (reste ${formatHoursFromMinutes(activeCapacityCheck.remainingMinutes)}).`}
+          </p>
+        )}
       </div>
       <div className="flex flex-col gap-2">
         <label htmlFor="estimatedMinutes" className="text-sm font-medium text-ink">

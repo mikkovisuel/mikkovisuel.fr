@@ -837,6 +837,38 @@ appliquée à l'ensemble du site :
   estimation ne peuvent pas être converties en hauteur de barre sans inventer
   une durée : elles sont signalées par un "+n" sous la semaine concernée et
   récapitulées sous le graphique, plutôt que de peser zéro en silence.
+- **Moteur de capacité (2026-07-31), "le moteur d'abord".** Demande initiale
+  très large (pop-up de saisie de charge par jour, tendance semaine par
+  semaine, tableau de bord détaillé et complet, alerte à l'échéance) —
+  découpage validé avec le client avant de coder : le moteur et les alertes
+  maintenant, la tendance et le tableau de bord détaillé **explicitement
+  reportés** à une prochaine session. Livré dans cette passe :
+  - Nouveau modèle `WorkCapacityDay` (une ligne par jour, minutes
+    disponibles) et pop-up `CapacityPopup` sur `/admin/planning` — une
+    semaine à la fois, navigable, préchargée sur une fenêtre de 15 semaines
+    (2 passées + 12 à venir) pour éviter un aller-retour serveur à chaque
+    changement de semaine dans la modale.
+  - **Charge non répartie** : nouvelle section listant les tâches actives
+    sans date d'évènement, jusque-là absentes du graphique hebdomadaire (qui
+    ne compte que les tâches datées) — sans ça, une tâche non planifiée
+    disparaissait purement et simplement du planning.
+  - Le graphique hebdomadaire compare désormais la charge à la **capacité
+    réellement saisie** quand elle existe pour la semaine, et ne retombe sur
+    les seuils fixes (25 h / 40 h) que pour les semaines sans capacité
+    renseignée — l'un n'a pas remplacé l'autre, faute de donnée saisie sur
+    toute la période.
+  - **Alerte à la saisie de l'échéance** d'une tâche (`TaskEditForm`) :
+    orange quand la marge restante avant l'échéance descend sous 20 % de la
+    capacité saisie sur la période, rouge et message "Surcharge" si elle est
+    négative — vérifiée avec des données réelles en base (surcharge,
+    charge normale, marge à 20 % pile). **Sans capacité saisie sur la
+    période, aucune alerte ne s'affiche** : l'absence de donnée n'est jamais
+    interprétée comme une capacité nulle, ce qui produirait une fausse
+    alerte de surcharge systématique.
+  - Un jour de capacité explicitement mis à 0 (jour férié, absence) reste
+    distinct d'un jour jamais saisi — testé en base : compter un jour
+    "inconnu" comme 0 h fausserait le calcul de couverture et masquerait le
+    besoin de compléter la saisie.
 - **Temps & rentabilité par client (2026-07-30)**, nouvelle section en bas de
   `/admin/finances`. Le temps était chronométré depuis le 2026-07-21 mais
   n'était lisible que tâche par tâche. Cette vue rapproche, sur une période
@@ -1465,6 +1497,21 @@ Le client a explicitement délégué ces choix :
   piliers portfolio, aftermovie) est structurant dans le code comme dans
   l'interface. La cible réaliste est le studio ou l'agence créative, pas la
   PME générique.
+- **Planning : tendance semaine par semaine et tableau de bord détaillé —
+  reportés le 2026-07-31, pas construits.** Sur les deux options proposées
+  ("le moteur d'abord" vs "tout d'un bloc"), le client a choisi la première :
+  moteur de capacité + alertes livrés dans cette passe (voir section
+  "Backend interne"), ces deux points restent donc à construire dans une
+  session future :
+  1. **Tendance semaine par semaine** : delta entre charge prévue
+     (capacité saisie) et charge réelle constatée — suppose de savoir ce qui
+     a été *réellement* fait sur une semaine passée, pas seulement estimé ;
+     probablement à raccrocher au temps chronométré (`TaskTimeEntry`) déjà
+     suivi par tâche plutôt qu'à `estimatedMinutes`.
+  2. **Tableau de bord détaillé et complet** pour anticiper retards et
+     délais — nature exacte (quels indicateurs, quel horizon) à préciser
+     avec le client avant de coder, le terme n'ayant pas été détaillé plus
+     que ça dans la demande d'origine.
 
 ## Journal des modifications demandées
 
@@ -1620,3 +1667,4 @@ Le client a explicitement délégué ces choix :
 | 2026-07-31 | Conséquence assumée : identité partagée = édition partagée | Modifier le nom/email/téléphone/fonction d'un contact depuis la fiche d'UN client le modifie désormais partout où ce même contact est rattaché — comportement voulu pour une identité partagée, pas un bug. Documenté explicitement dans le code au point d'édition |
 | 2026-07-31 | Conséquence bénéfique trouvée en migrant : conversion prospect→client | Avant, convertir un prospect dont l'email correspondait à un contact déjà existant refusait silencieusement de créer un compte ("email-taken"). Désormais, le contact existant est directement **rattaché** au nouveau client — exactement l'usage que le split est censé permettre |
 | 2026-07-31 | Onglet Contacts : alignement en grille, bouton "Modifier" en icône, tri alphabétique/date d'ajout (alphabétique par défaut), bouton "Créer un contact" avec choix Nouveau/Affecter | Tous livrés sur `/admin/contacts`. Le choix Nouveau/Affecter est aussi disponible depuis la fiche client (demande explicite couvrant les deux endroits). Le contact rattaché en mode "Affecter" ne peut être choisi que parmi ceux pas déjà liés à ce client |
+| 2026-07-31 | Onglet Planning : pop-up de capacité par jour, charge non répartie, alerte à l'échéance | "Le moteur d'abord" retenu par le client face aux deux options proposées (l'autre étant "tout d'un bloc", avec tendance et tableau de bord détaillé en plus) — **la tendance semaine par semaine et le tableau de bord détaillé et complet restent donc à construire**, non oubliés. Livré : nouveau modèle `WorkCapacityDay`, pop-up de saisie hebdomadaire (`CapacityPopup`), section "Charge non répartie" pour les tâches sans date d'évènement (jusque-là absentes du graphique), graphique hebdomadaire comparé à la capacité réelle quand elle existe (repli sur les seuils fixes sinon), et alerte orange/rouge sur le champ Échéance de la fiche tâche — voir section "Backend interne" pour le détail, testé en base (surcharge, marge à 20 %, jour à 0 h distinct d'un jour non saisi) |
