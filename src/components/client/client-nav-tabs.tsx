@@ -21,7 +21,7 @@ export function ClientNavTabs({ tabs }: { tabs: NavTab[] }) {
   const pathname = usePathname();
 
   return (
-    <nav className="mx-auto flex max-w-7xl gap-6 overflow-x-auto px-4 sm:px-6 lg:px-8">
+    <nav className="mx-auto flex max-w-7xl 2xl:max-w-[100rem] gap-6 overflow-x-auto px-4 sm:px-6 lg:px-8">
       {tabs.map((tab) => {
         if (tab.external) {
           return (

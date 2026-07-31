@@ -36,7 +36,7 @@ export default async function ClientAdministrativePage() {
     .reduce((sum, doc) => sum + (doc.amountCents ?? 0), 0);
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-7xl 2xl:max-w-[100rem] px-4 py-10 sm:px-6 lg:px-8">
       <h1 className="font-display text-2xl font-medium tracking-tight text-ink">Administratif</h1>
       <p className="mt-2 text-sm text-ink-muted">Vos devis, contrats et factures.</p>
 

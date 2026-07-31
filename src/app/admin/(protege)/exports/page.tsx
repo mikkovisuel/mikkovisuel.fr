@@ -16,7 +16,7 @@ export default async function AdminExportsPage() {
   const { fileCount, totalBytes } = await backupInventory();
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-7xl 2xl:max-w-[100rem] px-4 py-10 sm:px-6 lg:px-8">
       <h1 className="font-display text-2xl font-medium tracking-tight text-ink">Exports</h1>
       <p className="mt-2 text-sm text-ink-muted">
         Téléchargez la liste des clients, des tâches ou des documents au format CSV.

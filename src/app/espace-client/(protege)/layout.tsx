@@ -59,7 +59,7 @@ export default async function ClientProtectedLayout({
       {isImpersonating && <ImpersonationBanner clientName={clientUser.client.name} />}
       {clientUser.client.isDemo && <DemoModeBanner />}
       <header className="border-b border-line">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+        <div className="mx-auto flex h-16 max-w-7xl 2xl:max-w-[100rem] items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
           <Link href="/espace-client">
             <BrandLogo className="h-7" />
           </Link>

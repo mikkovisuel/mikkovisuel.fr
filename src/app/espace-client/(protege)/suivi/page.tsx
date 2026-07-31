@@ -35,7 +35,7 @@ export default async function ClientFollowUpPage({
   ]);
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-7xl 2xl:max-w-[100rem] px-4 py-10 sm:px-6 lg:px-8">
       <h1 className="font-display text-2xl font-medium tracking-tight text-ink">Suivi</h1>
 
       <div className="mt-6 flex flex-wrap gap-2">

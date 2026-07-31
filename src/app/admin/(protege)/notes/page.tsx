@@ -18,7 +18,7 @@ export default async function AdminNotesPage() {
   ]);
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-7xl 2xl:max-w-[100rem] px-4 py-10 sm:px-6 lg:px-8">
       <h1 className="font-display text-2xl font-semibold text-ink">Notes</h1>
       <p className="mt-1 text-sm text-ink-muted">
         Bloc-notes interne — jamais visible depuis l&apos;espace client.

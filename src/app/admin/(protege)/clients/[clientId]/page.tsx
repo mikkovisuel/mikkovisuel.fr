@@ -133,7 +133,7 @@ export default async function ClientDetailPage({
   const createTaskForThisClient = createTaskByAdmin.bind(null, client.id);
 
   return (
-    <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-7xl 2xl:max-w-[100rem] px-4 py-10 sm:px-6 lg:px-8">
       <Link
         href="/admin/clients"
         className="inline-flex items-center gap-2 text-sm text-ink-muted transition-colors hover:text-ink"
