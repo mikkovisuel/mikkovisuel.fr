@@ -18,6 +18,7 @@ export function TaskForm({
   formatOptions,
   clients,
   allowAttachments,
+  allowEstimate,
   successMessage,
   onSuccess,
 }: {
@@ -30,6 +31,11 @@ export function TaskForm({
   /** Affiche un champ de pièces jointes (cas de "Nouvelle demande" côté
    * client) — références visuelles, pas des livrables. */
   allowAttachments?: boolean;
+  /** Affiche le champ "Temps estimé" (cas admin uniquement). Volontairement
+   * absent côté espace client : c'est un suivi interne, jamais exposé au
+   * client — voir `parseEstimatedMinutes` dans src/lib/actions/tasks.ts,
+   * que `createTaskByClient` n'appelle pas. */
+  allowEstimate?: boolean;
   /** Si fourni, affiche ce message dans un pop-up de confirmation après un
    * envoi réussi (cas client). Absent côté admin : reset silencieux. */
   successMessage?: string;
@@ -123,6 +129,22 @@ export function TaskForm({
             className="rounded-xl border border-line bg-surface-elevated px-4 py-2.5 text-sm text-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
           />
         </div>
+        {allowEstimate && (
+          <div className="flex flex-col gap-2">
+            <label htmlFor="estimatedMinutes" className="text-sm font-medium text-ink">
+              Temps estimé (minutes)
+            </label>
+            <input
+              id="estimatedMinutes"
+              name="estimatedMinutes"
+              type="number"
+              min="0"
+              step="1"
+              placeholder="120"
+              className="w-32 rounded-xl border border-line bg-surface-elevated px-4 py-2.5 text-sm text-ink placeholder:text-ink-muted/70 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
+            />
+          </div>
+        )}
         {typeOptions.length > 0 && (
           <div className="flex flex-col gap-2">
             <span className="text-sm font-medium text-ink">Type</span>

@@ -163,6 +163,23 @@ export async function createTaskByClient(
   return undefined;
 }
 
+// Champ `estimatedMinutes` du formulaire : optionnel, entier positif. Vit
+// hors de `TaskSchema` parce que le formulaire client (`createTaskByClient`)
+// ne l'expose jamais — c'est un suivi interne, un client ne fixe pas le
+// temps que Mikko va passer. Partagé par la création et l'édition admin
+// pour que les deux valident à l'identique.
+function parseEstimatedMinutes(
+  formData: FormData,
+): { value: number | null } | { error: string } {
+  const raw = formData.get("estimatedMinutes");
+  if (typeof raw !== "string" || raw.trim() === "") return { value: null };
+  const parsed = Number.parseInt(raw, 10);
+  if (!Number.isInteger(parsed) || parsed < 0) {
+    return { error: "Le temps estimé doit être un nombre de minutes positif." };
+  }
+  return { value: parsed };
+}
+
 async function createTaskRecord(
   clientId: string,
   adminId: string,
@@ -179,6 +196,9 @@ async function createTaskRecord(
     return { error: parsed.error.issues[0]?.message ?? "Formulaire invalide." };
   }
 
+  const estimated = parseEstimatedMinutes(formData);
+  if ("error" in estimated) return { error: estimated.error };
+
   const [statusItem, typeIds, formatIds] = await Promise.all([
     getStatusItem(TASK_STATUS.NOUVEAU),
     getDropdownItemIds(TASK_TYPE_LIST_KEY, parsed.data.types),
@@ -191,6 +211,7 @@ async function createTaskRecord(
       title: parsed.data.title,
       description: parsed.data.description,
       eventDate: parsed.data.eventDate ? new Date(parsed.data.eventDate) : null,
+      estimatedMinutes: estimated.value,
       statusId: statusItem.id,
       types: { connect: typeIds },
       formats: { connect: formatIds },
@@ -251,15 +272,8 @@ export async function updateTask(
   }
 
   const dueDateRaw = formData.get("dueDate");
-  const estimatedMinutesRaw = formData.get("estimatedMinutes");
-  let estimatedMinutes: number | null = null;
-  if (typeof estimatedMinutesRaw === "string" && estimatedMinutesRaw.trim() !== "") {
-    const parsedMinutes = Number.parseInt(estimatedMinutesRaw, 10);
-    if (!Number.isInteger(parsedMinutes) || parsedMinutes < 0) {
-      return { error: "Le temps estimé doit être un nombre de minutes positif." };
-    }
-    estimatedMinutes = parsedMinutes;
-  }
+  const estimated = parseEstimatedMinutes(formData);
+  if ("error" in estimated) return { error: estimated.error };
 
   const task = await db.task.findUnique({ where: { id: taskId } });
   if (!task) return { error: "Tâche introuvable." };
@@ -276,7 +290,7 @@ export async function updateTask(
       description: parsed.data.description,
       eventDate: parsed.data.eventDate ? new Date(parsed.data.eventDate) : null,
       dueDate: typeof dueDateRaw === "string" && dueDateRaw ? new Date(dueDateRaw) : null,
-      estimatedMinutes,
+      estimatedMinutes: estimated.value,
       types: { set: typeIds },
       formats: { set: formatIds },
     },

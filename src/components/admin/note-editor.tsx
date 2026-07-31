@@ -47,7 +47,12 @@ function ToolbarButton({
 
 function Toolbar({ editor }: { editor: Editor }) {
   return (
-    <div className="flex flex-wrap items-center gap-1 border-b border-line px-2 py-1.5">
+    // `sticky` et non statique : la barre vit à l'intérieur du conteneur
+    // scrollable de l'éditeur (voir NotesApp), donc sans ça elle défilait
+    // hors de vue dès qu'une note dépassait la hauteur visible — les
+    // styles devenaient inatteignables au milieu d'une note longue. Fond
+    // opaque obligatoire, sinon le texte défile visiblement dessous.
+    <div className="sticky top-0 z-10 flex flex-wrap items-center gap-1 border-b border-line bg-surface-elevated px-2 py-1.5">
       <ToolbarButton
         label="Titre"
         active={editor.isActive("heading", { level: 2 })}

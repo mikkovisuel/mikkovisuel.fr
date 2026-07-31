@@ -42,6 +42,7 @@ export function NewTaskButton({
           action={action}
           typeOptions={typeOptions}
           formatOptions={formatOptions}
+          allowEstimate
           onSuccess={close}
         />
       </Modal>

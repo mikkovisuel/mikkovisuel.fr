@@ -36,6 +36,7 @@ export default async function NewTaskPage() {
           typeOptions={typeList?.items ?? []}
           formatOptions={formatList?.items ?? []}
           clients={clients.map((client) => ({ id: client.id, name: client.name }))}
+          allowEstimate
         />
       </div>
     </div>

@@ -2,6 +2,7 @@
 
 import { useActionState, useRef, useEffect } from "react";
 import { WarningCircle } from "@phosphor-icons/react/dist/ssr";
+import { LinkifiedText } from "@/components/linkified-text";
 import type { CommentFormState } from "@/lib/validation/comment";
 
 const DATE_TIME_FORMATTER = new Intl.DateTimeFormat("fr-FR", {
@@ -64,7 +65,9 @@ export function TaskCommentThread({
                     {DATE_TIME_FORMATTER.format(comment.createdAt)}
                   </span>
                 </div>
-                <p className="mt-1 whitespace-pre-wrap text-sm text-ink-muted">{comment.body}</p>
+                <p className="mt-1 whitespace-pre-wrap text-sm text-ink-muted">
+                  <LinkifiedText text={comment.body} />
+                </p>
               </li>
             );
           })}

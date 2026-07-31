@@ -11,6 +11,7 @@ import { TaskCalendarView } from "@/components/admin/task-calendar-view";
 import { TaskByClientView } from "@/components/admin/task-by-client-view";
 import { ArchivedTaskList } from "@/components/admin/task-archived-list";
 import { TaskSortControl } from "@/components/admin/task-sort-control";
+import { FilterMenu } from "@/components/admin/filter-menu";
 import {
   TASK_STATUS,
   TASK_STATUS_LIST_KEY,
@@ -108,6 +109,9 @@ export default async function AdminTasksPage({
   const calendarMonth = moisMonth ? Number(moisMonth) - 1 : now.getMonth();
 
   const hasFilters = Boolean(clientId || status || q || type || format || pinnedOnly);
+  const activeFilterCount = [clientId, status, q, type, format, pinnedOnly ? "1" : ""].filter(
+    Boolean,
+  ).length;
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
@@ -122,151 +126,160 @@ export default async function AdminTasksPage({
         </Link>
       </div>
 
+      {/* Le sélecteur de vue (liste/kanban/calendrier...) reste dehors : ce
+          n'est pas un filtre mais un changement d'affichage, et le replier
+          reviendrait à cacher la navigation principale de la page. */}
       <div className="mt-6 flex flex-wrap items-center justify-between gap-4">
         <TaskViewTabs current={view} clientId={clientId} status={status} pinnedOnly={pinnedOnly} />
-        <TaskSortControl
-          basePath="/admin/taches"
-          sortField={sortField}
-          sortDir={sortDir}
-          extraParams={{
-            clientId,
-            status,
-            vue: view !== "liste" ? view : undefined,
-            mois,
-            epingle: pinnedOnly ? "1" : undefined,
-          }}
-        />
-      </div>
-
-      <form className="mt-6 flex flex-wrap items-end gap-3">
-        {view !== "liste" && <input type="hidden" name="vue" value={view} />}
-        {tri && <input type="hidden" name="tri" value={tri} />}
-        {dir && <input type="hidden" name="dir" value={dir} />}
-        {isListe && (
-          <div className="flex flex-col gap-2">
-            <label htmlFor="q" className="text-sm font-medium text-ink">
-              Rechercher
-            </label>
-            <input
-              id="q"
-              name="q"
-              type="search"
-              defaultValue={q ?? ""}
-              placeholder="Titre de la tâche"
-              className="rounded-xl border border-line bg-surface-elevated px-3 py-2.5 text-sm text-ink placeholder:text-ink-muted/70 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
+        <FilterMenu activeCount={activeFilterCount}>
+          <div className="grid gap-4">
+            <TaskSortControl
+              basePath="/admin/taches"
+              sortField={sortField}
+              sortDir={sortDir}
+              extraParams={{
+                clientId,
+                status,
+                vue: view !== "liste" ? view : undefined,
+                mois,
+                epingle: pinnedOnly ? "1" : undefined,
+              }}
             />
+            <div className="h-px bg-line" />
+            <form className="grid gap-3">
+              {view !== "liste" && <input type="hidden" name="vue" value={view} />}
+              {tri && <input type="hidden" name="tri" value={tri} />}
+              {dir && <input type="hidden" name="dir" value={dir} />}
+              {isListe && (
+                <div className="flex flex-col gap-2">
+                  <label htmlFor="q" className="text-sm font-medium text-ink">
+                    Rechercher
+                  </label>
+                  <input
+                    id="q"
+                    name="q"
+                    type="search"
+                    defaultValue={q ?? ""}
+                    placeholder="Titre de la tâche"
+                    className="rounded-xl border border-line bg-surface-elevated px-3 py-2.5 text-sm text-ink placeholder:text-ink-muted/70 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
+                  />
+                </div>
+              )}
+              <div className="flex flex-col gap-2">
+                <label htmlFor="clientId" className="text-sm font-medium text-ink">
+                  Client
+                </label>
+                <select
+                  id="clientId"
+                  name="clientId"
+                  defaultValue={clientId ?? ""}
+                  className="rounded-xl border border-line bg-surface-elevated px-3 py-2.5 text-sm text-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
+                >
+                  <option value="">Tous les clients</option>
+                  {clients.map((client) => (
+                    <option key={client.id} value={client.id}>
+                      {client.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <label htmlFor="status" className="text-sm font-medium text-ink">
+                  Statut
+                </label>
+                <select
+                  id="status"
+                  name="status"
+                  defaultValue={status ?? ""}
+                  className="rounded-xl border border-line bg-surface-elevated px-3 py-2.5 text-sm text-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
+                >
+                  <option value="">Tous les statuts</option>
+                  {statusOptions.map((option) => (
+                    <option key={option.slug} value={option.slug}>
+                      {option.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {isListe && (
+                <>
+                  <div className="flex flex-col gap-2">
+                    <label htmlFor="type" className="text-sm font-medium text-ink">
+                      Type
+                    </label>
+                    <select
+                      id="type"
+                      name="type"
+                      defaultValue={type ?? ""}
+                      className="rounded-xl border border-line bg-surface-elevated px-3 py-2.5 text-sm text-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
+                    >
+                      <option value="">Tous les types</option>
+                      {typeOptions.map((option) => (
+                        <option key={option.slug} value={option.slug}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="flex flex-col gap-2">
+                    <label htmlFor="format" className="text-sm font-medium text-ink">
+                      Format
+                    </label>
+                    <select
+                      id="format"
+                      name="format"
+                      defaultValue={format ?? ""}
+                      className="rounded-xl border border-line bg-surface-elevated px-3 py-2.5 text-sm text-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
+                    >
+                      <option value="">Tous les formats</option>
+                      {formatOptions.map((option) => (
+                        <option key={option.slug} value={option.slug}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </>
+              )}
+
+              <label
+                htmlFor="epingle"
+                className="flex items-center gap-2 rounded-xl border border-line bg-surface-elevated px-3 py-2.5 text-sm text-ink"
+              >
+                <input
+                  id="epingle"
+                  name="epingle"
+                  type="checkbox"
+                  value="1"
+                  defaultChecked={pinnedOnly}
+                  className="accent-accent"
+                />
+                Épinglées uniquement
+              </label>
+
+              <div className="flex items-center gap-3 pt-1">
+                <button
+                  type="submit"
+                  className="rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-accent-ink transition-transform active:scale-[0.98]"
+                >
+                  Appliquer
+                </button>
+                {hasFilters && (
+                  <Link
+                    href="/admin/taches"
+                    className="text-sm text-ink-muted transition-colors hover:text-ink"
+                  >
+                    Réinitialiser
+                  </Link>
+                )}
+              </div>
+            </form>
           </div>
-        )}
-        <div className="flex flex-col gap-2">
-          <label htmlFor="clientId" className="text-sm font-medium text-ink">
-            Client
-          </label>
-          <select
-            id="clientId"
-            name="clientId"
-            defaultValue={clientId ?? ""}
-            className="rounded-xl border border-line bg-surface-elevated px-3 py-2.5 text-sm text-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
-          >
-            <option value="">Tous les clients</option>
-            {clients.map((client) => (
-              <option key={client.id} value={client.id}>
-                {client.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="flex flex-col gap-2">
-          <label htmlFor="status" className="text-sm font-medium text-ink">
-            Statut
-          </label>
-          <select
-            id="status"
-            name="status"
-            defaultValue={status ?? ""}
-            className="rounded-xl border border-line bg-surface-elevated px-3 py-2.5 text-sm text-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
-          >
-            <option value="">Tous les statuts</option>
-            {statusOptions.map((option) => (
-              <option key={option.slug} value={option.slug}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {isListe && (
-          <>
-            <div className="flex flex-col gap-2">
-              <label htmlFor="type" className="text-sm font-medium text-ink">
-                Type
-              </label>
-              <select
-                id="type"
-                name="type"
-                defaultValue={type ?? ""}
-                className="rounded-xl border border-line bg-surface-elevated px-3 py-2.5 text-sm text-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
-              >
-                <option value="">Tous les types</option>
-                {typeOptions.map((option) => (
-                  <option key={option.slug} value={option.slug}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <label htmlFor="format" className="text-sm font-medium text-ink">
-                Format
-              </label>
-              <select
-                id="format"
-                name="format"
-                defaultValue={format ?? ""}
-                className="rounded-xl border border-line bg-surface-elevated px-3 py-2.5 text-sm text-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
-              >
-                <option value="">Tous les formats</option>
-                {formatOptions.map((option) => (
-                  <option key={option.slug} value={option.slug}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </>
-        )}
-
-        <label
-          htmlFor="epingle"
-          className="flex items-center gap-2 rounded-xl border border-line bg-surface-elevated px-3 py-2.5 text-sm text-ink"
-        >
-          <input
-            id="epingle"
-            name="epingle"
-            type="checkbox"
-            value="1"
-            defaultChecked={pinnedOnly}
-            className="accent-accent"
-          />
-          Épinglées uniquement
-        </label>
-
-        <button
-          type="submit"
-          className="rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-accent-ink transition-transform active:scale-[0.98]"
-        >
-          Filtrer
-        </button>
-        {hasFilters && (
-          <Link
-            href="/admin/taches"
-            className="text-sm text-ink-muted transition-colors hover:text-ink"
-          >
-            Réinitialiser
-          </Link>
-        )}
-      </form>
+        </FilterMenu>
+      </div>
 
       {view === "kanban" && <TaskKanbanBoard tasks={tasks} statuses={statusOptions} />}
 

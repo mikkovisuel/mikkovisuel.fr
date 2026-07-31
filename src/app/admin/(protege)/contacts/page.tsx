@@ -4,6 +4,7 @@ import { MagnifyingGlass, X, Phone, EnvelopeSimple } from "@phosphor-icons/react
 import { verifyAdminSession } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { ContactAccessBadge } from "@/components/admin/contact-access-badge";
+import { FilterMenu } from "@/components/admin/filter-menu";
 import { contactAccessState, type ContactAccessState } from "@/lib/clients";
 import type { Prisma } from "@/generated/prisma/client";
 
@@ -91,7 +92,7 @@ export default async function AdminContactsPage({
         fiche de son client — cette page sert à le retrouver.
       </p>
 
-      <div className="mt-6 flex flex-col gap-3">
+      <div className="mt-6 flex flex-wrap items-center gap-3">
         <form method="GET" action="/admin/contacts" className="flex flex-wrap items-center gap-2">
           {access && <input type="hidden" name="acces" value={access} />}
           {clientId && <input type="hidden" name="client" value={clientId} />}
@@ -127,6 +128,8 @@ export default async function AdminContactsPage({
           )}
         </form>
 
+        <FilterMenu activeCount={[access, clientId].filter(Boolean).length} label="Filtres">
+          <div className="grid gap-4">
         <div className="flex flex-wrap items-center gap-1.5">
           <span className="text-sm text-ink-muted">Accès</span>
           {ACCESS_FILTERS.map((filter) => (
@@ -172,6 +175,8 @@ export default async function AdminContactsPage({
             ))}
           </div>
         )}
+          </div>
+        </FilterMenu>
       </div>
 
       {contacts.length === 0 ? (

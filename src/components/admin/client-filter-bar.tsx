@@ -5,35 +5,33 @@ import { PALETTE_BADGE_CLASSES, type PaletteColor } from "@/lib/dropdown-lists";
 // Recherche en formulaire GET plutôt qu'en composant contrôlé : la page est
 // un Server Component, l'état vit dans l'URL, et la recherche reste
 // fonctionnelle sans JavaScript. Même parti pris que `ClientSortControl`.
+//
+// La recherche reste volontairement à l'air libre alors que les catégories
+// et le tri sont repliés dans `FilterMenu` : taper un nom de client est le
+// chemin le plus fréquent vers une fiche, l'enfouir sous un clic
+// supplémentaire coûterait plus que le gain de place.
 export function ClientFilterBar({
   search,
   categoryId,
   sortField,
   sortDir,
-  categories,
-  uncategorizedCount,
 }: {
   search: string;
   categoryId: string;
   sortField: string;
   sortDir: string;
-  categories: { id: string; label: string; color: string; count: number }[];
-  uncategorizedCount: number;
 }) {
-  // Le tri en cours est conservé quand on change de filtre — sinon chaque clic
-  // sur une catégorie réinitialiserait discrètement l'ordre de la liste.
-  function hrefForCategory(nextCategoryId: string) {
+  // Le tri et la catégorie en cours sont conservés quand on relance une
+  // recherche — sinon chaque recherche réinitialiserait discrètement l'ordre
+  // et le filtre de la liste.
+  function clearHref() {
     const params = new URLSearchParams({ tri: sortField, dir: sortDir });
-    if (search) params.set("q", search);
-    if (nextCategoryId) params.set("categorie", nextCategoryId);
+    if (categoryId) params.set("categorie", categoryId);
     return `/admin/clients?${params.toString()}`;
   }
 
-  const chipBase =
-    "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm transition-colors";
-
   return (
-    <div className="flex flex-col gap-3">
+    <>
       <form method="GET" action="/admin/clients" className="flex flex-wrap items-center gap-2">
         <input type="hidden" name="tri" value={sortField} />
         <input type="hidden" name="dir" value={sortDir} />
@@ -61,7 +59,7 @@ export function ClientFilterBar({
         </button>
         {search && (
           <Link
-            href={hrefForCategory(categoryId)}
+            href={clearHref()}
             className="inline-flex items-center gap-1 text-sm text-ink-muted transition-colors hover:text-ink"
           >
             <X size={14} weight="bold" />
@@ -69,7 +67,38 @@ export function ClientFilterBar({
           </Link>
         )}
       </form>
+    </>
+  );
+}
 
+// Extrait de `ClientFilterBar` pour pouvoir vivre dans `FilterMenu` pendant
+// que la recherche, elle, reste visible en permanence.
+export function ClientCategoryFilter({
+  search,
+  categoryId,
+  sortField,
+  sortDir,
+  categories,
+  uncategorizedCount,
+}: {
+  search: string;
+  categoryId: string;
+  sortField: string;
+  sortDir: string;
+  categories: { id: string; label: string; color: string; count: number }[];
+  uncategorizedCount: number;
+}) {
+  function hrefForCategory(nextCategoryId: string) {
+    const params = new URLSearchParams({ tri: sortField, dir: sortDir });
+    if (search) params.set("q", search);
+    if (nextCategoryId) params.set("categorie", nextCategoryId);
+    return `/admin/clients?${params.toString()}`;
+  }
+
+  const chipBase =
+    "inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-sm transition-colors";
+
+  return (
       <div className="flex flex-wrap items-center gap-1.5">
         <span className="text-sm text-ink-muted">Catégorie</span>
         <Link
@@ -110,7 +139,6 @@ export function ClientFilterBar({
             <span className="text-xs opacity-70">{uncategorizedCount}</span>
           </Link>
         )}
-      </div>
     </div>
   );
 }

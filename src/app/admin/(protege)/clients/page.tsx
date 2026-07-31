@@ -4,7 +4,8 @@ import { Plus } from "@phosphor-icons/react/dist/ssr";
 import { verifyAdminSession } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { ClientSortControl } from "@/components/admin/client-sort-control";
-import { ClientFilterBar } from "@/components/admin/client-filter-bar";
+import { ClientFilterBar, ClientCategoryFilter } from "@/components/admin/client-filter-bar";
+import { FilterMenu } from "@/components/admin/filter-menu";
 import { ClientAvatar } from "@/components/admin/client-avatar";
 import {
   isClientSortField,
@@ -116,21 +117,32 @@ export default async function AdminClientsPage({
         </div>
       )}
 
-      <div className="mt-6 flex flex-col gap-4">
+      <div className="mt-6 flex flex-wrap items-center gap-3">
         <ClientFilterBar
           search={search}
           categoryId={categoryId}
           sortField={sortField}
           sortDir={sortDir}
-          categories={categories}
-          uncategorizedCount={uncategorizedCount}
         />
-        <ClientSortControl
-          sortField={sortField}
-          sortDir={sortDir}
-          search={search}
-          categoryId={categoryId}
-        />
+        <FilterMenu activeCount={categoryId ? 1 : 0}>
+          <div className="grid gap-4">
+            <ClientSortControl
+              sortField={sortField}
+              sortDir={sortDir}
+              search={search}
+              categoryId={categoryId}
+            />
+            <div className="h-px bg-line" />
+            <ClientCategoryFilter
+              search={search}
+              categoryId={categoryId}
+              sortField={sortField}
+              sortDir={sortDir}
+              categories={categories}
+              uncategorizedCount={uncategorizedCount}
+            />
+          </div>
+        </FilterMenu>
       </div>
 
       {clients.length === 0 ? (

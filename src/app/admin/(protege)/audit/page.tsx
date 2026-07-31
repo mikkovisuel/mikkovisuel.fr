@@ -1,8 +1,10 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { verifyAdminSession } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { AUDIT_ACTION_LABELS, type AuditAction } from "@/lib/audit-log";
 import { AuditLogFeed } from "@/components/admin/audit-log-feed";
+import { FilterMenu } from "@/components/admin/filter-menu";
 
 export const metadata: Metadata = {
   title: "Audit — Admin Mikko Visuel",
@@ -35,32 +37,46 @@ export default async function AuditLogPage({
         évènements les plus récents.
       </p>
 
-      <form className="mt-6 flex flex-wrap items-end gap-3">
-        <div className="flex flex-col gap-2">
-          <label htmlFor="action" className="text-sm font-medium text-ink">
-            Type d&apos;action
-          </label>
-          <select
-            id="action"
-            name="action"
-            defaultValue={action ?? ""}
-            className="rounded-xl border border-line bg-surface-elevated px-3 py-2.5 text-sm text-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
-          >
-            <option value="">Toutes les actions</option>
-            {actions.map((value) => (
-              <option key={value} value={value}>
-                {AUDIT_ACTION_LABELS[value]}
-              </option>
-            ))}
-          </select>
-        </div>
-        <button
-          type="submit"
-          className="rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-accent-ink transition-transform active:scale-[0.98]"
-        >
-          Filtrer
-        </button>
-      </form>
+      <div className="mt-6">
+        <FilterMenu activeCount={action ? 1 : 0} label="Filtres">
+          <form className="grid gap-3">
+            <div className="flex flex-col gap-2">
+              <label htmlFor="action" className="text-sm font-medium text-ink">
+                Type d&apos;action
+              </label>
+              <select
+                id="action"
+                name="action"
+                defaultValue={action ?? ""}
+                className="rounded-xl border border-line bg-surface-elevated px-3 py-2.5 text-sm text-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
+              >
+                <option value="">Toutes les actions</option>
+                {actions.map((value) => (
+                  <option key={value} value={value}>
+                    {AUDIT_ACTION_LABELS[value]}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div className="flex items-center gap-3 pt-1">
+              <button
+                type="submit"
+                className="rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-accent-ink transition-transform active:scale-[0.98]"
+              >
+                Appliquer
+              </button>
+              {action && (
+                <Link
+                  href="/admin/audit"
+                  className="text-sm text-ink-muted transition-colors hover:text-ink"
+                >
+                  Réinitialiser
+                </Link>
+              )}
+            </div>
+          </form>
+        </FilterMenu>
+      </div>
 
       <AuditLogFeed entries={entries} />
     </div>

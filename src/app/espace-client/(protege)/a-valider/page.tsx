@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { TASK_STATUS } from "@/lib/dropdown-lists";
 import { ValidateRefuseButtons } from "@/components/client/validate-refuse-buttons";
 import { FileGrid } from "@/components/file-grid";
+import { LinkifiedText } from "@/components/linkified-text";
 
 export const metadata: Metadata = {
   title: "À valider — Espace client Mikko Visuel",
@@ -39,7 +40,9 @@ export default async function ClientToValidatePage() {
                 {task.title}
               </Link>
               {task.description && (
-                <p className="mt-1 text-sm text-ink-muted">{task.description}</p>
+                <p className="mt-1 whitespace-pre-wrap text-sm text-ink-muted">
+                  <LinkifiedText text={task.description} />
+                </p>
               )}
               {task.deliverables.length > 0 && (
                 <div className="mt-4">

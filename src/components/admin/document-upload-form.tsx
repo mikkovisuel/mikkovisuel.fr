@@ -8,9 +8,13 @@ import { uploadDocument } from "@/lib/actions/files";
 export function DocumentUploadForm({
   clients,
   types,
+  onSuccess,
 }: {
   clients: { id: string; name: string }[];
   types: { id: string; label: string }[];
+  /** Appelé après un envoi réussi — sert à refermer la modale (voir
+   * NewDocumentButton), même contrat que `TaskForm`. */
+  onSuccess?: () => void;
 }) {
   const [state, formAction, pending] = useActionState(uploadDocument, undefined);
   const formRef = useRef<HTMLFormElement>(null);
@@ -21,9 +25,10 @@ export function DocumentUploadForm({
     if (wasPending.current && !pending && !state?.error) {
       formRef.current?.reset();
       setResetKey((key) => key + 1);
+      onSuccess?.();
     }
     wasPending.current = pending;
-  }, [pending, state]);
+  }, [pending, state, onSuccess]);
 
   return (
     <form ref={formRef} action={formAction} className="grid gap-4 sm:grid-cols-2">

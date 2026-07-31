@@ -8,6 +8,7 @@ import { TASK_STATUS } from "@/lib/dropdown-lists";
 import { TaskStatusTimeline } from "@/components/client/task-status-timeline";
 import { ValidateRefuseButtons } from "@/components/client/validate-refuse-buttons";
 import { FileGrid } from "@/components/file-grid";
+import { LinkifiedText } from "@/components/linkified-text";
 import { TaskCommentThread } from "@/components/task-comment-thread";
 import { postClientComment } from "@/lib/actions/comments";
 
@@ -47,7 +48,11 @@ export default async function ClientTaskDetailPage({
       <h1 className="mt-4 font-display text-2xl font-medium tracking-tight text-ink">
         {task.title}
       </h1>
-      {task.description && <p className="mt-2 text-sm text-ink-muted">{task.description}</p>}
+      {task.description && (
+        <p className="mt-2 whitespace-pre-wrap text-sm text-ink-muted">
+          <LinkifiedText text={task.description} />
+        </p>
+      )}
 
       <div className="mt-6">
         <TaskStatusTimeline statusSlug={task.status.slug} refusalReason={task.refusalReason} />

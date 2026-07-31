@@ -143,6 +143,14 @@ export function groupTasksByClient<T extends { client: { name: string } }>(tasks
 // pas des étapes à part entière ; "Non commencé" (ajouté le 2026-07-21) se
 // replie sur l'étape "Nouveau" (même chose du point de vue du client : la
 // tâche n'a pas encore démarré).
+//
+// "Bloqué" (ajouté le 2026-07-31) se replie lui aussi sur "Nouveau", au
+// même titre que "Non commencé" : il est placé avant "En cours" dans le
+// cycle, donc du point de vue du client le travail n'a pas démarré. C'est
+// un choix de repli, pas une omission — le client ne voit donc PAS qu'une
+// tâche est bloquée, seul l'admin le voit. À rouvrir si le client doit être
+// informé d'un blocage (il faudrait alors une 5e étape ou un état
+// d'avertissement, comme celui déjà utilisé pour "À modifier").
 export const TASK_PROGRESS_STEPS = [
   { key: TASK_STATUS.NOUVEAU, label: "Nouveau" },
   { key: TASK_STATUS.EN_COURS, label: "En cours" },
@@ -157,6 +165,7 @@ export function taskProgressStates(statusSlug: string): TaskProgressStepState[] 
     switch (statusSlug) {
       case TASK_STATUS.NOUVEAU:
       case TASK_STATUS.NON_COMMENCE:
+      case TASK_STATUS.BLOQUE:
         return -1;
       case TASK_STATUS.EN_COURS:
         return 0;

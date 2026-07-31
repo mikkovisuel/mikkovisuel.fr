@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { verifyAdminSession } from "@/lib/dal";
 import { db } from "@/lib/db";
-import { DocumentUploadForm } from "@/components/admin/document-upload-form";
+import { NewDocumentButton } from "@/components/admin/new-document-button";
 import { DocumentRow } from "@/components/admin/document-row";
+import { FilterMenu } from "@/components/admin/filter-menu";
 import { deleteDocument } from "@/lib/actions/files";
 import { DOCUMENT_TYPE_LIST_KEY } from "@/lib/dropdown-lists";
 import { formatAmount } from "@/lib/documents";
@@ -48,11 +49,20 @@ export default async function AdminDocumentsPage({
     .filter((doc) => doc.paymentStatus === "unpaid" && doc.amountCents !== null)
     .reduce((sum, doc) => sum + (doc.amountCents ?? 0), 0);
 
-  const hasFilters = Boolean(clientId || typeId || status);
+  const activeFilterCount = [clientId, typeId, status].filter(Boolean).length;
+
+  const selectClass =
+    "rounded-xl border border-line bg-surface-elevated px-3 py-2.5 text-sm text-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30";
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
-      <h1 className="font-display text-2xl font-medium tracking-tight text-ink">Documents</h1>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <h1 className="font-display text-2xl font-medium tracking-tight text-ink">Documents</h1>
+        <NewDocumentButton
+          clients={clients}
+          types={typeList?.items.map((item) => ({ id: item.id, label: item.label })) ?? []}
+        />
+      </div>
 
       {outstandingCents > 0 && (
         <div className="mt-6 rounded-2xl border border-line bg-surface-elevated p-4">
@@ -63,86 +73,70 @@ export default async function AdminDocumentsPage({
         </div>
       )}
 
-      <div className="mt-8 rounded-2xl border border-line p-6">
-        <DocumentUploadForm
-          clients={clients}
-          types={typeList?.items.map((item) => ({ id: item.id, label: item.label })) ?? []}
-        />
+      <div className="mt-8">
+        <FilterMenu activeCount={activeFilterCount} label="Filtres">
+          <form className="grid gap-3">
+            <div className="flex flex-col gap-2">
+              <label htmlFor="clientId" className="text-sm font-medium text-ink">
+                Client
+              </label>
+              <select id="clientId" name="clientId" defaultValue={clientId ?? ""} className={selectClass}>
+                <option value="">Tous les clients</option>
+                {clients.map((client) => (
+                  <option key={client.id} value={client.id}>
+                    {client.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <label htmlFor="typeId" className="text-sm font-medium text-ink">
+                Type
+              </label>
+              <select id="typeId" name="typeId" defaultValue={typeId ?? ""} className={selectClass}>
+                <option value="">Tous les types</option>
+                {typeList?.items.map((item) => (
+                  <option key={item.id} value={item.id}>
+                    {item.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <label htmlFor="status" className="text-sm font-medium text-ink">
+                Statut
+              </label>
+              <select id="status" name="status" defaultValue={status ?? ""} className={selectClass}>
+                <option value="">Tous les statuts</option>
+                {STATUS_OPTIONS.map((option) => (
+                  <option key={option.value} value={option.value}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex items-center gap-3 pt-1">
+              <button
+                type="submit"
+                className="rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-accent-ink transition-transform active:scale-[0.98]"
+              >
+                Appliquer
+              </button>
+              {activeFilterCount > 0 && (
+                <Link
+                  href="/admin/documents"
+                  className="text-sm text-ink-muted transition-colors hover:text-ink"
+                >
+                  Réinitialiser
+                </Link>
+              )}
+            </div>
+          </form>
+        </FilterMenu>
       </div>
-
-      <form className="mt-8 flex flex-wrap items-end gap-3">
-        <div className="flex flex-col gap-2">
-          <label htmlFor="clientId" className="text-sm font-medium text-ink">
-            Client
-          </label>
-          <select
-            id="clientId"
-            name="clientId"
-            defaultValue={clientId ?? ""}
-            className="rounded-xl border border-line bg-surface-elevated px-3 py-2.5 text-sm text-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
-          >
-            <option value="">Tous les clients</option>
-            {clients.map((client) => (
-              <option key={client.id} value={client.id}>
-                {client.name}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="flex flex-col gap-2">
-          <label htmlFor="typeId" className="text-sm font-medium text-ink">
-            Type
-          </label>
-          <select
-            id="typeId"
-            name="typeId"
-            defaultValue={typeId ?? ""}
-            className="rounded-xl border border-line bg-surface-elevated px-3 py-2.5 text-sm text-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
-          >
-            <option value="">Tous les types</option>
-            {typeList?.items.map((item) => (
-              <option key={item.id} value={item.id}>
-                {item.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div className="flex flex-col gap-2">
-          <label htmlFor="status" className="text-sm font-medium text-ink">
-            Statut
-          </label>
-          <select
-            id="status"
-            name="status"
-            defaultValue={status ?? ""}
-            className="rounded-xl border border-line bg-surface-elevated px-3 py-2.5 text-sm text-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
-          >
-            <option value="">Tous les statuts</option>
-            {STATUS_OPTIONS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <button
-          type="submit"
-          className="rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-accent-ink transition-transform active:scale-[0.98]"
-        >
-          Filtrer
-        </button>
-        {hasFilters && (
-          <Link
-            href="/admin/documents"
-            className="text-sm text-ink-muted transition-colors hover:text-ink"
-          >
-            Réinitialiser
-          </Link>
-        )}
-      </form>
 
       {documents.length === 0 ? (
         <p className="mt-8 text-sm text-ink-muted">Aucun document pour le moment.</p>
