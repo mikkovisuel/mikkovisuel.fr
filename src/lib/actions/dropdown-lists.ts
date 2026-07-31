@@ -80,7 +80,7 @@ export async function updateDropdownItem(
   });
 
   revalidatePath(`/admin/listes/${listKey}`);
-  return undefined;
+  return { success: true };
 }
 
 export async function deleteDropdownItem(itemId: string, listKey: string) {

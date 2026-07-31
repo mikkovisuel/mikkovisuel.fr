@@ -14,6 +14,7 @@ import {
   NotePencil,
   CaretLeft,
   Bell,
+  FilePdf,
 } from "@phosphor-icons/react";
 import {
   createFolder,
@@ -37,11 +38,19 @@ export interface NoteData {
   pinned: boolean;
   folderId: string | null;
   clientId: string | null;
+  // Rattachement optionnel à un prospect (2026-07-31) — mutuellement
+  // exclusif avec `clientId` : voir `assignmentValue`/`handleAssignmentChange`.
+  prospectId: string | null;
   reminderAt: string | null;
   updatedAt: string;
 }
 
 export interface ClientOption {
+  id: string;
+  name: string;
+}
+
+export interface ProspectOption {
   id: string;
   name: string;
 }
@@ -56,6 +65,23 @@ type View = { type: "all" } | { type: "pinned" } | { type: "reminders" } | { typ
 // (src/lib/tasks.ts) pour les échéances de tâches.
 function dateKey(date: Date) {
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+// Encode le rattachement client/prospect d'une note dans une seule valeur de
+// `<select>` (ajouté le 2026-07-31, "permettre l'affectation des prospects
+// également") — les deux champs sont mutuellement exclusifs en base, donc un
+// seul menu déroulant a plus de sens que deux menus indépendants qu'il
+// faudrait garder synchronisés.
+function encodeAssignment(clientId: string | null, prospectId: string | null): string {
+  if (clientId) return `client:${clientId}`;
+  if (prospectId) return `prospect:${prospectId}`;
+  return "";
+}
+
+function decodeAssignment(value: string): { clientId: string | null; prospectId: string | null } {
+  if (value.startsWith("client:")) return { clientId: value.slice(7), prospectId: null };
+  if (value.startsWith("prospect:")) return { clientId: null, prospectId: value.slice(9) };
+  return { clientId: null, prospectId: null };
 }
 
 function isReminderDue(reminderAt: string) {
@@ -96,10 +122,12 @@ export function NotesApp({
   initialFolders,
   initialNotes,
   clients,
+  prospects,
 }: {
   initialFolders: NoteFolderData[];
   initialNotes: NoteData[];
   clients: ClientOption[];
+  prospects: ProspectOption[];
 }) {
   const [folders, setFolders] = useState(initialFolders);
   const [notes, setNotes] = useState(initialNotes);
@@ -107,7 +135,11 @@ export function NotesApp({
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(initialNotes[0]?.id ?? null);
   const [mobilePane, setMobilePane] = useState<MobilePane>("folders");
   const [search, setSearch] = useState("");
-  const [clientFilter, setClientFilter] = useState<string>("");
+  // Encodé "client:<id>" / "prospect:<id>" / "" (aucun) — une note se
+  // rattache à l'un ou l'autre, jamais les deux (ajouté le 2026-07-31), donc
+  // un seul filtre/sélecteur suffit plutôt que deux menus indépendants. Voir
+  // `decodeAssignment`/`assignmentValue`.
+  const [assignmentFilter, setAssignmentFilter] = useState<string>("");
   const [isAddingFolder, setIsAddingFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
   const [editingFolderId, setEditingFolderId] = useState<string | null>(null);
@@ -148,8 +180,12 @@ export function NotesApp({
     } else if (view.type === "folder") {
       result = result.filter((note) => note.folderId === view.folderId);
     }
-    if (clientFilter) {
-      result = result.filter((note) => note.clientId === clientFilter);
+    if (assignmentFilter) {
+      const { clientId, prospectId } = decodeAssignment(assignmentFilter);
+      result = result.filter(
+        (note) =>
+          (clientId && note.clientId === clientId) || (prospectId && note.prospectId === prospectId),
+      );
     }
     const query = search.trim().toLowerCase();
     if (query) {
@@ -169,7 +205,7 @@ export function NotesApp({
       if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
       return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
     });
-  }, [notes, view, clientFilter, search]);
+  }, [notes, view, assignmentFilter, search]);
 
   const dueReminderCount = useMemo(
     () => notes.filter((note) => note.reminderAt !== null && isReminderDue(note.reminderAt)).length,
@@ -180,7 +216,8 @@ export function NotesApp({
 
   async function handleCreateNote() {
     const folderId = view.type === "folder" ? view.folderId : null;
-    const note = await createNote({ folderId, clientId: clientFilter || null });
+    const { clientId, prospectId } = decodeAssignment(assignmentFilter);
+    const note = await createNote({ folderId, clientId, prospectId });
     const created: NoteData = {
       id: note.id,
       title: note.title,
@@ -188,6 +225,7 @@ export function NotesApp({
       pinned: note.pinned,
       folderId: note.folderId,
       clientId: note.clientId,
+      prospectId: note.prospectId,
       reminderAt: note.reminderAt ? note.reminderAt.toISOString() : null,
       updatedAt: note.updatedAt.toString(),
     };
@@ -424,18 +462,31 @@ export function NotesApp({
               className="w-full rounded-md border border-line bg-surface py-1.5 pl-7 pr-2 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent"
             />
           </div>
-          {clients.length > 0 && (
+          {(clients.length > 0 || prospects.length > 0) && (
             <select
-              value={clientFilter}
-              onChange={(e) => setClientFilter(e.target.value)}
+              value={assignmentFilter}
+              onChange={(e) => setAssignmentFilter(e.target.value)}
               className="w-full rounded-md border border-line bg-surface px-2 py-1.5 text-xs text-ink-muted focus:outline-none focus:ring-1 focus:ring-accent"
             >
-              <option value="">Tous les clients</option>
-              {clients.map((client) => (
-                <option key={client.id} value={client.id}>
-                  {client.name}
-                </option>
-              ))}
+              <option value="">Tous</option>
+              {clients.length > 0 && (
+                <optgroup label="Clients">
+                  {clients.map((client) => (
+                    <option key={client.id} value={`client:${client.id}`}>
+                      {client.name}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
+              {prospects.length > 0 && (
+                <optgroup label="Prospects">
+                  {prospects.map((prospect) => (
+                    <option key={prospect.id} value={`prospect:${prospect.id}`}>
+                      {prospect.name}
+                    </option>
+                  ))}
+                </optgroup>
+              )}
             </select>
           )}
         </div>
@@ -515,18 +566,34 @@ export function NotesApp({
                     </option>
                   ))}
                 </select>
-                {clients.length > 0 && (
+                {(clients.length > 0 || prospects.length > 0) && (
                   <select
-                    value={selectedNote.clientId ?? ""}
-                    onChange={(e) => patchNote(selectedNote.id, { clientId: e.target.value || null }, true)}
+                    value={encodeAssignment(selectedNote.clientId, selectedNote.prospectId)}
+                    onChange={(e) => {
+                      const { clientId, prospectId } = decodeAssignment(e.target.value);
+                      patchNote(selectedNote.id, { clientId, prospectId }, true);
+                    }}
                     className="min-w-0 max-w-[9rem] rounded-md border border-line bg-surface px-2 py-1 text-xs text-ink-muted focus:outline-none focus:ring-1 focus:ring-accent"
                   >
-                    <option value="">Aucun client lié</option>
-                    {clients.map((client) => (
-                      <option key={client.id} value={client.id}>
-                        {client.name}
-                      </option>
-                    ))}
+                    <option value="">Aucune affectation</option>
+                    {clients.length > 0 && (
+                      <optgroup label="Clients">
+                        {clients.map((client) => (
+                          <option key={client.id} value={`client:${client.id}`}>
+                            {client.name}
+                          </option>
+                        ))}
+                      </optgroup>
+                    )}
+                    {prospects.length > 0 && (
+                      <optgroup label="Prospects">
+                        {prospects.map((prospect) => (
+                          <option key={prospect.id} value={`prospect:${prospect.id}`}>
+                            {prospect.name}
+                          </option>
+                        ))}
+                      </optgroup>
+                    )}
                   </select>
                 )}
                 <label
@@ -547,6 +614,19 @@ export function NotesApp({
                     className="w-[6.5rem] bg-transparent focus:outline-none"
                   />
                 </label>
+                {/* Export PDF ajouté le 2026-07-31 — la note doit être
+                    enregistrée pour que le contenu exporté soit à jour : le
+                    lien pointe vers une route de service qui relit la note
+                    en base, pas vers l'état encore non sauvegardé de
+                    l'éditeur. */}
+                <a
+                  href={`/api/exports/notes/${selectedNote.id}`}
+                  aria-label="Exporter en PDF"
+                  title="Exporter en PDF"
+                  className="rounded-md p-1.5 text-ink-muted transition-colors hover:bg-surface hover:text-ink"
+                >
+                  <FilePdf size={16} weight="regular" />
+                </a>
                 <button
                   onClick={() => patchNote(selectedNote.id, { pinned: !selectedNote.pinned }, true)}
                   aria-label={selectedNote.pinned ? "Désépingler" : "Épingler"}

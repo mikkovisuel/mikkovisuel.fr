@@ -32,8 +32,17 @@ export default async function AdminClientsPage({
 }) {
   await verifyAdminSession();
   const { tri, dir, q, categorie, archives } = await searchParams;
-  const sortField: ClientSortField = isClientSortField(tri) ? tri : "date_ajout";
-  const sortDir: ClientSortDir = dir === "asc" ? "asc" : "desc";
+  // Défaut alphabétique (demande du 2026-07-31) : c'était "date_ajout"
+  // depuis la création de cette page. Le contrôle de tri reste inchangé —
+  // il suffit de changer quel choix est actif quand l'URL n'en précise
+  // aucun.
+  const sortField: ClientSortField = isClientSortField(tri) ? tri : "nom";
+  // Direction par défaut dépendante du champ, pas figée à "desc" : "nom"
+  // doit s'ouvrir en A→Z (sinon le tri "alphabétique par défaut" afficherait
+  // Z→A au premier chargement), alors que "date_ajout" garde son sens
+  // d'origine (le plus récent en premier).
+  const sortDir: ClientSortDir =
+    dir === "asc" || dir === "desc" ? dir : sortField === "nom" ? "asc" : "desc";
   const search = q?.trim() ?? "";
   const categoryId = categorie ?? "";
   const showArchived = archives === "1";
@@ -168,26 +177,27 @@ export default async function AdminClientsPage({
               >
                 {/* Compteurs de contacts et de tâches retirés le 2026-07-30
                     (demande du client) : la ligne se limite à l'avatar, au nom
-                    et à la catégorie. */}
+                    et à la catégorie. Catégorie déplacée en fin de ligne le
+                    2026-07-31 (demande explicite d'alignement à droite) —
+                    auparavant collée au nom, elle produisait une longueur de
+                    ligne irrégulière d'un client à l'autre. */}
                 <div className="flex min-w-0 items-center gap-3">
                   <ClientAvatar
                     clientId={client.id}
                     name={client.name}
                     hasAvatar={Boolean(client.avatarStorageKey)}
                   />
-                  <p className="flex flex-wrap items-center gap-2 font-medium text-ink">
-                    {client.name}
-                    {client.category && (
-                      <span
-                        className={`inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${
-                          PALETTE_BADGE_CLASSES[client.category.color as PaletteColor]
-                        }`}
-                      >
-                        {client.category.label}
-                      </span>
-                    )}
-                  </p>
+                  <p className="truncate font-medium text-ink">{client.name}</p>
                 </div>
+                {client.category && (
+                  <span
+                    className={`inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${
+                      PALETTE_BADGE_CLASSES[client.category.color as PaletteColor]
+                    }`}
+                  >
+                    {client.category.label}
+                  </span>
+                )}
               </Link>
             ))}
           </div>

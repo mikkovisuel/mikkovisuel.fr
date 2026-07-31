@@ -42,6 +42,25 @@ async function getStatusItem(slug: TaskStatusSlug) {
   });
 }
 
+// Bascule les BAT de la tâche côté "livrable final" dès que le statut
+// devient "BAT validé" (demande du 2026-07-31) : un `Deliverable.kind` reste
+// "bat" tant qu'il attend une décision, mais une fois validé ce n'est plus
+// une épreuve, c'est le rendu définitif — il n'a donc plus de raison
+// d'être filigrané pour le client (voir `isBatForClient` dans
+// /api/fichiers/livrables/[id]/route.ts, qui ne filigrane que kind==="bat")
+// ni de rester dans la section "BAT" de la fiche tâche.
+//
+// Appelée depuis les 3 chemins qui peuvent mener à ce statut
+// (`validateTask`, `validateTaskByAdmin`, et `setTaskStatus` — glissé-déposé
+// Kanban ou changement direct du menu de statut) plutôt que dupliquée,
+// pour qu'aucun des trois n'oublie la bascule.
+async function promoteBatDeliverablesToFinal(taskId: string) {
+  await db.deliverable.updateMany({
+    where: { taskId, kind: "bat" },
+    data: { kind: "final" },
+  });
+}
+
 // Audit trail des changements de statut (qui, quand, vers quel statut) —
 // couvre la création (statut initial "Nouveau") et tous les changements
 // ultérieurs, admin comme client. Voir `TaskStatusHistory` dans le schéma.
@@ -337,6 +356,9 @@ export async function setTaskStatus(taskId: string, statusSlug: TaskStatusSlug) 
       ...(statusSlug === TASK_STATUS.BAT_VALIDE ? { refusalReason: null, refusedAt: null } : {}),
     },
   });
+  if (statusSlug === TASK_STATUS.BAT_VALIDE) {
+    await promoteBatDeliverablesToFinal(taskId);
+  }
   await logTaskStatusChange(taskId, statusItem, { type: "ADMIN", id: admin.id, name: "Mikko" });
 
   revalidateTaskPaths(task.clientId);
@@ -383,6 +405,7 @@ export async function validateTask(taskId: string) {
     // directement.
     data: { statusId: statusItem.id, batValidatedAt: validatedAt, refusalReason: null, refusedAt: null },
   });
+  await promoteBatDeliverablesToFinal(taskId);
   await logTaskStatusChange(taskId, statusItem, {
     type: "CLIENT_USER",
     id: clientUser.id,
@@ -475,6 +498,7 @@ export async function validateTaskByAdmin(taskId: string) {
     where: { id: taskId },
     data: { statusId: statusItem.id, batValidatedAt: validatedAt, refusalReason: null, refusedAt: null },
   });
+  await promoteBatDeliverablesToFinal(taskId);
   await logTaskStatusChange(taskId, statusItem, { type: "ADMIN", id: admin.id, name: "Mikko" });
 
   await notifyBatValidated(task.title, task.deliverables.map((d) => d.fileName), validatedAt, {

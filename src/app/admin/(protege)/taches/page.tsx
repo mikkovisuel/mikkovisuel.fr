@@ -8,7 +8,6 @@ import { TaskViewTabs, type TaskView } from "@/components/admin/task-view-tabs";
 import { CollapsibleSection } from "@/components/admin/collapsible-section";
 import { TaskKanbanBoard } from "@/components/admin/task-kanban-board";
 import { TaskCalendarView } from "@/components/admin/task-calendar-view";
-import { TaskByClientView } from "@/components/admin/task-by-client-view";
 import { ArchivedTaskList } from "@/components/admin/task-archived-list";
 import { TaskSortControl } from "@/components/admin/task-sort-control";
 import { FilterMenu } from "@/components/admin/filter-menu";
@@ -31,7 +30,11 @@ export const metadata: Metadata = {
   title: "Tâches — Admin Mikko Visuel",
 };
 
-const VALID_VIEWS: TaskView[] = ["liste", "kanban", "calendrier", "clients", "archivees"];
+// "clients" volontairement absente (vue "Par client" retirée le
+// 2026-07-31) : un ancien lien `?vue=clients` retombe donc silencieusement
+// sur "liste" via le ternaire ci-dessous, plutôt que d'afficher une vue qui
+// n'existe plus.
+const VALID_VIEWS: TaskView[] = ["liste", "kanban", "calendrier", "archivees"];
 
 export default async function AdminTasksPage({
   searchParams,
@@ -292,8 +295,6 @@ export default async function AdminTasksPage({
           status={status}
         />
       )}
-
-      {view === "clients" && <TaskByClientView tasks={tasks} statusOptions={statusOptions} />}
 
       {view === "archivees" && <ArchivedTaskList tasks={tasks} />}
 

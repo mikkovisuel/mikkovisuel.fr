@@ -25,6 +25,7 @@ export function ClientForm({
   action: (state: ClientFormState, formData: FormData) => Promise<ClientFormState>;
   defaultValues?: {
     name: string;
+    raisonSociale?: string | null;
     notes: string | null;
     address: string | null;
     siret: string | null;
@@ -57,6 +58,20 @@ export function ClientForm({
             defaultValue={defaultValues?.name}
             className={FIELD}
             placeholder="Nom de l'entreprise ou de la personne"
+          />
+        </div>
+
+        <div className="flex flex-col gap-2">
+          <label htmlFor="raisonSociale" className={LABEL}>
+            Raison sociale <span className="text-ink-muted">(facultatif)</span>
+          </label>
+          <input
+            id="raisonSociale"
+            name="raisonSociale"
+            type="text"
+            defaultValue={defaultValues?.raisonSociale ?? ""}
+            className={FIELD}
+            placeholder="Nom légal de l'entité, si différent du nom ci-dessus"
           />
         </div>
 
@@ -160,7 +175,7 @@ export function ClientForm({
 
         <div className="flex flex-col gap-2">
           <label htmlFor="driveUrl" className={LABEL}>
-            Lien Google Drive
+            Lien Drive
           </label>
           <input
             id="driveUrl"

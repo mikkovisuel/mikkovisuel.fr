@@ -6,4 +6,4 @@ export const DropdownItemSchema = z.object({
   color: z.enum(PALETTE_COLORS, { message: "Couleur invalide." }),
 });
 
-export type DropdownItemFormState = { error?: string } | undefined;
+export type DropdownItemFormState = { error?: string; success?: boolean } | undefined;

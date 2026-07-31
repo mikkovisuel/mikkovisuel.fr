@@ -45,37 +45,55 @@ export function ContactCard({
 
   return (
     <div className="px-5 py-3">
-      <button
-        type="button"
-        onClick={() => setOpen((value) => !value)}
-        aria-expanded={open}
-        className="flex w-full items-center gap-3 text-left"
-      >
-        <CaretRight
-          size={14}
-          weight="bold"
-          className={`shrink-0 text-ink-muted transition-transform ${open ? "rotate-90" : ""}`}
-        />
-        <span className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1">
-          <span className="font-medium text-ink">{contact.name}</span>
-          {contact.role && <span className="text-sm text-ink-muted">{contact.role}</span>}
-          <ContactAccessBadge state={accessState} />
-        </span>
-        <span className="hidden shrink-0 items-center gap-4 text-sm text-ink-muted sm:flex">
-          {contact.email && (
-            <span className="inline-flex items-center gap-1.5">
-              <EnvelopeSimple size={14} weight="regular" />
-              {contact.email}
-            </span>
-          )}
-          {contact.phone && (
-            <span className="inline-flex items-center gap-1.5">
-              <Phone size={14} weight="regular" />
-              {contact.phone}
-            </span>
-          )}
-        </span>
-      </button>
+      <div className="flex w-full items-center gap-3">
+        <button
+          type="button"
+          onClick={() => setOpen((value) => !value)}
+          aria-expanded={open}
+          className="flex min-w-0 flex-1 items-center gap-3 text-left"
+        >
+          <CaretRight
+            size={14}
+            weight="bold"
+            className={`shrink-0 text-ink-muted transition-transform ${open ? "rotate-90" : ""}`}
+          />
+          <span className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1">
+            <span className="font-medium text-ink">{contact.name}</span>
+            {contact.role && <span className="text-sm text-ink-muted">{contact.role}</span>}
+          </span>
+          {/* `mailto:`/`tel:` plutôt que du texte brut (demande du
+              2026-07-31) : ouvre respectivement un brouillon dans le client
+              mail par défaut et l'appli téléphone par défaut. `stopPropagation`
+              empêche le clic de replier/déplier la ligne en même temps qu'il
+              ouvre le lien. */}
+          <span className="hidden shrink-0 items-center gap-4 text-sm text-ink-muted sm:flex">
+            {contact.email && (
+              <a
+                href={`mailto:${contact.email}`}
+                onClick={(event) => event.stopPropagation()}
+                className="inline-flex items-center gap-1.5 transition-colors hover:text-ink"
+              >
+                <EnvelopeSimple size={14} weight="regular" />
+                {contact.email}
+              </a>
+            )}
+            {contact.phone && (
+              <a
+                href={`tel:${contact.phone}`}
+                onClick={(event) => event.stopPropagation()}
+                className="inline-flex items-center gap-1.5 transition-colors hover:text-ink"
+              >
+                <Phone size={14} weight="regular" />
+                {contact.phone}
+              </a>
+            )}
+          </span>
+        </button>
+        {/* Statut déplacé en fin de ligne, alignée à droite (demande du
+            2026-07-31) — auparavant collé au nom, ce qui décalait le début
+            des coordonnées d'un contact à l'autre selon la longueur du nom. */}
+        <ContactAccessBadge state={accessState} />
+      </div>
 
       {open && (
         <div className="mt-2 border-t border-line pt-3 pl-7">

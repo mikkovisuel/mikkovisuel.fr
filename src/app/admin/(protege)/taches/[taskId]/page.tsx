@@ -18,6 +18,7 @@ import { AttachmentUploadForm } from "@/components/admin/attachment-upload-form"
 import { SendDeliverablesButton } from "@/components/admin/send-deliverables-button";
 import { FileGrid } from "@/components/file-grid";
 import { TaskCommentThread } from "@/components/task-comment-thread";
+import { CollapsibleSection } from "@/components/admin/collapsible-section";
 import {
   updateTask,
   archiveTask,
@@ -97,8 +98,17 @@ export default async function TaskDetailPage({
   const runningEntry = task.timeEntries.find((entry) => entry.endedAt === null) ?? null;
   const spentMs = sumTaskTimeMs(task.timeEntries);
 
+  const batDeliverables = task.deliverables.filter((d) => d.kind === "bat");
+  const finalDeliverables = task.deliverables.filter((d) => d.kind === "final");
+
   return (
-    <div className="mx-auto max-w-2xl px-4 py-10 sm:px-6 lg:px-8">
+    // Passé de `max-w-2xl` (une seule colonne étroite) à la largeur
+    // standard de l'app, avec un vrai contenu en deux colonnes à partir de
+    // `xl` (demande du 2026-07-31, "sur toute la largeur, exemple :
+    // affichage client") — élargir le conteneur seul aurait juste étiré
+    // chaque champ sur toute la largeur de l'écran, ce qui aurait rendu le
+    // formulaire moins lisible, pas plus.
+    <div className="mx-auto max-w-7xl 2xl:max-w-[100rem] px-4 py-10 sm:px-6 lg:px-8">
       {/* Le retour pointait vers la fiche client, alors qu'on arrive presque
           toujours ici depuis la liste des tâches (signalé le 2026-07-30).
           Le client reste accessible juste à côté : c'était le seul lien vers
@@ -195,173 +205,218 @@ export default async function TaskDetailPage({
         <p className="mt-3 text-sm text-danger">Motif de refus : {task.refusalReason}</p>
       )}
 
-      <div className="mt-8">
-        <TaskEditForm
-          action={updateThisTask}
-          typeOptions={typeList?.items ?? []}
-          formatOptions={formatList?.items ?? []}
-          defaultValues={{
-            title: task.title,
-            description: task.description ?? "",
-            eventDate: toDateInputValue(task.eventDate),
-            dueDate: toDateInputValue(task.dueDate),
-            estimatedMinutes: task.estimatedMinutes?.toString() ?? "",
-            types: task.types.map((type) => type.slug),
-            formats: task.formats.map((format) => format.slug),
-          }}
-        />
+      {/* Deux colonnes à partir de `xl` (demande du 2026-07-31) : le
+          contenu principal (édition, livrables, pièces jointes,
+          commentaires) à gauche, le suivi (temps, historiques) dans une
+          colonne latérale plus étroite à droite — plutôt qu'un seul long
+          défilement où le suivi se retrouvait mélangé au contenu de
+          travail. */}
+      <div className="mt-8 grid gap-10 xl:grid-cols-[minmax(0,1fr)_20rem]">
+        <div className="flex flex-col gap-12">
+          <div>
+            <TaskEditForm
+              action={updateThisTask}
+              typeOptions={typeList?.items ?? []}
+              formatOptions={formatList?.items ?? []}
+              defaultValues={{
+                title: task.title,
+                description: task.description ?? "",
+                eventDate: toDateInputValue(task.eventDate),
+                dueDate: toDateInputValue(task.dueDate),
+                estimatedMinutes: task.estimatedMinutes?.toString() ?? "",
+                types: task.types.map((type) => type.slug),
+                formats: task.formats.map((format) => format.slug),
+              }}
+            />
+          </div>
+
+          <section>
+            <h2 className="text-sm font-medium text-ink-muted">
+              Checklist ({task.checklistItems.filter((item) => item.done).length}/
+              {task.checklistItems.length})
+            </h2>
+            <div className="mt-4">
+              <TaskChecklist
+                taskId={task.id}
+                initialItems={task.checklistItems.map((item) => ({
+                  id: item.id,
+                  label: item.label,
+                  done: item.done,
+                }))}
+              />
+            </div>
+          </section>
+
+          {/* BAT et livrables finaux séparés en deux panneaux côte à côte
+              (demande du 2026-07-31) — auparavant une seule liste mélangeait
+              les épreuves en attente de validation et le travail
+              définitivement livré, sans distinction visuelle. Un BAT
+              rejoint automatiquement le panneau "Livrables" (et perd son
+              filigrane côté client) dès que la tâche passe au statut "BAT
+              validé" — voir `promoteBatDeliverablesToFinal`. */}
+          <section>
+            <h2 className="text-sm font-medium text-ink-muted">
+              Livrables ({task.deliverables.length})
+            </h2>
+            <div className="mt-4 grid gap-6 sm:grid-cols-2">
+              <div>
+                <h3 className="text-xs font-medium uppercase tracking-wide text-ink-muted">
+                  BAT à valider ({batDeliverables.length})
+                </h3>
+                <div className="mt-3">
+                  {batDeliverables.length > 0 ? (
+                    <FileGrid
+                      files={batDeliverables}
+                      downloadBasePath="/api/fichiers/livrables"
+                      deleteAction={deleteDeliverable}
+                    />
+                  ) : (
+                    <p className="text-sm text-ink-muted">Aucun BAT en attente.</p>
+                  )}
+                </div>
+              </div>
+              <div>
+                <h3 className="text-xs font-medium uppercase tracking-wide text-ink-muted">
+                  Livrables finaux ({finalDeliverables.length})
+                </h3>
+                <div className="mt-3">
+                  {finalDeliverables.length > 0 ? (
+                    <FileGrid
+                      files={finalDeliverables}
+                      downloadBasePath="/api/fichiers/livrables"
+                      deleteAction={deleteDeliverable}
+                    />
+                  ) : (
+                    <p className="text-sm text-ink-muted">Aucun livrable final.</p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="mt-4">
+              <SendDeliverablesButton
+                taskId={task.id}
+                sentAt={task.deliverablesSentAt}
+                canSend={Boolean(task.client.billingEmail) && finalDeliverables.length > 0}
+                disabledReason={
+                  !task.client.billingEmail
+                    ? "Ajoutez un email de facturation sur la fiche client pour envoyer les livrables"
+                    : "Aucun livrable final à envoyer"
+                }
+                mailDraftHref={
+                  task.client.billingEmail
+                    ? buildDeliverablesMailDraft({
+                        to: task.client.billingEmail,
+                        taskTitle: task.title,
+                        eventDate: task.eventDate,
+                      })
+                    : null
+                }
+              />
+            </div>
+
+            <div className="mt-4">
+              <DeliverableUploadForm action={uploadDeliverable.bind(null, task.id)} />
+            </div>
+          </section>
+
+          <section>
+            <h2 className="text-sm font-medium text-ink-muted">
+              Pièces jointes ({task.attachments.length})
+            </h2>
+
+            {task.attachments.length > 0 && (
+              <div className="mt-4">
+                <FileGrid
+                  files={task.attachments}
+                  downloadBasePath="/api/fichiers/pieces-jointes"
+                  deleteAction={deleteAttachment}
+                />
+              </div>
+            )}
+
+            <div className="mt-4">
+              <AttachmentUploadForm action={uploadAttachment.bind(null, task.id)} />
+            </div>
+          </section>
+
+          <section>
+            <h2 className="text-sm font-medium text-ink-muted">
+              Commentaires ({task.comments.length})
+            </h2>
+            <div className="mt-4">
+              <TaskCommentThread
+                comments={task.comments}
+                currentAuthorType="ADMIN"
+                action={postAdminComment.bind(null, task.id)}
+              />
+            </div>
+          </section>
+        </div>
+
+        <div className="flex flex-col gap-10">
+          <section>
+            <h2 className="text-sm font-medium text-ink-muted">Temps passé</h2>
+            <div className="mt-4">
+              <TaskTimeGauge spentMs={spentMs} estimatedMinutes={task.estimatedMinutes} />
+            </div>
+            <div className="mt-4">
+              <TaskTimeEntries taskId={task.id} entries={task.timeEntries} />
+            </div>
+          </section>
+
+          {/* Repliées par défaut (demande du 2026-07-31, "Historique des
+              statuts" nommément — le même traitement est appliqué à
+              "Historique des refus" pour rester cohérent, plutôt que
+              d'alléger l'un et laisser l'autre continuer à pousser le reste
+              de la page vers le bas). */}
+          {task.statusHistory.length > 0 && (
+            <section>
+              <CollapsibleSection title="Historique des statuts" count={task.statusHistory.length}>
+                <ul className="flex flex-col gap-3">
+                  {task.statusHistory.map((entry) => (
+                    <li
+                      key={entry.id}
+                      className="rounded-2xl border border-line bg-surface-elevated p-3 text-sm"
+                    >
+                      <p className="text-xs text-ink-muted">
+                        {taskDateTimeFormatter.format(entry.changedAt)}
+                      </p>
+                      <p className="mt-1 text-ink">
+                        Statut changé en <span className="font-medium">{entry.statusLabel}</span>{" "}
+                        par {entry.changedByName}{" "}
+                        <span className="text-ink-muted">
+                          ({entry.changedByType === "ADMIN" ? "admin" : "client"})
+                        </span>
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              </CollapsibleSection>
+            </section>
+          )}
+
+          {task.refusalHistory.length > 0 && (
+            <section>
+              <CollapsibleSection title="Historique des refus" count={task.refusalHistory.length}>
+                <ul className="flex flex-col gap-3">
+                  {task.refusalHistory.map((entry) => (
+                    <li
+                      key={entry.id}
+                      className="rounded-2xl border border-line bg-surface-elevated p-3 text-sm"
+                    >
+                      <p className="text-xs text-ink-muted">
+                        {taskDateFormatter.format(entry.refusedAt)}
+                      </p>
+                      <p className="mt-1 whitespace-pre-wrap text-ink">{entry.reason}</p>
+                    </li>
+                  ))}
+                </ul>
+              </CollapsibleSection>
+            </section>
+          )}
+        </div>
       </div>
-
-      <section className="mt-12">
-        <h2 className="text-sm font-medium text-ink-muted">
-          Checklist ({task.checklistItems.filter((item) => item.done).length}/
-          {task.checklistItems.length})
-        </h2>
-        <div className="mt-4">
-          <TaskChecklist
-            taskId={task.id}
-            initialItems={task.checklistItems.map((item) => ({
-              id: item.id,
-              label: item.label,
-              done: item.done,
-            }))}
-          />
-        </div>
-      </section>
-
-      <section className="mt-12">
-        <h2 className="text-sm font-medium text-ink-muted">Temps passé</h2>
-        <div className="mt-4">
-          <TaskTimeGauge spentMs={spentMs} estimatedMinutes={task.estimatedMinutes} />
-        </div>
-        <div className="mt-4">
-          <TaskTimeEntries taskId={task.id} entries={task.timeEntries} />
-        </div>
-      </section>
-
-      {task.statusHistory.length > 0 && (
-        <section className="mt-12">
-          <h2 className="text-sm font-medium text-ink-muted">
-            Historique des statuts ({task.statusHistory.length})
-          </h2>
-          <ul className="mt-4 flex flex-col gap-3">
-            {task.statusHistory.map((entry) => (
-              <li
-                key={entry.id}
-                className="rounded-2xl border border-line bg-surface-elevated p-3 text-sm"
-              >
-                <p className="text-xs text-ink-muted">
-                  {taskDateTimeFormatter.format(entry.changedAt)}
-                </p>
-                <p className="mt-1 text-ink">
-                  Statut changé en <span className="font-medium">{entry.statusLabel}</span> par{" "}
-                  {entry.changedByName}{" "}
-                  <span className="text-ink-muted">
-                    ({entry.changedByType === "ADMIN" ? "admin" : "client"})
-                  </span>
-                </p>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      {task.refusalHistory.length > 0 && (
-        <section className="mt-12">
-          <h2 className="text-sm font-medium text-ink-muted">
-            Historique des refus ({task.refusalHistory.length})
-          </h2>
-          <ul className="mt-4 flex flex-col gap-3">
-            {task.refusalHistory.map((entry) => (
-              <li
-                key={entry.id}
-                className="rounded-2xl border border-line bg-surface-elevated p-3 text-sm"
-              >
-                <p className="text-xs text-ink-muted">{taskDateFormatter.format(entry.refusedAt)}</p>
-                <p className="mt-1 whitespace-pre-wrap text-ink">{entry.reason}</p>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
-
-      <section className="mt-12">
-        <h2 className="text-sm font-medium text-ink-muted">
-          Livrables ({task.deliverables.length})
-        </h2>
-
-        {task.deliverables.length > 0 && (
-          <div className="mt-4">
-            <FileGrid
-              files={task.deliverables}
-              downloadBasePath="/api/fichiers/livrables"
-              deleteAction={deleteDeliverable}
-            />
-          </div>
-        )}
-
-        <div className="mt-4">
-          <SendDeliverablesButton
-            taskId={task.id}
-            sentAt={task.deliverablesSentAt}
-            canSend={
-              Boolean(task.client.billingEmail) &&
-              task.deliverables.some((d) => d.kind === "final")
-            }
-            disabledReason={
-              !task.client.billingEmail
-                ? "Ajoutez un email de facturation sur la fiche client pour envoyer les livrables"
-                : "Aucun livrable final à envoyer"
-            }
-            mailDraftHref={
-              task.client.billingEmail
-                ? buildDeliverablesMailDraft({
-                    to: task.client.billingEmail,
-                    taskTitle: task.title,
-                    eventDate: task.eventDate,
-                  })
-                : null
-            }
-          />
-        </div>
-
-        <div className="mt-4">
-          <DeliverableUploadForm action={uploadDeliverable.bind(null, task.id)} />
-        </div>
-      </section>
-
-      <section className="mt-12">
-        <h2 className="text-sm font-medium text-ink-muted">
-          Pièces jointes ({task.attachments.length})
-        </h2>
-
-        {task.attachments.length > 0 && (
-          <div className="mt-4">
-            <FileGrid
-              files={task.attachments}
-              downloadBasePath="/api/fichiers/pieces-jointes"
-              deleteAction={deleteAttachment}
-            />
-          </div>
-        )}
-
-        <div className="mt-4">
-          <AttachmentUploadForm action={uploadAttachment.bind(null, task.id)} />
-        </div>
-      </section>
-
-      <section className="mt-12">
-        <h2 className="text-sm font-medium text-ink-muted">
-          Commentaires ({task.comments.length})
-        </h2>
-        <div className="mt-4">
-          <TaskCommentThread
-            comments={task.comments}
-            currentAuthorType="ADMIN"
-            action={postAdminComment.bind(null, task.id)}
-          />
-        </div>
-      </section>
     </div>
   );
 }

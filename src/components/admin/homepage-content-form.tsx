@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { WarningCircle } from "@phosphor-icons/react/dist/ssr";
+import { WarningCircle, CheckCircle } from "@phosphor-icons/react/dist/ssr";
 import { updateHomepageContent } from "@/lib/actions/homepage-content";
 
 export function HomepageContentForm({
@@ -82,6 +82,12 @@ export function HomepageContentForm({
         <div className="flex items-center gap-2 text-sm text-danger">
           <WarningCircle size={16} weight="fill" />
           {state.error}
+        </div>
+      )}
+      {state?.success && (
+        <div className="flex items-center gap-2 text-sm text-accent">
+          <CheckCircle size={16} weight="fill" />
+          Contenu enregistré.
         </div>
       )}
       <div>

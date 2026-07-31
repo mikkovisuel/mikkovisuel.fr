@@ -304,6 +304,9 @@ export async function uploadDocument(
   const amountRaw = formData.get("amountEuros");
   const clientId = formData.get("clientId");
   const dueDateRaw = formData.get("dueDate");
+  const isMonthlyInvoice = formData.get("isMonthlyInvoice") === "on";
+  const invoiceYearRaw = formData.get("invoiceYear");
+  const invoiceMonthRaw = formData.get("invoiceMonth");
 
   if (!(file instanceof File) || file.size === 0) {
     return { error: "Choisissez un fichier." };
@@ -337,6 +340,16 @@ export async function uploadDocument(
     amountCents = Math.round(parsedAmount * 100);
   }
 
+  let invoiceYear: number | null = null;
+  let invoiceMonth: number | null = null;
+  if (isMonthlyInvoice) {
+    invoiceYear = typeof invoiceYearRaw === "string" ? Number.parseInt(invoiceYearRaw, 10) : NaN;
+    invoiceMonth = typeof invoiceMonthRaw === "string" ? Number.parseInt(invoiceMonthRaw, 10) : NaN;
+    if (!invoiceYear || !invoiceMonth || invoiceMonth < 1 || invoiceMonth > 12) {
+      return { error: "Choisissez l'année et le mois de la facture mensuelle." };
+    }
+  }
+
   const client = await db.client.findUnique({
     where: { id: clientId },
     include: { users: true },
@@ -360,6 +373,9 @@ export async function uploadDocument(
       paymentStatus: amountCents !== null ? "unpaid" : "n/a",
       dueDate: typeof dueDateRaw === "string" && dueDateRaw ? new Date(dueDateRaw) : null,
       uploadedByAdminId: admin.id,
+      isMonthlyInvoice,
+      invoiceYear,
+      invoiceMonth,
     },
   });
 

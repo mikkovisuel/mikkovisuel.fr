@@ -30,6 +30,7 @@ export async function createClient(
 
   const parsed = ClientSchema.safeParse({
     name: formData.get("name"),
+    raisonSociale: formData.get("raisonSociale"),
     notes: formData.get("notes"),
     address: formData.get("address"),
     siret: formData.get("siret"),
@@ -56,6 +57,7 @@ export async function updateClient(
 
   const parsed = ClientSchema.safeParse({
     name: formData.get("name"),
+    raisonSociale: formData.get("raisonSociale"),
     notes: formData.get("notes"),
     address: formData.get("address"),
     siret: formData.get("siret"),
@@ -71,7 +73,7 @@ export async function updateClient(
   await db.client.update({ where: { id: clientId }, data: parsed.data });
   revalidatePath(`/admin/clients/${clientId}`);
   revalidatePath("/admin/clients");
-  return undefined;
+  return { success: true };
 }
 
 const MAX_AVATAR_SIZE = 5 * 1024 * 1024;

@@ -10,5 +10,5 @@ export const MediaItemSchema = z.object({
   aspectRatio: z.enum(["3:4", "9:16"]),
 });
 
-export type PillarFormState = { error?: string } | undefined;
+export type PillarFormState = { error?: string; success?: boolean } | undefined;
 export type MediaItemFormState = { error?: string } | undefined;

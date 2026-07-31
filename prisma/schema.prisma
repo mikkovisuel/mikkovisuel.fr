@@ -46,6 +46,11 @@ model Admin {
 model Client {
   id           String   @id @default(cuid())
   name         String
+  // Raison sociale — le nom légal de l'entité (ex. "SASU SAJJ"), distinct
+  // du nom commercial/de scène utilisé partout ailleurs dans l'app (ex.
+  // "QG Club"). Ajouté le 2026-07-31, nullable : la catégorie "Particulier"
+  // n'a pas de raison sociale, et les clients existants n'en ont pas.
+  raisonSociale String?
   notes        String?
   address      String?
   siret        String?
@@ -91,6 +96,7 @@ model Client {
   users          ClientUser[]
   tasks          Task[]
   documents      Document[]
+  paymentRecords PaymentRecord[]
   // Nommé différemment du champ `notes` (texte libre juste au-dessus) —
   // celui-ci est la relation vers le module de notes internes (Note[]).
   linkedNotes    Note[]
@@ -329,6 +335,10 @@ model Prospect {
   updatedAt DateTime @updatedAt
 
   activity ProspectActivity[]
+  // Nommé différemment du champ `notes` (texte libre juste au-dessus) —
+  // celui-ci est la relation vers le module de notes internes, même
+  // convention que `Client.linkedNotes`.
+  linkedNotes Note[]
 }
 
 // Mini fil d'historique par prospect (créé, changement de statut, email
@@ -505,6 +515,72 @@ model Document {
   acceptedByName          String?
   signatureDataUrl        String?      @db.Text
   acceptedFromIp          String?
+  // Rattachement d'une facture à un mois précis pour le rapport Temps &
+  // rentabilité (demande du 2026-07-31) — distinct de `uploadedAt` : un
+  // client facturé au forfait mensuel doit compter sur le mois convenu, pas
+  // sur la date à laquelle la facture a été chargée dans l'app, qui peut
+  // décaler de plusieurs jours. Uniquement pertinent quand
+  // `isMonthlyInvoice` est vrai ; les clients facturés à la tâche laissent
+  // les trois champs à leur valeur par défaut et continuent d'utiliser
+  // `uploadedAt` comme avant.
+  isMonthlyInvoice        Boolean      @default(false)
+  invoiceYear             Int?
+  invoiceMonth            Int?
+}
+
+// Document interne sans client associé (Commercial / Société) — brochures,
+// plaquettes, K-bis, statuts... Volontairement séparé de `Document` plutôt
+// qu'un `clientId` rendu nullable dessus : `Document` est utilisé partout
+// (facturation, exports, purge, Finances) en présumant un client, et
+// blurrer cette garantie pour deux catégories qui n'ont explicitement "pas
+// d'affectation" (demande du 2026-07-31) aurait forcé à revérifier chacun
+// de ces usages. Consultation/téléchargement/suppression uniquement, pas
+// de montant ni de statut de paiement.
+model CompanyDocument {
+  id                String   @id @default(cuid())
+  // "commercial" | "societe" — voir COMPANY_DOCUMENT_CATEGORY
+  // (src/lib/dropdown-lists.ts). Catégories fixes, pas une DropdownList :
+  // structurelles, pas une liste que l'admin doit pouvoir renommer/colorer.
+  category          String
+  fileName          String
+  storageKey        String
+  mimeType          String
+  sizeBytes         Int
+  storageBackend    String
+  uploadedAt        DateTime @default(now())
+}
+
+// Suivi d'un paiement sans document de facture associé (acompte reçu par
+// virement, règlement en espèces...) — demande du 2026-07-31. Distinct de
+// `Document` : aucun fichier n'est nécessairement lié, juste un montant et
+// un statut à cocher.
+model PaymentRecord {
+  id            String    @id @default(cuid())
+  clientId      String
+  client        Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  label         String?
+  amountCents   Int
+  currency      String    @default("EUR")
+  paymentStatus String    @default("unpaid")
+  paidAt        DateTime?
+  createdAt     DateTime  @default(now())
+}
+
+// Image insérée dans une note (ajouté le 2026-07-31) — pas de relation vers
+// `Note` : une note peut contenir plusieurs images et en perdre au fil de
+// l'édition de son HTML, un lien 1-N figé n'aurait pas de sens. Chaque ligne
+// existe uniquement pour donner une route de service stable
+// (`/api/fichiers/notes-images/[id]`) à l'`<img>` inséré dans le contenu.
+// Connu et accepté : si une image est retirée du texte, le fichier reste en
+// stockage (pas de purge automatique) — même compromis que d'autres médias
+// intégrés en ligne dans ce projet.
+model NoteImage {
+  id             String   @id @default(cuid())
+  storageKey     String
+  mimeType       String
+  sizeBytes      Int
+  storageBackend String
+  createdAt      DateTime @default(now())
 }
 
 // Singleton (toujours id "settings") pour les réglages ajustables en direct
@@ -633,6 +709,13 @@ model Note {
   // exposé côté espace client.
   clientId       String?
   client         Client?     @relation(fields: [clientId], references: [id], onDelete: SetNull)
+  // Rattachement optionnel à un prospect (ajouté le 2026-07-31, même esprit
+  // que `clientId` ci-dessus) — une note ne peut se rattacher qu'à l'un OU
+  // l'autre, jamais les deux (voir la validation dans `createNote`/
+  // `updateNote`), un prospect converti devient un client via
+  // `convertProspectToClient`, pas les deux à la fois.
+  prospectId     String?
+  prospect       Prospect?   @relation(fields: [prospectId], references: [id], onDelete: SetNull)
   // Rappel façon pense-bête (ex. "me rappeler ça le 12/08") — une date, pas
   // une heure précise. `reminderSentAt` évite qu'un cron quotidien
   // (src/app/api/cron/note-reminders) renvoie le même rappel plusieurs fois ;
@@ -645,6 +728,7 @@ model Note {
 
   @@index([folderId])
   @@index([clientId])
+  @@index([prospectId])
 }
 
 // Journal d'audit global — actions sensibles uniquement (connexions,

@@ -6,7 +6,7 @@ import { verifyAdminSession } from "@/lib/dal";
 
 const CONTENT_ID = "homepage";
 
-export type HomepageContentFormState = { error?: string } | undefined;
+export type HomepageContentFormState = { error?: string; success?: boolean } | undefined;
 
 function textOrNull(value: FormDataEntryValue | null) {
   if (typeof value !== "string") return null;
@@ -36,5 +36,5 @@ export async function updateHomepageContent(
 
   revalidatePath("/");
   revalidatePath("/admin/portfolio");
-  return undefined;
+  return { success: true };
 }

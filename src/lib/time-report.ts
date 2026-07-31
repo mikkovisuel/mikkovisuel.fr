@@ -5,28 +5,6 @@ import { sumTaskTimeMs, type TimeEntryLike } from "@/lib/time-tracking";
 // sources existaient déjà séparément (chrono des tâches d'un côté, page
 // Finances de l'autre) mais n'avaient jamais été rapprochées.
 
-export type ReportPeriod = "30j" | "12m" | "tout";
-
-export const REPORT_PERIODS: { value: ReportPeriod; label: string }[] = [
-  { value: "30j", label: "30 derniers jours" },
-  { value: "12m", label: "12 derniers mois" },
-  { value: "tout", label: "Depuis le début" },
-];
-
-export function isReportPeriod(value: string | undefined): value is ReportPeriod {
-  return REPORT_PERIODS.some((period) => period.value === value);
-}
-
-// `null` = pas de borne basse (toute l'histoire).
-export function periodStart(period: ReportPeriod, now: Date = new Date()): Date | null {
-  if (period === "tout") return null;
-  const start = new Date(now);
-  if (period === "30j") start.setDate(start.getDate() - 30);
-  else start.setMonth(start.getMonth() - 12);
-  start.setHours(0, 0, 0, 0);
-  return start;
-}
-
 export interface ClientTimeRow {
   clientId: string;
   clientName: string;

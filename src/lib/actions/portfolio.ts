@@ -171,7 +171,7 @@ export async function updatePillar(
   revalidatePath(`/portfolio/${pillar.slug}`);
   revalidatePath(`/admin/portfolio/${pillarId}`);
   revalidatePath("/admin/portfolio");
-  return undefined;
+  return { success: true };
 }
 
 export async function deletePillar(pillarId: string) {

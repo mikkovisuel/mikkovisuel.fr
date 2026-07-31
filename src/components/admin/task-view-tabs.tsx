@@ -1,12 +1,16 @@
 import Link from "next/link";
 
+// "clients" (vue "Par client") retirée le 2026-07-31 (demande explicite) —
+// le type garde la valeur pour ne pas invalider un ancien lien `?vue=clients`
+// en favori ou en historique de navigateur : la page retombe silencieusement
+// sur "liste" (voir VALID_VIEWS dans /admin/taches/page.tsx), plutôt que sur
+// une page cassée.
 export type TaskView = "liste" | "kanban" | "calendrier" | "clients" | "archivees";
 
 const VIEWS: { value: TaskView; label: string }[] = [
   { value: "liste", label: "Liste" },
   { value: "kanban", label: "Kanban" },
   { value: "calendrier", label: "Calendrier" },
-  { value: "clients", label: "Par client" },
   { value: "archivees", label: "Archivées" },
 ];
 

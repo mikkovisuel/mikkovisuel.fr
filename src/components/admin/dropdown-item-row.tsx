@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { ArrowUp, ArrowDown, WarningCircle } from "@phosphor-icons/react/dist/ssr";
+import { ArrowUp, ArrowDown, WarningCircle, Check } from "@phosphor-icons/react/dist/ssr";
 import { ColorSelect } from "@/components/admin/color-select";
 import { DeleteButton } from "@/components/admin/delete-button";
 import { updateDropdownItem, deleteDropdownItem, moveDropdownItem } from "@/lib/actions/dropdown-lists";
@@ -35,6 +35,16 @@ export function DropdownItemRow({ item, listId, listKey, isFirst, isLast }: Drop
         >
           {pending ? "..." : "Enregistrer"}
         </button>
+        {/* Absente avant le 2026-07-31 : un enregistrement réussi ne
+            donnait alors aucun signe visible, contrairement à
+            ContactEditForm dont ce composant reprend maintenant le motif
+            exact (icône + libellé). */}
+        {state?.success && (
+          <span className="flex items-center gap-1 text-sm text-ink-muted">
+            <Check size={14} weight="bold" />
+            Enregistré
+          </span>
+        )}
         {state?.error && (
           <span className="flex items-center gap-1 text-sm text-danger">
             <WarningCircle size={16} weight="fill" />

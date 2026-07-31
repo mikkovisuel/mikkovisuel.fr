@@ -1,4 +1,11 @@
-import { DownloadSimple, PaperPlaneTilt, PencilSimpleLine } from "@phosphor-icons/react/dist/ssr";
+import {
+  DownloadSimple,
+  PaperPlaneTilt,
+  PencilSimpleLine,
+  CurrencyCircleDollar,
+  BellSimple,
+  Trash,
+} from "@phosphor-icons/react/dist/ssr";
 import {
   setDocumentPaymentStatus,
   sendPaymentReminder,
@@ -15,6 +22,9 @@ const SENT_AT_FORMATTER = new Intl.DateTimeFormat("fr-FR", {
   year: "numeric",
 });
 
+const ICON_BUTTON =
+  "flex h-8 w-8 items-center justify-center rounded-full border border-line text-ink-muted transition-colors hover:border-accent hover:bg-accent hover:text-accent-ink";
+
 interface DocumentRowProps {
   document: {
     id: string;
@@ -26,6 +36,9 @@ interface DocumentRowProps {
     sentAt: Date | null;
     acceptedAt?: Date | null;
     acceptedByName?: string | null;
+    isMonthlyInvoice?: boolean;
+    invoiceYear?: number | null;
+    invoiceMonth?: number | null;
     type: { label: string; slug?: string };
     client?: { name: string };
   };
@@ -39,6 +52,10 @@ interface DocumentRowProps {
   deleteAction?: (id: string) => Promise<void>;
 }
 
+// Toutes les actions sont passées en icônes (demande du 2026-07-31) — la
+// version précédente alignait 4 à 5 boutons texte, qui débordaient sur
+// plusieurs lignes dès qu'un document avait un montant et un email de
+// facturation. Tient désormais sur une seule ligne à partir de `sm`.
 export function DocumentRow({
   document,
   showClient = false,
@@ -49,7 +66,7 @@ export function DocumentRow({
 
   return (
     <div className="flex flex-col gap-3 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
-      <div>
+      <div className="min-w-0">
         <p className="font-medium text-ink">{document.fileName}</p>
         <p className="mt-1 text-sm text-ink-muted">
           {showClient && document.client && `${document.client.name} · `}
@@ -59,6 +76,12 @@ export function DocumentRow({
           {document.paymentStatus === "unpaid" && " · en attente de paiement"}
           {document.paymentStatus === "paid" && " · payée"}
           {document.dueDate && ` · échéance le ${dueDateFormatter.format(document.dueDate)}`}
+          {document.isMonthlyInvoice && document.invoiceYear && document.invoiceMonth && (
+            <>
+              {" · mensuelle "}
+              {String(document.invoiceMonth).padStart(2, "0")}/{document.invoiceYear}
+            </>
+          )}
         </p>
         {overdue && <p className="mt-1 text-sm font-medium text-danger">En retard</p>}
         <p className="mt-1 flex items-center gap-1.5 text-sm text-ink-muted">
@@ -78,7 +101,7 @@ export function DocumentRow({
           </p>
         )}
       </div>
-      <div className="flex flex-wrap items-center gap-3">
+      <div className="flex shrink-0 flex-wrap items-center gap-2">
         {document.amountCents !== null && (
           <form
             action={setDocumentPaymentStatus.bind(
@@ -89,62 +112,58 @@ export function DocumentRow({
           >
             <button
               type="submit"
-              className="rounded-full border border-line px-4 py-2 text-sm text-ink transition-colors hover:border-accent hover:bg-accent hover:text-accent-ink"
+              title={document.paymentStatus === "paid" ? "Marquer comme impayée" : "Marquer comme payée"}
+              aria-label={document.paymentStatus === "paid" ? "Marquer comme impayée" : "Marquer comme payée"}
+              className={ICON_BUTTON}
             >
-              {document.paymentStatus === "paid" ? "Marquer comme impayée" : "Marquer comme payée"}
+              <CurrencyCircleDollar size={16} weight={document.paymentStatus === "paid" ? "fill" : "regular"} />
             </button>
           </form>
         )}
         {document.paymentStatus === "unpaid" && (
           <form action={sendPaymentReminder.bind(null, document.id)}>
-            <button
-              type="submit"
-              className="rounded-full border border-line px-4 py-2 text-sm text-ink transition-colors hover:border-accent hover:bg-accent hover:text-accent-ink"
-            >
-              Envoyer une relance
+            <button type="submit" title="Envoyer une relance" aria-label="Envoyer une relance" className={ICON_BUTTON}>
+              <BellSimple size={16} weight="regular" />
             </button>
           </form>
         )}
         {billingEmail ? (
           <>
             <form action={sendDocumentByEmail.bind(null, document.id)}>
-              <button
-                type="submit"
-                className="rounded-full border border-line px-4 py-2 text-sm text-ink transition-colors hover:border-accent hover:bg-accent hover:text-accent-ink"
-              >
-                Envoyer le document
+              <button type="submit" title="Envoyer le document" aria-label="Envoyer le document" className={ICON_BUTTON}>
+                <PaperPlaneTilt size={16} weight="regular" />
               </button>
             </form>
             {/* Ouvre la messagerie de l'admin avec un brouillon prérempli —
                 sans pièce jointe, impossible en `mailto:` (voir
                 src/lib/mail-draft.ts). Ne marque donc pas `sentAt`. */}
             <a
-              href={buildDocumentMailDraft({
-                to: billingEmail,
-                fileName: document.fileName,
-              })}
-              className="inline-flex items-center gap-2 self-start rounded-full border border-line px-4 py-2 text-sm text-ink transition-colors hover:border-accent hover:bg-accent hover:text-accent-ink"
+              href={buildDocumentMailDraft({ to: billingEmail, fileName: document.fileName })}
+              title="Préparer le mail"
+              aria-label="Préparer le mail"
+              className={ICON_BUTTON}
             >
               <PencilSimpleLine size={16} weight="regular" />
-              Préparer le mail
             </a>
           </>
         ) : (
-          <span className="text-xs text-ink-muted">
-            Ajoutez un email de facturation pour envoyer ce document
-          </span>
+          <span className="text-xs text-ink-muted">Pas d&apos;email de facturation</span>
         )}
         <a
           href={`/api/fichiers/documents/${document.id}`}
-          className="inline-flex items-center gap-2 self-start rounded-full border border-line px-4 py-2 text-sm text-ink transition-colors hover:border-accent hover:bg-accent hover:text-accent-ink"
+          title="Télécharger"
+          aria-label="Télécharger"
+          className={ICON_BUTTON}
         >
           <DownloadSimple size={16} weight="regular" />
-          Télécharger
         </a>
         {deleteAction && (
           <DeleteButton
             action={deleteAction.bind(null, document.id)}
             confirmMessage={`Supprimer définitivement "${document.fileName}" ? Le fichier sera effacé du stockage et ne pourra pas être récupéré.`}
+            label="Supprimer"
+            icon={<Trash size={16} weight="regular" />}
+            className={`${ICON_BUTTON} hover:border-danger hover:bg-danger hover:text-white`}
           />
         )}
       </div>

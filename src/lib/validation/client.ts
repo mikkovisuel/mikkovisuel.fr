@@ -10,6 +10,10 @@ const emptyToNull = (val: unknown) => (typeof val === "string" && val.trim() ===
 
 export const ClientSchema = z.object({
   name: z.string().trim().min(1, { message: "Le nom est requis." }),
+  // `emptyToNull`, comme `billingEmail`/`driveUrl` ci-dessous : un champ
+  // vidé doit écraser l'ancienne valeur en base (`null`), pas la laisser
+  // intacte (ce que ferait `undefined`, ignoré par Prisma).
+  raisonSociale: z.preprocess(emptyToNull, z.string().trim().nullable()),
   notes: z.string().trim().optional(),
   address: z.string().trim().optional(),
   siret: z.string().trim().optional(),
@@ -81,6 +85,6 @@ export const ContactCreateSchema = z
 // effet de bord.
 export const ContactEditSchema = z.object(contactBaseFields);
 
-export type ClientFormState = { error?: string } | undefined;
+export type ClientFormState = { error?: string; success?: boolean } | undefined;
 export type ContactFormState = { error?: string } | undefined;
 export type ContactEditFormState = { error?: string; success?: boolean } | undefined;

@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useRef, useEffect, useState } from "react";
-import { WarningCircle } from "@phosphor-icons/react/dist/ssr";
+import { WarningCircle, CheckCircle } from "@phosphor-icons/react/dist/ssr";
 import { FilePicker } from "@/components/file-picker";
 import { updateHomepageHero } from "@/lib/actions/homepage";
 
@@ -37,6 +37,12 @@ export function HomepageHeroForm() {
         <div className="flex items-center gap-2 text-sm text-danger sm:col-span-2">
           <WarningCircle size={16} weight="fill" />
           {state.error}
+        </div>
+      )}
+      {state?.success && (
+        <div className="flex items-center gap-2 text-sm text-accent sm:col-span-2">
+          <CheckCircle size={16} weight="fill" />
+          Image enregistrée.
         </div>
       )}
       <div className="sm:col-span-2">

@@ -4,9 +4,14 @@ import { verifyAdminSession } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { NewDocumentButton } from "@/components/admin/new-document-button";
 import { DocumentRow } from "@/components/admin/document-row";
+import { DocumentBinView } from "@/components/admin/document-bin-view";
+import { CompanyDocumentUploadForm } from "@/components/admin/company-document-upload-form";
+import { CompanyDocumentRow } from "@/components/admin/company-document-row";
+import { PaymentRecordForm } from "@/components/admin/payment-record-form";
+import { PaymentRecordRow } from "@/components/admin/payment-record-row";
 import { FilterMenu } from "@/components/admin/filter-menu";
 import { deleteDocument } from "@/lib/actions/files";
-import { DOCUMENT_TYPE_LIST_KEY } from "@/lib/dropdown-lists";
+import { DOCUMENT_TYPE_LIST_KEY, COMPANY_DOCUMENT_CATEGORY, COMPANY_DOCUMENT_CATEGORY_LABELS } from "@/lib/dropdown-lists";
 import { formatAmount } from "@/lib/documents";
 import { ACTIVE_CLIENTS } from "@/lib/clients";
 
@@ -23,12 +28,13 @@ const STATUS_OPTIONS = [
 export default async function AdminDocumentsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ clientId?: string; typeId?: string; status?: string }>;
+  searchParams: Promise<{ clientId?: string; typeId?: string; status?: string; vue?: string }>;
 }) {
   await verifyAdminSession();
-  const { clientId, typeId, status } = await searchParams;
+  const { clientId, typeId, status, vue } = await searchParams;
+  const isBinView = vue === "bacs";
 
-  const [documents, clients, typeList] = await Promise.all([
+  const [documents, clients, typeList, companyDocuments, paymentRecords] = await Promise.all([
     db.document.findMany({
       where: {
         ...(clientId ? { clientId } : {}),
@@ -43,6 +49,11 @@ export default async function AdminDocumentsPage({
       where: { key: DOCUMENT_TYPE_LIST_KEY },
       include: { items: { orderBy: { sortOrder: "asc" } } },
     }),
+    db.companyDocument.findMany({ orderBy: { uploadedAt: "desc" } }),
+    db.paymentRecord.findMany({
+      include: { client: { select: { name: true } } },
+      orderBy: { createdAt: "desc" },
+    }),
   ]);
 
   const outstandingCents = documents
@@ -51,13 +62,24 @@ export default async function AdminDocumentsPage({
 
   const activeFilterCount = [clientId, typeId, status].filter(Boolean).length;
 
+  const binGroups = (typeList?.items ?? []).map((type) => ({
+    label: type.label,
+    documents: documents.filter((doc) => doc.typeId === type.id),
+  }));
+
   const selectClass =
     "rounded-xl border border-line bg-surface-elevated px-3 py-2.5 text-sm text-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30";
 
   return (
     <div className="mx-auto max-w-7xl 2xl:max-w-[100rem] px-4 py-10 sm:px-6 lg:px-8">
       <div className="flex flex-wrap items-center justify-between gap-4">
-        <h1 className="font-display text-2xl font-medium tracking-tight text-ink">Documents</h1>
+        {/* Renommée le 2026-07-31 (demande explicite) : cette section ne
+            couvre que Factures/Devis/Contrats, les documents Commercial/
+            Société vivent dans leur propre section plus bas — le titre
+            générique "Documents" ne le disait pas. */}
+        <h1 className="font-display text-2xl font-medium tracking-tight text-ink">
+          Factures / Devis / Contrats
+        </h1>
         <NewDocumentButton
           clients={clients}
           types={typeList?.items.map((item) => ({ id: item.id, label: item.label })) ?? []}
@@ -138,8 +160,42 @@ export default async function AdminDocumentsPage({
         </FilterMenu>
       </div>
 
+      {/* Bascule "Détaillé" / "Bacs" (demande du 2026-07-31) : la vue
+          détaillée reste celle par défaut (elle porte toutes les actions),
+          "Bacs" est une vue de consultation dense, groupée par type, pour
+          une vision d'ensemble rapide. */}
+      <div className="mt-6 flex gap-2">
+        {[
+          { value: "", label: "Détaillé" },
+          { value: "bacs", label: "Bacs" },
+        ].map((option) => {
+          const params = new URLSearchParams();
+          if (clientId) params.set("clientId", clientId);
+          if (typeId) params.set("typeId", typeId);
+          if (status) params.set("status", status);
+          if (option.value) params.set("vue", option.value);
+          const query = params.toString();
+          const isActive = option.value === (vue ?? "");
+          return (
+            <Link
+              key={option.label}
+              href={query ? `/admin/documents?${query}` : "/admin/documents"}
+              className={`rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
+                isActive
+                  ? "border-accent bg-accent text-accent-ink"
+                  : "border-line text-ink-muted hover:text-ink"
+              }`}
+            >
+              {option.label}
+            </Link>
+          );
+        })}
+      </div>
+
       {documents.length === 0 ? (
         <p className="mt-8 text-sm text-ink-muted">Aucun document pour le moment.</p>
+      ) : isBinView ? (
+        <DocumentBinView groups={binGroups} />
       ) : (
         <div className="mt-8 divide-y divide-line rounded-2xl border border-line">
           {documents.map((doc) => (
@@ -153,6 +209,68 @@ export default async function AdminDocumentsPage({
           ))}
         </div>
       )}
+
+      {/* Section ajoutée le 2026-07-31 : documents internes sans client
+          associé (K-bis, statuts, plaquettes commerciales...) — simple
+          consultation, pas de montant ni de statut de paiement. */}
+      <section className="mt-12 border-t border-line pt-8">
+        <h2 className="text-sm font-medium text-ink-muted">
+          Documents Commercial / Société ({companyDocuments.length})
+        </h2>
+        <div className="mt-4">
+          <CompanyDocumentUploadForm />
+        </div>
+        {companyDocuments.length > 0 && (
+          <div className="mt-4 flex flex-col gap-6 sm:flex-row sm:gap-8">
+            {Object.values(COMPANY_DOCUMENT_CATEGORY).map((category) => {
+              const items = companyDocuments.filter((doc) => doc.category === category);
+              if (items.length === 0) return null;
+              return (
+                <div key={category} className="flex-1">
+                  <h3 className="text-xs font-medium uppercase tracking-wide text-ink-muted">
+                    {COMPANY_DOCUMENT_CATEGORY_LABELS[category]} ({items.length})
+                  </h3>
+                  <div className="mt-2 divide-y divide-line rounded-2xl border border-line">
+                    {items.map((doc) => (
+                      <CompanyDocumentRow key={doc.id} document={doc} />
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </section>
+
+      {/* Section ajoutée le 2026-07-31 : paiements reçus sans document de
+          facture (acompte par virement, espèces...) — un suivi Client /
+          montant / statut minimal, distinct des Factures ci-dessus. */}
+      <section className="mt-12 border-t border-line pt-8">
+        <h2 className="text-sm font-medium text-ink-muted">
+          Paiements sans facture ({paymentRecords.length})
+        </h2>
+        <div className="mt-4">
+          <PaymentRecordForm clients={clients} />
+        </div>
+        {paymentRecords.length > 0 && (
+          <div className="mt-4 divide-y divide-line rounded-2xl border border-line">
+            {paymentRecords.map((record) => (
+              <PaymentRecordRow
+                key={record.id}
+                record={{
+                  id: record.id,
+                  clientId: record.clientId,
+                  clientName: record.client.name,
+                  label: record.label,
+                  amountCents: record.amountCents,
+                  currency: record.currency,
+                  paymentStatus: record.paymentStatus,
+                }}
+              />
+            ))}
+          </div>
+        )}
+      </section>
     </div>
   );
 }

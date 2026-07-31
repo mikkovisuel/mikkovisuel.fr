@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { WarningCircle } from "@phosphor-icons/react/dist/ssr";
+import { WarningCircle, CheckCircle } from "@phosphor-icons/react/dist/ssr";
 import { FilePicker } from "@/components/file-picker";
 import type { PillarFormState } from "@/lib/validation/portfolio";
 
@@ -65,6 +65,16 @@ export function PillarForm({
         <div className="flex items-center gap-2 text-sm text-danger">
           <WarningCircle size={18} weight="fill" />
           {state.error}
+        </div>
+      )}
+      {/* Ce composant sert aussi la création (redirige aussitôt, ce
+          `success` ne s'y affiche donc jamais) et l'édition (reste en
+          place, où l'absence de retour visuel après un enregistrement
+          était le vrai défaut signalé le 2026-07-31). */}
+      {state?.success && (
+        <div className="flex items-center gap-2 text-sm text-accent">
+          <CheckCircle size={16} weight="fill" />
+          Pilier enregistré.
         </div>
       )}
 

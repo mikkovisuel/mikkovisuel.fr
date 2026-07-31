@@ -31,6 +31,26 @@ export const DOCUMENT_TYPE = {
 
 export type DocumentTypeSlug = (typeof DOCUMENT_TYPE)[keyof typeof DOCUMENT_TYPE];
 
+// Catégories de `CompanyDocument` (documents internes sans client associé,
+// ajoutés le 2026-07-31) — fixes, pas une `DropdownList` : contrairement à
+// `DOCUMENT_TYPE`, rien ici n'a besoin d'être renommé/coloré/réordonné par
+// l'admin.
+export const COMPANY_DOCUMENT_CATEGORY = {
+  COMMERCIAL: "commercial",
+  SOCIETE: "societe",
+} as const;
+
+export const COMPANY_DOCUMENT_CATEGORY_LABELS: Record<
+  (typeof COMPANY_DOCUMENT_CATEGORY)[keyof typeof COMPANY_DOCUMENT_CATEGORY],
+  string
+> = {
+  commercial: "Commercial",
+  societe: "Société",
+};
+
+export type CompanyDocumentCategory =
+  (typeof COMPANY_DOCUMENT_CATEGORY)[keyof typeof COMPANY_DOCUMENT_CATEGORY];
+
 // Cycle demandé par le client le 2026-07-28 : 5 statuts verrouillés pour la
 // prospection. "Fermé" = converti en client (voir convertProspectToClient),
 // "Archivé" = abandonné/mis de côté sans suppression.

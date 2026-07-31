@@ -38,8 +38,10 @@ export function FinancesByClientTable({
                   {entry.clientName}
                 </Link>
               </td>
-              <td className="px-4 py-3 text-ink">{formatter.format(entry.billedCents / 100)}</td>
-              <td className="px-4 py-3 text-ink">{formatter.format(entry.collectedCents / 100)}</td>
+              <td className="px-4 py-3 text-danger">{formatter.format(entry.billedCents / 100)}</td>
+              <td className="px-4 py-3 text-emerald-600 dark:text-emerald-400">
+                {formatter.format(entry.collectedCents / 100)}
+              </td>
               <td className="px-4 py-3 text-ink-muted">
                 {formatter.format((entry.billedCents - entry.collectedCents) / 100)}
               </td>

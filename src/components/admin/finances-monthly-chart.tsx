@@ -17,13 +17,17 @@ export function FinancesMonthlyChart({
 
   return (
     <div className="mt-4 rounded-2xl border border-line p-5">
+      {/* Facturé en rouge, encaissé en vert (demande du 2026-07-31) —
+          auparavant les deux barres étaient deux nuances du même accent
+          citron, sans lien avec la sémantique "dû" / "réglé" utilisée
+          ailleurs sur la page. */}
       <div className="mb-4 flex items-center gap-4 text-xs text-ink-muted">
         <span className="flex items-center gap-1.5">
-          <span className="inline-block h-2.5 w-2.5 rounded-full bg-accent/40" />
+          <span className="inline-block h-2.5 w-2.5 rounded-full bg-danger/50" />
           Facturé
         </span>
         <span className="flex items-center gap-1.5">
-          <span className="inline-block h-2.5 w-2.5 rounded-full bg-accent" />
+          <span className="inline-block h-2.5 w-2.5 rounded-full bg-emerald-500" />
           Encaissé
         </span>
       </div>
@@ -32,12 +36,12 @@ export function FinancesMonthlyChart({
           <div key={entry.key} className="flex min-w-[52px] flex-col items-center gap-2">
             <div className="relative flex h-40 w-8 items-end overflow-hidden rounded-t-md bg-surface-elevated">
               <div
-                className="w-full bg-accent/40"
+                className="w-full bg-danger/50"
                 style={{ height: `${(entry.billedCents / max) * 100}%` }}
                 title={`Facturé : ${formatter.format(entry.billedCents / 100)}`}
               />
               <div
-                className="absolute bottom-0 w-full bg-accent"
+                className="absolute bottom-0 w-full bg-emerald-500"
                 style={{ height: `${(entry.collectedCents / max) * 100}%` }}
                 title={`Encaissé : ${formatter.format(entry.collectedCents / 100)}`}
               />

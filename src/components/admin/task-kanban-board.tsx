@@ -73,7 +73,12 @@ export function TaskKanbanBoard({
               <span className="text-xs text-ink-muted">{columnTasks.length}</span>
             </div>
 
-            <div className="flex flex-col gap-2">
+            {/* Hauteur plafonnée + défilement propre à la colonne (demande
+                du 2026-07-31) : sans ça, une colonne à forte charge étirait
+                le Kanban entier bien au-delà de l'écran, et les colonnes
+                courtes n'aidaient plus à comparer la charge d'un statut à
+                l'autre d'un coup d'œil. */}
+            <div className="flex max-h-[calc(100vh-16rem)] flex-col gap-2 overflow-y-auto pr-1">
               {columnTasks.length === 0 && (
                 <p className="px-1 py-2 text-xs text-ink-muted">Aucune tâche.</p>
               )}

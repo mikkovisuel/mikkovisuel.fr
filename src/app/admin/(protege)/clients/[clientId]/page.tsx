@@ -4,10 +4,8 @@ import { notFound } from "next/navigation";
 import { ArrowLeft, EnvelopeSimple } from "@phosphor-icons/react/dist/ssr";
 import { verifyAdminSession } from "@/lib/dal";
 import { db } from "@/lib/db";
-import { ClientForm } from "@/components/admin/client-form";
-import { ClientAvatar } from "@/components/admin/client-avatar";
+import { ClientInfoForm } from "@/components/admin/client-info-form";
 import { ClientAvatarForm } from "@/components/admin/client-avatar-form";
-import { FormSubmitButton } from "@/components/admin/form-submit-button";
 import { ClientArchiveButton } from "@/components/admin/client-archive-button";
 import { ContactCard } from "@/components/admin/contact-card";
 import { NewContactButton } from "@/components/admin/new-contact-button";
@@ -19,6 +17,7 @@ import { ImpersonateButton } from "@/components/admin/impersonate-button";
 import { TaskTable } from "@/components/admin/task-table";
 import { CollapsibleSection } from "@/components/admin/collapsible-section";
 import { DocumentRow } from "@/components/admin/document-row";
+import { FileGrid } from "@/components/file-grid";
 import { deleteDocument } from "@/lib/actions/files";
 import {
   updateClient,
@@ -48,10 +47,6 @@ import { contactAccessState } from "@/lib/clients";
 export const metadata: Metadata = {
   title: "Client — Admin Mikko Visuel",
 };
-
-// Rattache le bouton "Enregistrer" du bandeau au formulaire d'informations,
-// rendu plus bas dans la page (attribut HTML `form`, voir FormSubmitButton).
-const CLIENT_FORM_ID = "client-info-form";
 
 export default async function ClientDetailPage({
   params,
@@ -86,6 +81,12 @@ export default async function ClientDetailPage({
             // Client) — sans eux la fiche client planterait au rendu.
             timeEntries: { select: { startedAt: true, endedAt: true } },
             client: { select: { name: true } },
+            // Livrables finaux (jamais les BAT en attente) requis par la
+            // nouvelle section dépliable "Livrables disponibles" — voir plus
+            // bas. Chargés ici plutôt qu'en requête séparée : les tâches sont
+            // déjà récupérées, filtrer côté JS évite un aller-retour DB en
+            // plus.
+            deliverables: { where: { kind: "final" }, orderBy: { uploadedAt: "desc" } },
             _count: { select: { deliverables: true, attachments: true } },
           },
           orderBy: buildTaskOrderBy(sortField, sortDir),
@@ -132,111 +133,99 @@ export default async function ClientDetailPage({
   const deleteThisClient = deleteClient.bind(null, client.id);
   const createTaskForThisClient = createTaskByAdmin.bind(null, client.id);
 
+  // Tous les livrables finaux du client, toutes tâches confondues — pour la
+  // section "Livrables disponibles" plus bas. Jamais les BAT (déjà filtrés
+  // à la requête).
+  const availableDeliverables = client.tasks.flatMap((task) =>
+    task.deliverables.map((deliverable) => ({ ...deliverable, taskTitle: task.title })),
+  );
+
   return (
     <div className="mx-auto max-w-7xl 2xl:max-w-[100rem] px-4 py-10 sm:px-6 lg:px-8">
-      <Link
-        href="/admin/clients"
-        className="inline-flex items-center gap-2 text-sm text-ink-muted transition-colors hover:text-ink"
-      >
-        <ArrowLeft size={16} weight="regular" />
-        Retour aux clients
-      </Link>
-
-      {/* Bandeau collant : "Enregistrer" reste accessible en haut à droite
-          quelle que soit la position dans la page (demande du 2026-07-30).
-          Le bouton est rattaché au formulaire d'informations par son `form`,
-          bien qu'il soit rendu hors de lui — voir FormSubmitButton. */}
-      <div className="sticky top-0 z-10 -mx-4 mt-4 flex flex-wrap items-center justify-between gap-3 bg-surface/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
-        <div className="flex min-w-0 items-center gap-3">
-          <ClientAvatar
-            clientId={client.id}
-            name={client.name}
-            hasAvatar={Boolean(client.avatarStorageKey)}
-            size="md"
-          />
-          <h1 className="font-display text-2xl font-medium tracking-tight text-ink">
-            {client.name}
-          </h1>
-        </div>
-        <div className="flex flex-wrap items-center gap-3">
-          <Link
-            href={`/admin/clients/${client.id}/emails`}
-            className="inline-flex items-center gap-2 rounded-full border border-line px-4 py-2 text-sm text-ink-muted transition-colors hover:border-accent hover:text-ink"
-          >
-            <EnvelopeSimple size={16} weight="regular" />
-            Emails
-          </Link>
-          <FormSubmitButton formId={CLIENT_FORM_ID} label="Enregistrer" />
-        </div>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <Link
+          href="/admin/clients"
+          className="inline-flex items-center gap-2 text-sm text-ink-muted transition-colors hover:text-ink"
+        >
+          <ArrowLeft size={16} weight="regular" />
+          Retour aux clients
+        </Link>
+        {/* Lien vers la boîte mail Gmail intégrée, déplacé ici le 2026-07-31
+            (demande explicite de retirer le bouton "Emails" du bandeau
+            collant, à côté d'"Enregistrer") — sans ce lien, la page ne mène
+            plus nulle part vers /emails, qui deviendrait inatteignable
+            autrement que par une URL tapée à la main. */}
+        <Link
+          href={`/admin/clients/${client.id}/emails`}
+          className="inline-flex items-center gap-1.5 text-sm text-ink-muted transition-colors hover:text-ink"
+        >
+          <EnvelopeSimple size={14} weight="regular" />
+          Emails
+        </Link>
       </div>
 
-      {client.archivedAt && (
-        <p className="mt-4 flex flex-wrap items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-ink">
-          <strong className="font-medium">Client archivé</strong>
-          <span className="text-ink-muted">
-            depuis le {archivedAtLabel}
-            {" — "}
-            masqué des listes et des sélecteurs, mais toujours compté dans les Finances et les
-            exports. Rien n&apos;a été supprimé.
-          </span>
-        </p>
-      )}
-
-      {prospectConversion && prospectConversion !== "ok" && (
-        <p className="mt-4 rounded-xl border border-line bg-surface-elevated px-4 py-3 text-sm text-ink-muted">
-          Client créé depuis un prospect.{" "}
-          {prospectConversion === "no-email"
-            ? "Aucun compte de connexion créé (le prospect n'avait pas d'email) — ajoutez-en un ci-dessous."
-            : "Aucun nouveau compte créé : un compte existait déjà avec cet email."}
-        </p>
-      )}
-
-      <section className="mt-8">
-        <h2 className="text-sm font-medium text-ink-muted">Informations</h2>
-        <div className="mt-4">
+      <ClientInfoForm
+        action={updateThisClient}
+        clientId={client.id}
+        clientName={client.name}
+        hasAvatar={Boolean(client.avatarStorageKey)}
+        archivedBanner={
+          client.archivedAt ? (
+            <p className="mt-4 flex flex-wrap items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-ink">
+              <strong className="font-medium">Client archivé</strong>
+              <span className="text-ink-muted">
+                depuis le {archivedAtLabel}
+                {" — "}
+                masqué des listes et des sélecteurs, mais toujours compté dans les Finances et les
+                exports. Rien n&apos;a été supprimé.
+              </span>
+            </p>
+          ) : null
+        }
+        prospectBanner={
+          prospectConversion && prospectConversion !== "ok" ? (
+            <p className="mt-4 rounded-xl border border-line bg-surface-elevated px-4 py-3 text-sm text-ink-muted">
+              Client créé depuis un prospect.{" "}
+              {prospectConversion === "no-email"
+                ? "Aucun compte de connexion créé (le prospect n'avait pas d'email) — ajoutez-en un ci-dessous."
+                : "Aucun nouveau compte créé : un compte existait déjà avec cet email."}
+            </p>
+          ) : null
+        }
+        avatarForm={
           <ClientAvatarForm
             clientId={client.id}
             clientName={client.name}
             hasAvatar={Boolean(client.avatarStorageKey)}
             action={updateAvatarForThisClient}
           />
-        </div>
-        <div className="mt-8">
-          {/* Deux colonnes sur grand écran : identité à gauche, facturation et
-              échanges de documents à droite. Le bouton d'enregistrement est
-              dans le bandeau ci-dessus, d'où l'absence de `submitLabel`. */}
-          <ClientForm
-            formId={CLIENT_FORM_ID}
-            action={updateThisClient}
-            defaultValues={{
-              name: client.name,
-              notes: client.notes,
-              address: client.address,
-              siret: client.siret,
-              vatNumber: client.vatNumber,
-              billingEmail: client.billingEmail,
-              driveUrl: client.driveUrl,
-              categoryId: client.categoryId,
-            }}
-            categoryOptions={categoryOptions}
-          />
-        </div>
-      </section>
+        }
+        defaultValues={{
+          name: client.name,
+          raisonSociale: client.raisonSociale,
+          notes: client.notes,
+          address: client.address,
+          siret: client.siret,
+          vatNumber: client.vatNumber,
+          billingEmail: client.billingEmail,
+          driveUrl: client.driveUrl,
+          categoryId: client.categoryId,
+        }}
+        categoryOptions={categoryOptions}
+      />
 
       <section className="mt-12">
         {/* Bouton d'ajout en tête de section plutôt qu'un formulaire déplié
             sous la liste (demande du 2026-07-30) : la création est un geste
-            occasionnel, la consultation est permanente. */}
+            occasionnel, la consultation est permanente. Texte de
+            présentation retiré le 2026-07-31 (demande explicite) : après
+            plusieurs mois d'usage, le rappel n'apportait plus rien. */}
         <div className="flex flex-wrap items-center gap-3">
           <h2 className="text-sm font-medium text-ink-muted">
             Contacts ({client.users.length})
           </h2>
           <NewContactButton action={createContactForThisClient} />
         </div>
-        <p className="mt-2 max-w-2xl text-sm text-ink-muted">
-          Le carnet d&apos;adresses du client. Un contact n&apos;a pas d&apos;accès à
-          l&apos;espace client par défaut — ouvrez-le au cas par cas.
-        </p>
 
         {client.users.length > 0 ? (
           <div className="mt-4 divide-y divide-line rounded-2xl border border-line">
@@ -338,9 +327,40 @@ export default async function ClientDetailPage({
         })()}
       </section>
 
+      {/* Nouvelle section le 2026-07-31 (demande explicite) : vue agrégée de
+          tout ce que le client peut actuellement télécharger, tâche par
+          tâche, sans avoir à ouvrir chacune. Repliée par défaut — c'est une
+          consultation ponctuelle, pas une information qu'on veut voir à
+          chaque visite de la fiche. */}
+      <section className="mt-12">
+        <CollapsibleSection title="Livrables disponibles" count={availableDeliverables.length}>
+          {availableDeliverables.length === 0 ? (
+            <p className="text-sm text-ink-muted">Aucun livrable final pour ce client.</p>
+          ) : (
+            <div className="flex flex-col gap-6">
+              {client.tasks
+                .filter((task) => task.deliverables.length > 0)
+                .map((task) => (
+                  <div key={task.id}>
+                    <Link
+                      href={`/admin/taches/${task.id}`}
+                      className="text-sm font-medium text-ink transition-colors hover:text-accent"
+                    >
+                      {task.title}
+                    </Link>
+                    <div className="mt-2">
+                      <FileGrid files={task.deliverables} downloadBasePath="/api/fichiers/livrables" />
+                    </div>
+                  </div>
+                ))}
+            </div>
+          )}
+        </CollapsibleSection>
+      </section>
+
       <section className="mt-12">
         <h2 className="text-sm font-medium text-ink-muted">
-          Documents ({client.documents.length})
+          Factures / Devis / Contrats ({client.documents.length})
         </h2>
 
         {client.documents.length > 0 ? (

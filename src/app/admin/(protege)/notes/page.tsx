@@ -11,10 +11,15 @@ export const metadata: Metadata = {
 export default async function AdminNotesPage() {
   await verifyAdminSession();
 
-  const [folders, notes, clients] = await Promise.all([
+  const [folders, notes, clients, prospects] = await Promise.all([
     db.noteFolder.findMany({ orderBy: { sortOrder: "asc" } }),
     db.note.findMany({ orderBy: { updatedAt: "desc" } }),
     db.client.findMany({ where: ACTIVE_CLIENTS, orderBy: { name: "asc" } }),
+    // Affectation aux prospects (demande du 2026-07-31) — pas de filtre de
+    // statut ici, contrairement à `ACTIVE_CLIENTS` : un prospect "fermé"
+    // (converti en client) ou "archivé" garde ses notes rattachées et
+    // consultables, l'assignation n'est pas un indicateur de workflow.
+    db.prospect.findMany({ orderBy: { name: "asc" } }),
   ]);
 
   return (
@@ -33,10 +38,12 @@ export default async function AdminNotesPage() {
             pinned: n.pinned,
             folderId: n.folderId,
             clientId: n.clientId,
+            prospectId: n.prospectId,
             reminderAt: n.reminderAt ? n.reminderAt.toISOString() : null,
             updatedAt: n.updatedAt.toISOString(),
           }))}
           clients={clients.map((c) => ({ id: c.id, name: c.name }))}
+          prospects={prospects.map((p) => ({ id: p.id, name: p.name }))}
         />
       </div>
     </div>

@@ -9,6 +9,7 @@ import Placeholder from "@tiptap/extension-placeholder";
 import { TextStyle } from "@tiptap/extension-text-style";
 import { Color } from "@tiptap/extension-color";
 import { Highlight } from "@tiptap/extension-highlight";
+import Image from "@tiptap/extension-image";
 import {
   TextB,
   TextItalic,
@@ -24,7 +25,10 @@ import {
   CaretDown,
   Prohibit,
   LinkSimple,
+  Image as ImageIcon,
+  WarningCircle,
 } from "@phosphor-icons/react";
+import { uploadNoteImage } from "@/lib/actions/notes";
 
 // Couleurs de texte et de surlignage proposées dans les notes.
 //
@@ -208,6 +212,60 @@ function LinkForm({
         )}
       </div>
     </div>
+  );
+}
+
+// Insertion d'image (ajoutée le 2026-07-31) : `<input type="file">` caché
+// plutôt qu'un menu — un seul geste (choisir un fichier) suffit, pas besoin
+// d'un second clic pour confirmer. Upload puis insertion à la position du
+// curseur au moment du clic (le focus de l'éditeur est repris explicitement
+// après l'upload, le temps d'attente ayant pu le faire perdre).
+function ImageButton({ editor }: { editor: Editor }) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [pending, setPending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleFile(file: File) {
+    setPending(true);
+    setError(null);
+    const formData = new FormData();
+    formData.set("file", file);
+    const result = await uploadNoteImage(formData);
+    setPending(false);
+    if ("error" in result) {
+      setError(result.error);
+      return;
+    }
+    editor.chain().focus().setImage({ src: result.url }).run();
+  }
+
+  return (
+    <>
+      <input
+        ref={inputRef}
+        type="file"
+        accept="image/png,image/jpeg,image/webp,image/gif"
+        className="hidden"
+        onChange={(event) => {
+          const file = event.target.files?.[0];
+          event.target.value = "";
+          if (file) handleFile(file);
+        }}
+      />
+      <ToolbarButton label="Insérer une image" onClick={() => inputRef.current?.click()}>
+        {pending ? (
+          <span className="block h-4 w-4 animate-pulse rounded-full bg-ink-muted/40" />
+        ) : (
+          <ImageIcon size={16} weight="bold" />
+        )}
+      </ToolbarButton>
+      {error && (
+        <span className="flex items-center gap-1 text-xs text-danger" role="alert">
+          <WarningCircle size={13} weight="fill" />
+          {error}
+        </span>
+      )}
+    </>
   );
 }
 
@@ -431,6 +489,10 @@ function Toolbar({ editor }: { editor: Editor }) {
       >
         <Quotes size={16} weight="bold" />
       </ToolbarButton>
+
+      <div className="mx-1 h-4 w-px bg-line" />
+
+      <ImageButton editor={editor} />
     </div>
   );
 }
@@ -472,6 +534,7 @@ export function NoteEditor({
       Highlight.configure({ multicolor: true }),
       TaskList.configure({ HTMLAttributes: { class: "note-task-list" } }),
       TaskItem.configure({ nested: true, HTMLAttributes: { class: "note-task-item" } }),
+      Image.configure({ HTMLAttributes: { class: "note-image" } }),
       Placeholder.configure({ placeholder: "Écrivez quelque chose…" }),
     ],
     content,

@@ -1,7 +1,54 @@
 "use server";
 
+import { randomUUID } from "node:crypto";
 import { verifyAdminSession } from "@/lib/dal";
 import { db } from "@/lib/db";
+import { getStorageAdapter } from "@/lib/storage";
+import { contentMatchesDeclaredType } from "@/lib/file-signature";
+
+const MAX_NOTE_IMAGE_SIZE = 10 * 1024 * 1024;
+const ALLOWED_NOTE_IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/webp", "image/gif"]);
+
+// Insertion d'image dans une note (ajoutée le 2026-07-31) — voir `NoteImage`
+// dans le schéma pour pourquoi ce n'est pas rattaché à une note précise.
+// Retourne l'URL de service à insérer directement dans l'éditeur
+// (`editor.chain().setImage({ src })`).
+export async function uploadNoteImage(
+  formData: FormData,
+): Promise<{ url: string } | { error: string }> {
+  await verifyAdminSession();
+
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) {
+    return { error: "Choisissez une image." };
+  }
+  if (file.size > MAX_NOTE_IMAGE_SIZE) {
+    return { error: "Image trop volumineuse (10 Mo maximum)." };
+  }
+  if (!ALLOWED_NOTE_IMAGE_TYPES.has(file.type)) {
+    return { error: "Format non autorisé (PNG, JPEG, WEBP ou GIF)." };
+  }
+
+  const buffer = Buffer.from(await file.arrayBuffer());
+  if (!(await contentMatchesDeclaredType(buffer, file.type))) {
+    return { error: "Le contenu du fichier ne correspond pas à une image valide." };
+  }
+
+  const storage = getStorageAdapter();
+  const storageKey = `notes/${randomUUID()}`;
+  await storage.save(storageKey, buffer);
+
+  const image = await db.noteImage.create({
+    data: {
+      storageKey,
+      mimeType: file.type,
+      sizeBytes: file.size,
+      storageBackend: storage.backend,
+    },
+  });
+
+  return { url: `/api/fichiers/notes-images/${image.id}` };
+}
 
 // Module de notes internes (façon Apple Notes) — admin uniquement, jamais
 // exposé côté espace client. Pas de revalidatePath ici : la page /admin/notes
@@ -35,10 +82,18 @@ export async function deleteFolder(folderId: string) {
   await db.noteFolder.delete({ where: { id: folderId } });
 }
 
-export async function createNote(input: { folderId?: string | null; clientId?: string | null }) {
+export async function createNote(input: {
+  folderId?: string | null;
+  clientId?: string | null;
+  prospectId?: string | null;
+}) {
   await verifyAdminSession();
   return db.note.create({
-    data: { folderId: input.folderId ?? null, clientId: input.clientId ?? null },
+    data: {
+      folderId: input.folderId ?? null,
+      clientId: input.clientId ?? null,
+      prospectId: input.prospectId ?? null,
+    },
   });
 }
 
@@ -49,7 +104,12 @@ export async function updateNote(
     content: string;
     pinned: boolean;
     folderId: string | null;
+    // Une note se rattache à un client OU un prospect, jamais les deux
+    // (ajouté le 2026-07-31) — voir `NotesApp`, qui n'expose qu'un seul
+    // sélecteur d'affectation et efface systématiquement l'autre champ à
+    // chaque changement plutôt que de les traiter indépendamment ici.
     clientId: string | null;
+    prospectId: string | null;
     // Date seule (pas d'heure), ex. "2026-08-12" — voir NoteEditorHeader.
     reminderAt: string | null;
   }>,

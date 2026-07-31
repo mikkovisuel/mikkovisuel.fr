@@ -5,6 +5,13 @@ import { WarningCircle } from "@phosphor-icons/react/dist/ssr";
 import { FilePicker } from "@/components/file-picker";
 import { uploadDocument } from "@/lib/actions/files";
 
+const CURRENT_YEAR = new Date().getFullYear();
+const YEAR_OPTIONS = Array.from({ length: 3 }, (_, i) => CURRENT_YEAR - 1 + i);
+const MONTH_NAMES = [
+  "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
+  "Juillet", "Août", "Septembre", "Octobre", "Novembre", "Décembre",
+];
+
 export function DocumentUploadForm({
   clients,
   types,
@@ -20,6 +27,7 @@ export function DocumentUploadForm({
   const formRef = useRef<HTMLFormElement>(null);
   const wasPending = useRef(false);
   const [resetKey, setResetKey] = useState(0);
+  const [isMonthlyInvoice, setIsMonthlyInvoice] = useState(false);
 
   useEffect(() => {
     if (wasPending.current && !pending && !state?.error) {
@@ -94,6 +102,52 @@ export function DocumentUploadForm({
           type="date"
           className="rounded-xl border border-line bg-surface-elevated px-4 py-2.5 text-sm text-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
         />
+      </div>
+
+      {/* Rattachement d'une facture au mois convenu plutôt qu'à sa date de
+          chargement (demande du 2026-07-31) — pour les clients facturés au
+          forfait mensuel, utilisé par le rapprochement Temps &
+          rentabilité de /admin/finances. Les clients facturés à la tâche
+          laissent la case décochée. */}
+      <div className="flex flex-col gap-2 sm:col-span-2">
+        <label className="flex items-center gap-2 text-sm text-ink">
+          <input
+            type="checkbox"
+            name="isMonthlyInvoice"
+            checked={isMonthlyInvoice}
+            onChange={(event) => setIsMonthlyInvoice(event.target.checked)}
+            className="h-4 w-4 rounded border-line"
+          />
+          Facture mensuelle (client au forfait)
+        </label>
+        {isMonthlyInvoice && (
+          <div className="flex flex-wrap gap-3">
+            <select
+              name="invoiceYear"
+              required={isMonthlyInvoice}
+              defaultValue={CURRENT_YEAR}
+              className="rounded-xl border border-line bg-surface-elevated px-3 py-2.5 text-sm text-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
+            >
+              {YEAR_OPTIONS.map((year) => (
+                <option key={year} value={year}>
+                  {year}
+                </option>
+              ))}
+            </select>
+            <select
+              name="invoiceMonth"
+              required={isMonthlyInvoice}
+              className="rounded-xl border border-line bg-surface-elevated px-3 py-2.5 text-sm text-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
+            >
+              <option value="">Choisir un mois</option>
+              {MONTH_NAMES.map((label, index) => (
+                <option key={label} value={index + 1}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </div>
+        )}
       </div>
 
       <div className="flex flex-col gap-2">

@@ -11,7 +11,7 @@ const MAX_IMAGE_SIZE = 20 * 1024 * 1024;
 const ALLOWED_IMAGE_TYPES = new Set(["image/png", "image/jpeg", "image/webp"]);
 const HERO_ID = "hero";
 
-export type HomepageHeroFormState = { error?: string } | undefined;
+export type HomepageHeroFormState = { error?: string; success?: boolean } | undefined;
 
 export async function updateHomepageHero(
   _prev: HomepageHeroFormState,
@@ -80,5 +80,5 @@ export async function updateHomepageHero(
 
   revalidatePath("/");
   revalidatePath("/admin/portfolio");
-  return undefined;
+  return { success: true };
 }
