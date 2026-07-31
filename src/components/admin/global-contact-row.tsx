@@ -30,7 +30,7 @@ export function GlobalContactRow({
 
   return (
     <div className="px-6 py-3">
-      <div className="grid grid-cols-1 items-center gap-x-4 gap-y-1 sm:grid-cols-[1.2fr_1.4fr_1fr_1fr_auto_auto]">
+      <div className="grid grid-cols-1 items-center gap-x-4 gap-y-1 sm:grid-cols-[minmax(0,1.2fr)_minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_auto_auto]">
         <p className="flex items-center gap-2 truncate font-medium text-ink">
           {contact.name}
           {contact.role && <span className="truncate text-sm text-ink-muted">· {contact.role}</span>}
@@ -49,10 +49,10 @@ export function GlobalContactRow({
         {contact.phone ? (
           <a
             href={`tel:${contact.phone.replace(/\s/g, "")}`}
-            className="flex items-center gap-1.5 text-sm text-ink-muted transition-colors hover:text-ink"
+            className="flex items-center gap-1.5 truncate text-sm text-ink-muted transition-colors hover:text-ink"
           >
             <Phone size={14} weight="regular" className="shrink-0" />
-            {contact.phone}
+            <span className="truncate">{contact.phone}</span>
           </a>
         ) : (
           <span className="text-sm text-ink-muted">—</span>
@@ -63,7 +63,15 @@ export function GlobalContactRow({
         >
           {clientName}
         </a>
-        <ContactAccessBadge state={accessState} />
+        {/* Largeur fixe (pas seulement `truncate`) : ce badge est dans une
+            colonne `auto`, dont la largeur suit sinon le texte de CE badge
+            précis (3 libellés de longueurs différentes) — chaque ligne de
+            la grille étant indépendante des autres (pas de grille CSS
+            partagée entre lignes), un badge plus court ou plus long décalait
+            toutes les colonnes précédentes d'une ligne à l'autre. */}
+        <div className="w-44">
+          <ContactAccessBadge state={accessState} />
+        </div>
         <button
           type="button"
           onClick={() => setEditing((value) => !value)}
