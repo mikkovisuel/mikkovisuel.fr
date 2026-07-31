@@ -10,7 +10,7 @@ import { escapeHtml } from "@/lib/html-escape";
 import { formatFileSize } from "@/lib/files";
 import { taskDateFormatterShort } from "@/lib/tasks";
 import { contentMatchesDeclaredType } from "@/lib/file-signature";
-import { notifiableEmails } from "@/lib/clients";
+import { notifiableEmailsFromContacts } from "@/lib/clients";
 
 const MAX_DOCUMENT_SIZE = 20 * 1024 * 1024;
 const MAX_DELIVERABLE_SIZE = 500 * 1024 * 1024;
@@ -70,7 +70,7 @@ export async function uploadDeliverable(
 
   const task = await db.task.findUnique({
     where: { id: taskId },
-    include: { client: { include: { users: true } } },
+    include: { client: { include: { contacts: { include: { contact: true } } } } },
   });
   if (!task) return { error: "Tâche introuvable." };
 
@@ -111,7 +111,7 @@ export async function uploadDeliverable(
   }
 
   const tabLabel = kind === "bat" ? "À valider" : "Livrables";
-  for (const to of notifiableEmails(task.client.users)) {
+  for (const to of notifiableEmailsFromContacts(task.client.contacts)) {
     await sendEmail({
       trigger: "new_deliverable",
       to,
@@ -352,7 +352,7 @@ export async function uploadDocument(
 
   const client = await db.client.findUnique({
     where: { id: clientId },
-    include: { users: true },
+    include: { contacts: { include: { contact: true } } },
   });
   if (!client) return { error: "Client introuvable." };
 
@@ -379,7 +379,7 @@ export async function uploadDocument(
     },
   });
 
-  for (const to of notifiableEmails(client.users)) {
+  for (const to of notifiableEmailsFromContacts(client.contacts)) {
     await sendEmail({
       trigger: "new_document",
       to,

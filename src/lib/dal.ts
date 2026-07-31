@@ -24,13 +24,42 @@ export const verifyAdminSession = cache(async () => {
   return admin;
 });
 
+// Fusionne `ClientContact` (compte d'accès, un par rattachement client) et
+// `Contact` (identité partagée, voir la migration du 2026-07-31 "split
+// Contact/ClientContact") en un seul objet à plat, avec exactement les
+// mêmes noms de champs qu'avant la scission (`.name`, `.email`, `.phone`,
+// `.role`). Choix délibéré : toutes les pages de l'espace client (une
+// quinzaine) lisaient `clientUser.name`/`.email` directement — aplatir ici,
+// au seul point d'entrée de la session, évite de les toucher une par une.
+// `.id` reste l'id du compte de connexion (`ClientContact.id`, identique à
+// l'ancien `ClientUser.id`) puisque c'est lui que `session.subjectId`
+// référence ; `.contactId` est ajouté à part pour le rare appelant qui a
+// vraiment besoin de l'identité partagée plutôt que du compte.
+function flattenClientContact<
+  T extends {
+    contact: { id: string; name: string; email: string | null; phone: string | null; role: string | null };
+  },
+>(clientContact: T) {
+  const { contact, ...rest } = clientContact;
+  return {
+    ...rest,
+    contactId: contact.id,
+    name: contact.name,
+    email: contact.email,
+    phone: contact.phone,
+    role: contact.role,
+  };
+}
+
 export const getClientSession = cache(async () => {
   const session = await readSession();
   if (!session || session.subjectType !== "CLIENT_USER") return null;
-  return db.clientUser.findUnique({
+  const clientContact = await db.clientContact.findUnique({
     where: { id: session.subjectId },
-    include: { client: true },
+    include: { client: true, contact: true },
   });
+  if (!clientContact) return null;
+  return flattenClientContact(clientContact);
 });
 
 export const verifyClientSession = cache(async () => {

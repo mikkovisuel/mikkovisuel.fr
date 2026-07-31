@@ -1,11 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { MagnifyingGlass, X, Phone, EnvelopeSimple } from "@phosphor-icons/react/dist/ssr";
+import { MagnifyingGlass, X } from "@phosphor-icons/react/dist/ssr";
 import { verifyAdminSession } from "@/lib/dal";
 import { db } from "@/lib/db";
-import { ContactAccessBadge } from "@/components/admin/contact-access-badge";
 import { FilterMenu } from "@/components/admin/filter-menu";
+import { GlobalContactRow } from "@/components/admin/global-contact-row";
+import { NewContactButton } from "@/components/admin/new-contact-button";
+import { createClientContactAnyClient, updateClientContact } from "@/lib/actions/clients";
 import { contactAccessState, type ContactAccessState } from "@/lib/clients";
+import { ACTIVE_CLIENTS } from "@/lib/clients";
 import type { Prisma } from "@/generated/prisma/client";
 
 export const metadata: Metadata = {
@@ -19,9 +22,13 @@ const ACCESS_FILTERS: { value: string; label: string }[] = [
   { value: "none", label: "Contact seul" },
 ];
 
+// "nom" par défaut (demande explicite du 2026-07-31) — "date_ajout" reste
+// disponible mais n'est plus le tri d'ouverture.
+type ContactSortField = "nom" | "date_ajout";
+
 // Traduit le filtre d'état (dérivé de deux colonnes) en condition Prisma —
 // voir `contactAccessState`, qui applique la même règle côté affichage.
-function buildAccessWhere(access: string): Prisma.ClientUserWhereInput {
+function buildAccessWhere(access: string): Prisma.ClientContactWhereInput {
   if (access === "active") return { portalAccessEnabled: true, passwordHash: { not: null } };
   if (access === "pending") return { portalAccessEnabled: true, passwordHash: null };
   if (access === "none") return { portalAccessEnabled: false };
@@ -31,15 +38,16 @@ function buildAccessWhere(access: string): Prisma.ClientUserWhereInput {
 export default async function AdminContactsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ q?: string; acces?: string; client?: string }>;
+  searchParams: Promise<{ q?: string; acces?: string; client?: string; tri?: string }>;
 }) {
   await verifyAdminSession();
-  const { q, acces, client: clientFilter } = await searchParams;
+  const { q, acces, client: clientFilter, tri } = await searchParams;
   const search = q?.trim() ?? "";
   const access = acces ?? "";
   const clientId = clientFilter ?? "";
+  const sortField: ContactSortField = tri === "date_ajout" ? "date_ajout" : "nom";
 
-  const where: Prisma.ClientUserWhereInput = {
+  const where: Prisma.ClientContactWhereInput = {
     // Le client de démonstration publique n'est pas un vrai client : son
     // "contact" est un compte technique, il n'a rien à faire au carnet
     // d'adresses (même raisonnement que `EXCLUDE_DEMO_CLIENT` ailleurs).
@@ -47,35 +55,45 @@ export default async function AdminContactsPage({
     ...buildAccessWhere(access),
     ...(search
       ? {
-          OR: [
-            { name: { contains: search, mode: "insensitive" } },
-            { email: { contains: search, mode: "insensitive" } },
-            { phone: { contains: search, mode: "insensitive" } },
-            { role: { contains: search, mode: "insensitive" } },
-          ],
+          contact: {
+            OR: [
+              { name: { contains: search, mode: "insensitive" } },
+              { email: { contains: search, mode: "insensitive" } },
+              { phone: { contains: search, mode: "insensitive" } },
+              { role: { contains: search, mode: "insensitive" } },
+            ],
+          },
         }
       : {}),
   };
 
-  const [contacts, clients] = await Promise.all([
-    db.clientUser.findMany({
+  const [contacts, clientsWithContacts, allClients, allContacts] = await Promise.all([
+    db.clientContact.findMany({
       where,
-      include: { client: { select: { id: true, name: true } } },
-      orderBy: [{ client: { name: "asc" } }, { name: "asc" }],
+      include: { client: { select: { id: true, name: true } }, contact: true },
+      orderBy:
+        sortField === "nom" ? [{ contact: { name: "asc" } }] : [{ createdAt: "desc" }],
     }),
     db.client.findMany({
-      where: { isDemo: false, users: { some: {} } },
+      where: { isDemo: false, contacts: { some: {} } },
       select: { id: true, name: true },
       orderBy: { name: "asc" },
     }),
+    // Pour le sélecteur de client du bouton "Créer un contact" — tous les
+    // clients actifs, pas seulement ceux ayant déjà un contact (à la
+    // différence de `clientsWithContacts`, utilisé pour le filtre).
+    db.client.findMany({ where: ACTIVE_CLIENTS, select: { id: true, name: true }, orderBy: { name: "asc" } }),
+    // Pour le mode "Affecter un contact existant" du même bouton.
+    db.contact.findMany({ orderBy: { name: "asc" } }),
   ]);
 
-  function hrefWith(overrides: { q?: string; acces?: string; client?: string }) {
+  function hrefWith(overrides: { q?: string; acces?: string; client?: string; tri?: string }) {
     const params = new URLSearchParams();
-    const next = { q: search, acces: access, client: clientId, ...overrides };
+    const next = { q: search, acces: access, client: clientId, tri: sortField, ...overrides };
     if (next.q) params.set("q", next.q);
     if (next.acces) params.set("acces", next.acces);
     if (next.client) params.set("client", next.client);
+    if (next.tri && next.tri !== "nom") params.set("tri", next.tri);
     const query = params.toString();
     return query ? `/admin/contacts?${query}` : "/admin/contacts";
   }
@@ -86,16 +104,29 @@ export default async function AdminContactsPage({
 
   return (
     <div className="mx-auto max-w-7xl 2xl:max-w-[100rem] px-4 py-10 sm:px-6 lg:px-8">
-      <h1 className="font-display text-2xl font-medium tracking-tight text-ink">Contacts</h1>
-      <p className="mt-2 text-sm text-ink-muted">
-        Tous les contacts, tous clients confondus. Un contact se crée et se modifie depuis la
-        fiche de son client — cette page sert à le retrouver.
-      </p>
+      <div className="flex flex-wrap items-center justify-between gap-4">
+        <div>
+          <h1 className="font-display text-2xl font-medium tracking-tight text-ink">Contacts</h1>
+          <p className="mt-2 text-sm text-ink-muted">
+            Tous les contacts, tous clients confondus — un même contact peut être affecté à
+            plusieurs clients.
+          </p>
+        </div>
+        {/* Bouton "Créer un contact" ajouté le 2026-07-31 (demande
+            explicite) : jusque-là, un contact ne pouvait se créer que
+            depuis la fiche d'un client précis. */}
+        <NewContactButton
+          action={createClientContactAnyClient}
+          clients={allClients}
+          existingContacts={allContacts}
+        />
+      </div>
 
       <div className="mt-6 flex flex-wrap items-center gap-3">
         <form method="GET" action="/admin/contacts" className="flex flex-wrap items-center gap-2">
           {access && <input type="hidden" name="acces" value={access} />}
           {clientId && <input type="hidden" name="client" value={clientId} />}
+          {sortField !== "nom" && <input type="hidden" name="tri" value={sortField} />}
           <div className="relative flex-1 sm:max-w-xs">
             <MagnifyingGlass
               size={16}
@@ -130,51 +161,79 @@ export default async function AdminContactsPage({
 
         <FilterMenu activeCount={[access, clientId].filter(Boolean).length} label="Filtres">
           <div className="grid gap-4">
-        <div className="flex flex-wrap items-center gap-1.5">
-          <span className="text-sm text-ink-muted">Accès</span>
-          {ACCESS_FILTERS.map((filter) => (
-            <Link
-              key={filter.value || "tous"}
-              href={hrefWith({ acces: filter.value })}
-              className={`${chipBase} ${
-                access === filter.value
-                  ? "border-accent bg-accent/10 text-ink"
-                  : "border-line text-ink-muted hover:text-ink"
-              }`}
-            >
-              {filter.label}
-            </Link>
-          ))}
-        </div>
-
-        {clients.length > 1 && (
-          <div className="flex flex-wrap items-center gap-1.5">
-            <span className="text-sm text-ink-muted">Client</span>
-            <Link
-              href={hrefWith({ client: "" })}
-              className={`${chipBase} ${
-                clientId
-                  ? "border-line text-ink-muted hover:text-ink"
-                  : "border-accent bg-accent/10 text-ink"
-              }`}
-            >
-              Tous
-            </Link>
-            {clients.map((client) => (
+            {/* Tri alphabétique / date d'ajout (demande du 2026-07-31,
+                alphabétique par défaut). */}
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-sm text-ink-muted">Trier par</span>
               <Link
-                key={client.id}
-                href={hrefWith({ client: client.id })}
+                href={hrefWith({ tri: "nom" })}
                 className={`${chipBase} ${
-                  clientId === client.id
+                  sortField === "nom"
                     ? "border-accent bg-accent/10 text-ink"
                     : "border-line text-ink-muted hover:text-ink"
                 }`}
               >
-                {client.name}
+                Alphabétique
               </Link>
-            ))}
-          </div>
-        )}
+              <Link
+                href={hrefWith({ tri: "date_ajout" })}
+                className={`${chipBase} ${
+                  sortField === "date_ajout"
+                    ? "border-accent bg-accent/10 text-ink"
+                    : "border-line text-ink-muted hover:text-ink"
+                }`}
+              >
+                Date d&apos;ajout
+              </Link>
+            </div>
+
+            <div className="h-px bg-line" />
+
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-sm text-ink-muted">Accès</span>
+              {ACCESS_FILTERS.map((filter) => (
+                <Link
+                  key={filter.value || "tous"}
+                  href={hrefWith({ acces: filter.value })}
+                  className={`${chipBase} ${
+                    access === filter.value
+                      ? "border-accent bg-accent/10 text-ink"
+                      : "border-line text-ink-muted hover:text-ink"
+                  }`}
+                >
+                  {filter.label}
+                </Link>
+              ))}
+            </div>
+
+            {clientsWithContacts.length > 1 && (
+              <div className="flex flex-wrap items-center gap-1.5">
+                <span className="text-sm text-ink-muted">Client</span>
+                <Link
+                  href={hrefWith({ client: "" })}
+                  className={`${chipBase} ${
+                    clientId
+                      ? "border-line text-ink-muted hover:text-ink"
+                      : "border-accent bg-accent/10 text-ink"
+                  }`}
+                >
+                  Tous
+                </Link>
+                {clientsWithContacts.map((client) => (
+                  <Link
+                    key={client.id}
+                    href={hrefWith({ client: client.id })}
+                    className={`${chipBase} ${
+                      clientId === client.id
+                        ? "border-accent bg-accent/10 text-ink"
+                        : "border-line text-ink-muted hover:text-ink"
+                    }`}
+                  >
+                    {client.name}
+                  </Link>
+                ))}
+              </div>
+            )}
           </div>
         </FilterMenu>
       </div>
@@ -183,7 +242,7 @@ export default async function AdminContactsPage({
         <p className="mt-8 text-sm text-ink-muted">
           {isFiltered
             ? "Aucun contact ne correspond à cette recherche."
-            : "Aucun contact pour le moment — ajoutez-en depuis une fiche client."}
+            : "Aucun contact pour le moment — créez-en un, ou depuis une fiche client."}
         </p>
       ) : (
         <>
@@ -191,52 +250,23 @@ export default async function AdminContactsPage({
             {contacts.length} contact{contacts.length > 1 ? "s" : ""}
           </p>
           <div className="mt-3 divide-y divide-line rounded-2xl border border-line">
-            {contacts.map((contact) => {
-              const state: ContactAccessState = contactAccessState(contact);
+            {contacts.map((link) => {
+              const state: ContactAccessState = contactAccessState(link);
               return (
-                <div
-                  key={contact.id}
-                  className="flex flex-wrap items-start justify-between gap-4 px-6 py-4"
-                >
-                  <div className="min-w-0">
-                    <p className="flex flex-wrap items-center gap-2 font-medium text-ink">
-                      {contact.name}
-                      {contact.role && <span className="text-ink-muted">· {contact.role}</span>}
-                      <ContactAccessBadge state={state} />
-                    </p>
-                    <p className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-ink-muted">
-                      {contact.email ? (
-                        <a
-                          href={`mailto:${contact.email}`}
-                          className="inline-flex items-center gap-1.5 break-all transition-colors hover:text-ink"
-                        >
-                          <EnvelopeSimple size={14} weight="regular" />
-                          {contact.email}
-                        </a>
-                      ) : (
-                        <span className="inline-flex items-center gap-1.5">
-                          <EnvelopeSimple size={14} weight="regular" />
-                          Pas d&apos;email
-                        </span>
-                      )}
-                      {contact.phone && (
-                        <a
-                          href={`tel:${contact.phone.replace(/\s/g, "")}`}
-                          className="inline-flex items-center gap-1.5 transition-colors hover:text-ink"
-                        >
-                          <Phone size={14} weight="regular" />
-                          {contact.phone}
-                        </a>
-                      )}
-                    </p>
-                  </div>
-                  <Link
-                    href={`/admin/clients/${contact.client.id}`}
-                    className="shrink-0 rounded-full border border-line px-4 py-2 text-sm text-ink-muted transition-colors hover:border-accent hover:text-ink"
-                  >
-                    {contact.client.name}
-                  </Link>
-                </div>
+                <GlobalContactRow
+                  key={link.id}
+                  contact={{
+                    id: link.id,
+                    name: link.contact.name,
+                    email: link.contact.email,
+                    phone: link.contact.phone,
+                    role: link.contact.role,
+                  }}
+                  clientName={link.client.name}
+                  clientHref={`/admin/clients/${link.client.id}`}
+                  accessState={state}
+                  editAction={updateClientContact.bind(null, link.id, link.client.id)}
+                />
               );
             })}
           </div>

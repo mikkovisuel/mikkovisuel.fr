@@ -8,7 +8,7 @@ import { getStripeClient } from "@/lib/stripe";
 import { sendEmail } from "@/lib/email/service";
 import { formatAmount } from "@/lib/documents";
 import { getStorageAdapter } from "@/lib/storage";
-import { notifiableEmails } from "@/lib/clients";
+import { notifiableEmailsFromContacts } from "@/lib/clients";
 
 export async function createCheckoutSession(documentId: string) {
   const clientUser = await verifyClientSession();
@@ -82,13 +82,13 @@ export async function sendPaymentReminder(documentId: string) {
 
   const document = await db.document.findUnique({
     where: { id: documentId },
-    include: { client: { include: { users: true } } },
+    include: { client: { include: { contacts: { include: { contact: true } } } } },
   });
   if (!document || document.paymentStatus !== "unpaid") return;
 
   const amount = formatAmount(document.amountCents, document.currency);
 
-  for (const to of notifiableEmails(document.client.users)) {
+  for (const to of notifiableEmailsFromContacts(document.client.contacts)) {
     await sendEmail({
       trigger: "payment_reminder",
       to,

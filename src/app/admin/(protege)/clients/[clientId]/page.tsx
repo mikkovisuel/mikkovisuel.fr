@@ -62,11 +62,11 @@ export default async function ClientDetailPage({
   const sortDir: TaskSortDir = dir === "desc" ? "desc" : "asc";
   const pinnedOnly = epingle === "1";
 
-  const [client, statusList, typeList, formatList, categoryList] = await Promise.all([
+  const [client, statusList, typeList, formatList, categoryList, assignableContacts] = await Promise.all([
     db.client.findUnique({
       where: { id: clientId },
       include: {
-        users: { orderBy: { createdAt: "asc" } },
+        contacts: { orderBy: { createdAt: "asc" }, include: { contact: true } },
         tasks: {
           where: {
             archivedAt: null,
@@ -112,6 +112,13 @@ export default async function ClientDetailPage({
     db.dropdownList.findUnique({
       where: { key: CLIENT_CATEGORY_LIST_KEY },
       include: { items: { orderBy: { sortOrder: "asc" } } },
+    }),
+    // Contacts affectables à ce client (mode "Affecter un contact existant"
+    // de `ContactForm`, 2026-07-31) : ceux pas déjà rattachés — inutile de
+    // proposer un contact déjà présent dans la liste juste au-dessus.
+    db.contact.findMany({
+      where: { clientLinks: { none: { clientId } } },
+      orderBy: { name: "asc" },
     }),
   ]);
 
@@ -183,12 +190,10 @@ export default async function ClientDetailPage({
           ) : null
         }
         prospectBanner={
-          prospectConversion && prospectConversion !== "ok" ? (
+          prospectConversion === "no-email" ? (
             <p className="mt-4 rounded-xl border border-line bg-surface-elevated px-4 py-3 text-sm text-ink-muted">
-              Client créé depuis un prospect.{" "}
-              {prospectConversion === "no-email"
-                ? "Aucun compte de connexion créé (le prospect n'avait pas d'email) — ajoutez-en un ci-dessous."
-                : "Aucun nouveau compte créé : un compte existait déjà avec cet email."}
+              Client créé depuis un prospect. Aucun compte de connexion créé (le prospect n&apos;avait
+              pas d&apos;email) — ajoutez-en un ci-dessous.
             </p>
           ) : null
         }
@@ -222,26 +227,33 @@ export default async function ClientDetailPage({
             plusieurs mois d'usage, le rappel n'apportait plus rien. */}
         <div className="flex flex-wrap items-center gap-3">
           <h2 className="text-sm font-medium text-ink-muted">
-            Contacts ({client.users.length})
+            Contacts ({client.contacts.length})
           </h2>
-          <NewContactButton action={createContactForThisClient} />
+          <NewContactButton action={createContactForThisClient} existingContacts={assignableContacts} />
         </div>
 
-        {client.users.length > 0 ? (
+        {client.contacts.length > 0 ? (
           <div className="mt-4 divide-y divide-line rounded-2xl border border-line">
-            {client.users.map((user) => (
+            {client.contacts.map((link) => (
               <ContactCard
-                key={user.id}
-                contact={user}
+                key={link.id}
+                contact={{
+                  id: link.id,
+                  name: link.contact.name,
+                  email: link.contact.email,
+                  phone: link.contact.phone,
+                  role: link.contact.role,
+                  emailNotificationsEnabled: link.emailNotificationsEnabled,
+                }}
                 clientId={client.id}
-                accessState={contactAccessState(user)}
-                editAction={updateClientContact.bind(null, user.id, client.id)}
-                impersonateButton={<ImpersonateButton clientUserId={user.id} />}
-                resetPasswordButton={<ResetPasswordButton clientUserId={user.id} />}
+                accessState={contactAccessState(link)}
+                editAction={updateClientContact.bind(null, link.id, client.id)}
+                impersonateButton={<ImpersonateButton clientUserId={link.id} />}
+                resetPasswordButton={<ResetPasswordButton clientUserId={link.id} />}
                 deleteButton={
                   <DeleteButton
-                    action={deleteClientUser.bind(null, user.id, client.id)}
-                    confirmMessage={`Supprimer le contact ${user.name} ?`}
+                    action={deleteClientUser.bind(null, link.id, client.id)}
+                    confirmMessage={`Retirer ${link.contact.name} de ce client ? (le contact reste rattaché à ses autres clients éventuels)`}
                   />
                 }
               />

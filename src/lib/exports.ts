@@ -9,7 +9,7 @@ import { EXCLUDE_DEMO_CLIENT } from "@/lib/clients";
 export async function buildClientsCsv(): Promise<string> {
   const clients = await db.client.findMany({
     where: EXCLUDE_DEMO_CLIENT,
-    include: { _count: { select: { users: true, tasks: true } } },
+    include: { _count: { select: { contacts: true, tasks: true } } },
     orderBy: { createdAt: "asc" },
   });
 
@@ -19,7 +19,7 @@ export async function buildClientsCsv(): Promise<string> {
       client.id,
       client.name,
       client.notes,
-      client._count.users,
+      client._count.contacts,
       client._count.tasks,
       client.createdAt.toISOString(),
     ]),

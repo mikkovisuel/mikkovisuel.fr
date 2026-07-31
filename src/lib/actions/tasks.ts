@@ -9,7 +9,7 @@ import { sendEmail, getAdminEmails } from "@/lib/email/service";
 import { escapeHtml } from "@/lib/html-escape";
 import { getStorageAdapter } from "@/lib/storage";
 import { isTaskOverdue, taskDateFormatter } from "@/lib/tasks";
-import { notifiableEmails } from "@/lib/clients";
+import { notifiableEmails, notifiableEmailsFromContacts } from "@/lib/clients";
 
 const MAX_ATTACHMENT_SIZE = 20 * 1024 * 1024;
 const ALLOWED_ATTACHMENT_TYPES = new Set([
@@ -322,11 +322,11 @@ export async function updateTask(
 async function notifyClientUsersOfNewTaskToValidate(taskId: string) {
   const task = await db.task.findUnique({
     where: { id: taskId },
-    include: { client: { include: { users: true } } },
+    include: { client: { include: { contacts: { include: { contact: true } } } } },
   });
   if (!task) return;
 
-  for (const to of notifiableEmails(task.client.users)) {
+  for (const to of notifiableEmailsFromContacts(task.client.contacts)) {
     await sendEmail({
       trigger: "new_task_to_validate",
       to,
@@ -426,7 +426,7 @@ type ValidationActor =
   | { type: "CLIENT_USER"; name: string; email: string | null; emailNotificationsEnabled: boolean }
   | {
       type: "ADMIN";
-      clientUsers: { email: string | null; emailNotificationsEnabled: boolean }[];
+      clientContacts: { emailNotificationsEnabled: boolean; contact: { email: string | null } }[];
     };
 
 // Deux déclencheurs possibles : le client lui-même (`validateTask`) ou
@@ -467,7 +467,7 @@ async function notifyBatValidated(
     recipients.push(...(await getAdminEmails()));
     recipients.push(...notifiableEmails([actor]));
   } else {
-    recipients.push(...notifiableEmails(actor.clientUsers));
+    recipients.push(...notifiableEmailsFromContacts(actor.clientContacts));
   }
 
   for (const to of recipients) {
@@ -488,7 +488,10 @@ export async function validateTaskByAdmin(taskId: string) {
 
   const task = await db.task.findUnique({
     where: { id: taskId },
-    include: { deliverables: true, client: { include: { users: true } } },
+    include: {
+      deliverables: true,
+      client: { include: { contacts: { include: { contact: true } } } },
+    },
   });
   if (!task) return;
 
@@ -503,7 +506,7 @@ export async function validateTaskByAdmin(taskId: string) {
 
   await notifyBatValidated(task.title, task.deliverables.map((d) => d.fileName), validatedAt, {
     type: "ADMIN",
-    clientUsers: task.client.users,
+    clientContacts: task.client.contacts,
   });
 
   revalidateTaskPaths(task.clientId);
@@ -578,7 +581,7 @@ export async function refuseTaskByAdmin(
 
   const task = await db.task.findUnique({
     where: { id: taskId },
-    include: { client: { include: { users: true } } },
+    include: { client: { include: { contacts: { include: { contact: true } } } } },
   });
   if (!task) return { error: "Tâche introuvable." };
 
@@ -593,7 +596,7 @@ export async function refuseTaskByAdmin(
   });
   await logTaskStatusChange(taskId, statusItem, { type: "ADMIN", id: admin.id, name: "Mikko" });
 
-  for (const to of notifiableEmails(task.client.users)) {
+  for (const to of notifiableEmailsFromContacts(task.client.contacts)) {
     await sendEmail({
       trigger: "refusal_confirmed",
       to,
@@ -658,11 +661,11 @@ export async function sendTaskReminder(taskId: string) {
 
   const task = await db.task.findUnique({
     where: { id: taskId },
-    include: { status: true, client: { include: { users: true } } },
+    include: { status: true, client: { include: { contacts: { include: { contact: true } } } } },
   });
   if (!task || !isTaskOverdue(task)) return;
 
-  for (const to of notifiableEmails(task.client.users)) {
+  for (const to of notifiableEmailsFromContacts(task.client.contacts)) {
     await sendEmail({
       trigger: "task_reminder",
       to,

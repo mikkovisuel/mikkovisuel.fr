@@ -35,19 +35,21 @@ export async function searchAll(query: string): Promise<SearchResults> {
       take: RESULT_LIMIT,
       orderBy: { name: "asc" },
     }),
-    db.clientUser.findMany({
+    db.clientContact.findMany({
       where: {
         client: { isDemo: false },
-        OR: [
-          { name: { contains: q, mode: "insensitive" } },
-          { email: { contains: q, mode: "insensitive" } },
-          { phone: { contains: q, mode: "insensitive" } },
-          { role: { contains: q, mode: "insensitive" } },
-        ],
+        contact: {
+          OR: [
+            { name: { contains: q, mode: "insensitive" } },
+            { email: { contains: q, mode: "insensitive" } },
+            { phone: { contains: q, mode: "insensitive" } },
+            { role: { contains: q, mode: "insensitive" } },
+          ],
+        },
       },
-      include: { client: { select: { id: true, name: true } } },
+      include: { client: { select: { id: true, name: true } }, contact: true },
       take: RESULT_LIMIT,
-      orderBy: { name: "asc" },
+      orderBy: { contact: { name: "asc" } },
     }),
     db.task.findMany({
       // `EXCLUDE_DEMO_CLIENT_TASKS` et non `ACTIVE_TASKS` : la recherche
@@ -93,13 +95,13 @@ export async function searchAll(query: string): Promise<SearchResults> {
     })),
     // Un contact renvoie vers la fiche de son client : c'est là qu'il se
     // consulte et se modifie, `/admin/contacts` n'étant qu'un annuaire.
-    contacts: contacts.map((contact) => ({
-      id: contact.id,
-      label: contact.name,
-      sublabel: [contact.client.name, contact.email ?? contact.phone]
+    contacts: contacts.map((link) => ({
+      id: link.id,
+      label: link.contact.name,
+      sublabel: [link.client.name, link.contact.email ?? link.contact.phone]
         .filter(Boolean)
         .join(" · "),
-      href: `/admin/clients/${contact.client.id}`,
+      href: `/admin/clients/${link.client.id}`,
     })),
     tasks: tasks.map((task) => ({
       id: task.id,

@@ -213,12 +213,36 @@ function revalidateContactPaths(clientId: string) {
 // Création d'un contact. Selon `access`, il reste une simple entrée du carnet
 // d'adresses, reçoit une invitation à choisir son mot de passe, ou se voit
 // attribuer un mot de passe défini par l'admin (voir `ContactCreateSchema`).
-export async function createClientContact(
+//
+// Depuis le 2026-07-31 ("un contact peut être dans plusieurs fiches
+// clients"), deux modes selon `formData.get("mode")` :
+//  - "nouveau" (par défaut) : crée une nouvelle identité `Contact` (email
+//    doit être libre) puis le rattachement à ce client.
+//  - "affecter" : réutilise un `Contact` déjà existant (choisi par email
+//    dans `existingContactId`), lui ajoute juste un rattachement à ce
+//    client — aucune ressaisie de nom/email/téléphone, c'est justement le
+//    but.
+async function createClientContactCore(
   clientId: string,
-  _prev: ContactFormState,
   formData: FormData,
 ): Promise<ContactFormState> {
-  await verifyAdminSession();
+  const mode = formData.get("mode") === "affecter" ? "affecter" : "nouveau";
+
+  if (mode === "affecter") {
+    const existingContactId = formData.get("existingContactId");
+    if (typeof existingContactId !== "string" || !existingContactId) {
+      return { error: "Choisissez un contact à affecter." };
+    }
+    const existingLink = await db.clientContact.findUnique({
+      where: { clientId_contactId: { clientId, contactId: existingContactId } },
+    });
+    if (existingLink) {
+      return { error: "Ce contact est déjà rattaché à ce client." };
+    }
+    await db.clientContact.create({ data: { clientId, contactId: existingContactId } });
+    revalidateContactPaths(clientId);
+    return undefined;
+  }
 
   const parsed = ContactCreateSchema.safeParse({
     name: formData.get("name"),
@@ -234,19 +258,22 @@ export async function createClientContact(
   const { name, email, phone, role, access, password } = parsed.data;
 
   if (email) {
-    const existing = await db.clientUser.findUnique({ where: { email } });
+    const existing = await db.contact.findUnique({ where: { email } });
     if (existing) {
-      return { error: "Un contact existe déjà avec cet email." };
+      return {
+        error:
+          'Un contact existe déjà avec cet email — utilisez "Affecter un contact existant" pour le rattacher ici.',
+      };
     }
   }
 
-  const contact = await db.clientUser.create({
+  const contact = await db.contact.create({
+    data: { name, email, phone: phone || null, role: role || null },
+  });
+  const clientContact = await db.clientContact.create({
     data: {
       clientId,
-      name,
-      email,
-      phone: phone || null,
-      role: role || null,
+      contactId: contact.id,
       portalAccessEnabled: access !== "none",
       // Seul le mode "password" définit un mot de passe tout de suite. En mode
       // "invite", l'accès est ouvert mais le hash reste nul jusqu'à ce que le
@@ -256,13 +283,46 @@ export async function createClientContact(
   });
 
   if (access === "invite") {
-    await sendClientPasswordResetEmail(contact);
+    await sendClientPasswordResetEmail({ id: clientContact.id, email: contact.email });
   }
 
   revalidateContactPaths(clientId);
   return undefined;
 }
 
+// Depuis la fiche d'un client précis (le clientId est déjà connu, lié via
+// `.bind`).
+export async function createClientContact(
+  clientId: string,
+  _prev: ContactFormState,
+  formData: FormData,
+): Promise<ContactFormState> {
+  await verifyAdminSession();
+  return createClientContactCore(clientId, formData);
+}
+
+// Depuis l'onglet Contacts (annuaire global, aucun client déjà déterminé —
+// demande du 2026-07-31, "à afficher dans l'onglet et dans la fiche
+// clients") : `clientId` vient du formulaire, pas d'un `.bind` déjà fixé.
+export async function createClientContactAnyClient(
+  _prev: ContactFormState,
+  formData: FormData,
+): Promise<ContactFormState> {
+  await verifyAdminSession();
+
+  const clientId = formData.get("clientId");
+  if (typeof clientId !== "string" || !clientId) {
+    return { error: "Choisissez un client." };
+  }
+  return createClientContactCore(clientId, formData);
+}
+
+// Édite l'identité partagée (`Contact`) depuis la fiche d'un client donné.
+// Depuis le split du 2026-07-31, un même `Contact` peut être rattaché à
+// plusieurs clients — modifier son nom/email/téléphone/fonction ici les
+// modifie donc partout où ce contact apparaît, ce qui est le comportement
+// attendu pour une identité partagée (ce n'est plus une fiche propre à un
+// seul client).
 export async function updateClientContact(
   clientUserId: string,
   clientId: string,
@@ -281,27 +341,30 @@ export async function updateClientContact(
     return { error: parsed.error.issues[0]?.message ?? "Formulaire invalide." };
   }
 
-  const contact = await db.clientUser.findUnique({ where: { id: clientUserId } });
-  if (!contact) return { error: "Contact introuvable." };
+  const link = await db.clientContact.findUnique({
+    where: { id: clientUserId },
+    include: { contact: true },
+  });
+  if (!link) return { error: "Contact introuvable." };
 
   // Retirer l'email d'un contact qui se connecte lui couperait l'accès sans
   // que l'admin l'ait demandé (l'email EST l'identifiant) — on refuse plutôt
   // que de fermer l'accès en douce.
-  if (!parsed.data.email && contact.portalAccessEnabled) {
+  if (!parsed.data.email && link.portalAccessEnabled) {
     return {
       error: "Ce contact a un accès à l'espace client : son email ne peut pas être retiré.",
     };
   }
 
-  if (parsed.data.email && parsed.data.email !== contact.email) {
-    const existing = await db.clientUser.findUnique({ where: { email: parsed.data.email } });
-    if (existing) {
+  if (parsed.data.email && parsed.data.email !== link.contact.email) {
+    const existing = await db.contact.findUnique({ where: { email: parsed.data.email } });
+    if (existing && existing.id !== link.contactId) {
       return { error: "Un contact existe déjà avec cet email." };
     }
   }
 
-  await db.clientUser.update({
-    where: { id: clientUserId },
+  await db.contact.update({
+    where: { id: link.contactId },
     data: {
       name: parsed.data.name,
       email: parsed.data.email,
@@ -321,13 +384,16 @@ export async function updateClientContact(
 export async function toggleContactPortalAccess(clientUserId: string, clientId: string) {
   const admin = await verifyAdminSession();
 
-  const contact = await db.clientUser.findUnique({ where: { id: clientUserId } });
+  const contact = await db.clientContact.findUnique({
+    where: { id: clientUserId },
+    include: { contact: true },
+  });
   if (!contact) return;
 
   const enabled = !contact.portalAccessEnabled;
-  if (enabled && !contact.email) return;
+  if (enabled && !contact.contact.email) return;
 
-  await db.clientUser.update({
+  await db.clientContact.update({
     where: { id: clientUserId },
     data: { portalAccessEnabled: enabled },
   });
@@ -343,7 +409,7 @@ export async function toggleContactPortalAccess(clientUserId: string, clientId: 
     action: enabled ? "client_portal_access_opened" : "client_portal_access_closed",
     targetType: "ClientUser",
     targetId: contact.id,
-    targetLabel: contact.email ?? contact.name,
+    targetLabel: contact.contact.email ?? contact.contact.name,
     ipAddress: await getClientIp(),
   });
 
@@ -359,13 +425,16 @@ export async function sendContactInvitation(
 ): Promise<{ error?: string; success?: boolean }> {
   await verifyAdminSession();
 
-  const contact = await db.clientUser.findUnique({ where: { id: clientUserId } });
+  const contact = await db.clientContact.findUnique({
+    where: { id: clientUserId },
+    include: { contact: true },
+  });
   if (!contact) return { error: "Contact introuvable." };
   if (!contact.portalAccessEnabled) {
     return { error: "Ouvrez d'abord l'accès à l'espace client." };
   }
 
-  const sent = await sendClientPasswordResetEmail(contact);
+  const sent = await sendClientPasswordResetEmail({ id: contact.id, email: contact.contact.email });
   if (!sent) return { error: "Ce contact n'a pas d'adresse email." };
 
   revalidateContactPaths(clientId);
@@ -380,10 +449,10 @@ export async function sendContactInvitation(
 export async function toggleClientUserEmailNotifications(clientUserId: string, clientId: string) {
   await verifyAdminSession();
 
-  const clientUser = await db.clientUser.findUnique({ where: { id: clientUserId } });
+  const clientUser = await db.clientContact.findUnique({ where: { id: clientUserId } });
   if (!clientUser) return;
 
-  await db.clientUser.update({
+  await db.clientContact.update({
     where: { id: clientUserId },
     data: { emailNotificationsEnabled: !clientUser.emailNotificationsEnabled },
   });
@@ -402,7 +471,7 @@ export async function toggleOwnEmailNotifications() {
   const clientUser = await verifyClientSession();
   assertNotDemo(clientUser);
 
-  await db.clientUser.update({
+  await db.clientContact.update({
     where: { id: clientUser.id },
     data: { emailNotificationsEnabled: !clientUser.emailNotificationsEnabled },
   });
@@ -412,8 +481,15 @@ export async function toggleOwnEmailNotifications() {
   revalidatePath("/admin/reglages");
 }
 
+// Ne supprime que le rattachement à CE client (`ClientContact`), pas
+// l'identité partagée (`Contact`) — un contact rattaché à plusieurs clients
+// (2026-07-31) ne doit pas disparaître de son autre fiche client parce
+// qu'on l'a retiré d'une seule. Un `Contact` qui se retrouve rattaché à
+// zéro client reste en base, orphelin mais inoffensif (il ne s'affiche
+// nulle part) — accepté comme compromis simple plutôt qu'un ménage
+// automatique hors scope de cette évolution.
 export async function deleteClientUser(clientUserId: string, clientId: string) {
   await verifyAdminSession();
-  await db.clientUser.delete({ where: { id: clientUserId } });
+  await db.clientContact.delete({ where: { id: clientUserId } });
   revalidatePath(`/admin/clients/${clientId}`);
 }

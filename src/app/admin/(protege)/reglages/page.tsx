@@ -101,9 +101,13 @@ export default async function AdminSettingsPage({
     // Seuls les contacts ayant un accès ouvert : les notifications parlent
     // toutes de "votre espace client", proposer de les activer pour un simple
     // contact du carnet d'adresses n'aurait pas de sens.
-    where: { ...ACTIVE_CLIENTS, users: { some: { portalAccessEnabled: true } } },
+    where: { ...ACTIVE_CLIENTS, contacts: { some: { portalAccessEnabled: true } } },
     include: {
-      users: { where: { portalAccessEnabled: true }, orderBy: { createdAt: "asc" } },
+      contacts: {
+        where: { portalAccessEnabled: true },
+        orderBy: { createdAt: "asc" },
+        include: { contact: true },
+      },
     },
     orderBy: { name: "asc" },
   });
@@ -288,22 +292,24 @@ export default async function AdminSettingsPage({
                         {client.name}
                       </Link>
                       <div className="mt-2 divide-y divide-line rounded-2xl border border-line">
-                        {client.users.map((user) => (
+                        {client.contacts.map((link) => (
                           <div
-                            key={user.id}
+                            key={link.id}
                             className="flex flex-wrap items-center justify-between gap-4 px-4 py-3"
                           >
                             <div className="min-w-0">
                               <p className="text-sm text-ink">
-                                {user.name}
-                                {user.role && <span className="text-ink-muted"> · {user.role}</span>}
+                                {link.contact.name}
+                                {link.contact.role && (
+                                  <span className="text-ink-muted"> · {link.contact.role}</span>
+                                )}
                               </p>
-                              <p className="text-xs text-ink-muted">{user.email}</p>
+                              <p className="text-xs text-ink-muted">{link.contact.email}</p>
                             </div>
                             <ClientUserEmailToggle
-                              clientUserId={user.id}
+                              clientUserId={link.id}
                               clientId={client.id}
-                              enabled={user.emailNotificationsEnabled}
+                              enabled={link.emailNotificationsEnabled}
                             />
                           </div>
                         ))}

@@ -160,7 +160,7 @@ async function seedDemoClient() {
   }
 
   const email = "demo@client.test";
-  const existing = await prisma.clientUser.findUnique({ where: { email } });
+  const existing = await prisma.contact.findUnique({ where: { email } });
   if (existing) {
     console.log(`Client de démo déjà présent : ${email}`);
     return;
@@ -170,8 +170,13 @@ async function seedDemoClient() {
     data: { name: "Client de démo", notes: "Compte créé par le seed pour les tests locaux." },
   });
   const passwordHash = await bcrypt.hash("demo-password", 12);
-  await prisma.clientUser.create({
-    data: { clientId: client.id, email, passwordHash, name: "Compte de démo" },
+  // Depuis le split Contact/ClientContact (2026-07-31), un compte se crée
+  // en deux temps : l'identité (Contact) puis le rattachement + accès
+  // (ClientContact) — voir `createClientContact` dans
+  // src/lib/actions/clients.ts pour le même schéma en usage réel.
+  const contact = await prisma.contact.create({ data: { email, name: "Compte de démo" } });
+  await prisma.clientContact.create({
+    data: { clientId: client.id, contactId: contact.id, passwordHash, portalAccessEnabled: true },
   });
 
   console.log("Client de démo créé :");
@@ -222,13 +227,11 @@ async function seedPublicDemoClient() {
   });
 
   const passwordHash = await bcrypt.hash(randomBytes(24).toString("base64url"), 12);
-  await prisma.clientUser.create({
-    data: {
-      clientId: client.id,
-      email: `demo-public-${client.id}@mikkovisuel.internal`,
-      passwordHash,
-      name: "Prospect",
-    },
+  const contact = await prisma.contact.create({
+    data: { email: `demo-public-${client.id}@mikkovisuel.internal`, name: "Prospect" },
+  });
+  await prisma.clientContact.create({
+    data: { clientId: client.id, contactId: contact.id, passwordHash, portalAccessEnabled: true },
   });
 
   const storage = getSeedStorage();

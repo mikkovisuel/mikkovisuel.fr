@@ -269,27 +269,31 @@ export async function convertProspectToClient(prospectId: string): Promise<Conve
     },
   });
 
-  // Pas de compte de connexion créé si le prospect n'a pas d'email, ou si un
-  // compte existe déjà avec cet email (ex. prospect issu d'un client déjà
-  // présent) — signalé à l'admin via un paramètre d'URL plutôt qu'un état de
-  // formulaire, puisque cette action se termine par un redirect.
-  let noLoginReason: "no-email" | "email-taken" | null = prospect.email ? null : "no-email";
+  // Pas de compte de connexion créé si le prospect n'a pas d'email —
+  // signalé à l'admin via un paramètre d'URL plutôt qu'un état de
+  // formulaire, puisque cette action se termine par un redirect. Si un
+  // `Contact` existe déjà avec cet email (ex. prospect issu d'un client déjà
+  // présent), on le **rattache** au nouveau client plutôt que de refuser —
+  // c'est exactement le cas d'usage du split Contact/ClientContact du
+  // 2026-07-31 : "un contact peut être dans plusieurs fiches clients".
+  const noLoginReason: "no-email" | null = prospect.email ? null : "no-email";
   if (prospect.email) {
-    const existingUser = await db.clientUser.findUnique({ where: { email: prospect.email } });
-    if (existingUser) {
-      noLoginReason = "email-taken";
+    const existingContact = await db.contact.findUnique({ where: { email: prospect.email } });
+    if (existingContact) {
+      await db.clientContact.create({ data: { clientId: client.id, contactId: existingContact.id } });
     } else {
       const randomPassword = randomBytes(24).toString("hex");
-      const clientUser = await db.clientUser.create({
+      const newContact = await db.contact.create({
+        data: { name: prospect.name, email: prospect.email, phone: prospect.phone },
+      });
+      const clientUser = await db.clientContact.create({
         data: {
           clientId: client.id,
-          name: prospect.name,
-          email: prospect.email,
+          contactId: newContact.id,
           passwordHash: await hashPassword(randomPassword),
-          phone: prospect.phone,
         },
       });
-      await sendClientPasswordResetEmail(clientUser);
+      await sendClientPasswordResetEmail({ id: clientUser.id, email: newContact.email });
     }
   }
 

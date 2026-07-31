@@ -39,13 +39,13 @@ export default async function ClientEmailsPage({
 
   const client = await db.client.findUnique({
     where: { id: clientId },
-    include: { users: { orderBy: { createdAt: "asc" } } },
+    include: { contacts: { orderBy: { createdAt: "asc" }, include: { contact: true } } },
   });
   if (!client) notFound();
 
   // Seuls les contacts ayant une adresse peuvent apparaître dans une
   // recherche Gmail — les contacts "téléphone uniquement" sont écartés.
-  const emails = client.users.flatMap((user) => (user.email ? [user.email] : []));
+  const emails = client.contacts.flatMap((link) => (link.contact.email ? [link.contact.email] : []));
   const sendNewMessageForThisClient = sendNewMessage.bind(null, clientId);
 
   let threads: Awaited<ReturnType<typeof searchThreadsForEmails>> = [];

@@ -24,7 +24,7 @@ export async function updateThemePreference(theme: "light" | "dark") {
   if (session.subjectType === "ADMIN") {
     await db.admin.update({ where: { id: session.subjectId }, data: { themePreference: theme } });
   } else {
-    await db.clientUser.update({
+    await db.clientContact.update({
       where: { id: session.subjectId },
       data: { themePreference: theme },
     });

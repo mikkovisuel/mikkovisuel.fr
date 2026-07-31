@@ -143,7 +143,7 @@ export default async function AdminDashboardPage() {
       db.clientLoginEvent.findMany({
         orderBy: { loggedInAt: "desc" },
         take: 8,
-        include: { clientUser: { include: { client: true } } },
+        include: { clientContact: { include: { client: true, contact: true } } },
       }),
     ]);
 
@@ -183,9 +183,9 @@ export default async function AdminDashboardPage() {
 
   const loginEvents = loginEventRows.map((event) => ({
     id: event.id,
-    clientId: event.clientUser.client.id,
-    clientName: event.clientUser.client.name,
-    userName: event.clientUser.name,
+    clientId: event.clientContact.client.id,
+    clientName: event.clientContact.client.name,
+    userName: event.clientContact.contact.name,
     loggedInAt: event.loggedInAt,
   }));
 

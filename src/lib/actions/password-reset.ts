@@ -44,17 +44,30 @@ async function requestReset(subjectType: SubjectType, rawEmail: string) {
   }
   await recordPasswordResetRequest(email);
 
-  const subject =
-    subjectType === "ADMIN"
-      ? await db.admin.findUnique({ where: { email } })
-      : // Un contact sans accès ouvert à l'espace client (voir
-        // `ClientUser.portalAccessEnabled`) n'a pas de mot de passe à
-        // réinitialiser : on le traite comme inexistant, ce qui renvoie le
-        // message générique habituel sans révéler qu'il figure au carnet
-        // d'adresses. Un contact invité mais qui n'a pas encore choisi son
-        // mot de passe passe en revanche bien par ici — c'est le chemin
-        // normal s'il a perdu son lien d'invitation.
-        await db.clientUser.findFirst({ where: { email, portalAccessEnabled: true } });
+  let subject: { id: string } | null;
+  if (subjectType === "ADMIN") {
+    subject = await db.admin.findUnique({ where: { email } });
+  } else {
+    // Un contact sans accès ouvert à l'espace client (voir
+    // `ClientContact.portalAccessEnabled`) n'a pas de mot de passe à
+    // réinitialiser : on le traite comme inexistant, ce qui renvoie le
+    // message générique habituel sans révéler qu'il figure au carnet
+    // d'adresses. Un contact invité mais qui n'a pas encore choisi son mot
+    // de passe passe en revanche bien par ici — c'est le chemin normal s'il
+    // a perdu son lien d'invitation.
+    //
+    // Depuis le split Contact/ClientContact (2026-07-31), le même email
+    // peut avoir un accès ouvert chez plusieurs clients à la fois (voir
+    // client-auth.ts) — cas encore rare. Ce formulaire réinitialise le
+    // premier accès ouvert trouvé ; pour cibler un client précis sans
+    // ambiguïté, l'admin dispose du bouton "Réinitialiser" par contact sur
+    // chaque fiche client (`adminResetClientPassword`, plus bas).
+    const contact = await db.contact.findUnique({
+      where: { email },
+      include: { clientLinks: { where: { portalAccessEnabled: true }, take: 1 } },
+    });
+    subject = contact?.clientLinks[0] ?? null;
+  }
 
   if (subject) {
     // Invalide les liens de réinitialisation précédents non utilisés :
@@ -154,7 +167,7 @@ export async function resetPassword(
       ipAddress: await getClientIp(),
     });
   } else {
-    await db.clientUser.update({ where: { id: resetToken.subjectId }, data: { passwordHash } });
+    await db.clientContact.update({ where: { id: resetToken.subjectId }, data: { passwordHash } });
   }
 
   await db.passwordResetToken.update({ where: { tokenHash }, data: { usedAt: new Date() } });
@@ -196,7 +209,7 @@ export async function changeClientPassword(
   }
 
   const passwordHash = await hashPassword(parsed.data.newPassword);
-  await db.clientUser.update({ where: { id: clientUser.id }, data: { passwordHash } });
+  await db.clientContact.update({ where: { id: clientUser.id }, data: { passwordHash } });
   // Révoque les autres sessions actives (autres appareils/navigateurs) sans
   // déconnecter celle en cours — voir destroyOtherSessionsForSubject.
   await destroyOtherSessionsForSubject("CLIENT_USER", clientUser.id);
@@ -260,10 +273,13 @@ export async function adminResetClientPassword(
   const error = await requireFreshAdminPassword(formData);
   if (error) return { error };
 
-  const clientUser = await db.clientUser.findUnique({ where: { id: clientUserId } });
+  const clientUser = await db.clientContact.findUnique({
+    where: { id: clientUserId },
+    include: { contact: true },
+  });
   if (!clientUser) return { error: "Compte introuvable." };
 
-  const sent = await sendClientPasswordResetEmail(clientUser);
+  const sent = await sendClientPasswordResetEmail({ id: clientUser.id, email: clientUser.contact.email });
   if (!sent) {
     return { error: "Ce contact n'a pas d'adresse email — ajoutez-en une d'abord." };
   }
@@ -274,7 +290,7 @@ export async function adminResetClientPassword(
     action: "client_password_reset",
     targetType: "ClientUser",
     targetId: clientUser.id,
-    targetLabel: clientUser.email ?? clientUser.name,
+    targetLabel: clientUser.contact.email ?? clientUser.contact.name,
     ipAddress: await getClientIp(),
   });
   return { success: true };

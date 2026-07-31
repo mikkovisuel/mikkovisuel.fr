@@ -93,7 +93,10 @@ model Client {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  users          ClientUser[]
+  // Renommé "users" -> "contacts" le 2026-07-31 (split Contact/ClientContact,
+  // voir plus bas) — ce sont les rattachements de contacts à ce client, pas
+  // des comptes utilisateurs au sens propre.
+  contacts       ClientContact[]
   tasks          Task[]
   documents      Document[]
   paymentRecords PaymentRecord[]
@@ -106,39 +109,63 @@ model Client {
   prospectOrigin Prospect?
 }
 
-// Contact chez le client. Depuis le 2026-07-30, ce modèle porte deux choses
-// distinctes qu'il confondait jusque-là : le **contact** (nom, fonction,
-// email, téléphone — le carnet d'adresses) et l'**accès à l'espace client**
-// (facultatif, voir `portalAccessEnabled`). Un contact peut donc exister sans
-// pouvoir se connecter, ce qui était impossible avant.
-model ClientUser {
-  id                        String    @id @default(cuid())
-  clientId                  String
-  client                    Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  // Nullable depuis le 2026-07-30 : un contact peut n'avoir qu'un téléphone.
-  // Reste unique (Postgres autorise plusieurs NULL sur un index unique), et
-  // reste obligatoire dès qu'un accès à l'espace client est ouvert — c'est
-  // l'identifiant de connexion (contrainte portée par la validation, voir
-  // src/lib/validation/client.ts).
-  email                     String?   @unique
-  // Nullable depuis le 2026-07-30 : `null` = aucun mot de passe défini. Ce
-  // n'est PAS l'interrupteur d'accès (voir `portalAccessEnabled`) — un
-  // contact fraîchement invité a un accès ouvert et un `passwordHash` encore
-  // nul tant qu'il n'a pas suivi son lien d'invitation.
+// Identité d'un contact — carnet d'adresses partageable (ajouté le
+// 2026-07-31, demande explicite : "un contact peut être dans plusieurs
+// fiches clients"). Avant cette date, `ClientUser` confondait l'identité
+// (nom/email/téléphone/fonction) et le compte d'accès à l'espace client
+// dans un seul modèle attaché à un seul client — un même contact ne
+// pouvait donc pas être rattaché à deux clients sans dupliquer sa fiche.
+// `Contact` porte maintenant l'identité seule ; `ClientContact` (ci-dessous)
+// porte le rattachement à un client donné et son éventuel accès.
+model Contact {
+  id        String   @id @default(cuid())
+  name      String
+  // Unique : c'est ce qui permet de retrouver et réaffecter un contact déjà
+  // saisi ("Affecter un contact existant" plutôt que "Nouveau") plutôt que
+  // d'en créer un doublon. Nullable : un contact peut n'avoir qu'un
+  // téléphone (Postgres autorise plusieurs NULL sur un index unique).
+  email     String?  @unique
+  phone     String?
+  // Fonction du contact (ex. "Directeur", "DJ", "Photographe") — texte
+  // libre, pas de liste fermée (trop variable d'un client à l'autre, et
+  // peut différer d'un client à l'autre pour la même personne — mais reste
+  // ici, pas sur ClientContact, par simplicité : le cas d'une fonction
+  // différente selon le client est resté hors scope de cette évolution).
+  role      String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  clientLinks ClientContact[]
+}
+
+// Rattachement d'un `Contact` à un `Client`, et l'éventuel compte d'accès à
+// l'espace client qui va avec — l'accès reste "par client" (demande
+// explicite) : le même contact peut avoir un accès ouvert chez un client et
+// aucun chez un autre, avec des mots de passe indépendants. Remplace
+// l'ancien `ClientUser` : mêmes champs de compte, identité désormais lue
+// via `contact`. Les anciens id `ClientUser` sont conservés tels quels sur
+// cette table lors de la migration (voir
+// 20260731_split_contact_from_client_user/migration.sql) — Task.createdById,
+// TaskComment.authorId, Session.subjectId, PasswordResetToken.subjectId et
+// AuditLogEntry.targetId, qui référencent cet id en chaîne libre (pas de
+// FK), restent donc valides sans aucune réécriture.
+model ClientContact {
+  id       String  @id @default(cuid())
+  clientId String
+  client   Client  @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  contactId String
+  contact  Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  // Nullable : `null` = aucun mot de passe défini. Ce n'est PAS
+  // l'interrupteur d'accès (voir `portalAccessEnabled`) — un contact
+  // fraîchement invité a un accès ouvert et un `passwordHash` encore nul
+  // tant qu'il n'a pas suivi son lien d'invitation.
   passwordHash              String?
   // Interrupteur d'accès à l'espace client, décorrélé de l'existence d'un mot
   // de passe pour pouvoir couper l'accès sans détruire le compte (et le
   // rouvrir sans refaire une invitation). `false` par défaut : un contact
-  // créé depuis le carnet d'adresses n'ouvre pas un espace client par
-  // accident, l'admin le décide explicitement. La migration passe les
-  // comptes existants à `true` (voir 20260730_contacts_client_category).
+  // rattaché depuis le carnet d'adresses n'ouvre pas un espace client par
+  // accident, l'admin le décide explicitement.
   portalAccessEnabled       Boolean   @default(false)
-  name                      String
-  phone                     String?
-  // Fonction du contact chez le client (ex. "Directeur", "DJ",
-  // "Photographe") — texte libre, pas de liste fermée (trop variable d'un
-  // client à l'autre).
-  role                      String?
   // Interrupteur par profil (bouton sur la fiche client, section "Comptes de
   // connexion") pour autoriser les emails automatiques (nouvelle tâche à
   // valider, rappel d'échéance, nouveau livrable/document, relance de
@@ -157,16 +184,20 @@ model ClientUser {
   updatedAt                 DateTime  @updatedAt
 
   loginEvents ClientLoginEvent[]
+
+  // Un contact ne peut être rattaché qu'une seule fois au même client — pas
+  // de doublon du même lien.
+  @@unique([clientId, contactId])
 }
 
 // Historique des connexions client, pour le "journal de connexion" du
-// tableau de bord admin — distinct de `ClientUser.lastLoginAt` (qui ne garde
-// que la toute dernière connexion) : une ligne par connexion réussie.
+// tableau de bord admin — distinct de `ClientContact.lastLoginAt` (qui ne
+// garde que la toute dernière connexion) : une ligne par connexion réussie.
 model ClientLoginEvent {
-  id           String     @id @default(cuid())
-  clientUserId String
-  clientUser   ClientUser @relation(fields: [clientUserId], references: [id], onDelete: Cascade)
-  loggedInAt   DateTime   @default(now())
+  id              String        @id @default(cuid())
+  clientContactId String
+  clientContact   ClientContact @relation(fields: [clientContactId], references: [id], onDelete: Cascade)
+  loggedInAt      DateTime      @default(now())
 }
 
 // Opaque session tokens: subjectType/subjectId is a lightweight polymorphic

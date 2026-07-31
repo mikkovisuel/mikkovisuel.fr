@@ -14,7 +14,7 @@ const DEMO_SESSION_DURATION_MS = 2 * 60 * 60 * 1000;
 // voir `assertNotDemo` dans src/lib/dal.ts, appelé par chaque Server Action
 // d'écriture côté client.
 export async function viewDemoClientSpace() {
-  const demoUser = await db.clientUser.findFirst({
+  const demoUser = await db.clientContact.findFirst({
     where: { client: { isDemo: true } },
   });
   if (!demoUser) return;

@@ -57,6 +57,22 @@ export function notifiableEmails(
     .map((user) => user.email as string);
 }
 
+// Même chose que `notifiableEmails`, mais à partir de rattachements
+// `ClientContact` chargés avec leur `contact` (identité) — depuis le split
+// Contact/ClientContact du 2026-07-31, l'email n'est plus directement sur
+// la ligne de compte, il faut le lire via `.contact.email`. Seul point de
+// vérité pour ce petit aplatissement, plutôt que de le répéter à chaque
+// appel (`task.client.contacts`, `document.client.contacts`...).
+export function notifiableEmailsFromContacts(
+  links: {
+    emailNotificationsEnabled: boolean;
+    portalAccessEnabled?: boolean;
+    contact: { email: string | null };
+  }[],
+): string[] {
+  return notifiableEmails(links.map((link) => ({ ...link, email: link.contact.email })));
+}
+
 // Un contact ne peut se connecter que si l'accès a été explicitement ouvert
 // **et** qu'il a un email (identifiant) et un mot de passe défini. Les trois
 // conditions sont distinctes : un contact invité mais qui n'a pas encore
@@ -131,8 +147,8 @@ export function buildClientWhere(options: {
       OR: [
         { name: { contains: search, mode: "insensitive" } },
         { billingEmail: { contains: search, mode: "insensitive" } },
-        { users: { some: { name: { contains: search, mode: "insensitive" } } } },
-        { users: { some: { email: { contains: search, mode: "insensitive" } } } },
+        { contacts: { some: { contact: { name: { contains: search, mode: "insensitive" } } } } },
+        { contacts: { some: { contact: { email: { contains: search, mode: "insensitive" } } } } },
       ],
     });
   }

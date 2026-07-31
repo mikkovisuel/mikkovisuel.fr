@@ -38,13 +38,16 @@ export async function impersonateClient(
   const error = await requireFreshAdminPassword(formData);
   if (error) return { error };
 
-  const clientUser = await db.clientUser.findUnique({ where: { id: clientUserId } });
+  const clientUser = await db.clientContact.findUnique({
+    where: { id: clientUserId },
+    include: { contact: true },
+  });
   if (!clientUser) return { error: "Compte introuvable." };
   // Usurper un contact sans accès ouvert créerait une session vers un espace
   // auquel il ne peut pas se connecter lui-même — l'aperçu ne refléterait
   // aucune réalité. Le bouton est déjà masqué dans ce cas côté fiche client,
   // ce garde couvre l'appel direct de l'action.
-  if (!canLogIn(clientUser)) {
+  if (!canLogIn({ ...clientUser, email: clientUser.contact.email })) {
     return { error: "Ce contact n'a pas d'accès actif à l'espace client." };
   }
 
@@ -62,7 +65,7 @@ export async function impersonateClient(
     action: "impersonation_start",
     targetType: "ClientUser",
     targetId: clientUser.id,
-    targetLabel: clientUser.email ?? clientUser.name,
+    targetLabel: clientUser.contact.email ?? clientUser.contact.name,
     ipAddress: await getClientIp(),
   });
 
