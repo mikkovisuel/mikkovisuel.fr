@@ -181,15 +181,27 @@ export function WorkloadChart({
               {/* Une tâche sans estimation ne peut pas être convertie en hauteur
                   de barre sans inventer une durée : on la signale explicitement
                   plutôt que de la laisser peser zéro en silence. Sous le numéro
-                  de semaine (demande du 2026-08-01), pas au-dessus. */}
-              {entry.unestimatedCount > 0 && (
-                <span
-                  className="rounded-full border border-line px-1.5 text-[10px] text-ink-muted"
-                  title={`${entry.unestimatedCount} tâche${entry.unestimatedCount > 1 ? "s" : ""} sans temps estimé — non comptée${entry.unestimatedCount > 1 ? "s" : ""} dans la hauteur de la barre`}
-                >
-                  +{entry.unestimatedCount}
-                </span>
-              )}
+                  de semaine (demande du 2026-08-01), pas au-dessus.
+                  Toujours rendue (juste rendue `invisible` si le compte est à
+                  zéro) plutôt qu'omise : la ligne row utilise `items-end`, donc
+                  une colonne sans bulle a une hauteur totale différente d'une
+                  colonne avec bulle — ce qui décale les barres les unes par
+                  rapport aux autres (bug réel trouvé le 2026-08-01, confirmé
+                  en production). Réserver systématiquement la même hauteur
+                  garde toutes les barres alignées, bulle affichée ou non. */}
+              <span
+                className={`rounded-full border border-line px-1.5 text-[10px] text-ink-muted ${
+                  entry.unestimatedCount > 0 ? "" : "invisible"
+                }`}
+                title={
+                  entry.unestimatedCount > 0
+                    ? `${entry.unestimatedCount} tâche${entry.unestimatedCount > 1 ? "s" : ""} sans temps estimé — non comptée${entry.unestimatedCount > 1 ? "s" : ""} dans la hauteur de la barre`
+                    : undefined
+                }
+                aria-hidden={entry.unestimatedCount > 0 ? undefined : true}
+              >
+                +{entry.unestimatedCount || 1}
+              </span>
             </div>
           );
         })}

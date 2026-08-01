@@ -974,6 +974,17 @@ appliquée à l'ensemble du site :
     16 semaines pile entre "précédent"/"suivant", fenêtre par défaut incluant
     bien la semaine en cours et les 4 suivantes) et calcul de la moyenne
     pondérée par jour saisi, avec des données temporaires réelles.
+- **Barres du graphique de charge désalignées — vrai défaut de production
+  trouvé (2026-08-01), repéré par le client via une capture d'écran.** Les
+  colonnes de semaines sont alignées par le bas (`items-end` sur la ligne),
+  et la bulle "+n" (tâches sans estimation) n'était rendue que si elle avait
+  quelque chose à afficher — une colonne avec bulle a donc une hauteur totale
+  différente d'une colonne sans bulle, ce qui décale la barre elle-même vers
+  le haut ou vers le bas d'une semaine à l'autre selon la présence ou non de
+  cette bulle. Corrigé en rendant systématiquement la bulle (juste rendue
+  `invisible` quand il n'y a rien à signaler) : chaque colonne a désormais
+  toujours la même hauteur totale, donc toutes les barres restent alignées.
+  Reproduit et confirmé par une page de test isolée avant/après.
 - **Temps & rentabilité par client (2026-07-30)**, nouvelle section en bas de
   `/admin/finances`. Le temps était chronométré depuis le 2026-07-21 mais
   n'était lisible que tâche par tâche. Cette vue rapproche, sur une période
@@ -1771,3 +1782,4 @@ Le client a explicitement délégué ces choix :
 | 2026-08-01 | "Dans une tâche, après être refusée elle passe en statut à modifier : lorsque je la remets en validation, le statut sur la vue de la tâche doit disparaître (uniquement la ligne rouge). Je garde bien l'historique des refus" | Livré : `setTaskStatus` efface désormais `refusalReason`/`refusedAt` aussi au passage en "À valider" (pas seulement en "BAT validé" comme depuis le 2026-07-20) — voir section "Backend interne". Corrige au passage le même défaut sur les lignes Liste/Kanban admin, qui affichaient le motif sans condition de statut. Testé en base : l'historique (`TaskRefusalHistory`) reste intact, seul le motif courant est effacé |
 | 2026-08-01 | "Le lien lorsque j'invite un contact à son espace ne fonctionne pas" (capture d'écran : erreur 403 sur mikkovisuel.fr) | **Vrai défaut de production trouvé, à fort impact** — voir section "Backend interne" pour le détail. La variable Scalingo `NEXT_PUBLIC_SITE_URL` pointait vers le domaine nu `mikkovisuel.fr`, cassé depuis le 2026-07-20 (403, souci DNS/hébergement OVH jamais résolu) ; cette variable sert de base à tous les liens envoyés par email (invitation contact, resets client/admin, invitation admin, rappel de paiement) — tous étaient donc cassés. Corrigée sur `https://www.mikkovisuel.fr` (confirmation explicite demandée avant ce changement de configuration de production) puis application redémarrée |
 | 2026-08-01 | "1. La bulle +n doit être sous le numéro de semaine. 2. Les infobulles ont des soucis d'affichage. 3. Choix des semaines dans les affichages. 4. Les paliers charge/surcharge doivent dépendre des capacités mises dans les paramètres" | Les 4 livrés — voir section "Backend interne" ("Planning, quatrième passage") pour le détail complet. Point 2 : **vrai défaut trouvé et confirmé par test isolé** (infobulle rognée par le défilement horizontal des graphiques, un effet de bord d'une règle CSS standard). Points 3 et 4 : deux choix proposés au client avant de coder (navigation par blocs de 16 semaines plutôt qu'une plage libre ; moyenne des capacités saisies plutôt qu'aucun statut ou seuils fixes gardés) |
+| 2026-08-01 | "Aligne toute les barres, les bulles en dessous" (capture d'écran : barres décalées verticalement les unes par rapport aux autres) | **Vrai défaut de production trouvé**, apparu après le point 1 ci-dessus. La bulle "+n" n'étant rendue que si elle avait quelque chose à afficher, une semaine avec bulle avait une hauteur de colonne différente d'une semaine sans bulle — décalant la barre elle-même puisque les colonnes sont alignées par le bas. Corrigé en rendant toujours la bulle (`invisible` si vide) pour que chaque colonne ait la même hauteur totale. Reproduit et confirmé par une page de test isolée reproduisant fidèlement le bug puis la correction |
