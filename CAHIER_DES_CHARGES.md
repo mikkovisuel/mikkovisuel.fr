@@ -888,6 +888,30 @@ appliquée à l'ensemble du site :
     Testé en base avec deux tâches réelles (l'une avec date d'évènement
     seule, l'autre avec échéance seule) : chacune bascule bien de "comptée"
     à "non répartie" selon la base choisie.
+- **Planning, troisième passage (2026-08-01) : tendance et tableau de bord —
+  clôture des deux points reportés le 2026-07-31.** Deux maquettes proposées
+  avant de coder (voir plus bas pour le détail des options), le client a
+  choisi le format pour chacune :
+  - **Tendance prévu/réel** (`TrendChart`, sous le graphique hebdomadaire) :
+    barres appariées par semaine — format choisi face à l'alternative "deux
+    courbes avec écart en trame". Le "réel" vient du temps chronométré
+    (`TaskTimeEntry`), rattaché à la semaine où la session a **commencé**
+    (même convention que le rapport Temps & rentabilité) — **indépendant de
+    la base évènement/échéance** choisie pour le graphique au-dessus,
+    puisqu'il s'agit de travail effectivement réalisé, pas d'un engagement
+    rattaché à une date de tâche. Écart affiché en rouge/vert au-dessus de
+    chaque paire de barres.
+  - **Tableau de bord** : 4 tuiles choisies par le client parmi 6 proposées
+    (tâches en retard, à risque, écart moyen, non réparti — client le plus
+    chargé et vélocité récente proposés mais **non retenus**, à reprendre si
+    besoin plus tard). "À risque" réutilise telle quelle l'alerte déjà
+    construite sur la fiche tâche (`checkDueDateCapacity`), plutôt qu'un
+    nouveau seuil inventé pour le tableau de bord. "Écart moyen" est calculé
+    sur les 4 dernières semaines **complètes**, la semaine en cours étant
+    exclue : la comparer à un prévu entier aurait affiché un écart négatif
+    systématique et trompeur tant qu'elle n'est pas terminée.
+  - Testé en base : décompte des tâches en retard, temps chronométré
+    correctement rattaché à la semaine de début de session.
 - **Temps & rentabilité par client (2026-07-30)**, nouvelle section en bas de
   `/admin/finances`. Le temps était chronométré depuis le 2026-07-21 mais
   n'était lisible que tâche par tâche. Cette vue rapproche, sur une période
@@ -1516,21 +1540,12 @@ Le client a explicitement délégué ces choix :
   piliers portfolio, aftermovie) est structurant dans le code comme dans
   l'interface. La cible réaliste est le studio ou l'agence créative, pas la
   PME générique.
-- **Planning : tendance semaine par semaine et tableau de bord détaillé —
-  reportés le 2026-07-31, pas construits.** Sur les deux options proposées
-  ("le moteur d'abord" vs "tout d'un bloc"), le client a choisi la première :
-  moteur de capacité + alertes livrés dans cette passe (voir section
-  "Backend interne"), ces deux points restent donc à construire dans une
-  session future :
-  1. **Tendance semaine par semaine** : delta entre charge prévue
-     (capacité saisie) et charge réelle constatée — suppose de savoir ce qui
-     a été *réellement* fait sur une semaine passée, pas seulement estimé ;
-     probablement à raccrocher au temps chronométré (`TaskTimeEntry`) déjà
-     suivi par tâche plutôt qu'à `estimatedMinutes`.
-  2. **Tableau de bord détaillé et complet** pour anticiper retards et
-     délais — nature exacte (quels indicateurs, quel horizon) à préciser
-     avec le client avant de coder, le terme n'ayant pas été détaillé plus
-     que ça dans la demande d'origine.
+- **Planning : tendance semaine par semaine et tableau de bord — livrés le
+  2026-08-01**, voir section "Backend interne" ("Planning, troisième
+  passage"). Deux tuiles candidates proposées mais **non retenues** par le
+  client, à reprendre si besoin : **client le plus chargé** (répartition de
+  la charge en cours par client) et **vélocité récente** (moyenne mobile des
+  heures réellement travaillées par semaine).
 
 ## Journal des modifications demandées
 
@@ -1690,3 +1705,4 @@ Le client a explicitement délégué ces choix :
 | 2026-07-31 | "Pas très bien aligné" (capture d'écran de `/admin/contacts` en production) | **Vrai défaut trouvé**, repéré une fois le lot précédent en ligne. Chaque ligne de `GlobalContactRow` est une grille CSS indépendante (pas une grille partagée entre lignes) : la colonne du badge d'accès était en largeur `auto`, donc dimensionnée sur le libellé de CE badge précis — "Contact seul" (court), "Espace client actif" ou "Invitation à envoyer" (plus longs) — ce qui décalait les colonnes précédentes (téléphone notamment) d'une ligne à l'autre selon le badge de chacune. Corrigé par une largeur fixe sur cette colonne (`w-44`), plus troncature ajoutée sur le téléphone par cohérence avec les autres colonnes texte. Vérifié par une reproduction isolée (mêmes classes, mêmes largeurs de contenu) avant/après, hors de l'admin qui reste inaccessible sans mot de passe |
 | 2026-08-01 | "Améliore le design des charges, ajoute la recopie de la semaine précédente, ajoute des vues sur le board (charge semaine + charge jour)" | Design et recopie livrés (voir section "Backend interne"). Pour les vues, deux maquettes proposées avant de coder (widget interactif) — le client a ensuite redirigé la demande vers la base de calcul et les deux points explicitement reportés le 2026-07-31 (tendance, tableau de bord), traités séparément ci-dessous |
 | 2026-08-01 | "Ajoute une option pour le calcul par date d'évènement ou par échéance ; la charge non répartie doit lister les tâches sans échéance également" | Livré : bascule "Par date d'évènement / Par échéance" sur `/admin/planning`, même moteur rattaché à une date différente. La section "Charge non répartie" suit désormais la même base (sous "échéance", liste les tâches sans échéance, pas sans date d'évènement) — testé en base avec deux tâches réelles, chacune bascule bien de "comptée" à "non répartie" selon la base active |
+| 2026-08-01 | "Donne une tendance semaine par semaine des charges réelles et le delta prévu/réel ; il me faut un véritable tableau de bord détaillé et complet" | Clôture des deux points reportés le 2026-07-31, avec deux maquettes proposées avant de coder. **Tendance** : barres appariées prévu/réel par semaine (`TrendChart`), format choisi face à l'alternative deux-courbes ; le "réel" vient du temps chronométré, rattaché à la semaine où la session a commencé, indépendant de la base évènement/échéance. **Tableau de bord** : 4 tuiles choisies parmi 6 proposées (tâches en retard, à risque à 30 jours, écart moyen sur 4 semaines complètes, charge non répartie) — client le plus chargé et vélocité récente proposés mais non retenus, à reprendre si besoin — voir section "Backend interne" |

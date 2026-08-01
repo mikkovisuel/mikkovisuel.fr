@@ -5,9 +5,17 @@ import { db } from "@/lib/db";
 import { ACTIVE_TASKS, isoWeekNumber } from "@/lib/tasks";
 import { TASK_STATUS } from "@/lib/dropdown-lists";
 import { WorkloadChart } from "@/components/admin/workload-chart";
+import { TrendChart } from "@/components/admin/trend-chart";
 import { CapacityPopup } from "@/components/admin/capacity-popup";
-import { formatHoursFromMinutes } from "@/lib/time-tracking";
-import { getCapacityMinutes, getCapacityWeeksWindow, weekDays } from "@/lib/capacity";
+import { STATUS_VARS } from "@/components/admin/chart-status";
+import { formatHoursFromMinutes, sumTaskTimeMs } from "@/lib/time-tracking";
+import {
+  checkDueDateCapacity,
+  getCapacityMinutes,
+  getCapacityWeeksWindow,
+  toCalendarDate,
+  weekDays,
+} from "@/lib/capacity";
 
 export const metadata: Metadata = {
   title: "Planning de charge — Admin Mikko Visuel",
@@ -84,14 +92,51 @@ export default async function PlanningPage({
     .sort(([a], [b]) => a.localeCompare(b))
     .slice(-16);
 
+  // Fenêtre de dates couverte par les semaines affichées, pour une seule
+  // requête de temps chronométré plutôt qu'une par semaine.
+  const weekRanges = weekEntries.map(([, value]) => weekDays(value.sampleDate));
+  const rangeStart = weekRanges.length
+    ? weekRanges.reduce((min, days) => (days[0] < min ? days[0] : min), weekRanges[0][0])
+    : null;
+  const rangeEnd = weekRanges.length
+    ? weekRanges.reduce((max, days) => (days[6] > max ? days[6] : max), weekRanges[0][6])
+    : null;
+
   // Capacité réelle par semaine affichée, en complément du graphique existant
   // (repli sur les seuils fixes dans `WorkloadChart` si aucune capacité n'a
-  // été saisie pour cette semaine-là).
+  // été saisie pour cette semaine-là) ; temps réellement travaillé (demande
+  // du 2026-08-01), pour la tendance prévu/réel — rattaché à la semaine où
+  // la session a *commencé*, même convention que le rapport Temps &
+  // rentabilité, indépendant de la base évènement/échéance choisie
+  // ci-dessus puisqu'il s'agit de travail effectivement réalisé.
+  const timeEntries = rangeStart
+    ? await db.taskTimeEntry.findMany({
+        where: { task: { ...ACTIVE_TASKS }, startedAt: { gte: rangeStart, lt: new Date(rangeEnd!.getTime() + 86_400_000) } },
+        select: { startedAt: true, endedAt: true },
+      })
+    : [];
+  const now = new Date();
+  const realMinutesByWeek = new Map<string, number>();
+  for (const entry of timeEntries) {
+    const key = weekKey(entry.startedAt);
+    const ms = sumTaskTimeMs([entry], now);
+    realMinutesByWeek.set(key, (realMinutesByWeek.get(key) ?? 0) + ms / 60_000);
+  }
+
   const weekData = await Promise.all(
     weekEntries.map(async ([key, value]) => {
       const [monday, , , , , , sunday] = weekDays(value.sampleDate);
       const capacityMinutes = await getCapacityMinutes(monday, sunday);
-      return { key, label: value.label, estimatedMinutes: value.estimatedMinutes, taskCount: value.taskCount, unestimatedCount: value.unestimatedCount, capacityMinutes };
+      const realMinutes = Math.round(realMinutesByWeek.get(key) ?? 0);
+      return {
+        key,
+        label: value.label,
+        estimatedMinutes: value.estimatedMinutes,
+        taskCount: value.taskCount,
+        unestimatedCount: value.unestimatedCount,
+        capacityMinutes,
+        realMinutes,
+      };
     }),
   );
 
@@ -103,8 +148,50 @@ export default async function PlanningPage({
 
   const dateFormatter = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short" });
 
+  // Tableau de bord (demande du 2026-08-01) : quatre indicateurs choisis par
+  // le client parmi les suggestions proposées, pour une vision globale sans
+  // avoir à déplier chaque section plus bas.
+  const today = toCalendarDate(new Date());
+  const overdueCount = await db.task.count({
+    where: { ...ACTIVE_TASKS, status: { slug: { not: TASK_STATUS.TERMINE } }, dueDate: { lt: today } },
+  });
+
+  // "À risque" : tâches à échéance proche dont la marge de capacité
+  // restante est déjà en alerte (même calcul que sur la fiche tâche,
+  // `checkDueDateCapacity`) — pas un nouveau seuil inventé pour le tableau
+  // de bord.
+  const RISK_HORIZON_DAYS = 30;
+  const horizonUntil = new Date(today.getTime() + RISK_HORIZON_DAYS * 86_400_000);
+  const horizonTasks = await db.task.findMany({
+    where: {
+      ...ACTIVE_TASKS,
+      status: { slug: { not: TASK_STATUS.TERMINE } },
+      dueDate: { gte: today, lte: horizonUntil },
+    },
+    select: { id: true, dueDate: true },
+  });
+  const riskChecks = await Promise.all(
+    horizonTasks.map((task) => checkDueDateCapacity(task.dueDate!, task.id)),
+  );
+  const atRiskCount = riskChecks.filter((check) => check.level === "warning" || check.level === "overload").length;
+
+  // Écart moyen sur les 4 dernières semaines *complètes* : la semaine en
+  // cours est exclue, son temps réel étant mécaniquement incomplet tant
+  // qu'elle n'est pas terminée (comparer un réel partiel à un prévu entier
+  // afficherait un écart négatif systématique et trompeur).
+  const currentWeekKey = weekKey(today);
+  const completedWeeks = weekData.filter((entry) => entry.key !== currentWeekKey);
+  const last4Weeks = completedWeeks.slice(-4);
+  const avgDeltaMinutes =
+    last4Weeks.length > 0
+      ? Math.round(
+          last4Weeks.reduce((sum, entry) => sum + (entry.realMinutes - entry.estimatedMinutes), 0) /
+            last4Weeks.length,
+        )
+      : null;
+
   return (
-    <div className="mx-auto max-w-7xl 2xl:max-w-[100rem] px-4 py-10 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-7xl 2xl:max-w-[100rem] px-4 py-10 sm:px-6 lg:px-8" style={STATUS_VARS}>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="font-display text-2xl font-medium tracking-tight text-ink">Planning de charge</h1>
@@ -116,6 +203,41 @@ export default async function PlanningPage({
           </p>
         </div>
         <CapacityPopup weeks={capacityWeeks} />
+      </div>
+
+      {/* Tableau de bord (demande du 2026-08-01) : 4 indicateurs choisis par
+          le client parmi les suggestions proposées, pour une vision globale
+          sans déplier chaque section plus bas. */}
+      <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="rounded-2xl border border-line p-4">
+          <p className="text-xs text-ink-muted">Tâches en retard</p>
+          <p className={`mt-1 text-2xl font-medium ${overdueCount > 0 ? "text-(--status-critical)" : "text-ink"}`}>
+            {overdueCount}
+          </p>
+        </div>
+        <div className="rounded-2xl border border-line p-4">
+          <p className="text-xs text-ink-muted">À risque (30 j)</p>
+          <p className={`mt-1 text-2xl font-medium ${atRiskCount > 0 ? "text-(--status-warning)" : "text-ink"}`}>
+            {atRiskCount}
+          </p>
+        </div>
+        <div className="rounded-2xl border border-line p-4">
+          <p className="text-xs text-ink-muted">Écart moyen (4 sem.)</p>
+          <p className="mt-1 text-2xl font-medium text-ink">
+            {avgDeltaMinutes === null ? (
+              "—"
+            ) : (
+              <span className={avgDeltaMinutes < 0 ? "text-(--status-critical)" : "text-(--status-good)"}>
+                {avgDeltaMinutes > 0 ? "+" : avgDeltaMinutes < 0 ? "−" : ""}
+                {formatHoursFromMinutes(Math.abs(avgDeltaMinutes))}
+              </span>
+            )}
+          </p>
+        </div>
+        <div className="rounded-2xl border border-line p-4">
+          <p className="text-xs text-ink-muted">Charge non répartie</p>
+          <p className="mt-1 text-2xl font-medium text-ink">{formatHoursFromMinutes(unallocatedMinutes)}</p>
+        </div>
       </div>
 
       {/* Bascule de la base de calcul (demande du 2026-08-01) : même moteur,
@@ -145,9 +267,21 @@ export default async function PlanningPage({
           {basis === "echeance" ? "Aucune tâche avec une échéance." : "Aucune tâche avec une date d'évènement."}
         </p>
       ) : (
-        <div className="mt-8">
-          <WorkloadChart data={weekData} />
-        </div>
+        <>
+          <div className="mt-8">
+            <WorkloadChart data={weekData} />
+          </div>
+
+          {/* Tendance prévu/réel (demande du 2026-08-01) : le "réel" vient du
+              temps chronométré, indépendant de la base évènement/échéance
+              choisie ci-dessus — voir le commentaire dans TrendChart. */}
+          <div className="mt-6">
+            <h2 className="mb-3 font-display text-lg font-medium tracking-tight text-ink">
+              Tendance : prévu vs réel
+            </h2>
+            <TrendChart data={weekData} />
+          </div>
+        </>
       )}
 
       <section className="mt-10 rounded-2xl border border-line p-5">

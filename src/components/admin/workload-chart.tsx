@@ -1,6 +1,6 @@
-import { CheckCircle, WarningCircle, WarningOctagon } from "@phosphor-icons/react/dist/ssr";
 import { formatHoursFromMinutes } from "@/lib/time-tracking";
 import { capacityAlertLevel } from "@/lib/capacity";
+import { STATUS_BAR, STATUS_TEXT, STATUS_ICON, STATUS_VARS, type ChartStatus } from "@/components/admin/chart-status";
 
 type WeekEntry = {
   key: string;
@@ -28,13 +28,11 @@ type WeekEntry = {
 const BUSY_HOURS = 25;
 const OVERLOAD_HOURS = 40;
 
-type Status = "good" | "warning" | "critical";
-
 // Priorité à la capacité réellement saisie (`WorkCapacityDay`) quand elle
 // existe pour la semaine ; repli sur les seuils fixes ci-dessus sinon
 // (demande du 2026-07-31 : le moteur de capacité vient compléter le
 // graphique existant, pas le remplacer tant qu'aucune capacité n'est saisie).
-function loadStatus(entry: Pick<WeekEntry, "estimatedMinutes" | "capacityMinutes">): Status {
+function loadStatus(entry: Pick<WeekEntry, "estimatedMinutes" | "capacityMinutes">): ChartStatus {
   if (entry.capacityMinutes !== undefined && entry.capacityMinutes > 0) {
     const level = capacityAlertLevel(entry.capacityMinutes, entry.estimatedMinutes);
     if (level === "overload") return "critical";
@@ -47,36 +45,7 @@ function loadStatus(entry: Pick<WeekEntry, "estimatedMinutes" | "capacityMinutes
   return "good";
 }
 
-// Palette de statut validée (skill dataviz, palette.md) : good/warning/critical,
-// mêmes teintes en clair et en sombre (contraste vérifié sur les deux
-// surfaces) — remplace les classes Tailwind emerald/amber/danger ad hoc, qui
-// n'étaient pas pensées comme un jeu "statut" distinct des couleurs
-// catégorielles de l'app.
-const STATUS_VARS = {
-  "--status-good": "#0ca30c",
-  "--status-warning": "#fab219",
-  "--status-critical": "#d03b3b",
-} as React.CSSProperties;
-
-const STATUS_BAR: Record<Status, string> = {
-  good: "bg-(--status-good)",
-  warning: "bg-(--status-warning)",
-  critical: "bg-(--status-critical)",
-};
-
-const STATUS_TEXT: Record<Status, string> = {
-  good: "text-(--status-good)",
-  warning: "text-(--status-warning)",
-  critical: "text-(--status-critical)",
-};
-
-const STATUS_ICON: Record<Status, React.ReactNode> = {
-  good: <CheckCircle size={13} weight="fill" />,
-  warning: <WarningCircle size={13} weight="fill" />,
-  critical: <WarningOctagon size={13} weight="fill" />,
-};
-
-const STATUS_LABEL: Record<Status, string> = {
+const STATUS_LABEL: Record<ChartStatus, string> = {
   good: "Charge normale",
   warning: `Chargée (${BUSY_HOURS} h+)`,
   critical: `Surcharge (${OVERLOAD_HOURS} h+)`,
