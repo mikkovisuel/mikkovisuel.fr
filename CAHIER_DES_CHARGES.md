@@ -560,6 +560,22 @@ appliquée à l'ensemble du site :
   applicatif (configuration DNS/hébergement côté OVH) : à vérifier/corriger
   par le client directement dans son espace OVH, ou à signaler à Claude
   Code s'il faut de l'aide pour formuler la bonne règle de redirection.
+- **Impact concret trouvé et corrigé (2026-08-01)** : "le lien pour inviter
+  un contact à son espace ne fonctionne pas" — le domaine nu ne renvoie
+  plus un ancien site mais une page d'erreur 403 (`HTTP ERROR 403`), et la
+  variable Scalingo `NEXT_PUBLIC_SITE_URL` était réglée sur
+  `https://mikkovisuel.fr` (sans `www.`), donc sur le domaine cassé. Cette
+  seule variable sert de base à **tous** les liens envoyés par email de
+  l'application (invitation contact, réinitialisation de mot de passe
+  client, réinitialisation de mot de passe admin, invitation admin, rappel
+  de paiement) : ils étaient donc **tous** cassés, pas seulement
+  l'invitation contact. Corrigé en réglant la variable sur
+  `https://www.mikkovisuel.fr` (testé : 403 sur le nu, 200 sur le `www.`)
+  puis en redémarrant l'application — confirmation explicite demandée avant
+  ce changement, puisqu'il s'agit d'un réglage de production hors du dépôt
+  git. Le souci DNS/hébergement du domaine nu lui-même reste non résolu
+  (toujours hors code applicatif) ; contourné ici en pointant l'app vers le
+  domaine qui fonctionne plutôt que d'attendre sa correction côté OVH.
 - Aperçu de l'espace client depuis la fiche client admin (2026-07-18) :
   bouton "Voir l'espace client" à côté de chaque compte de connexion sur
   `/admin/clients/[clientId]` — ouvre l'espace client exactement comme le
@@ -1716,3 +1732,4 @@ Le client a explicitement délégué ces choix :
 | 2026-08-01 | "Ajoute une option pour le calcul par date d'évènement ou par échéance ; la charge non répartie doit lister les tâches sans échéance également" | Livré : bascule "Par date d'évènement / Par échéance" sur `/admin/planning`, même moteur rattaché à une date différente. La section "Charge non répartie" suit désormais la même base (sous "échéance", liste les tâches sans échéance, pas sans date d'évènement) — testé en base avec deux tâches réelles, chacune bascule bien de "comptée" à "non répartie" selon la base active |
 | 2026-08-01 | "Donne une tendance semaine par semaine des charges réelles et le delta prévu/réel ; il me faut un véritable tableau de bord détaillé et complet" | Clôture des deux points reportés le 2026-07-31, avec deux maquettes proposées avant de coder. **Tendance** : barres appariées prévu/réel par semaine (`TrendChart`), format choisi face à l'alternative deux-courbes ; le "réel" vient du temps chronométré, rattaché à la semaine où la session a commencé, indépendant de la base évènement/échéance. **Tableau de bord** : 4 tuiles choisies parmi 6 proposées (tâches en retard, à risque à 30 jours, écart moyen sur 4 semaines complètes, charge non répartie) — client le plus chargé et vélocité récente proposés mais non retenus, à reprendre si besoin — voir section "Backend interne" |
 | 2026-08-01 | "Dans une tâche, après être refusée elle passe en statut à modifier : lorsque je la remets en validation, le statut sur la vue de la tâche doit disparaître (uniquement la ligne rouge). Je garde bien l'historique des refus" | Livré : `setTaskStatus` efface désormais `refusalReason`/`refusedAt` aussi au passage en "À valider" (pas seulement en "BAT validé" comme depuis le 2026-07-20) — voir section "Backend interne". Corrige au passage le même défaut sur les lignes Liste/Kanban admin, qui affichaient le motif sans condition de statut. Testé en base : l'historique (`TaskRefusalHistory`) reste intact, seul le motif courant est effacé |
+| 2026-08-01 | "Le lien lorsque j'invite un contact à son espace ne fonctionne pas" (capture d'écran : erreur 403 sur mikkovisuel.fr) | **Vrai défaut de production trouvé, à fort impact** — voir section "Backend interne" pour le détail. La variable Scalingo `NEXT_PUBLIC_SITE_URL` pointait vers le domaine nu `mikkovisuel.fr`, cassé depuis le 2026-07-20 (403, souci DNS/hébergement OVH jamais résolu) ; cette variable sert de base à tous les liens envoyés par email (invitation contact, resets client/admin, invitation admin, rappel de paiement) — tous étaient donc cassés. Corrigée sur `https://www.mikkovisuel.fr` (confirmation explicite demandée avant ce changement de configuration de production) puis application redémarrée |

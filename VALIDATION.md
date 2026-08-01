@@ -333,6 +333,15 @@ Clôture des deux points reportés le 2026-07-31. `tsc`/lint/build vérifiés su
 |---|---|---|---|---|---|
 | Remise en validation après refus | Tâche "À modifier" avec `refusalReason` rempli, remise en "À valider" | ✅ **Testé sur la base réelle** : `refusalReason`/`refusedAt` repassent à `null` après la mise à jour, exactement comme lors d'un passage en "BAT validé" | Historique des refus après la même remise en validation | ✅ Testé sur la base réelle : la ligne `TaskRefusalHistory` créée au moment du refus reste présente et inchangée après la remise en validation — seul le motif *courant* est effacé, jamais l'historique |
 
+## Lien d'invitation contact cassé — NEXT_PUBLIC_SITE_URL en production (2026-08-01)
+
+Signalé par le client via une capture d'écran (erreur 403 sur `mikkovisuel.fr`). Diagnostic et correctif en production, hors du dépôt git (variable d'environnement Scalingo).
+
+| Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |
+|---|---|---|---|---|---|
+| Domaine `www.mikkovisuel.fr` (celui vers lequel la variable a été corrigée) | Requête réelle sur une URL de réinitialisation | ✅ **Testé en conditions réelles** : `curl` sur `https://www.mikkovisuel.fr/espace-client/reinitialiser-mot-de-passe/test-token` → HTTP 200 | Domaine nu `mikkovisuel.fr` (l'ancienne valeur de la variable) | ✅ Testé en conditions réelles : `curl` sur la même URL en domaine nu → HTTP 403 — confirme que la variable pointait bien vers le domaine cassé, pas vers une hypothèse |
+| Variable Scalingo après correction | `scalingo env-get NEXT_PUBLIC_SITE_URL` après `env-set` + `restart` | ✅ Testé en conditions réelles : renvoie `https://www.mikkovisuel.fr` | — | Portée du correctif : tous les liens générés par email (invitation contact, resets client/admin, invitation admin, rappel de paiement) partagent cette même variable — non testés individuellement un par un après correction (nécessiterait de déclencher chaque email réel), mais tous lisent le même `process.env.NEXT_PUBLIC_SITE_URL` sans logique spécifique par flux |
+
 ## Points restant ouverts pour une prochaine passe de validation
 
 - Glisser-déposer et `<select>` natif du Kanban Prospection (limite outil, voir ci-dessus).
