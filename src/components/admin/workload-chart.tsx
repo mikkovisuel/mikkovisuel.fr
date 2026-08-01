@@ -14,6 +14,8 @@ type WeekEntry = {
   unestimatedCount: number;
   /** Capacité réellement saisie sur la semaine (minutes), si disponible. */
   capacityMinutes?: number;
+  /** Semaine en cours — mise en surbrillance (demande du 2026-08-01). */
+  isCurrentWeek?: boolean;
 };
 
 // Seuils fixes, dernier repli seulement (demande du 2026-08-01 : les paliers
@@ -121,7 +123,17 @@ export function WorkloadChart({
           const status = loadStatus(entry, averageCapacityMinutes);
           const hasCapacity = entry.capacityMinutes !== undefined && entry.capacityMinutes > 0;
           return (
-            <div key={entry.key} className="flex min-w-[52px] flex-col items-center gap-2">
+            <div
+              key={entry.key}
+              // `px-1.5 py-2` uniforme sur toutes les colonnes (jamais
+              // conditionnel) : voir le commentaire sur la bulle "+n"
+              // plus bas — une marge qui ne s'appliquerait qu'à la semaine
+              // en cours changerait sa hauteur totale et redécalerait sa
+              // barre par rapport aux autres, avec `items-end`.
+              className={`flex min-w-[52px] flex-col items-center gap-2 rounded-lg px-1.5 py-2 ${
+                entry.isCurrentWeek ? "bg-accent/10 ring-1 ring-accent/40" : ""
+              }`}
+            >
               <span className="text-xs text-ink-muted">{formatHoursFromMinutes(entry.estimatedMinutes)}</span>
               <div
                 tabIndex={0}

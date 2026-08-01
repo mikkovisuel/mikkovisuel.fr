@@ -985,6 +985,34 @@ appliquée à l'ensemble du site :
   `invisible` quand il n'y a rien à signaler) : chaque colonne a désormais
   toujours la même hauteur totale, donc toutes les barres restent alignées.
   Reproduit et confirmé par une page de test isolée avant/après.
+- **Planning, cinquième passage (2026-08-01) : échéance par défaut,
+  surbrillance, écarts, vue jour.**
+  1. **Échéance par défaut** pour la base de calcul (`?base=evenement` pour
+     revenir à la date d'évènement) — ce qu'il faut surveiller en priorité
+     est quand une tâche doit être livrée.
+  2. **Semaine en cours mise en surbrillance** dans les deux graphiques
+     (fond teinté + anneau), pour repérer où on en est d'un coup d'œil.
+     Appliquée en marge/fond uniforme sur **toutes** les colonnes (juste
+     transparente pour les autres) plutôt qu'une marge propre à la semaine
+     en cours seule — sinon même défaut que la bulle "+n" ci-dessus, une
+     colonne de taille différente aurait redécalé les barres.
+  3. **Couleurs de l'écart prévu/réel corrigées** : vert quand le réel est
+     **en dessous** du prévu (marge, pas de surcharge), rouge dans le cas
+     inverse — l'exact opposé de ce qui avait été livré la veille (raisonné
+     alors comme "en retard sur le travail", alors que le sens voulu est
+     "risque de surcharge"). Corrigé sur le graphique de tendance **et** sur
+     la tuile "Écart moyen" du tableau de bord, qui utilisait la même logique
+     inversée.
+  4. **Nouvelle vue jour** (`DailyChart`, bascule "Vue semaine"/"Vue jour") :
+     une semaine à la fois, sélectionnée indépendamment de la fenêtre de
+     16 semaines de la vue semaine (navigation propre, précédent/suivant
+     d'une semaine), une jauge horizontale par jour (chargé vs capacité),
+     statut en icône. Repli sur la capacité **journalière** moyenne
+     (capacité hebdomadaire moyenne ÷ 7) pour un jour sans capacité propre,
+     même logique que la vue semaine ; un jour sans aucune capacité connue
+     (ni propre ni moyenne) reste neutre plutôt que coloré arbitrairement.
+  - Testé en base : agrégation des tâches et de la capacité par jour exact
+    (pas par semaine) sur des données temporaires réelles.
 - **Temps & rentabilité par client (2026-07-30)**, nouvelle section en bas de
   `/admin/finances`. Le temps était chronométré depuis le 2026-07-21 mais
   n'était lisible que tâche par tâche. Cette vue rapproche, sur une période
@@ -1783,3 +1811,5 @@ Le client a explicitement délégué ces choix :
 | 2026-08-01 | "Le lien lorsque j'invite un contact à son espace ne fonctionne pas" (capture d'écran : erreur 403 sur mikkovisuel.fr) | **Vrai défaut de production trouvé, à fort impact** — voir section "Backend interne" pour le détail. La variable Scalingo `NEXT_PUBLIC_SITE_URL` pointait vers le domaine nu `mikkovisuel.fr`, cassé depuis le 2026-07-20 (403, souci DNS/hébergement OVH jamais résolu) ; cette variable sert de base à tous les liens envoyés par email (invitation contact, resets client/admin, invitation admin, rappel de paiement) — tous étaient donc cassés. Corrigée sur `https://www.mikkovisuel.fr` (confirmation explicite demandée avant ce changement de configuration de production) puis application redémarrée |
 | 2026-08-01 | "1. La bulle +n doit être sous le numéro de semaine. 2. Les infobulles ont des soucis d'affichage. 3. Choix des semaines dans les affichages. 4. Les paliers charge/surcharge doivent dépendre des capacités mises dans les paramètres" | Les 4 livrés — voir section "Backend interne" ("Planning, quatrième passage") pour le détail complet. Point 2 : **vrai défaut trouvé et confirmé par test isolé** (infobulle rognée par le défilement horizontal des graphiques, un effet de bord d'une règle CSS standard). Points 3 et 4 : deux choix proposés au client avant de coder (navigation par blocs de 16 semaines plutôt qu'une plage libre ; moyenne des capacités saisies plutôt qu'aucun statut ou seuils fixes gardés) |
 | 2026-08-01 | "Aligne toute les barres, les bulles en dessous" (capture d'écran : barres décalées verticalement les unes par rapport aux autres) | **Vrai défaut de production trouvé**, apparu après le point 1 ci-dessus. La bulle "+n" n'étant rendue que si elle avait quelque chose à afficher, une semaine avec bulle avait une hauteur de colonne différente d'une semaine sans bulle — décalant la barre elle-même puisque les colonnes sont alignées par le bas. Corrigé en rendant toujours la bulle (`invisible` si vide) pour que chaque colonne ait la même hauteur totale. Reproduit et confirmé par une page de test isolée reproduisant fidèlement le bug puis la correction |
+| 2026-08-01 | "Mets la vue par échéance par défaut. Mets en surbrillance la semaine actuelle. Pour les écarts, vert quand le réel est en dessous du prévu, rouge l'inverse" | Les 3 livrés — voir section "Backend interne" ("Planning, cinquième passage"). **Correction assumée, pas un ajout** : le sens des couleurs de l'écart prévu/réel était inversé depuis sa livraison la veille (raisonné à tort comme "en retard sur le travail" plutôt que "risque de surcharge") — corrigé sur le graphique de tendance et sur la tuile "Écart moyen" du tableau de bord |
+| 2026-08-01 | "Mets aussi une vue par jours (en sélectionnant la semaine)" | Livré : nouvelle bascule "Vue semaine"/"Vue jour" sur `/admin/planning`, la vue jour affichant une jauge par jour (chargé vs capacité) pour une semaine choisie par une navigation dédiée, indépendante de la fenêtre de 16 semaines de la vue semaine. Repli sur la capacité journalière moyenne (capacité hebdomadaire moyenne ÷ 7) pour un jour sans capacité propre — testé en base avec des données temporaires réelles (agrégation exacte par jour, pas par semaine) |

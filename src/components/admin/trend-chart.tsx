@@ -7,6 +7,8 @@ type TrendEntry = {
   estimatedMinutes: number;
   /** Temps réellement travaillé sur la semaine, chronométré (`TaskTimeEntry`). */
   realMinutes: number;
+  /** Semaine en cours — mise en surbrillance (demande du 2026-08-01). */
+  isCurrentWeek?: boolean;
 };
 
 // Deux couleurs catégorielles (identité de série), jamais les couleurs de
@@ -19,10 +21,13 @@ const SERIES_VARS = {
 } as React.CSSProperties;
 
 // Le delta réutilise les couleurs de statut (bonne/critique), pas les
-// couleurs de série ci-dessus : c'est un jugement ("en retard" / "à jour"),
-// pas une troisième série de données.
+// couleurs de série ci-dessus : c'est un jugement de charge, pas une
+// troisième série de données. Vert quand le réel est en dessous du prévu
+// (marge, pas de surcharge), rouge dans le cas inverse (demande du
+// 2026-08-01) — un réel plus élevé que prévu est le signal à surveiller,
+// pas l'inverse.
 function deltaClass(deltaMinutes: number): string {
-  if (deltaMinutes < 0) return "text-(--status-critical)";
+  if (deltaMinutes > 0) return "text-(--status-critical)";
   return "text-(--status-good)";
 }
 
@@ -62,7 +67,17 @@ export function TrendChart({ data }: { data: TrendEntry[] }) {
         {data.map((entry) => {
           const delta = entry.realMinutes - entry.estimatedMinutes;
           return (
-            <div key={entry.key} className="flex min-w-[64px] flex-col items-center gap-2">
+            <div
+              key={entry.key}
+              // `px-1.5 py-2` appliqué à TOUTES les colonnes (pas seulement
+              // celle en cours) : une marge conditionnelle changerait la
+              // hauteur totale d'une seule colonne et redécalerait les
+              // barres, exactement le défaut corrigé plus haut avec la
+              // bulle "+n". Seuls le fond et l'anneau varient.
+              className={`flex min-w-[64px] flex-col items-center gap-2 rounded-lg px-1.5 py-2 ${
+                entry.isCurrentWeek ? "bg-accent/10 ring-1 ring-accent/40" : ""
+              }`}
+            >
               <span className={`text-xs font-medium ${deltaClass(delta)}`}>{formatDelta(delta)}</span>
               <div
                 tabIndex={0}

@@ -7,6 +7,7 @@ import { ACTIVE_TASKS, isoWeekNumber } from "@/lib/tasks";
 import { TASK_STATUS } from "@/lib/dropdown-lists";
 import { WorkloadChart } from "@/components/admin/workload-chart";
 import { TrendChart } from "@/components/admin/trend-chart";
+import { DailyChart, type DailyEntry } from "@/components/admin/daily-chart";
 import { CapacityPopup } from "@/components/admin/capacity-popup";
 import { STATUS_VARS } from "@/components/admin/chart-status";
 import { formatHoursFromMinutes, sumTaskTimeMs } from "@/lib/time-tracking";
@@ -54,25 +55,42 @@ function addWeeks(date: Date, weeks: number): Date {
 const WINDOW_SIZE = 16;
 const FUTURE_WEEKS_DEFAULT = 4;
 
+// Vue jour (demande du 2026-08-01, "vue par jours en sélectionnant la
+// semaine") : une semaine à la fois, navigable indépendamment de la fenêtre
+// de 16 semaines de la vue semaine — voir `DailyChart`.
+type PlanningView = "semaine" | "jour";
+
+const DAY_NAMES = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
+
 export default async function PlanningPage({
   searchParams,
 }: {
-  searchParams: Promise<{ base?: string; semaine?: string }>;
+  searchParams: Promise<{ base?: string; semaine?: string; vue?: string; semaineJour?: string }>;
 }) {
   await verifyAdminSession();
-  const { base, semaine } = await searchParams;
-  const basis: PlanningBasis = base === "echeance" ? "echeance" : "evenement";
+  const { base, semaine, vue, semaineJour } = await searchParams;
+  const view: PlanningView = vue === "jour" ? "jour" : "semaine";
+  // Échéance par défaut (demande du 2026-08-01) : ce qu'il faut surveiller en
+  // priorité, c'est quand une tâche doit être livrée, pas seulement quand
+  // elle a lieu — "évènement" reste disponible via `?base=evenement`.
+  const basis: PlanningBasis = base === "evenement" ? "evenement" : "echeance";
   const dateField = basis === "echeance" ? "dueDate" : "eventDate";
 
   const parsedOffset = Number.parseInt(semaine ?? "0", 10);
   const weekOffset = Number.isFinite(parsedOffset) ? parsedOffset : 0;
   const [thisMonday] = weekDays(new Date());
+  const currentWeekKey = weekKey(thisMonday);
   const defaultWindowEnd = addWeeks(thisMonday, FUTURE_WEEKS_DEFAULT);
   const defaultWindowStart = addWeeks(defaultWindowEnd, -(WINDOW_SIZE - 1));
   const windowStart = addWeeks(defaultWindowStart, -weekOffset * WINDOW_SIZE);
   const windowMondays = Array.from({ length: WINDOW_SIZE }, (_, i) => addWeeks(windowStart, i));
 
-  const [tasks, unallocatedTasks, capacityWeeks, averageCapacityMinutes] = await Promise.all([
+  const parsedDayOffset = Number.parseInt(semaineJour ?? "0", 10);
+  const dayWeekOffset = Number.isFinite(parsedDayOffset) ? parsedDayOffset : 0;
+  const selectedDayWeekMonday = addWeeks(thisMonday, dayWeekOffset);
+  const selectedDayWeekSunday = addWeeks(selectedDayWeekMonday, 1);
+
+  const [tasks, unallocatedTasks, capacityWeeks, averageCapacityMinutes, dayTasks, dayCapacities] = await Promise.all([
     db.task.findMany({
       where: { ...ACTIVE_TASKS, [dateField]: { not: null } },
       select: { id: true, eventDate: true, dueDate: true, estimatedMinutes: true },
@@ -89,6 +107,15 @@ export default async function PlanningPage({
     }),
     getCapacityWeeksWindow(2, 12),
     getAverageWeeklyCapacityMinutes(),
+    // Vue jour : uniquement les tâches de la semaine sélectionnée, sur la
+    // même base évènement/échéance que la vue semaine.
+    db.task.findMany({
+      where: { ...ACTIVE_TASKS, [dateField]: { gte: selectedDayWeekMonday, lt: selectedDayWeekSunday } },
+      select: { eventDate: true, dueDate: true, estimatedMinutes: true },
+    }),
+    db.workCapacityDay.findMany({
+      where: { date: { gte: selectedDayWeekMonday, lt: selectedDayWeekSunday } },
+    }),
   ]);
 
   // Charge pondérée par le temps estimé plutôt que par le nombre de tâches
@@ -150,6 +177,7 @@ export default async function PlanningPage({
       })
     : [];
   const now = new Date();
+  const today = toCalendarDate(now);
   const realMinutesByWeek = new Map<string, number>();
   for (const entry of timeEntries) {
     const key = weekKey(entry.startedAt);
@@ -170,6 +198,10 @@ export default async function PlanningPage({
         unestimatedCount: value.unestimatedCount,
         capacityMinutes,
         realMinutes,
+        // Semaine en cours (demande du 2026-08-01, "que j'ai une vue
+        // précise") : mise en surbrillance dans les deux graphiques plutôt
+        // que de la laisser se confondre avec les autres colonnes.
+        isCurrentWeek: key === currentWeekKey,
       };
     }),
   );
@@ -182,10 +214,38 @@ export default async function PlanningPage({
 
   const dateFormatter = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short" });
 
+  // Vue jour : agrège les tâches de la semaine sélectionnée par jour exact
+  // (pas par semaine), sur la base évènement/échéance choisie plus haut.
+  const committedByDay = new Map<string, { minutes: number; count: number }>();
+  for (const task of dayTasks) {
+    const date = (basis === "echeance" ? task.dueDate : task.eventDate)!;
+    const key = toCalendarDate(date).toISOString().slice(0, 10);
+    const entry = committedByDay.get(key) ?? { minutes: 0, count: 0 };
+    entry.minutes += task.estimatedMinutes ?? 0;
+    entry.count += 1;
+    committedByDay.set(key, entry);
+  }
+  const capacityByDay = new Map(dayCapacities.map((row) => [row.date.toISOString().slice(0, 10), row.availableMinutes]));
+  const todayIso = today.toISOString().slice(0, 10);
+  const dailyEntries: DailyEntry[] = Array.from({ length: 7 }, (_, i) => {
+    const date = new Date(selectedDayWeekMonday.getTime() + i * 86_400_000);
+    const iso = date.toISOString().slice(0, 10);
+    const committed = committedByDay.get(iso);
+    return {
+      date: iso,
+      dayLabel: `${DAY_NAMES[i]} ${dateFormatter.format(date)}`,
+      committedMinutes: committed?.minutes ?? 0,
+      taskCount: committed?.count ?? 0,
+      capacityMinutes: capacityByDay.get(iso) ?? null,
+      isToday: iso === todayIso,
+    };
+  });
+  const averageDailyCapacityMinutes = averageCapacityMinutes !== null ? averageCapacityMinutes / 7 : null;
+  const selectedDayWeekLastDay = new Date(selectedDayWeekSunday.getTime() - 86_400_000);
+
   // Tableau de bord (demande du 2026-08-01) : quatre indicateurs choisis par
   // le client parmi les suggestions proposées, pour une vision globale sans
   // avoir à déplier chaque section plus bas.
-  const today = toCalendarDate(new Date());
   const overdueCount = await db.task.count({
     where: { ...ACTIVE_TASKS, status: { slug: { not: TASK_STATUS.TERMINE } }, dueDate: { lt: today } },
   });
@@ -251,12 +311,21 @@ export default async function PlanningPage({
   // Construit les liens de navigation en conservant l'autre paramètre
   // (base de calcul / fenêtre de semaines) plutôt que de l'écraser à chaque
   // clic sur l'un ou l'autre contrôle.
-  function hrefFor(overrides: { base?: PlanningBasis; semaine?: number }) {
+  function hrefFor(overrides: {
+    base?: PlanningBasis;
+    semaine?: number;
+    vue?: PlanningView;
+    semaineJour?: number;
+  }) {
     const nextBase = overrides.base ?? basis;
     const nextOffset = overrides.semaine ?? weekOffset;
+    const nextView = overrides.vue ?? view;
+    const nextDayOffset = overrides.semaineJour ?? dayWeekOffset;
     const params = new URLSearchParams();
-    if (nextBase === "echeance") params.set("base", "echeance");
+    if (nextBase === "evenement") params.set("base", "evenement");
     if (nextOffset !== 0) params.set("semaine", String(nextOffset));
+    if (nextView === "jour") params.set("vue", "jour");
+    if (nextDayOffset !== 0) params.set("semaineJour", String(nextDayOffset));
     const query = params.toString();
     return query ? `/admin/planning?${query}` : "/admin/planning";
   }
@@ -296,11 +365,14 @@ export default async function PlanningPage({
         </div>
         <div className="rounded-2xl border border-line p-4">
           <p className="text-xs text-ink-muted">Écart moyen (4 sem.)</p>
+          {/* Vert quand le réel est en dessous du prévu (marge, pas de
+              surcharge), rouge dans le cas inverse (demande du 2026-08-01) —
+              l'opposé de "en retard sur le travail". */}
           <p className="mt-1 text-2xl font-medium text-ink">
             {avgDeltaMinutes === null ? (
               "—"
             ) : (
-              <span className={avgDeltaMinutes < 0 ? "text-(--status-critical)" : "text-(--status-good)"}>
+              <span className={avgDeltaMinutes > 0 ? "text-(--status-critical)" : "text-(--status-good)"}>
                 {avgDeltaMinutes > 0 ? "+" : avgDeltaMinutes < 0 ? "−" : ""}
                 {formatHoursFromMinutes(Math.abs(avgDeltaMinutes))}
               </span>
@@ -313,10 +385,32 @@ export default async function PlanningPage({
         </div>
       </div>
 
+      {/* Vue semaine / vue jour (demande du 2026-08-01) : la vue jour permet
+          de sélectionner une semaine précise pour voir sa répartition
+          journalière — voir `DailyChart`. */}
+      <div className="mt-4 inline-flex rounded-full border border-line p-1 text-sm">
+        <Link
+          href={hrefFor({ vue: "semaine" })}
+          className={`rounded-full px-3 py-1.5 transition-colors ${
+            view === "semaine" ? "bg-accent text-accent-ink" : "text-ink-muted hover:text-ink"
+          }`}
+        >
+          Vue semaine
+        </Link>
+        <Link
+          href={hrefFor({ vue: "jour" })}
+          className={`rounded-full px-3 py-1.5 transition-colors ${
+            view === "jour" ? "bg-accent text-accent-ink" : "text-ink-muted hover:text-ink"
+          }`}
+        >
+          Vue jour
+        </Link>
+      </div>
+
       {/* Bascule de la base de calcul (demande du 2026-08-01) : même moteur,
           juste rattaché à une date différente — voir le commentaire sur
           `PlanningBasis` plus haut. */}
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
         <div className="inline-flex rounded-full border border-line p-1 text-sm">
           <Link
             href={hrefFor({ base: "evenement" })}
@@ -336,49 +430,87 @@ export default async function PlanningPage({
           </Link>
         </div>
 
-        {/* Navigation entre fenêtres de 16 semaines (demande du 2026-08-01,
-            "avoir le choix des semaines dans les affichages") — décale la
-            fenêtre affichée par blocs entiers plutôt qu'une plage de dates
-            libre, pour rester simple à utiliser au quotidien. */}
-        <div className="flex items-center gap-2 text-sm">
-          <Link
-            href={hrefFor({ semaine: weekOffset + 1 })}
-            aria-label="Semaines précédentes"
-            className="rounded-full border border-line p-2 text-ink-muted transition-colors hover:border-accent hover:text-ink"
-          >
-            <CaretLeft size={14} weight="bold" />
-          </Link>
-          <span className="whitespace-nowrap text-ink-muted">
-            {dateFormatter.format(windowStart)} – {dateFormatter.format(windowLastSunday)}
-          </span>
-          <Link
-            href={hrefFor({ semaine: weekOffset - 1 })}
-            aria-label="Semaines suivantes"
-            className="rounded-full border border-line p-2 text-ink-muted transition-colors hover:border-accent hover:text-ink"
-          >
-            <CaretRight size={14} weight="bold" />
-          </Link>
-          {weekOffset !== 0 && (
-            <Link href={hrefFor({ semaine: 0 })} className="text-ink-muted underline hover:text-ink">
-              Aujourd&apos;hui
+        {view === "semaine" ? (
+          /* Navigation entre fenêtres de 16 semaines (demande du 2026-08-01,
+             "avoir le choix des semaines dans les affichages") — décale la
+             fenêtre affichée par blocs entiers plutôt qu'une plage de dates
+             libre, pour rester simple à utiliser au quotidien. */
+          <div className="flex items-center gap-2 text-sm">
+            <Link
+              href={hrefFor({ semaine: weekOffset + 1 })}
+              aria-label="Semaines précédentes"
+              className="rounded-full border border-line p-2 text-ink-muted transition-colors hover:border-accent hover:text-ink"
+            >
+              <CaretLeft size={14} weight="bold" />
             </Link>
-          )}
+            <span className="whitespace-nowrap text-ink-muted">
+              {dateFormatter.format(windowStart)} – {dateFormatter.format(windowLastSunday)}
+            </span>
+            <Link
+              href={hrefFor({ semaine: weekOffset - 1 })}
+              aria-label="Semaines suivantes"
+              className="rounded-full border border-line p-2 text-ink-muted transition-colors hover:border-accent hover:text-ink"
+            >
+              <CaretRight size={14} weight="bold" />
+            </Link>
+            {weekOffset !== 0 && (
+              <Link href={hrefFor({ semaine: 0 })} className="text-ink-muted underline hover:text-ink">
+                Aujourd&apos;hui
+              </Link>
+            )}
+          </div>
+        ) : (
+          /* Navigation d'une semaine à la fois pour la vue jour — "en
+             sélectionnant la semaine" (demande du 2026-08-01), indépendante
+             de la fenêtre de 16 semaines de la vue semaine. */
+          <div className="flex items-center gap-2 text-sm">
+            <Link
+              href={hrefFor({ semaineJour: dayWeekOffset - 1 })}
+              aria-label="Semaine précédente"
+              className="rounded-full border border-line p-2 text-ink-muted transition-colors hover:border-accent hover:text-ink"
+            >
+              <CaretLeft size={14} weight="bold" />
+            </Link>
+            <span className="whitespace-nowrap text-ink-muted">
+              {dateFormatter.format(selectedDayWeekMonday)} – {dateFormatter.format(selectedDayWeekLastDay)}
+            </span>
+            <Link
+              href={hrefFor({ semaineJour: dayWeekOffset + 1 })}
+              aria-label="Semaine suivante"
+              className="rounded-full border border-line p-2 text-ink-muted transition-colors hover:border-accent hover:text-ink"
+            >
+              <CaretRight size={14} weight="bold" />
+            </Link>
+            {dayWeekOffset !== 0 && (
+              <Link href={hrefFor({ semaineJour: 0 })} className="text-ink-muted underline hover:text-ink">
+                Aujourd&apos;hui
+              </Link>
+            )}
+          </div>
+        )}
+      </div>
+
+      {view === "semaine" ? (
+        <>
+          <div className="mt-8">
+            <WorkloadChart data={weekData} averageCapacityMinutes={averageCapacityMinutes} />
+          </div>
+
+          {/* Tendance prévu/réel (demande du 2026-08-01) : le "réel" vient du
+              temps chronométré, indépendant de la base évènement/échéance
+              choisie ci-dessus — voir le commentaire dans TrendChart. */}
+          <div className="mt-6">
+            <h2 className="mb-3 font-display text-lg font-medium tracking-tight text-ink">
+              Tendance : prévu vs réel
+            </h2>
+            <TrendChart data={weekData} />
+          </div>
+        </>
+      ) : (
+        <div className="mt-8">
+          <DailyChart days={dailyEntries} averageDailyCapacityMinutes={averageDailyCapacityMinutes} />
         </div>
-      </div>
-
-      <div className="mt-8">
-        <WorkloadChart data={weekData} averageCapacityMinutes={averageCapacityMinutes} />
-      </div>
-
-      {/* Tendance prévu/réel (demande du 2026-08-01) : le "réel" vient du
-          temps chronométré, indépendant de la base évènement/échéance
-          choisie ci-dessus — voir le commentaire dans TrendChart. */}
-      <div className="mt-6">
-        <h2 className="mb-3 font-display text-lg font-medium tracking-tight text-ink">
-          Tendance : prévu vs réel
-        </h2>
-        <TrendChart data={weekData} />
-      </div>
+      )}
 
       <section className="mt-10 rounded-2xl border border-line p-5">
         <h2 className="font-display text-lg font-medium tracking-tight text-ink">
