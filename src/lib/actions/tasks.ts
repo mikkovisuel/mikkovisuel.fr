@@ -351,9 +351,16 @@ export async function setTaskStatus(taskId: string, statusSlug: TaskStatusSlug) 
       // `Task.pinnedAt`. Pas d'effet si elle n'était pas épinglée.
       ...(statusSlug === TASK_STATUS.TERMINE ? { pinnedAt: null } : {}),
       // Le motif de refus courant n'a plus lieu d'être affiché une fois le
-      // BAT validé — il reste consultable dans `TaskRefusalHistory` (écrit
-      // au moment du refus, dans `refuseTask`), jamais supprimé.
-      ...(statusSlug === TASK_STATUS.BAT_VALIDE ? { refusalReason: null, refusedAt: null } : {}),
+      // BAT validé, ou dès que la tâche est remise en validation après un
+      // refus (bouton "Mettre en validation" depuis "À modifier") — le
+      // bandeau rouge de la fiche tâche concerne un refus qu'on est
+      // justement en train de corriger, il n'a plus de raison de rester
+      // affiché. L'historique, lui, reste consultable dans
+      // `TaskRefusalHistory` (écrit au moment du refus, dans `refuseTask`),
+      // jamais supprimé ni touché ici.
+      ...(statusSlug === TASK_STATUS.BAT_VALIDE || statusSlug === TASK_STATUS.A_VALIDER
+        ? { refusalReason: null, refusedAt: null }
+        : {}),
     },
   });
   if (statusSlug === TASK_STATUS.BAT_VALIDE) {

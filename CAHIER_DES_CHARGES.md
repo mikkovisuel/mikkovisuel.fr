@@ -412,6 +412,15 @@ appliquée à l'ensemble du site :
   un changement de statut manuel par l'admin (`setTaskStatus`). L'historique
   complet reste consultable sur `/admin/taches/[taskId]`, section
   "Historique des refus".
+- Motif de refus également effacé à la remise en validation (2026-08-01) :
+  le point ci-dessus ne couvrait que le passage en "BAT validé" — remettre
+  une tâche refusée directement en "À valider" (bouton "Mettre en
+  validation" depuis "À modifier") laissait le bandeau rouge affiché sur la
+  fiche tâche **et** sur les lignes des vues Liste/Kanban, alors qu'un
+  nouveau tour de validation venait de commencer. `setTaskStatus` efface
+  désormais `refusalReason`/`refusedAt` sur ce passage aussi, par le même
+  mécanisme (testé en base : l'historique reste intact, seul le motif
+  courant est effacé) — la fiche `TaskRefusalHistory` n'est jamais touchée.
 - Notifications par email gérables par le client lui-même (2026-07-21) :
   jusqu'ici seul l'admin pouvait activer/désactiver les emails automatiques
   d'un profil (voir section "Backend interne"). Ajout d'une section
@@ -1706,3 +1715,4 @@ Le client a explicitement délégué ces choix :
 | 2026-08-01 | "Améliore le design des charges, ajoute la recopie de la semaine précédente, ajoute des vues sur le board (charge semaine + charge jour)" | Design et recopie livrés (voir section "Backend interne"). Pour les vues, deux maquettes proposées avant de coder (widget interactif) — le client a ensuite redirigé la demande vers la base de calcul et les deux points explicitement reportés le 2026-07-31 (tendance, tableau de bord), traités séparément ci-dessous |
 | 2026-08-01 | "Ajoute une option pour le calcul par date d'évènement ou par échéance ; la charge non répartie doit lister les tâches sans échéance également" | Livré : bascule "Par date d'évènement / Par échéance" sur `/admin/planning`, même moteur rattaché à une date différente. La section "Charge non répartie" suit désormais la même base (sous "échéance", liste les tâches sans échéance, pas sans date d'évènement) — testé en base avec deux tâches réelles, chacune bascule bien de "comptée" à "non répartie" selon la base active |
 | 2026-08-01 | "Donne une tendance semaine par semaine des charges réelles et le delta prévu/réel ; il me faut un véritable tableau de bord détaillé et complet" | Clôture des deux points reportés le 2026-07-31, avec deux maquettes proposées avant de coder. **Tendance** : barres appariées prévu/réel par semaine (`TrendChart`), format choisi face à l'alternative deux-courbes ; le "réel" vient du temps chronométré, rattaché à la semaine où la session a commencé, indépendant de la base évènement/échéance. **Tableau de bord** : 4 tuiles choisies parmi 6 proposées (tâches en retard, à risque à 30 jours, écart moyen sur 4 semaines complètes, charge non répartie) — client le plus chargé et vélocité récente proposés mais non retenus, à reprendre si besoin — voir section "Backend interne" |
+| 2026-08-01 | "Dans une tâche, après être refusée elle passe en statut à modifier : lorsque je la remets en validation, le statut sur la vue de la tâche doit disparaître (uniquement la ligne rouge). Je garde bien l'historique des refus" | Livré : `setTaskStatus` efface désormais `refusalReason`/`refusedAt` aussi au passage en "À valider" (pas seulement en "BAT validé" comme depuis le 2026-07-20) — voir section "Backend interne". Corrige au passage le même défaut sur les lignes Liste/Kanban admin, qui affichaient le motif sans condition de statut. Testé en base : l'historique (`TaskRefusalHistory`) reste intact, seul le motif courant est effacé |

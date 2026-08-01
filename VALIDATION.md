@@ -327,6 +327,12 @@ Clôture des deux points reportés le 2026-07-31. `tsc`/lint/build vérifiés su
 | "À risque" (tuile tableau de bord) | Tâche à échéance proche avec capacité serrée | Vérifié par lecture de code : réutilise `checkDueDateCapacity`, déjà testé (voir section "Moteur de capacité" plus haut : surcharge, marge à 20 %) — aucune nouvelle logique d'alerte introduite | Tâche à échéance proche mais sans aucune capacité saisie sur la période | Vérifié par lecture de code : `coverageDays > 0` requis avant "warning"/"overload", donc jamais comptée à risque par défaut de donnée |
 | Écart moyen sur 4 semaines complètes | 4 semaines passées avec écarts positifs/négatifs variés | Vérifié par lecture de code : moyenne des deltas des 4 dernières semaines *hors semaine en cours* | Semaine en cours en cours de moyenne | Vérifié par lecture de code : exclue explicitement (`entry.key !== currentWeekKey`) — sinon son réel partiel comparé à un prévu entier afficherait un écart négatif systématique |
 
+## Bandeau de refus effacé à la remise en validation (2026-08-01)
+
+| Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |
+|---|---|---|---|---|---|
+| Remise en validation après refus | Tâche "À modifier" avec `refusalReason` rempli, remise en "À valider" | ✅ **Testé sur la base réelle** : `refusalReason`/`refusedAt` repassent à `null` après la mise à jour, exactement comme lors d'un passage en "BAT validé" | Historique des refus après la même remise en validation | ✅ Testé sur la base réelle : la ligne `TaskRefusalHistory` créée au moment du refus reste présente et inchangée après la remise en validation — seul le motif *courant* est effacé, jamais l'historique |
+
 ## Points restant ouverts pour une prochaine passe de validation
 
 - Glisser-déposer et `<select>` natif du Kanban Prospection (limite outil, voir ci-dessus).
