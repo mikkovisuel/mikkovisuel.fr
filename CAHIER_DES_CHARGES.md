@@ -869,6 +869,25 @@ appliquée à l'ensemble du site :
     distinct d'un jour jamais saisi — testé en base : compter un jour
     "inconnu" comme 0 h fausserait le calcul de couverture et masquerait le
     besoin de compléter la saisie.
+- **Planning, second passage (2026-08-01) : design, recopie, base de calcul.**
+  - Graphique hebdomadaire redessiné avec la palette de statut validée par le
+    skill data-viz du projet (good/warning/critical, vérifiée au contraste sur
+    les deux thèmes), un repère en pointillés affichant la capacité saisie
+    directement sur la barre, et une infobulle personnalisée accessible au
+    clavier (remplace le `title` natif du navigateur).
+  - Pop-up de capacité : bouton **"Copier la semaine précédente"** (remplit
+    les 7 champs en un clic, rien n'est enregistré tant que le formulaire
+    n'est pas soumis), total hebdomadaire affiché en direct, week-end
+    distingué visuellement.
+  - **Base de calcul au choix** : "par date d'évènement" (quand le travail a
+    lieu) ou "par échéance" (quand il doit être livré) — un même graphique,
+    juste rattaché à une date différente selon ce qu'on veut anticiper (utile
+    par exemple pour un aftermovie livré bien après l'évènement filmé). La
+    section "Charge non répartie" suit la même bascule : sous "échéance",
+    elle liste les tâches sans échéance plutôt que sans date d'évènement.
+    Testé en base avec deux tâches réelles (l'une avec date d'évènement
+    seule, l'autre avec échéance seule) : chacune bascule bien de "comptée"
+    à "non répartie" selon la base choisie.
 - **Temps & rentabilité par client (2026-07-30)**, nouvelle section en bas de
   `/admin/finances`. Le temps était chronométré depuis le 2026-07-21 mais
   n'était lisible que tâche par tâche. Cette vue rapproche, sur une période
@@ -1669,3 +1688,5 @@ Le client a explicitement délégué ces choix :
 | 2026-07-31 | Onglet Contacts : alignement en grille, bouton "Modifier" en icône, tri alphabétique/date d'ajout (alphabétique par défaut), bouton "Créer un contact" avec choix Nouveau/Affecter | Tous livrés sur `/admin/contacts`. Le choix Nouveau/Affecter est aussi disponible depuis la fiche client (demande explicite couvrant les deux endroits). Le contact rattaché en mode "Affecter" ne peut être choisi que parmi ceux pas déjà liés à ce client |
 | 2026-07-31 | Onglet Planning : pop-up de capacité par jour, charge non répartie, alerte à l'échéance | "Le moteur d'abord" retenu par le client face aux deux options proposées (l'autre étant "tout d'un bloc", avec tendance et tableau de bord détaillé en plus) — **la tendance semaine par semaine et le tableau de bord détaillé et complet restent donc à construire**, non oubliés. Livré : nouveau modèle `WorkCapacityDay`, pop-up de saisie hebdomadaire (`CapacityPopup`), section "Charge non répartie" pour les tâches sans date d'évènement (jusque-là absentes du graphique), graphique hebdomadaire comparé à la capacité réelle quand elle existe (repli sur les seuils fixes sinon), et alerte orange/rouge sur le champ Échéance de la fiche tâche — voir section "Backend interne" pour le détail, testé en base (surcharge, marge à 20 %, jour à 0 h distinct d'un jour non saisi) |
 | 2026-07-31 | "Pas très bien aligné" (capture d'écran de `/admin/contacts` en production) | **Vrai défaut trouvé**, repéré une fois le lot précédent en ligne. Chaque ligne de `GlobalContactRow` est une grille CSS indépendante (pas une grille partagée entre lignes) : la colonne du badge d'accès était en largeur `auto`, donc dimensionnée sur le libellé de CE badge précis — "Contact seul" (court), "Espace client actif" ou "Invitation à envoyer" (plus longs) — ce qui décalait les colonnes précédentes (téléphone notamment) d'une ligne à l'autre selon le badge de chacune. Corrigé par une largeur fixe sur cette colonne (`w-44`), plus troncature ajoutée sur le téléphone par cohérence avec les autres colonnes texte. Vérifié par une reproduction isolée (mêmes classes, mêmes largeurs de contenu) avant/après, hors de l'admin qui reste inaccessible sans mot de passe |
+| 2026-08-01 | "Améliore le design des charges, ajoute la recopie de la semaine précédente, ajoute des vues sur le board (charge semaine + charge jour)" | Design et recopie livrés (voir section "Backend interne"). Pour les vues, deux maquettes proposées avant de coder (widget interactif) — le client a ensuite redirigé la demande vers la base de calcul et les deux points explicitement reportés le 2026-07-31 (tendance, tableau de bord), traités séparément ci-dessous |
+| 2026-08-01 | "Ajoute une option pour le calcul par date d'évènement ou par échéance ; la charge non répartie doit lister les tâches sans échéance également" | Livré : bascule "Par date d'évènement / Par échéance" sur `/admin/planning`, même moteur rattaché à une date différente. La section "Charge non répartie" suit désormais la même base (sous "échéance", liste les tâches sans échéance, pas sans date d'évènement) — testé en base avec deux tâches réelles, chacune bascule bien de "comptée" à "non répartie" selon la base active |

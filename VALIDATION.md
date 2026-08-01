@@ -306,6 +306,16 @@ Signalé par le client via une capture d'écran de production. Page inaccessible
 |---|---|---|---|---|---|
 | Alignement des colonnes entre lignes | 3 lignes avec badges d'accès de longueurs différentes ("Contact seul", "Espace client actif", "Invitation à envoyer") | ✅ **Testé par reproduction isolée** : avant correction, la colonne "téléphone" démarre à des abscisses différentes selon la ligne (jusqu'à ~35 px d'écart, mesuré par marqueur positionné via `getBoundingClientRect`) ; après correction (largeur fixe sur la colonne du badge), les trois lignes démarrent exactement à la même abscisse | Contenu le plus long de chaque colonne (téléphone suisse avec espaces, libellé de badge le plus long) | ✅ Testé dans la même reproduction : aucun débordement ni retour à la ligne inattendu avec le contenu réel le plus large observé en production |
 
+## Planning : base de calcul, design, recopie de semaine (2026-08-01)
+
+`tsc`/lint/build vérifiés sur l'ensemble. Rendu non observé en navigateur (page derrière la connexion admin) sauf mention contraire.
+
+| Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |
+|---|---|---|---|---|---|
+| Bascule de base de calcul (évènement / échéance) | Tâche avec date d'évènement seule, tâche avec échéance seule | ✅ **Testé sur la base réelle** avec 2 tâches temporaires : sous "évènement", la tâche à date d'évènement est comptée et celle à échéance seule apparaît en "non répartie" ; sous "échéance", l'inverse exact — chacune bascule bien de "comptée" à "non répartie" selon la base active | Tâche sans aucune des deux dates | Vérifié par lecture de code : `[dateField]: null` la classe "non répartie" quelle que soit la base, elle n'est jamais perdue |
+| Design du graphique (palette de statut, repère de capacité, infobulle) | Semaine avec capacité saisie, statuts good/warning/critical | ✅ **Testé par reproduction isolée** (mêmes classes, mêmes couleurs de statut) : les trois couleurs de statut s'affichent correctement, le repère en pointillés se positionne à la hauteur de la capacité saisie, l'infobulle personnalisée apparaît au survol — la palette elle-même a été validée par le script du skill data-viz (`validate_palette.js`) avant intégration | Semaine sans capacité saisie | ✅ Vérifié par lecture de code : repli sur les seuils fixes (25 h / 40 h), pas de repère en pointillés affiché (rien à comparer) |
+| "Copier la semaine précédente" | Semaine avec des heures déjà saisies la semaine d'avant | Vérifié par lecture de code : les 7 champs contrôlés sont remplis depuis `weeks[weekIndex-1]`, rien n'est envoyé au serveur tant que "Enregistrer" n'est pas cliqué | Première semaine de la fenêtre préchargée (pas de semaine précédente disponible) | Vérifié par lecture de code : le bouton n'est simplement pas rendu (`previousWeek` vaut `null`) plutôt que de proposer une copie invalide |
+
 ## Points restant ouverts pour une prochaine passe de validation
 
 - Glisser-déposer et `<select>` natif du Kanban Prospection (limite outil, voir ci-dessus).
