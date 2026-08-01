@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState, useEffect, useRef, useState } from "react";
-import { CaretLeft, CaretRight, Check, Gauge, WarningCircle } from "@phosphor-icons/react/dist/ssr";
+import { ArrowCounterClockwise, CaretLeft, CaretRight, Check, Gauge, WarningCircle } from "@phosphor-icons/react/dist/ssr";
 import { Modal } from "@/components/admin/modal";
 import { setWeekCapacity } from "@/lib/actions/capacity";
 
@@ -9,6 +9,17 @@ export interface CapacityWeek {
   /** Étiquette de la semaine, ex. "Semaine du 28 juillet". */
   label: string;
   days: { date: string; dayLabel: string; hours: number | null }[];
+}
+
+function toHourStrings(week: CapacityWeek): string[] {
+  return week.days.map((day) => (day.hours !== null ? String(day.hours) : ""));
+}
+
+function sumHours(values: string[]): number {
+  return values.reduce((sum, value) => {
+    const parsed = Number.parseFloat(value.replace(",", "."));
+    return sum + (Number.isNaN(parsed) ? 0 : parsed);
+  }, 0);
 }
 
 // Pop-up de saisie de la capacité de travail (demande du 2026-07-31, "je
@@ -24,6 +35,20 @@ export function CapacityPopup({ weeks }: { weeks: CapacityWeek[] }) {
   const formRef = useRef<HTMLFormElement>(null);
 
   const week = weeks[weekIndex];
+  // Champs contrôlés (plutôt que `defaultValue` non contrôlé) : nécessaire
+  // pour pouvoir les remplir en un clic depuis "Copier la semaine
+  // précédente", et pour afficher un total hebdomadaire qui se met à jour en
+  // direct pendant la saisie.
+  const [hours, setHours] = useState<string[]>(() => (week ? toHourStrings(week) : []));
+  // Réinitialise les champs au changement de semaine en ajustant l'état
+  // pendant le rendu (motif documenté par React pour "reset state when a
+  // prop changes") plutôt que dans un effet, qui provoquerait un rendu
+  // supplémentaire après coup.
+  const [renderedWeek, setRenderedWeek] = useState(week);
+  if (week !== renderedWeek) {
+    setRenderedWeek(week);
+    setHours(week ? toHourStrings(week) : []);
+  }
 
   // Referme la modale de succès en un seul geste (pas de "close" auto sur
   // simple succès, contrairement aux autres formulaires du projet) : l'admin
@@ -34,6 +59,9 @@ export function CapacityPopup({ weeks }: { weeks: CapacityWeek[] }) {
   }, [state]);
 
   if (!week) return null;
+
+  const previousWeek = weekIndex > 0 ? weeks[weekIndex - 1] : null;
+  const total = sumHours(hours);
 
   return (
     <>
@@ -57,7 +85,12 @@ export function CapacityPopup({ weeks }: { weeks: CapacityWeek[] }) {
           >
             <CaretLeft size={14} weight="bold" />
           </button>
-          <p className="text-sm font-medium text-ink">{week.label}</p>
+          <div className="text-center">
+            <p className="text-sm font-medium text-ink">{week.label}</p>
+            <p className="text-xs text-ink-muted">
+              {total > 0 ? `${total.toString().replace(".", ",")} h au total` : "Aucune heure saisie"}
+            </p>
+          </div>
           <button
             type="button"
             onClick={() => setWeekIndex((i) => Math.min(weeks.length - 1, i + 1))}
@@ -69,44 +102,74 @@ export function CapacityPopup({ weeks }: { weeks: CapacityWeek[] }) {
           </button>
         </div>
 
-        <form ref={formRef} action={formAction} className="mt-4 grid gap-3">
-          {week.days.map((day) => (
-            <div key={day.date} className="flex items-center justify-between gap-3">
-              <label htmlFor={`cap-${day.date}`} className="text-sm text-ink">
-                {day.dayLabel}
-              </label>
-              <div className="flex items-center gap-2">
-                <input type="hidden" name="date" value={day.date} />
-                <input
-                  id={`cap-${day.date}`}
-                  name="hours"
-                  type="number"
-                  min={0}
-                  max={24}
-                  step={0.5}
-                  defaultValue={day.hours ?? ""}
-                  placeholder="0"
-                  className="w-20 rounded-xl border border-line bg-surface-elevated px-3 py-2 text-right text-sm text-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
-                />
-                <span className="text-xs text-ink-muted">h</span>
+        {/* Recopie de la semaine précédente (demande du 2026-08-01) : évite de
+            ressaisir des heures qui se répètent souvent d'une semaine à
+            l'autre. Ne touche que l'état local, pas encore enregistré tant
+            que "Enregistrer cette semaine" n'a pas été soumis — recopier puis
+            changer d'avis (fermer sans enregistrer) ne modifie rien en base. */}
+        {previousWeek && (
+          <button
+            type="button"
+            onClick={() => setHours(toHourStrings(previousWeek))}
+            className="mt-4 inline-flex items-center gap-2 rounded-full border border-dashed border-line px-3 py-1.5 text-xs font-medium text-ink-muted transition-colors hover:border-accent hover:text-ink"
+          >
+            <ArrowCounterClockwise size={13} weight="bold" />
+            Copier la semaine précédente ({previousWeek.label.replace("Semaine du ", "")})
+          </button>
+        )}
+
+        <form ref={formRef} action={formAction} className="mt-4 grid gap-1">
+          {week.days.map((day, index) => {
+            // Index 5 = samedi, 6 = dimanche (weekDays() part toujours du
+            // lundi — voir src/lib/capacity.ts) : distinction visuelle
+            // seulement, aucune règle métier ne les traite différemment.
+            const isWeekend = index >= 5;
+            return (
+              <div
+                key={day.date}
+                className={`flex items-center justify-between gap-3 rounded-lg px-2 py-1.5 ${isWeekend ? "bg-surface" : ""}`}
+              >
+                <label htmlFor={`cap-${day.date}`} className={`text-sm ${isWeekend ? "text-ink-muted" : "text-ink"}`}>
+                  {day.dayLabel}
+                </label>
+                <div className="flex items-center gap-2">
+                  <input type="hidden" name="date" value={day.date} />
+                  <input
+                    id={`cap-${day.date}`}
+                    name="hours"
+                    type="number"
+                    min={0}
+                    max={24}
+                    step={0.5}
+                    value={hours[index] ?? ""}
+                    onChange={(event) => {
+                      const next = [...hours];
+                      next[index] = event.target.value;
+                      setHours(next);
+                    }}
+                    placeholder="0"
+                    className="w-20 rounded-xl border border-line bg-surface-elevated px-3 py-2 text-right text-sm text-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
+                  />
+                  <span className="text-xs text-ink-muted">h</span>
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
 
           {state?.error && (
-            <div className="flex items-center gap-2 text-sm text-danger">
+            <div className="mt-2 flex items-center gap-2 text-sm text-danger">
               <WarningCircle size={16} weight="fill" />
               {state.error}
             </div>
           )}
           {state?.success && (
-            <div className="flex items-center gap-2 text-sm text-accent">
+            <div className="mt-2 flex items-center gap-2 text-sm text-accent">
               <Check size={16} weight="bold" />
               Capacité enregistrée.
             </div>
           )}
 
-          <div className="flex items-center gap-3 pt-1">
+          <div className="flex items-center gap-3 pt-3">
             <button
               type="submit"
               disabled={pending}
