@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { CaretLeft, CaretRight } from "@phosphor-icons/react/dist/ssr";
 import { verifyAdminSession } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { ACTIVE_TASKS, isoWeekNumber } from "@/lib/tasks";
@@ -11,6 +12,7 @@ import { STATUS_VARS } from "@/components/admin/chart-status";
 import { formatHoursFromMinutes, sumTaskTimeMs } from "@/lib/time-tracking";
 import {
   checkDueDateCapacity,
+  getAverageWeeklyCapacityMinutes,
   getCapacityMinutes,
   getCapacityWeeksWindow,
   toCalendarDate,
@@ -38,17 +40,39 @@ function weekLabel(date: Date) {
   return `S${isoWeekNumber(date)}`;
 }
 
+function addWeeks(date: Date, weeks: number): Date {
+  return new Date(date.getTime() + weeks * 7 * 86_400_000);
+}
+
+// Taille de la fenêtre de semaines affichée dans les graphiques, et choix des
+// semaines à l'intérieur (demande du 2026-08-01, "avoir le choix des
+// semaines dans les affichages") : navigation précédent/suivant par bloc de
+// 16 semaines entières, via `?semaine=N` (N = nombre de blocs en arrière).
+// Par défaut (N=0), la fenêtre se termine 4 semaines après la semaine en
+// cours plutôt que pile sur aujourd'hui — une tâche déjà planifiée dans les
+// prochaines semaines doit rester visible sans naviguer.
+const WINDOW_SIZE = 16;
+const FUTURE_WEEKS_DEFAULT = 4;
+
 export default async function PlanningPage({
   searchParams,
 }: {
-  searchParams: Promise<{ base?: string }>;
+  searchParams: Promise<{ base?: string; semaine?: string }>;
 }) {
   await verifyAdminSession();
-  const { base } = await searchParams;
+  const { base, semaine } = await searchParams;
   const basis: PlanningBasis = base === "echeance" ? "echeance" : "evenement";
   const dateField = basis === "echeance" ? "dueDate" : "eventDate";
 
-  const [tasks, unallocatedTasks, capacityWeeks] = await Promise.all([
+  const parsedOffset = Number.parseInt(semaine ?? "0", 10);
+  const weekOffset = Number.isFinite(parsedOffset) ? parsedOffset : 0;
+  const [thisMonday] = weekDays(new Date());
+  const defaultWindowEnd = addWeeks(thisMonday, FUTURE_WEEKS_DEFAULT);
+  const defaultWindowStart = addWeeks(defaultWindowEnd, -(WINDOW_SIZE - 1));
+  const windowStart = addWeeks(defaultWindowStart, -weekOffset * WINDOW_SIZE);
+  const windowMondays = Array.from({ length: WINDOW_SIZE }, (_, i) => addWeeks(windowStart, i));
+
+  const [tasks, unallocatedTasks, capacityWeeks, averageCapacityMinutes] = await Promise.all([
     db.task.findMany({
       where: { ...ACTIVE_TASKS, [dateField]: { not: null } },
       select: { id: true, eventDate: true, dueDate: true, estimatedMinutes: true },
@@ -64,6 +88,7 @@ export default async function PlanningPage({
       orderBy: { createdAt: "desc" },
     }),
     getCapacityWeeksWindow(2, 12),
+    getAverageWeeklyCapacityMinutes(),
   ]);
 
   // Charge pondérée par le temps estimé plutôt que par le nombre de tâches
@@ -88,9 +113,18 @@ export default async function PlanningPage({
     byWeek.set(key, entry);
   }
 
-  const weekEntries = Array.from(byWeek.entries())
-    .sort(([a], [b]) => a.localeCompare(b))
-    .slice(-16);
+  // Fenêtre générée à partir de dates calendaires fixes (pas seulement des
+  // semaines qui ont des tâches) : navigation déterministe, une semaine sans
+  // aucune tâche s'affiche à zéro plutôt que de disparaître silencieusement
+  // et de décaler la fenêtre.
+  const weekEntries = windowMondays.map((monday) => {
+    const key = weekKey(monday);
+    const existing = byWeek.get(key);
+    return [
+      key,
+      existing ?? { label: weekLabel(monday), estimatedMinutes: 0, taskCount: 0, unestimatedCount: 0, sampleDate: monday },
+    ] as const;
+  });
 
   // Fenêtre de dates couverte par les semaines affichées, pour une seule
   // requête de temps chronométré plutôt qu'une par semaine.
@@ -175,20 +209,59 @@ export default async function PlanningPage({
   );
   const atRiskCount = riskChecks.filter((check) => check.level === "warning" || check.level === "overload").length;
 
-  // Écart moyen sur les 4 dernières semaines *complètes* : la semaine en
-  // cours est exclue, son temps réel étant mécaniquement incomplet tant
-  // qu'elle n'est pas terminée (comparer un réel partiel à un prévu entier
-  // afficherait un écart négatif systématique et trompeur).
-  const currentWeekKey = weekKey(today);
-  const completedWeeks = weekData.filter((entry) => entry.key !== currentWeekKey);
-  const last4Weeks = completedWeeks.slice(-4);
+  // Écart moyen sur les 4 dernières semaines *complètes* : toujours ancré sur
+  // "aujourd'hui", indépendamment de la fenêtre de semaines actuellement
+  // affichée dans les graphiques ci-dessous (navigation) — le tableau de
+  // bord reflète l'état réel actuel, pas la période qu'on est en train de
+  // consulter. La semaine en cours est exclue : son temps réel est
+  // mécaniquement incomplet tant qu'elle n'est pas terminée, la comparer à
+  // un prévu entier afficherait un écart négatif systématique et trompeur.
+  const trendAnchorStart = addWeeks(thisMonday, -4);
+  const [trendAnchorTasks, trendAnchorTimeEntries] = await Promise.all([
+    db.task.findMany({
+      where: { ...ACTIVE_TASKS, [dateField]: { gte: trendAnchorStart, lt: thisMonday } },
+      select: { eventDate: true, dueDate: true, estimatedMinutes: true },
+    }),
+    db.taskTimeEntry.findMany({
+      where: { task: { ...ACTIVE_TASKS }, startedAt: { gte: trendAnchorStart, lt: thisMonday } },
+      select: { startedAt: true, endedAt: true },
+    }),
+  ]);
+  const trendAnchorEstimatedByWeek = new Map<string, number>();
+  for (const task of trendAnchorTasks) {
+    const date = (basis === "echeance" ? task.dueDate : task.eventDate)!;
+    const key = weekKey(date);
+    trendAnchorEstimatedByWeek.set(key, (trendAnchorEstimatedByWeek.get(key) ?? 0) + (task.estimatedMinutes ?? 0));
+  }
+  const trendAnchorRealByWeek = new Map<string, number>();
+  for (const entry of trendAnchorTimeEntries) {
+    const key = weekKey(entry.startedAt);
+    trendAnchorRealByWeek.set(key, (trendAnchorRealByWeek.get(key) ?? 0) + sumTaskTimeMs([entry], now) / 60_000);
+  }
+  const last4WeeksMondays = Array.from({ length: 4 }, (_, i) => addWeeks(trendAnchorStart, i));
+  const last4WeeksDeltas = last4WeeksMondays.map((monday) => {
+    const key = weekKey(monday);
+    return (trendAnchorRealByWeek.get(key) ?? 0) - (trendAnchorEstimatedByWeek.get(key) ?? 0);
+  });
   const avgDeltaMinutes =
-    last4Weeks.length > 0
-      ? Math.round(
-          last4Weeks.reduce((sum, entry) => sum + (entry.realMinutes - entry.estimatedMinutes), 0) /
-            last4Weeks.length,
-        )
+    last4WeeksDeltas.length > 0
+      ? Math.round(last4WeeksDeltas.reduce((sum, delta) => sum + delta, 0) / last4WeeksDeltas.length)
       : null;
+
+  // Construit les liens de navigation en conservant l'autre paramètre
+  // (base de calcul / fenêtre de semaines) plutôt que de l'écraser à chaque
+  // clic sur l'un ou l'autre contrôle.
+  function hrefFor(overrides: { base?: PlanningBasis; semaine?: number }) {
+    const nextBase = overrides.base ?? basis;
+    const nextOffset = overrides.semaine ?? weekOffset;
+    const params = new URLSearchParams();
+    if (nextBase === "echeance") params.set("base", "echeance");
+    if (nextOffset !== 0) params.set("semaine", String(nextOffset));
+    const query = params.toString();
+    return query ? `/admin/planning?${query}` : "/admin/planning";
+  }
+
+  const windowLastSunday = new Date(addWeeks(windowStart, WINDOW_SIZE).getTime() - 86_400_000);
 
   return (
     <div className="mx-auto max-w-7xl 2xl:max-w-[100rem] px-4 py-10 sm:px-6 lg:px-8" style={STATUS_VARS}>
@@ -243,46 +316,69 @@ export default async function PlanningPage({
       {/* Bascule de la base de calcul (demande du 2026-08-01) : même moteur,
           juste rattaché à une date différente — voir le commentaire sur
           `PlanningBasis` plus haut. */}
-      <div className="mt-4 inline-flex rounded-full border border-line p-1 text-sm">
-        <Link
-          href="/admin/planning"
-          className={`rounded-full px-3 py-1.5 transition-colors ${
-            basis === "evenement" ? "bg-accent text-accent-ink" : "text-ink-muted hover:text-ink"
-          }`}
-        >
-          Par date d&apos;évènement
-        </Link>
-        <Link
-          href="/admin/planning?base=echeance"
-          className={`rounded-full px-3 py-1.5 transition-colors ${
-            basis === "echeance" ? "bg-accent text-accent-ink" : "text-ink-muted hover:text-ink"
-          }`}
-        >
-          Par échéance
-        </Link>
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+        <div className="inline-flex rounded-full border border-line p-1 text-sm">
+          <Link
+            href={hrefFor({ base: "evenement" })}
+            className={`rounded-full px-3 py-1.5 transition-colors ${
+              basis === "evenement" ? "bg-accent text-accent-ink" : "text-ink-muted hover:text-ink"
+            }`}
+          >
+            Par date d&apos;évènement
+          </Link>
+          <Link
+            href={hrefFor({ base: "echeance" })}
+            className={`rounded-full px-3 py-1.5 transition-colors ${
+              basis === "echeance" ? "bg-accent text-accent-ink" : "text-ink-muted hover:text-ink"
+            }`}
+          >
+            Par échéance
+          </Link>
+        </div>
+
+        {/* Navigation entre fenêtres de 16 semaines (demande du 2026-08-01,
+            "avoir le choix des semaines dans les affichages") — décale la
+            fenêtre affichée par blocs entiers plutôt qu'une plage de dates
+            libre, pour rester simple à utiliser au quotidien. */}
+        <div className="flex items-center gap-2 text-sm">
+          <Link
+            href={hrefFor({ semaine: weekOffset + 1 })}
+            aria-label="Semaines précédentes"
+            className="rounded-full border border-line p-2 text-ink-muted transition-colors hover:border-accent hover:text-ink"
+          >
+            <CaretLeft size={14} weight="bold" />
+          </Link>
+          <span className="whitespace-nowrap text-ink-muted">
+            {dateFormatter.format(windowStart)} – {dateFormatter.format(windowLastSunday)}
+          </span>
+          <Link
+            href={hrefFor({ semaine: weekOffset - 1 })}
+            aria-label="Semaines suivantes"
+            className="rounded-full border border-line p-2 text-ink-muted transition-colors hover:border-accent hover:text-ink"
+          >
+            <CaretRight size={14} weight="bold" />
+          </Link>
+          {weekOffset !== 0 && (
+            <Link href={hrefFor({ semaine: 0 })} className="text-ink-muted underline hover:text-ink">
+              Aujourd&apos;hui
+            </Link>
+          )}
+        </div>
       </div>
 
-      {weekData.length === 0 ? (
-        <p className="mt-8 text-sm text-ink-muted">
-          {basis === "echeance" ? "Aucune tâche avec une échéance." : "Aucune tâche avec une date d'évènement."}
-        </p>
-      ) : (
-        <>
-          <div className="mt-8">
-            <WorkloadChart data={weekData} />
-          </div>
+      <div className="mt-8">
+        <WorkloadChart data={weekData} averageCapacityMinutes={averageCapacityMinutes} />
+      </div>
 
-          {/* Tendance prévu/réel (demande du 2026-08-01) : le "réel" vient du
-              temps chronométré, indépendant de la base évènement/échéance
-              choisie ci-dessus — voir le commentaire dans TrendChart. */}
-          <div className="mt-6">
-            <h2 className="mb-3 font-display text-lg font-medium tracking-tight text-ink">
-              Tendance : prévu vs réel
-            </h2>
-            <TrendChart data={weekData} />
-          </div>
-        </>
-      )}
+      {/* Tendance prévu/réel (demande du 2026-08-01) : le "réel" vient du
+          temps chronométré, indépendant de la base évènement/échéance
+          choisie ci-dessus — voir le commentaire dans TrendChart. */}
+      <div className="mt-6">
+        <h2 className="mb-3 font-display text-lg font-medium tracking-tight text-ink">
+          Tendance : prévu vs réel
+        </h2>
+        <TrendChart data={weekData} />
+      </div>
 
       <section className="mt-10 rounded-2xl border border-line p-5">
         <h2 className="font-display text-lg font-medium tracking-tight text-ink">

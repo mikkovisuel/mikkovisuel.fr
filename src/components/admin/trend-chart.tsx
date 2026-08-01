@@ -53,7 +53,12 @@ export function TrendChart({ data }: { data: TrendEntry[] }) {
         </span>
       </div>
 
-      <div className="flex items-end gap-4 overflow-x-auto pb-2">
+      {/* `pt-24 -mt-24` réserve la place de l'infobulle (4 lignes ici, un peu
+          plus haute que celle du graphique de charge) sans pousser la carte
+          vers le bas — voir le commentaire équivalent dans WorkloadChart
+          pour la raison (overflow-x auto force overflow-y auto, qui rognait
+          l'infobulle sans ça). */}
+      <div className="-mt-24 flex items-end gap-4 overflow-x-auto pb-2 pt-24">
         {data.map((entry) => {
           const delta = entry.realMinutes - entry.estimatedMinutes;
           return (

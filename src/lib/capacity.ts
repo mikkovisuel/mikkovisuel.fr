@@ -48,6 +48,25 @@ export async function getCapacityCoverageDays(since: Date, until: Date): Promise
   });
 }
 
+// Capacité hebdomadaire moyenne, dérivée de TOUS les jours déjà saisis (pas
+// seulement ceux de la semaine affichée) — demande du 2026-08-01 : sert de
+// repli pour une semaine sans capacité propre, à la place des seuils fixes
+// (25 h / 40 h), pour rester basé sur le rythme réel de l'utilisateur plutôt
+// que sur une estimation arbitraire. `null` seulement si rien n'a jamais été
+// saisi nulle part (repli ultime sur les seuils fixes dans ce cas précis).
+// Moyenne par jour puis ×7 plutôt qu'un simple regroupement par semaine :
+// les jours à 0 h saisis volontairement (week-ends, fériés) pèsent déjà dans
+// la moyenne journalière, donc le ×7 restitue une vraie moyenne hebdomadaire
+// sans avoir à deviner quels jours sont "ouvrés".
+export async function getAverageWeeklyCapacityMinutes(): Promise<number | null> {
+  const result = await db.workCapacityDay.aggregate({
+    _sum: { availableMinutes: true },
+    _count: true,
+  });
+  if (result._count === 0) return null;
+  return ((result._sum.availableMinutes ?? 0) / result._count) * 7;
+}
+
 // Charge déjà promise sur la période : somme des temps estimés des tâches
 // actives (hors démo/archivées/Terminé) dont l'échéance de livraison tombe
 // dans l'intervalle. `excludeTaskId` sert à l'alerte de saisie d'échéance

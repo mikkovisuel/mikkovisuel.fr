@@ -937,6 +937,43 @@ appliquée à l'ensemble du site :
     systématique et trompeur tant qu'elle n'est pas terminée.
   - Testé en base : décompte des tâches en retard, temps chronométré
     correctement rattaché à la semaine de début de session.
+- **Planning, quatrième passage (2026-08-01) : retours d'usage sur les deux
+  graphiques.**
+  1. **Bulle "+n" (tâches sans estimation) déplacée sous le numéro de
+     semaine**, au lieu d'au-dessus — simple réordonnancement visuel.
+  2. **Vrai défaut trouvé sur les infobulles** : les deux graphiques vivent
+     dans un conteneur à défilement horizontal (`overflow-x: auto`, pour les
+     16 semaines) ; or dès qu'un conteneur a `overflow-x` différent de
+     `visible`, le navigateur force `overflow-y` à `auto` aussi (règle CSS
+     standard). L'infobulle, positionnée au-dessus de chaque barre, se
+     retrouvait donc rognée par ce défilement vertical forcé, sans indice
+     qu'il fallait défiler pour la voir — reproduit et confirmé par une page
+     de test isolée (survol sans effet visible avant correction). Corrigé en
+     réservant la place de l'infobulle par un padding (`pt-20`/`pt-24` selon
+     le graphique) compensé par une marge négative égale, pour ne pas pousser
+     le reste de la carte vers le bas.
+  3. **Choix des semaines affichées** : navigation précédent/suivant par
+     blocs de 16 semaines entières (`?semaine=N`), plutôt qu'une plage de
+     dates libre ou un simple choix de durée — les deux options écartées lors
+     du choix avec le client. Par défaut, la fenêtre se termine 4 semaines
+     après la semaine en cours (pas pile sur aujourd'hui), pour garder visible
+     le travail déjà planifié dans les prochaines semaines sans naviguer. Les
+     semaines sont désormais générées à partir de dates calendaires fixes
+     (et non plus seulement celles qui ont des tâches) : une semaine vide
+     s'affiche à zéro plutôt que de disparaître et décaler toute la fenêtre.
+  4. **Paliers chargée/surcharge basés sur la capacité saisie** : à défaut de
+     capacité propre à une semaine, repli désormais sur la **capacité
+     hebdomadaire moyenne** dérivée de toute la capacité déjà saisie
+     (`getAverageWeeklyCapacityMinutes`, moyenne journalière × 7 pour que les
+     jours à 0 h volontaires — week-ends, fériés — pèsent correctement) —
+     option choisie par le client face à "aucun statut sans capacité" et
+     "garder les seuils fixes". Les seuils fixes (25 h / 40 h) ne servent
+     plus qu'en tout dernier recours, si aucune capacité n'a jamais été
+     saisie nulle part.
+  - Testé en base : mathématiques de la fenêtre glissante (décalage de
+    16 semaines pile entre "précédent"/"suivant", fenêtre par défaut incluant
+    bien la semaine en cours et les 4 suivantes) et calcul de la moyenne
+    pondérée par jour saisi, avec des données temporaires réelles.
 - **Temps & rentabilité par client (2026-07-30)**, nouvelle section en bas de
   `/admin/finances`. Le temps était chronométré depuis le 2026-07-21 mais
   n'était lisible que tâche par tâche. Cette vue rapproche, sur une période
@@ -1733,3 +1770,4 @@ Le client a explicitement délégué ces choix :
 | 2026-08-01 | "Donne une tendance semaine par semaine des charges réelles et le delta prévu/réel ; il me faut un véritable tableau de bord détaillé et complet" | Clôture des deux points reportés le 2026-07-31, avec deux maquettes proposées avant de coder. **Tendance** : barres appariées prévu/réel par semaine (`TrendChart`), format choisi face à l'alternative deux-courbes ; le "réel" vient du temps chronométré, rattaché à la semaine où la session a commencé, indépendant de la base évènement/échéance. **Tableau de bord** : 4 tuiles choisies parmi 6 proposées (tâches en retard, à risque à 30 jours, écart moyen sur 4 semaines complètes, charge non répartie) — client le plus chargé et vélocité récente proposés mais non retenus, à reprendre si besoin — voir section "Backend interne" |
 | 2026-08-01 | "Dans une tâche, après être refusée elle passe en statut à modifier : lorsque je la remets en validation, le statut sur la vue de la tâche doit disparaître (uniquement la ligne rouge). Je garde bien l'historique des refus" | Livré : `setTaskStatus` efface désormais `refusalReason`/`refusedAt` aussi au passage en "À valider" (pas seulement en "BAT validé" comme depuis le 2026-07-20) — voir section "Backend interne". Corrige au passage le même défaut sur les lignes Liste/Kanban admin, qui affichaient le motif sans condition de statut. Testé en base : l'historique (`TaskRefusalHistory`) reste intact, seul le motif courant est effacé |
 | 2026-08-01 | "Le lien lorsque j'invite un contact à son espace ne fonctionne pas" (capture d'écran : erreur 403 sur mikkovisuel.fr) | **Vrai défaut de production trouvé, à fort impact** — voir section "Backend interne" pour le détail. La variable Scalingo `NEXT_PUBLIC_SITE_URL` pointait vers le domaine nu `mikkovisuel.fr`, cassé depuis le 2026-07-20 (403, souci DNS/hébergement OVH jamais résolu) ; cette variable sert de base à tous les liens envoyés par email (invitation contact, resets client/admin, invitation admin, rappel de paiement) — tous étaient donc cassés. Corrigée sur `https://www.mikkovisuel.fr` (confirmation explicite demandée avant ce changement de configuration de production) puis application redémarrée |
+| 2026-08-01 | "1. La bulle +n doit être sous le numéro de semaine. 2. Les infobulles ont des soucis d'affichage. 3. Choix des semaines dans les affichages. 4. Les paliers charge/surcharge doivent dépendre des capacités mises dans les paramètres" | Les 4 livrés — voir section "Backend interne" ("Planning, quatrième passage") pour le détail complet. Point 2 : **vrai défaut trouvé et confirmé par test isolé** (infobulle rognée par le défilement horizontal des graphiques, un effet de bord d'une règle CSS standard). Points 3 et 4 : deux choix proposés au client avant de coder (navigation par blocs de 16 semaines plutôt qu'une plage libre ; moyenne des capacités saisies plutôt qu'aucun statut ou seuils fixes gardés) |

@@ -16,25 +16,30 @@ type WeekEntry = {
   capacityMinutes?: number;
 };
 
-// Seuils exprimés en **heures de travail estimées** par semaine, et non plus
-// en nombre de tâches (changement du 2026-07-30) : trois flyers et trois
-// aftermovies pesaient identiquement, ce qui rendait le graphique inutile
-// pour anticiper une surcharge. `estimatedMinutes` était déjà saisi sur
-// chaque tâche mais n'était exploité que par la jauge d'une fiche.
-//
-// Repères pour une activité solo : ~25 h de production effective par semaine
-// est déjà une semaine chargée, au-delà de 40 h c'est une surcharge. À
-// ajuster ici si le rythme réel diffère.
+// Seuils fixes, dernier repli seulement (demande du 2026-08-01 : les paliers
+// doivent se baser sur la capacité réellement saisie, pas sur des heures
+// arbitraires) — ne servent plus que tant qu'aucune capacité n'a jamais été
+// saisie nulle part dans l'application (`averageCapacityMinutes` alors
+// `null`, voir `getAverageWeeklyCapacityMinutes`). Repères pour une activité
+// solo, à ajuster ici si le rythme réel diffère.
 const BUSY_HOURS = 25;
 const OVERLOAD_HOURS = 40;
 
-// Priorité à la capacité réellement saisie (`WorkCapacityDay`) quand elle
-// existe pour la semaine ; repli sur les seuils fixes ci-dessus sinon
-// (demande du 2026-07-31 : le moteur de capacité vient compléter le
-// graphique existant, pas le remplacer tant qu'aucune capacité n'est saisie).
-function loadStatus(entry: Pick<WeekEntry, "estimatedMinutes" | "capacityMinutes">): ChartStatus {
-  if (entry.capacityMinutes !== undefined && entry.capacityMinutes > 0) {
-    const level = capacityAlertLevel(entry.capacityMinutes, entry.estimatedMinutes);
+// Priorité à la capacité réellement saisie **pour cette semaine précise**
+// (`WorkCapacityDay`) ; à défaut, repli sur la **capacité hebdomadaire
+// moyenne** dérivée de tout ce qui a déjà été saisi ailleurs (plus proche du
+// rythme réel qu'un seuil arbitraire) ; seulement si rien n'a jamais été
+// saisi nulle part, repli ultime sur les seuils fixes ci-dessus.
+function loadStatus(
+  entry: Pick<WeekEntry, "estimatedMinutes" | "capacityMinutes">,
+  averageCapacityMinutes: number | null,
+): ChartStatus {
+  const capacityMinutes =
+    entry.capacityMinutes !== undefined && entry.capacityMinutes > 0
+      ? entry.capacityMinutes
+      : averageCapacityMinutes;
+  if (capacityMinutes !== null && capacityMinutes > 0) {
+    const level = capacityAlertLevel(capacityMinutes, entry.estimatedMinutes);
     if (level === "overload") return "critical";
     if (level === "warning") return "warning";
     return "good";
@@ -51,12 +56,25 @@ const STATUS_LABEL: Record<ChartStatus, string> = {
   critical: `Surcharge (${OVERLOAD_HOURS} h+)`,
 };
 
-export function WorkloadChart({ data }: { data: WeekEntry[] }) {
+export function WorkloadChart({
+  data,
+  averageCapacityMinutes,
+}: {
+  data: WeekEntry[];
+  /** Capacité hebdomadaire moyenne dérivée de toute la capacité déjà saisie
+   * (voir `getAverageWeeklyCapacityMinutes`), ou `null` si rien n'a jamais
+   * été saisi — sert de repli quand une semaine précise n'a pas sa propre
+   * capacité renseignée. */
+  averageCapacityMinutes: number | null;
+}) {
   // Plancher à 60 min pour que quelques semaines très légères ne produisent
   // pas des barres factices occupant toute la hauteur.
   const max = Math.max(60, ...data.map((entry) => Math.max(entry.estimatedMinutes, entry.capacityMinutes ?? 0)));
   const totalUnestimated = data.reduce((sum, entry) => sum + entry.unestimatedCount, 0);
   const hasCapacityData = data.some((entry) => entry.capacityMinutes !== undefined && entry.capacityMinutes > 0);
+  const usingAverageFallback =
+    averageCapacityMinutes !== null &&
+    data.some((entry) => !(entry.capacityMinutes !== undefined && entry.capacityMinutes > 0));
 
   return (
     <div className="rounded-2xl border border-line p-5" style={STATUS_VARS}>
@@ -74,23 +92,46 @@ export function WorkloadChart({ data }: { data: WeekEntry[] }) {
           </span>
         )}
       </div>
-      {hasCapacityData && (
+      {averageCapacityMinutes === null ? (
         <p className="mb-3 text-xs text-ink-muted">
-          Seuils {BUSY_HOURS} h / {OVERLOAD_HOURS} h utilisés à défaut de capacité saisie ; les
-          semaines avec capacité renseignée sont comparées à celle-ci (repère en pointillés).
+          Seuils {BUSY_HOURS} h / {OVERLOAD_HOURS} h utilisés en l&apos;absence de toute capacité
+          saisie — paramétrez votre capacité pour des paliers basés sur votre rythme réel.
         </p>
+      ) : (
+        usingAverageFallback && (
+          <p className="mb-3 text-xs text-ink-muted">
+            Semaines sans capacité propre comparées à votre capacité hebdomadaire moyenne (
+            {formatHoursFromMinutes(Math.round(averageCapacityMinutes))}), calculée sur tout ce que
+            vous avez déjà saisi.
+          </p>
+        )
       )}
 
-      <div className="flex items-end gap-3 overflow-x-auto pb-2">
+      {/* `pt-20 -mt-20` réserve la place de l'infobulle au-dessus des barres
+          sans pousser le reste de la carte vers le bas : dès qu'un conteneur
+          a `overflow-x: auto`, le navigateur force `overflow-y` à `auto`
+          aussi (règle CSS standard, pas un choix ici) — une infobulle en
+          position `absolute bottom-full` qui remonte au-dessus de ce
+          conteneur se retrouvait donc rognée/invisible, sans indice qu'il
+          fallait défiler pour la voir. Le padding agrandit la zone
+          défilable pour l'y inclure ; la marge négative compense visuellement
+          pour que la légende au-dessus ne s'éloigne pas des barres. */}
+      <div className="-mt-20 flex items-end gap-3 overflow-x-auto pb-2 pt-20">
         {data.map((entry) => {
-          const status = loadStatus(entry);
+          const status = loadStatus(entry, averageCapacityMinutes);
           const hasCapacity = entry.capacityMinutes !== undefined && entry.capacityMinutes > 0;
           return (
             <div key={entry.key} className="flex min-w-[52px] flex-col items-center gap-2">
               <span className="text-xs text-ink-muted">{formatHoursFromMinutes(entry.estimatedMinutes)}</span>
               <div
                 tabIndex={0}
-                aria-label={`${entry.label} : ${entry.taskCount} tâche${entry.taskCount > 1 ? "s" : ""}, ${formatHoursFromMinutes(entry.estimatedMinutes)} estimées${hasCapacity ? `, ${formatHoursFromMinutes(entry.capacityMinutes!)} de capacité saisie` : ""}`}
+                aria-label={`${entry.label} : ${entry.taskCount} tâche${entry.taskCount > 1 ? "s" : ""}, ${formatHoursFromMinutes(entry.estimatedMinutes)} estimées${
+                  hasCapacity
+                    ? `, ${formatHoursFromMinutes(entry.capacityMinutes!)} de capacité saisie`
+                    : averageCapacityMinutes !== null
+                      ? `, ${formatHoursFromMinutes(Math.round(averageCapacityMinutes))} de capacité moyenne`
+                      : ""
+                }`}
                 className="group relative flex h-40 w-6 items-end overflow-visible rounded-t bg-surface-elevated focus:outline-none"
               >
                 {/* Infobulle personnalisée (CSS pur, sans JS) : remplace
@@ -103,10 +144,17 @@ export function WorkloadChart({ data }: { data: WeekEntry[] }) {
                     <span className={STATUS_TEXT[status]}>{formatHoursFromMinutes(entry.estimatedMinutes)}</span>{" "}
                     estimées
                   </p>
-                  {hasCapacity && (
+                  {hasCapacity ? (
                     <p className="mt-0.5 text-ink-muted">
                       {formatHoursFromMinutes(entry.capacityMinutes!)} de capacité saisie
                     </p>
+                  ) : (
+                    averageCapacityMinutes !== null && (
+                      <p className="mt-0.5 text-ink-muted">
+                        {formatHoursFromMinutes(Math.round(averageCapacityMinutes))} de capacité
+                        moyenne (aucune saisie cette semaine)
+                      </p>
+                    )
                   )}
                 </div>
                 <div
@@ -129,9 +177,11 @@ export function WorkloadChart({ data }: { data: WeekEntry[] }) {
                   )}
                 </div>
               </div>
+              <span className="whitespace-nowrap text-xs text-ink-muted">{entry.label}</span>
               {/* Une tâche sans estimation ne peut pas être convertie en hauteur
                   de barre sans inventer une durée : on la signale explicitement
-                  plutôt que de la laisser peser zéro en silence. */}
+                  plutôt que de la laisser peser zéro en silence. Sous le numéro
+                  de semaine (demande du 2026-08-01), pas au-dessus. */}
               {entry.unestimatedCount > 0 && (
                 <span
                   className="rounded-full border border-line px-1.5 text-[10px] text-ink-muted"
@@ -140,7 +190,6 @@ export function WorkloadChart({ data }: { data: WeekEntry[] }) {
                   +{entry.unestimatedCount}
                 </span>
               )}
-              <span className="whitespace-nowrap text-xs text-ink-muted">{entry.label}</span>
             </div>
           );
         })}
