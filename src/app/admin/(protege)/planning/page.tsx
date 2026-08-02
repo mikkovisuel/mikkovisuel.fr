@@ -111,7 +111,7 @@ export default async function PlanningPage({
     // même base évènement/échéance que la vue semaine.
     db.task.findMany({
       where: { ...ACTIVE_TASKS, [dateField]: { gte: selectedDayWeekMonday, lt: selectedDayWeekSunday } },
-      select: { eventDate: true, dueDate: true, estimatedMinutes: true },
+      select: { id: true, eventDate: true, dueDate: true, estimatedMinutes: true },
     }),
     db.workCapacityDay.findMany({
       where: { date: { gte: selectedDayWeekMonday, lt: selectedDayWeekSunday } },
@@ -216,27 +216,51 @@ export default async function PlanningPage({
 
   // Vue jour : agrège les tâches de la semaine sélectionnée par jour exact
   // (pas par semaine), sur la base évènement/échéance choisie plus haut.
-  const committedByDay = new Map<string, { minutes: number; count: number }>();
+  const committedByDay = new Map<string, { minutes: number; count: number; taskIds: string[] }>();
   for (const task of dayTasks) {
     const date = (basis === "echeance" ? task.dueDate : task.eventDate)!;
     const key = toCalendarDate(date).toISOString().slice(0, 10);
-    const entry = committedByDay.get(key) ?? { minutes: 0, count: 0 };
+    const entry = committedByDay.get(key) ?? { minutes: 0, count: 0, taskIds: [] };
     entry.minutes += task.estimatedMinutes ?? 0;
     entry.count += 1;
+    entry.taskIds.push(task.id);
     committedByDay.set(key, entry);
   }
+
+  // Temps réel restant (demande du 2026-08-01) : temps déjà chronométré sur
+  // CES tâches précises, quel que soit le jour où le travail a eu lieu (une
+  // tâche peut avoir été avancée avant son échéance/évènement) — pas le
+  // temps chronométré "ce jour-là" comme dans la tendance prévu/réel de la
+  // vue semaine, qui répond à une question différente.
+  const dayTaskIds = dayTasks.map((task) => task.id);
+  const dayTimeEntries = dayTaskIds.length
+    ? await db.taskTimeEntry.findMany({
+        where: { taskId: { in: dayTaskIds } },
+        select: { taskId: true, startedAt: true, endedAt: true },
+      })
+    : [];
+  const actualMinutesByTask = new Map<string, number>();
+  for (const entry of dayTimeEntries) {
+    const ms = sumTaskTimeMs([entry], now);
+    actualMinutesByTask.set(entry.taskId, (actualMinutesByTask.get(entry.taskId) ?? 0) + ms / 60_000);
+  }
+
   const capacityByDay = new Map(dayCapacities.map((row) => [row.date.toISOString().slice(0, 10), row.availableMinutes]));
   const todayIso = today.toISOString().slice(0, 10);
   const dailyEntries: DailyEntry[] = Array.from({ length: 7 }, (_, i) => {
     const date = new Date(selectedDayWeekMonday.getTime() + i * 86_400_000);
     const iso = date.toISOString().slice(0, 10);
     const committed = committedByDay.get(iso);
+    const actualMinutes = Math.round(
+      (committed?.taskIds ?? []).reduce((sum, taskId) => sum + (actualMinutesByTask.get(taskId) ?? 0), 0),
+    );
     return {
       date: iso,
       dayLabel: `${DAY_NAMES[i]} ${dateFormatter.format(date)}`,
       committedMinutes: committed?.minutes ?? 0,
       taskCount: committed?.count ?? 0,
       capacityMinutes: capacityByDay.get(iso) ?? null,
+      actualMinutes,
       isToday: iso === todayIso,
     };
   });

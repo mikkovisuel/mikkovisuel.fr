@@ -1012,6 +1012,18 @@ appliquée à l'ensemble du site :
      même logique que la vue semaine ; un jour sans aucune capacité connue
      (ni propre ni moyenne) reste neutre plutôt que coloré arbitrairement.
   - Testé en base : agrégation des tâches et de la capacité par jour exact
+- **Vue jour : barre de temps réel restant (2026-08-01).** Sous la jauge
+  charge/capacité de chaque jour, une seconde barre "Reste" = temps estimé
+  des tâches de ce jour **moins** le temps déjà réellement chronométré sur
+  ces mêmes tâches — pas seulement l'estimation brute, qui ne dit rien de ce
+  qui a déjà été avancé. Le temps chronométré est agrégé **par tâche, tous
+  jours confondus** (une tâche peut avoir été travaillée avant son échéance),
+  contrairement à la tendance prévu/réel de la vue semaine qui rattache le
+  temps chronométré à la semaine où la session a eu lieu — deux questions
+  différentes. Cas de dépassement (déjà travaillé plus que l'estimation)
+  affiché explicitement ("Dépassé de Xh") plutôt que masqué en "0 min", pour
+  ne pas laisser croire que la tâche est bouclée. Testé en base avec deux
+  tâches réelles (l'une avec du temps restant, l'autre en dépassement).
     (pas par semaine) sur des données temporaires réelles.
 - **Temps & rentabilité par client (2026-07-30)**, nouvelle section en bas de
   `/admin/finances`. Le temps était chronométré depuis le 2026-07-21 mais
@@ -1813,3 +1825,4 @@ Le client a explicitement délégué ces choix :
 | 2026-08-01 | "Aligne toute les barres, les bulles en dessous" (capture d'écran : barres décalées verticalement les unes par rapport aux autres) | **Vrai défaut de production trouvé**, apparu après le point 1 ci-dessus. La bulle "+n" n'étant rendue que si elle avait quelque chose à afficher, une semaine avec bulle avait une hauteur de colonne différente d'une semaine sans bulle — décalant la barre elle-même puisque les colonnes sont alignées par le bas. Corrigé en rendant toujours la bulle (`invisible` si vide) pour que chaque colonne ait la même hauteur totale. Reproduit et confirmé par une page de test isolée reproduisant fidèlement le bug puis la correction |
 | 2026-08-01 | "Mets la vue par échéance par défaut. Mets en surbrillance la semaine actuelle. Pour les écarts, vert quand le réel est en dessous du prévu, rouge l'inverse" | Les 3 livrés — voir section "Backend interne" ("Planning, cinquième passage"). **Correction assumée, pas un ajout** : le sens des couleurs de l'écart prévu/réel était inversé depuis sa livraison la veille (raisonné à tort comme "en retard sur le travail" plutôt que "risque de surcharge") — corrigé sur le graphique de tendance et sur la tuile "Écart moyen" du tableau de bord |
 | 2026-08-01 | "Mets aussi une vue par jours (en sélectionnant la semaine)" | Livré : nouvelle bascule "Vue semaine"/"Vue jour" sur `/admin/planning`, la vue jour affichant une jauge par jour (chargé vs capacité) pour une semaine choisie par une navigation dédiée, indépendante de la fenêtre de 16 semaines de la vue semaine. Repli sur la capacité journalière moyenne (capacité hebdomadaire moyenne ÷ 7) pour un jour sans capacité propre — testé en base avec des données temporaires réelles (agrégation exacte par jour, pas par semaine) |
+| 2026-08-01 | "Dans la vue planning par jour, ajoute une barre du temps réel restant (déduire le temps déjà fait)" | Livré : seconde barre "Reste" sous la jauge de chaque jour, temps estimé moins temps déjà chronométré sur ces mêmes tâches (agrégé par tâche tous jours confondus, pas seulement le jour affiché). Dépassement affiché explicitement ("Dépassé de Xh") plutôt que masqué à 0 — testé en base avec deux tâches réelles, l'une avec du temps restant, l'autre en dépassement |
