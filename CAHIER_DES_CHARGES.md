@@ -1024,7 +1024,31 @@ appliquée à l'ensemble du site :
   affiché explicitement ("Dépassé de Xh") plutôt que masqué en "0 min", pour
   ne pas laisser croire que la tâche est bouclée. Testé en base avec deux
   tâches réelles (l'une avec du temps restant, l'autre en dépassement).
-    (pas par semaine) sur des données temporaires réelles.
+- **Suppression définitive d'un contact (2026-08-02).** Jusqu'ici, retirer un
+  contact d'un client (`deleteClientUser`) ne supprimait que le rattachement
+  — l'identité `Contact` restait en base indéfiniment, orpheline dès qu'elle
+  n'était plus rattachée à aucun client, et **invisible partout dans
+  l'admin** (`/admin/contacts` ne liste que des rattachements, pas des
+  contacts bruts). C'est ce qui empêchait de "réaffecter" un contact déjà
+  retiré : son identité existait toujours (bloquant la création d'un nouveau
+  contact avec le même email), sans qu'il soit possible de la retrouver.
+  Deux décisions prises avec le client avant de coder :
+  1. **Filtre "Sans client"** sur `/admin/contacts` (badge avec le nombre de
+     contacts concernés) : rend enfin visibles les contacts orphelins, avec
+     une action rapide "Affecter à un client" (réutilise telle quelle
+     `createClientContactAnyClient`, aucune nouvelle action nécessaire) en
+     plus de la suppression définitive.
+  2. **Suppression définitive toujours possible, même si le contact est
+     encore rattaché à d'autres clients** (plutôt que de la limiter aux
+     seuls orphelins) — avec avertissement explicite listant les clients
+     concernés avant confirmation, car `ClientContact.contactId` est en
+     cascade en base : supprimer un contact partagé le retire de **tous**
+     ses clients d'un coup, pas seulement de celui où on l'a repéré.
+  Action protégée par reconfirmation du mot de passe admin (même famille que
+  `deleteClient`), sessions actives détruites avant suppression, journalisée
+  dans `/admin/audit`. Testé en base : cycle complet réel (rattaché à
+  2 clients → retiré des deux → redevenu orphelin → réaffecté → session
+  détruite → suppression définitive confirmée en cascade).
 - **Temps & rentabilité par client (2026-07-30)**, nouvelle section en bas de
   `/admin/finances`. Le temps était chronométré depuis le 2026-07-21 mais
   n'était lisible que tâche par tâche. Cette vue rapproche, sur une période
@@ -1826,3 +1850,4 @@ Le client a explicitement délégué ces choix :
 | 2026-08-01 | "Mets la vue par échéance par défaut. Mets en surbrillance la semaine actuelle. Pour les écarts, vert quand le réel est en dessous du prévu, rouge l'inverse" | Les 3 livrés — voir section "Backend interne" ("Planning, cinquième passage"). **Correction assumée, pas un ajout** : le sens des couleurs de l'écart prévu/réel était inversé depuis sa livraison la veille (raisonné à tort comme "en retard sur le travail" plutôt que "risque de surcharge") — corrigé sur le graphique de tendance et sur la tuile "Écart moyen" du tableau de bord |
 | 2026-08-01 | "Mets aussi une vue par jours (en sélectionnant la semaine)" | Livré : nouvelle bascule "Vue semaine"/"Vue jour" sur `/admin/planning`, la vue jour affichant une jauge par jour (chargé vs capacité) pour une semaine choisie par une navigation dédiée, indépendante de la fenêtre de 16 semaines de la vue semaine. Repli sur la capacité journalière moyenne (capacité hebdomadaire moyenne ÷ 7) pour un jour sans capacité propre — testé en base avec des données temporaires réelles (agrégation exacte par jour, pas par semaine) |
 | 2026-08-01 | "Dans la vue planning par jour, ajoute une barre du temps réel restant (déduire le temps déjà fait)" | Livré : seconde barre "Reste" sous la jauge de chaque jour, temps estimé moins temps déjà chronométré sur ces mêmes tâches (agrégé par tâche tous jours confondus, pas seulement le jour affiché). Dépassement affiché explicitement ("Dépassé de Xh") plutôt que masqué à 0 — testé en base avec deux tâches réelles, l'une avec du temps restant, l'autre en dépassement |
+| 2026-08-02 | "Je souhaite ajouter un contact mais je l'avais supprimé auparavant, je ne peux pas le réaffecter" puis "Possible de supprimer définitivement un contact ?" | **Cause du premier symptôme identifiée** : retirer un contact d'un client ne supprime que le rattachement, l'identité reste en base orpheline et invisible dans l'admin — bloquant la recréation (email déjà pris) sans moyen de la retrouver. Livré, avec deux choix validés avant de coder (voir section "Backend interne") : filtre "Sans client" sur `/admin/contacts` avec action rapide "Affecter à un client", et suppression définitive toujours possible (avec avertissement listant les clients concernés si le contact est encore rattaché ailleurs, la suppression étant en cascade). Protégée par reconfirmation du mot de passe admin, journalisée dans l'audit — testé en base sur un cycle complet réel |

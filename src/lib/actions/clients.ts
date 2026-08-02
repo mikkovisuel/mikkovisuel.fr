@@ -493,3 +493,57 @@ export async function deleteClientUser(clientUserId: string, clientId: string) {
   await db.clientContact.delete({ where: { id: clientUserId } });
   revalidatePath(`/admin/clients/${clientId}`);
 }
+
+// Suppression définitive d'une identité `Contact` (2026-08-02, "possible de
+// supprimer définitivement un contact ?") — jusqu'ici seul le rattachement à
+// UN client pouvait être retiré (`deleteClientUser` ci-dessus), l'identité
+// restait en base indéfiniment, orpheline et invisible dans l'admin dès
+// qu'elle n'était plus rattachée à aucun client (voir le filtre "Sans
+// client" de `/admin/contacts`). Action irréversible, protégée par
+// reconfirmation du mot de passe admin (même famille que `deleteClient`).
+// `ClientContact.contactId` est en cascade en base : supprimer un contact
+// encore rattaché à d'autres clients les lui retire TOUS d'un coup — décision
+// validée avec le client (toujours possible, mais avec avertissement listant
+// les clients concernés, affiché côté formulaire avant confirmation).
+export async function deleteContactPermanently(
+  contactId: string,
+  _prev: StepUpFormState,
+  formData: FormData,
+): Promise<StepUpFormState> {
+  const admin = await verifyAdminSession();
+  const error = await requireFreshAdminPassword(formData);
+  if (error) return { error };
+
+  const contact = await db.contact.findUnique({
+    where: { id: contactId },
+    include: { clientLinks: true },
+  });
+  if (!contact) return { error: "Contact introuvable." };
+
+  // Invalide toute session active avant la suppression en cascade : effacer
+  // la ligne ClientContact ne referme pas de lui-même un cookie de session
+  // déjà émis pour ce rattachement.
+  for (const link of contact.clientLinks) {
+    await destroyAllSessionsForSubject("CLIENT_USER", link.id);
+  }
+
+  await db.contact.delete({ where: { id: contactId } });
+
+  await logAuditEvent({
+    actorType: "ADMIN",
+    actorId: admin.id,
+    actorLabel: admin.email,
+    action: "contact_deleted",
+    targetType: "Contact",
+    targetId: contactId,
+    targetLabel: contact.name,
+    ipAddress: await getClientIp(),
+  });
+
+  revalidatePath("/admin/contacts");
+  revalidatePath("/admin/clients");
+  for (const link of contact.clientLinks) {
+    revalidatePath(`/admin/clients/${link.clientId}`);
+  }
+  return { success: true };
+}

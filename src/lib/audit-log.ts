@@ -11,6 +11,7 @@ export type AuditAction =
   | "admin_login_success"
   | "admin_login_failed"
   | "client_deleted"
+  | "contact_deleted"
   | "admin_password_reset_completed"
   | "client_password_reset"
   | "impersonation_start"
@@ -50,6 +51,7 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   admin_login_success: "Connexion admin réussie",
   admin_login_failed: "Connexion admin échouée",
   client_deleted: "Client supprimé définitivement",
+  contact_deleted: "Contact supprimé définitivement",
   admin_password_reset_completed: "Mot de passe admin réinitialisé",
   client_password_reset: "Réinitialisation du mot de passe d'un client déclenchée",
   impersonation_start: "Usurpation d'espace client",
