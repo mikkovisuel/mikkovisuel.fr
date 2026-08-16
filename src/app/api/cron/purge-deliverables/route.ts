@@ -1,11 +1,10 @@
 import { NextResponse } from "next/server";
 import { purgeExpiredDeliverables } from "@/lib/deliverable-purge";
 
-// Déclenché par Vercel Cron (voir vercel.json) tous les jours à 3h — purge
-// les livrables finaux plus vieux que AppSettings.deliverableRetentionDays.
-// Protégé par CRON_SECRET (Vercel ajoute automatiquement ce header aux
-// requêtes cron ; en dehors de Vercel, appeler manuellement avec le même
-// secret en variable d'environnement).
+// Déclenché par le scheduler Scalingo (voir cron.json à la racine) tous les
+// jours à 3h — purge les livrables finaux expirés (voir
+// src/lib/deliverable-purge.ts pour la règle de délai). Protégé par
+// CRON_SECRET, porté par cron.json dans l'en-tête Authorization.
 export async function GET(request: Request) {
   const secret = process.env.CRON_SECRET;
   if (!secret) {

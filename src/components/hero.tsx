@@ -1,13 +1,10 @@
-import { db } from "@/lib/db";
+import { getHomepageHero, getHomepageContent } from "@/lib/homepage-data";
 import { resolveHeroMainSrc, resolveHeroDetailSrc } from "@/lib/homepage-hero";
 import { resolveHomepageContent } from "@/lib/homepage-content";
 import { HeroVisual } from "./hero-visual";
 
 export async function Hero() {
-  const [hero, content] = await Promise.all([
-    db.homepageHero.findUnique({ where: { id: "hero" } }),
-    db.homepageContent.findUnique({ where: { id: "homepage" } }),
-  ]);
+  const [hero, content] = await Promise.all([getHomepageHero(), getHomepageContent()]);
   const mainSrc = resolveHeroMainSrc(hero);
   const detailSrc = resolveHeroDetailSrc(hero);
   const { heroTitle, heroSubtitle, heroButtonLabel } = resolveHomepageContent(content);

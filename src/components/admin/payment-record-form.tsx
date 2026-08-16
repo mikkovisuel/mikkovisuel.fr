@@ -62,6 +62,18 @@ export function PaymentRecordForm({ clients }: { clients: { id: string; name: st
           className="w-32 rounded-xl border border-line bg-surface-elevated px-3 py-2.5 text-sm text-ink placeholder:text-ink-muted/70 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
         />
       </div>
+      <div className="flex flex-col gap-2">
+        <label htmlFor="prDate" className="text-sm font-medium text-ink">
+          Mois affecté
+        </label>
+        <input
+          id="prDate"
+          name="date"
+          type="date"
+          defaultValue={new Date().toISOString().slice(0, 10)}
+          className="rounded-xl border border-line bg-surface-elevated px-3 py-2.5 text-sm text-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
+        />
+      </div>
       <button
         type="submit"
         disabled={pending}

@@ -12,6 +12,7 @@ import {
   sendDocumentByEmail,
 } from "@/lib/actions/payments";
 import { DeleteButton } from "@/components/admin/delete-button";
+import { PaymentStatusBadge } from "@/components/payment-status-badge";
 import { formatAmount, isOverdue, dueDateFormatter } from "@/lib/documents";
 import { DOCUMENT_TYPE } from "@/lib/dropdown-lists";
 import { buildDocumentMailDraft } from "@/lib/mail-draft";
@@ -67,14 +68,17 @@ export function DocumentRow({
   return (
     <div className="flex flex-col gap-3 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
       <div className="min-w-0">
-        <p className="font-medium text-ink">{document.fileName}</p>
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="font-medium text-ink">{document.fileName}</p>
+          {document.amountCents !== null && document.paymentStatus !== "n/a" && (
+            <PaymentStatusBadge status={document.paymentStatus === "paid" ? "paid" : "unpaid"} />
+          )}
+        </div>
         <p className="mt-1 text-sm text-ink-muted">
           {showClient && document.client && `${document.client.name} · `}
           {document.type.label}
           {document.amountCents !== null &&
             ` · ${formatAmount(document.amountCents, document.currency)}`}
-          {document.paymentStatus === "unpaid" && " · en attente de paiement"}
-          {document.paymentStatus === "paid" && " · payée"}
           {document.dueDate && ` · échéance le ${dueDateFormatter.format(document.dueDate)}`}
           {document.isMonthlyInvoice && document.invoiceYear && document.invoiceMonth && (
             <>

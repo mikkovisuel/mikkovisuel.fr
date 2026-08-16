@@ -7,12 +7,13 @@ import { db } from "@/lib/db";
 import { verifyAdminSession } from "@/lib/dal";
 import { getStorageAdapter } from "@/lib/storage";
 import { slugify } from "@/lib/slugify";
-import { computePillarMediaType } from "@/lib/portfolio-media";
 import { contentMatchesDeclaredType } from "@/lib/file-signature";
 import {
   PillarSchema,
+  GallerySchema,
   MediaItemSchema,
   type PillarFormState,
+  type GalleryFormState,
   type MediaItemFormState,
 } from "@/lib/validation/portfolio";
 
@@ -36,23 +37,20 @@ async function nextPillarSortOrder() {
   return (last?.sortOrder ?? -1) + 1;
 }
 
-async function nextItemSortOrder(pillarId: string) {
-  const last = await db.portfolioMediaItem.findFirst({
+async function nextGallerySortOrder(pillarId: string) {
+  const last = await db.portfolioGallery.findFirst({
     where: { pillarId },
     orderBy: { sortOrder: "desc" },
   });
   return (last?.sortOrder ?? -1) + 1;
 }
 
-async function recalculatePillarMediaType(pillarId: string) {
-  const items = await db.portfolioMediaItem.findMany({
-    where: { pillarId },
-    select: { mediaType: true },
+async function nextItemSortOrder(galleryId: string) {
+  const last = await db.portfolioMediaItem.findFirst({
+    where: { galleryId },
+    orderBy: { sortOrder: "desc" },
   });
-  await db.portfolioPillar.update({
-    where: { id: pillarId },
-    data: { mediaType: computePillarMediaType(items) },
-  });
+  return (last?.sortOrder ?? -1) + 1;
 }
 
 export async function createPillar(
@@ -179,7 +177,7 @@ export async function deletePillar(pillarId: string) {
 
   const pillar = await db.portfolioPillar.findUnique({
     where: { id: pillarId },
-    include: { items: true },
+    include: { galleries: { include: { items: true } } },
   });
   if (!pillar) return;
 
@@ -187,9 +185,11 @@ export async function deletePillar(pillarId: string) {
   if (pillar.coverStorageKey) {
     await storage.delete(pillar.coverStorageKey).catch(() => {});
   }
-  for (const item of pillar.items) {
-    if (item.storageKey) {
-      await storage.delete(item.storageKey).catch(() => {});
+  for (const gallery of pillar.galleries) {
+    for (const item of gallery.items) {
+      if (item.storageKey) {
+        await storage.delete(item.storageKey).catch(() => {});
+      }
     }
   }
 
@@ -200,8 +200,135 @@ export async function deletePillar(pillarId: string) {
   redirect("/admin/portfolio");
 }
 
-export async function createMediaItem(
+// --- Galeries (demande du 2026-08-16) --------------------------------
+
+export async function createGallery(
   pillarId: string,
+  _prev: GalleryFormState,
+  formData: FormData,
+): Promise<GalleryFormState> {
+  await verifyAdminSession();
+
+  const parsed = GallerySchema.safeParse({
+    title: formData.get("title"),
+    textBefore: formData.get("textBefore"),
+    textAfter: formData.get("textAfter"),
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Formulaire invalide." };
+  }
+
+  const pillar = await db.portfolioPillar.findUnique({ where: { id: pillarId } });
+  if (!pillar) return { error: "Pilier introuvable." };
+
+  const gallery = await db.portfolioGallery.create({
+    data: {
+      pillarId,
+      title: parsed.data.title,
+      textBefore: parsed.data.textBefore || null,
+      textAfter: parsed.data.textAfter || null,
+      sortOrder: await nextGallerySortOrder(pillarId),
+    },
+  });
+
+  revalidatePath("/");
+  revalidatePath(`/portfolio/${pillar.slug}`);
+  revalidatePath(`/admin/portfolio/${pillarId}`);
+  redirect(`/admin/portfolio/${pillarId}/${gallery.id}`);
+}
+
+export async function updateGallery(
+  galleryId: string,
+  _prev: GalleryFormState,
+  formData: FormData,
+): Promise<GalleryFormState> {
+  await verifyAdminSession();
+
+  const parsed = GallerySchema.safeParse({
+    title: formData.get("title"),
+    textBefore: formData.get("textBefore"),
+    textAfter: formData.get("textAfter"),
+  });
+  if (!parsed.success) {
+    return { error: parsed.error.issues[0]?.message ?? "Formulaire invalide." };
+  }
+
+  const gallery = await db.portfolioGallery.findUnique({
+    where: { id: galleryId },
+    include: { pillar: true },
+  });
+  if (!gallery) return { error: "Galerie introuvable." };
+
+  await db.portfolioGallery.update({
+    where: { id: galleryId },
+    data: {
+      title: parsed.data.title,
+      textBefore: parsed.data.textBefore || null,
+      textAfter: parsed.data.textAfter || null,
+    },
+  });
+
+  revalidatePath("/");
+  revalidatePath(`/portfolio/${gallery.pillar.slug}`);
+  revalidatePath(`/portfolio/${gallery.pillar.slug}/${galleryId}`);
+  revalidatePath(`/admin/portfolio/${gallery.pillarId}`);
+  revalidatePath(`/admin/portfolio/${gallery.pillarId}/${galleryId}`);
+  return { success: true };
+}
+
+export async function deleteGallery(galleryId: string, pillarId: string) {
+  await verifyAdminSession();
+
+  const gallery = await db.portfolioGallery.findUnique({
+    where: { id: galleryId },
+    include: { items: true, pillar: true },
+  });
+  if (!gallery) return;
+
+  const storage = getStorageAdapter();
+  for (const item of gallery.items) {
+    if (item.storageKey) {
+      await storage.delete(item.storageKey).catch(() => {});
+    }
+  }
+
+  await db.portfolioGallery.delete({ where: { id: galleryId } });
+
+  revalidatePath("/");
+  revalidatePath(`/portfolio/${gallery.pillar.slug}`);
+  revalidatePath(`/admin/portfolio/${pillarId}`);
+  redirect(`/admin/portfolio/${pillarId}`);
+}
+
+export async function moveGallery(pillarId: string, galleryId: string, direction: "up" | "down") {
+  await verifyAdminSession();
+
+  const galleries = await db.portfolioGallery.findMany({
+    where: { pillarId },
+    orderBy: { sortOrder: "asc" },
+  });
+  const index = galleries.findIndex((gallery) => gallery.id === galleryId);
+  const swapIndex = direction === "up" ? index - 1 : index + 1;
+  if (index === -1 || swapIndex < 0 || swapIndex >= galleries.length) return;
+
+  const current = galleries[index];
+  const swapWith = galleries[swapIndex];
+
+  await db.$transaction([
+    db.portfolioGallery.update({ where: { id: current.id }, data: { sortOrder: swapWith.sortOrder } }),
+    db.portfolioGallery.update({ where: { id: swapWith.id }, data: { sortOrder: current.sortOrder } }),
+  ]);
+
+  const pillar = await db.portfolioPillar.findUnique({ where: { id: pillarId } });
+  revalidatePath("/");
+  if (pillar) revalidatePath(`/portfolio/${pillar.slug}`);
+  revalidatePath(`/admin/portfolio/${pillarId}`);
+}
+
+// --- Médias (photos/vidéos) au sein d'une galerie ----------------------
+
+export async function createMediaItem(
+  galleryId: string,
   _prev: MediaItemFormState,
   formData: FormData,
 ): Promise<MediaItemFormState> {
@@ -244,8 +371,11 @@ export async function createMediaItem(
   // Videos are always 9:16, regardless of what the form submitted.
   const aspectRatio = isVideo ? "9:16" : parsed.data.aspectRatio;
 
-  const pillar = await db.portfolioPillar.findUnique({ where: { id: pillarId } });
-  if (!pillar) return { error: "Pilier introuvable." };
+  const gallery = await db.portfolioGallery.findUnique({
+    where: { id: galleryId },
+    include: { pillar: true },
+  });
+  if (!gallery) return { error: "Galerie introuvable." };
 
   const storage = getStorageAdapter();
   const storageKey = `portfolio/items/${randomUUID()}`;
@@ -253,7 +383,7 @@ export async function createMediaItem(
 
   await db.portfolioMediaItem.create({
     data: {
-      pillarId,
+      galleryId,
       title: parsed.data.title,
       mediaType: isVideo ? "video" : "image",
       aspectRatio,
@@ -261,19 +391,18 @@ export async function createMediaItem(
       mimeType: file.type,
       storageBackend: storage.backend,
       sizeBytes: file.size,
-      sortOrder: await nextItemSortOrder(pillarId),
+      sortOrder: await nextItemSortOrder(galleryId),
     },
   });
 
-  await recalculatePillarMediaType(pillarId);
-
   revalidatePath("/");
-  revalidatePath(`/portfolio/${pillar.slug}`);
-  revalidatePath(`/admin/portfolio/${pillarId}`);
+  revalidatePath(`/portfolio/${gallery.pillar.slug}`);
+  revalidatePath(`/portfolio/${gallery.pillar.slug}/${galleryId}`);
+  revalidatePath(`/admin/portfolio/${gallery.pillarId}/${galleryId}`);
   return undefined;
 }
 
-export async function deleteMediaItem(itemId: string, pillarId: string) {
+export async function deleteMediaItem(itemId: string, galleryId: string) {
   await verifyAdminSession();
 
   const item = await db.portfolioMediaItem.findUnique({ where: { id: itemId } });
@@ -285,20 +414,25 @@ export async function deleteMediaItem(itemId: string, pillarId: string) {
   }
 
   await db.portfolioMediaItem.delete({ where: { id: itemId } });
-  await recalculatePillarMediaType(pillarId);
 
-  const pillar = await db.portfolioPillar.findUnique({ where: { id: pillarId } });
+  const gallery = await db.portfolioGallery.findUnique({
+    where: { id: galleryId },
+    include: { pillar: true },
+  });
 
   revalidatePath("/");
-  if (pillar) revalidatePath(`/portfolio/${pillar.slug}`);
-  revalidatePath(`/admin/portfolio/${pillarId}`);
+  if (gallery) {
+    revalidatePath(`/portfolio/${gallery.pillar.slug}`);
+    revalidatePath(`/portfolio/${gallery.pillar.slug}/${galleryId}`);
+    revalidatePath(`/admin/portfolio/${gallery.pillarId}/${galleryId}`);
+  }
 }
 
-export async function moveMediaItem(pillarId: string, itemId: string, direction: "up" | "down") {
+export async function moveMediaItem(galleryId: string, itemId: string, direction: "up" | "down") {
   await verifyAdminSession();
 
   const items = await db.portfolioMediaItem.findMany({
-    where: { pillarId },
+    where: { galleryId },
     orderBy: { sortOrder: "asc" },
   });
   const index = items.findIndex((item) => item.id === itemId);
@@ -313,8 +447,14 @@ export async function moveMediaItem(pillarId: string, itemId: string, direction:
     db.portfolioMediaItem.update({ where: { id: swapWith.id }, data: { sortOrder: current.sortOrder } }),
   ]);
 
-  const pillar = await db.portfolioPillar.findUnique({ where: { id: pillarId } });
+  const gallery = await db.portfolioGallery.findUnique({
+    where: { id: galleryId },
+    include: { pillar: true },
+  });
   revalidatePath("/");
-  if (pillar) revalidatePath(`/portfolio/${pillar.slug}`);
-  revalidatePath(`/admin/portfolio/${pillarId}`);
+  if (gallery) {
+    revalidatePath(`/portfolio/${gallery.pillar.slug}`);
+    revalidatePath(`/portfolio/${gallery.pillar.slug}/${galleryId}`);
+    revalidatePath(`/admin/portfolio/${gallery.pillarId}/${galleryId}`);
+  }
 }

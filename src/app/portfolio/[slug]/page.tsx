@@ -1,13 +1,29 @@
 import type { Metadata } from "next";
+import { cache } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, PlayCircle } from "@phosphor-icons/react/dist/ssr";
+import { ArrowLeft, Image as ImageIcon } from "@phosphor-icons/react/dist/ssr";
 import { SiteHeader } from "@/components/site-header";
 import { SiteFooter } from "@/components/site-footer";
 import { db } from "@/lib/db";
-import { resolveItemSrc } from "@/lib/portfolio-media";
-import { PortfolioVideo } from "@/components/portfolio-video";
+import { resolveGalleryCoverSrc } from "@/lib/portfolio-media";
+
+// Perf (2026-08-16) : `generateMetadata` et le composant de page
+// interrogeaient chacun le pilier séparément — deux requêtes pour la même
+// donnée sur chaque vue publique. `cache()` déduplique dans le cadre d'une
+// même requête (voir aussi src/lib/homepage-data.ts, même pattern).
+const getPillarWithGalleries = cache((slug: string) =>
+  db.portfolioPillar.findUnique({
+    where: { slug },
+    include: {
+      galleries: {
+        orderBy: { sortOrder: "asc" },
+        include: { items: { orderBy: { sortOrder: "asc" }, take: 1 } },
+      },
+    },
+  }),
+);
 
 export async function generateMetadata({
   params,
@@ -15,7 +31,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const pillar = await db.portfolioPillar.findUnique({ where: { slug } });
+  const pillar = await getPillarWithGalleries(slug);
   if (!pillar) return {};
   return {
     title: `${pillar.title} — Mikko Visuel`,
@@ -23,31 +39,16 @@ export async function generateMetadata({
   };
 }
 
-const FILTERS = [
-  { value: undefined, label: "Tous" },
-  { value: "image", label: "Photos" },
-  { value: "video", label: "Vidéos" },
-] as const;
-
-export default async function PillarPage({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ slug: string }>;
-  searchParams: Promise<{ type?: string }>;
-}) {
+// Page pilier (refonte "galeries" du 2026-08-16) : liste les galeries
+// (projets) du pilier comme des cartes façon Adobe Portfolio, chacune
+// menant à sa propre page avec texte de présentation + médias. Remplace
+// l'ancienne grille plate de photos/vidéos avec filtre Tous/Photos/Vidéos —
+// une galerie mélange déjà librement ses propres médias, ce filtre n'avait
+// plus vraiment de sens à ce niveau.
+export default async function PillarPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const { type } = await searchParams;
 
-  const pillar = await db.portfolioPillar.findUnique({
-    where: { slug },
-    include: {
-      items: {
-        where: type === "image" || type === "video" ? { mediaType: type } : undefined,
-        orderBy: { sortOrder: "asc" },
-      },
-    },
-  });
+  const pillar = await getPillarWithGalleries(slug);
   if (!pillar) notFound();
 
   return (
@@ -67,70 +68,43 @@ export default async function PillarPage({
             <h1 className="mt-6 font-display text-3xl font-medium tracking-tight text-ink sm:text-5xl">
               {pillar.title}
             </h1>
-            <p className="mt-4 max-w-[55ch] text-base text-ink-muted">
-              {pillar.description}
-            </p>
+            <p className="mt-4 max-w-[55ch] text-base text-ink-muted">{pillar.description}</p>
 
-            <div className="mt-8 flex flex-wrap gap-2">
-              {FILTERS.map((filter) => {
-                const href = filter.value
-                  ? `/portfolio/${pillar.slug}?type=${filter.value}`
-                  : `/portfolio/${pillar.slug}`;
-                const active = (type ?? undefined) === filter.value;
-                return (
-                  <Link
-                    key={filter.label}
-                    href={href}
-                    className={`rounded-full border px-4 py-1.5 text-sm transition-colors ${
-                      active
-                        ? "border-accent bg-accent text-accent-ink"
-                        : "border-line text-ink-muted hover:text-ink"
-                    }`}
-                  >
-                    {filter.label}
-                  </Link>
-                );
-              })}
-            </div>
-
-            <div className="mt-8 grid grid-cols-2 gap-4 md:grid-cols-3">
-              {pillar.items.map((item) => {
-                const isUploadedVideo =
-                  item.mediaType === "video" && item.mimeType?.startsWith("video/");
-                const aspectClass = item.aspectRatio === "9:16" ? "aspect-[9/16]" : "aspect-[3/4]";
-                return (
-                  <div
-                    key={item.id}
-                    className={`group relative ${aspectClass} overflow-hidden rounded-2xl border border-line`}
-                  >
-                    {isUploadedVideo ? (
-                      <PortfolioVideo
-                        src={resolveItemSrc(item)}
-                        className="absolute inset-0 h-full w-full object-cover"
-                      />
-                    ) : (
-                      <>
-                        <Image
-                          src={resolveItemSrc(item)}
-                          alt={item.title}
-                          fill
-                          sizes="(min-width: 768px) 33vw, 50vw"
-                          className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
-                        />
-                        {item.mediaType === "video" && (
-                          <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-                            <PlayCircle size={40} weight="fill" className="text-white/90" />
-                          </div>
+            {pillar.galleries.length > 0 ? (
+              <div className="mt-10 grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                {pillar.galleries.map((gallery) => {
+                  const cover = resolveGalleryCoverSrc(gallery);
+                  return (
+                    <Link
+                      key={gallery.id}
+                      href={`/portfolio/${pillar.slug}/${gallery.id}`}
+                      className="group block overflow-hidden rounded-2xl border border-line"
+                    >
+                      <div className="relative flex aspect-[4/5] items-center justify-center overflow-hidden bg-surface-elevated">
+                        {cover ? (
+                          <Image
+                            src={cover}
+                            alt={gallery.title}
+                            fill
+                            sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+                            className="object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+                          />
+                        ) : (
+                          <ImageIcon size={32} weight="regular" className="text-ink-muted" />
                         )}
-                      </>
-                    )}
-                    <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-4">
-                      <p className="text-sm text-white">{item.title}</p>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
+                      </div>
+                      <div className="p-4">
+                        <p className="font-display text-lg font-medium text-ink">{gallery.title}</p>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            ) : (
+              <p className="mt-10 text-sm text-ink-muted">
+                Aucune galerie pour le moment dans ce pilier.
+              </p>
+            )}
           </div>
         </section>
       </main>

@@ -44,37 +44,37 @@ model Admin {
 }
 
 model Client {
-  id           String   @id @default(cuid())
-  name         String
+  id                   String        @id @default(cuid())
+  name                 String
   // Raison sociale — le nom légal de l'entité (ex. "SASU SAJJ"), distinct
   // du nom commercial/de scène utilisé partout ailleurs dans l'app (ex.
   // "QG Club"). Ajouté le 2026-07-31, nullable : la catégorie "Particulier"
   // n'a pas de raison sociale, et les clients existants n'en ont pas.
-  raisonSociale String?
-  notes        String?
-  address      String?
-  siret        String?
-  vatNumber    String?
+  raisonSociale        String?
+  notes                String?
+  address              String?
+  siret                String?
+  vatNumber            String?
   // Adresse utilisée pour l'envoi manuel des documents (factures/devis...)
   // depuis la fiche client — distincte des emails des comptes de connexion.
-  billingEmail String?
+  billingEmail         String?
   // Lien vers le dossier Google Drive du client, affiché dans le bandeau de
   // l'espace client. Un seul lien par client (pas par compte).
-  driveUrl     String?
+  driveUrl             String?
   // Espace client public accessible sans connexion (bouton "Voir l'espace
   // client de démo" côté site vitrine) — voir src/lib/actions/demo.ts. Un
   // seul client devrait porter ce flag ; les Server Actions d'écriture
   // côté client le vérifient (assertNotDemo dans src/lib/dal.ts) pour
   // rester en lecture seule malgré l'accès public.
-  isDemo       Boolean  @default(false)
+  isDemo               Boolean       @default(false)
   // Catégorie du client (Club, Marque, Artiste...) — liste ouverte gérée
   // depuis /admin/listes comme les autres (`client_category`), donc un
   // `DropdownItem` plutôt qu'une colonne texte : on récupère gratuitement le
   // badge coloré, l'ordre d'affichage et l'édition sans migration. Nullable :
   // un client peut rester non catégorisé, et `onDelete: SetNull` évite qu'une
   // suppression de catégorie emporte des clients avec elle.
-  categoryId   String?
-  category     DropdownItem? @relation("ClientCategory", fields: [categoryId], references: [id], onDelete: SetNull)
+  categoryId           String?
+  category             DropdownItem? @relation("ClientCategory", fields: [categoryId], references: [id], onDelete: SetNull)
   // Avatar du client (logo ou photo), affiché en rond dans la liste
   // `/admin/clients` et sur sa fiche. Même trio de colonnes que
   // `HomepageHero`/`PortfolioPillar` : la clé de stockage, le type MIME (pour
@@ -89,9 +89,9 @@ model Client {
   // Reste volontairement compté dans les Finances et les exports : archiver
   // un client ne doit pas réécrire l'historique comptable ni amputer une
   // sauvegarde. Voir `ACTIVE_CLIENTS` (src/lib/clients.ts).
-  archivedAt   DateTime?
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
+  archivedAt           DateTime?
+  createdAt            DateTime      @default(now())
+  updatedAt            DateTime      @updatedAt
 
   // Renommé "users" -> "contacts" le 2026-07-31 (split Contact/ClientContact,
   // voir plus bas) — ce sont les rattachements de contacts à ce client, pas
@@ -107,6 +107,18 @@ model Client {
   // prospect (bouton "Convertir en client" sur /admin/prospection) — voir
   // Prospect.convertedClient ci-dessous.
   prospectOrigin Prospect?
+
+  // Perf (2026-08-16) : Prisma n'indexe pas automatiquement les colonnes de
+  // clé étrangère (contrairement à certains ORM) — seul un `@@unique` en
+  // crée une, par effet de bord. Un audit du SQL des migrations existantes
+  // a montré que la plupart des FK de ce schéma n'avaient jamais eu
+  // d'index explicite, alors que ce sont exactement les colonnes filtrées
+  // en permanence (fiche client, fiche tâche, listes admin...) — un facteur
+  // plausible de lenteur ressentie à mesure que les tables grossissent
+  // depuis la mise en production (mi-juillet). Ajouté ici et sur les autres
+  // modèles ci-dessous ; migration purement additive (CREATE INDEX), sans
+  // risque pour les données existantes.
+  @@index([categoryId])
 }
 
 // Identité d'un contact — carnet d'adresses partageable (ajouté le
@@ -150,11 +162,11 @@ model Contact {
 // AuditLogEntry.targetId, qui référencent cet id en chaîne libre (pas de
 // FK), restent donc valides sans aucune réécriture.
 model ClientContact {
-  id       String  @id @default(cuid())
-  clientId String
-  client   Client  @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  contactId String
-  contact  Contact @relation(fields: [contactId], references: [id], onDelete: Cascade)
+  id                        String    @id @default(cuid())
+  clientId                  String
+  client                    Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  contactId                 String
+  contact                   Contact   @relation(fields: [contactId], references: [id], onDelete: Cascade)
   // Nullable : `null` = aucun mot de passe défini. Ce n'est PAS
   // l'interrupteur d'accès (voir `portalAccessEnabled`) — un contact
   // fraîchement invité a un accès ouvert et un `passwordHash` encore nul
@@ -186,8 +198,11 @@ model ClientContact {
   loginEvents ClientLoginEvent[]
 
   // Un contact ne peut être rattaché qu'une seule fois au même client — pas
-  // de doublon du même lien.
+  // de doublon du même lien. `clientId` seul reste couvert par cet index
+  // composite (préfixe gauche) ; `contactId` seul ne l'est pas, d'où l'index
+  // dédié ci-dessous (perf, voir le commentaire sur `Client.categoryId`).
   @@unique([clientId, contactId])
+  @@index([contactId])
 }
 
 // Historique des connexions client, pour le "journal de connexion" du
@@ -198,6 +213,8 @@ model ClientLoginEvent {
   clientContactId String
   clientContact   ClientContact @relation(fields: [clientContactId], references: [id], onDelete: Cascade)
   loggedInAt      DateTime      @default(now())
+
+  @@index([clientContactId])
 }
 
 // Opaque session tokens: subjectType/subjectId is a lightweight polymorphic
@@ -274,7 +291,7 @@ model DropdownItem {
   tasks     Task[]
   documents Document[]
   prospects Prospect[]
-  clients   Client[] @relation("ClientCategory")
+  clients   Client[]   @relation("ClientCategory")
 
   taskTypeOf   Task[] @relation("TaskTypes")
   taskFormatOf Task[] @relation("TaskFormats")
@@ -328,6 +345,9 @@ model Task {
   statusHistory  TaskStatusHistory[]
   timeEntries    TaskTimeEntry[]
   checklistItems TaskChecklistItem[]
+
+  @@index([clientId])
+  @@index([statusId])
 }
 
 // Fiche de prospection (CRM léger, /admin/prospection). `statusId` pointe
@@ -365,11 +385,13 @@ model Prospect {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  activity ProspectActivity[]
+  activity    ProspectActivity[]
   // Nommé différemment du champ `notes` (texte libre juste au-dessus) —
   // celui-ci est la relation vers le module de notes internes, même
   // convention que `Client.linkedNotes`.
   linkedNotes Note[]
+
+  @@index([statusId])
 }
 
 // Mini fil d'historique par prospect (créé, changement de statut, email
@@ -415,18 +437,21 @@ model TaskChecklistItem {
 // deux cas pour garder un calcul de durée uniforme. Jamais exposé côté
 // espace client.
 model TaskTimeEntry {
-  id        String    @id @default(cuid())
-  taskId    String
-  task      Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  startedAt DateTime
-  endedAt   DateTime?
-  manual    Boolean   @default(false)
-  createdAt DateTime  @default(now())
+  id               String    @id @default(cuid())
+  taskId           String
+  task             Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  startedAt        DateTime
+  endedAt          DateTime?
+  manual           Boolean   @default(false)
+  createdAt        DateTime  @default(now())
   // Admin qui a démarré ce chrono — nullable pour ne pas casser l'historique
   // pré-multi-admin (2026-07-29). Un chrono actif (`endedAt: null`) est
   // maintenant par admin, pas global : voir `startTaskTimer`.
   startedByAdminId String?
-  startedByAdmin   Admin?  @relation(fields: [startedByAdminId], references: [id], onDelete: SetNull)
+  startedByAdmin   Admin?    @relation(fields: [startedByAdminId], references: [id], onDelete: SetNull)
+
+  @@index([taskId])
+  @@index([startedByAdminId])
 }
 
 // Audit trail des changements de statut d'une tâche (qui, quand, vers quel
@@ -445,6 +470,8 @@ model TaskStatusHistory {
   changedById   String
   changedByName String
   changedAt     DateTime @default(now())
+
+  @@index([taskId, changedAt])
 }
 
 // Historique des refus de BAT, pour ne pas perdre le motif quand le BAT est
@@ -460,6 +487,8 @@ model TaskRefusalHistory {
   reason    String
   refusedAt DateTime
   createdAt DateTime @default(now())
+
+  @@index([taskId])
 }
 
 // Fil de commentaires par tâche (admin + client), pour discuter d'une tâche
@@ -475,6 +504,8 @@ model TaskComment {
   authorName String
   body       String
   createdAt  DateTime @default(now())
+
+  @@index([taskId, createdAt])
 }
 
 model Deliverable {
@@ -492,6 +523,8 @@ model Deliverable {
   // n'est filigrané rétroactivement sans action de l'admin.
   kind           String   @default("final")
   uploadedAt     DateTime @default(now())
+
+  @@index([taskId])
 }
 
 // Fichiers de référence fournis par le client à la création d'une tâche
@@ -507,6 +540,8 @@ model Attachment {
   sizeBytes      Int
   storageBackend String
   uploadedAt     DateTime @default(now())
+
+  @@index([taskId])
 }
 
 model Document {
@@ -557,6 +592,10 @@ model Document {
   isMonthlyInvoice        Boolean      @default(false)
   invoiceYear             Int?
   invoiceMonth            Int?
+
+  @@index([clientId])
+  @@index([typeId])
+  @@index([uploadedByAdminId])
 }
 
 // Document interne sans client associé (Commercial / Société) — brochures,
@@ -568,17 +607,17 @@ model Document {
 // de ces usages. Consultation/téléchargement/suppression uniquement, pas
 // de montant ni de statut de paiement.
 model CompanyDocument {
-  id                String   @id @default(cuid())
+  id             String   @id @default(cuid())
   // "commercial" | "societe" — voir COMPANY_DOCUMENT_CATEGORY
   // (src/lib/dropdown-lists.ts). Catégories fixes, pas une DropdownList :
   // structurelles, pas une liste que l'admin doit pouvoir renommer/colorer.
-  category          String
-  fileName          String
-  storageKey        String
-  mimeType          String
-  sizeBytes         Int
-  storageBackend    String
-  uploadedAt        DateTime @default(now())
+  category       String
+  fileName       String
+  storageKey     String
+  mimeType       String
+  sizeBytes      Int
+  storageBackend String
+  uploadedAt     DateTime @default(now())
 }
 
 // Suivi d'un paiement sans document de facture associé (acompte reçu par
@@ -594,7 +633,18 @@ model PaymentRecord {
   currency      String    @default("EUR")
   paymentStatus String    @default("unpaid")
   paidAt        DateTime?
+  // Mois/date affecté par ce paiement pour les Finances (demande du
+  // 2026-08-16) — distinct de `createdAt` : un acompte saisi tardivement
+  // dans l'app doit quand même compter sur le mois réellement convenu avec
+  // le client, pas sur sa date de saisie. Éditable, défaut à la création
+  // (`now()`). Même rôle que `Document.uploadedAt`/`invoiceYear`/
+  // `invoiceMonth` côté factures, en plus simple (un seul champ, pas de
+  // distinction mensuelle/à la tâche puisqu'un paiement sans facture n'a
+  // pas cette notion).
+  date          DateTime  @default(now())
   createdAt     DateTime  @default(now())
+
+  @@index([clientId])
 }
 
 // Image insérée dans une note (ajouté le 2026-07-31) — pas de relation vers
@@ -631,20 +681,26 @@ model WorkCapacityDay {
 }
 
 model AppSettings {
-  id                          String   @id @default("settings")
-  // Nombre de jours après lesquels un livrable final (tâche "Terminé")
-  // est purgé du stockage — voir /api/cron/purge-livrables.
-  deliverableRetentionDays    Int      @default(60)
+  id                                 String   @id @default("settings")
+  // Refonte de la purge des livrables (demande du 2026-08-16, remplace
+  // l'ancien `deliverableRetentionDays` unique basé sur la date d'upload) —
+  // voir src/lib/deliverable-purge.ts. Un livrable final (tâche "Terminé")
+  // est désormais purgé N jours après `Task.eventDate` quand elle est
+  // renseignée, ou N jours après son upload sinon (une tâche sans date
+  // d'évènement n'a pas d'autre repère). Les BAT (Deliverable.kind = "bat")
+  // ne sont jamais concernés, quelle que soit la règle.
+  deliverableRetentionAfterEventDays Int      @default(7)
+  deliverableRetentionNoDateDays     Int      @default(30)
   // Filigrane à 10% d'opacité appliqué à la volée aux BAT (Deliverable.kind
   // = "bat") vus par le client — voir src/lib/watermark.ts.
-  batWatermarkEnabled         Boolean  @default(true)
-  popupEnabled                Boolean  @default(false)
-  popupMessage                String?
+  batWatermarkEnabled                Boolean  @default(true)
+  popupEnabled                       Boolean  @default(false)
+  popupMessage                       String?
   // Délai (en jours) utilisé uniquement pour préremplir la date de relance
   // suggérée à la création d'un prospect (/admin/prospection/nouveau) — pas
   // une automatisation cachée, le champ reste éditable ou vidable.
-  prospectReminderDefaultDays Int      @default(14)
-  updatedAt                   DateTime @updatedAt
+  prospectReminderDefaultDays        Int      @default(14)
+  updatedAt                          DateTime @updatedAt
 }
 
 model EmailLog {
@@ -667,7 +723,6 @@ model PortfolioPillar {
   title               String
   description         String
   sortOrder           Int      @default(0)
-  mediaType           String   @default("mixed")
   coverExternalUrl    String?
   coverStorageKey     String?
   coverMimeType       String?
@@ -675,26 +730,57 @@ model PortfolioPillar {
   createdAt           DateTime @default(now())
   updatedAt           DateTime @updatedAt
 
+  galleries PortfolioGallery[]
+}
+
+// Refonte "galeries" du portfolio (demande du 2026-08-16, remplace les
+// médias posés à plat directement sous un pilier) — inspirée d'Adobe
+// Portfolio : chaque pilier contient plusieurs galeries (des projets), et
+// chaque galerie est une page dédiée avec du texte de présentation avant et
+// après ses photos/vidéos, plutôt qu'une simple grille. `textBefore`/
+// `textAfter` sont indépendants et tous deux facultatifs — un projet peut
+// n'avoir qu'une intro, qu'une conclusion, les deux, ou aucun texte.
+// Pas de couverture dédiée : la vignette de la galerie sur la page du
+// pilier est résolue depuis son premier média (voir
+// src/lib/portfolio-media.ts), pour ne pas imposer un upload de plus à
+// l'admin pour un projet qui a déjà ses propres visuels.
+model PortfolioGallery {
+  id         String          @id @default(cuid())
+  pillarId   String
+  pillar     PortfolioPillar @relation(fields: [pillarId], references: [id], onDelete: Cascade)
+  title      String
+  textBefore String?
+  textAfter  String?
+  sortOrder  Int             @default(0)
+  createdAt  DateTime        @default(now())
+  updatedAt  DateTime        @updatedAt
+
   items PortfolioMediaItem[]
+
+  @@index([pillarId])
 }
 
 // aspectRatio is "3:4" or "9:16" (client uploads photos in one of these two
 // crops, videos are always "9:16" - enforced in src/lib/actions/portfolio.ts,
 // not just this default). Controls the CSS tile shape on the public grid.
+// Rattaché à une galerie plutôt qu'un pilier directement depuis le
+// 2026-08-16 (voir `PortfolioGallery` ci-dessus).
 model PortfolioMediaItem {
-  id             String          @id @default(cuid())
-  pillarId       String
-  pillar         PortfolioPillar @relation(fields: [pillarId], references: [id], onDelete: Cascade)
+  id             String           @id @default(cuid())
+  galleryId      String
+  gallery        PortfolioGallery @relation(fields: [galleryId], references: [id], onDelete: Cascade)
   title          String
   mediaType      String
-  aspectRatio    String          @default("3:4")
+  aspectRatio    String           @default("3:4")
   externalUrl    String?
   storageKey     String?
   mimeType       String?
   storageBackend String?
   sizeBytes      Int?
-  sortOrder      Int             @default(0)
-  createdAt      DateTime        @default(now())
+  sortOrder      Int              @default(0)
+  createdAt      DateTime         @default(now())
+
+  @@index([galleryId])
 }
 
 // Singleton (always id "hero") holding the two images in the homepage Hero
@@ -790,7 +876,7 @@ model AuditLogEntry {
   targetType  String?
   targetId    String?
   targetLabel String?
-  metadata    String? @db.Text
+  metadata    String?  @db.Text
   ipAddress   String?
   createdAt   DateTime @default(now())
 

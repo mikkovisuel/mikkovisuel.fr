@@ -15,6 +15,7 @@ const PaymentRecordSchema = z.object({
   amountEuros: z.coerce
     .number({ message: "Montant invalide." })
     .positive({ message: "Le montant doit être positif." }),
+  date: z.string().trim().optional(),
 });
 
 export type PaymentRecordFormState = { error?: string } | undefined;
@@ -29,6 +30,7 @@ export async function createPaymentRecord(
     clientId: formData.get("clientId"),
     label: formData.get("label"),
     amountEuros: formData.get("amountEuros"),
+    date: formData.get("date"),
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Formulaire invalide." };
@@ -39,11 +41,30 @@ export async function createPaymentRecord(
       clientId: parsed.data.clientId,
       label: parsed.data.label || null,
       amountCents: Math.round(parsed.data.amountEuros * 100),
+      // Un champ vide retombe sur "maintenant", même défaut que la colonne
+      // — évite une date invalide si l'admin laisse le champ vide plutôt
+      // que de forcer le champ requis côté formulaire.
+      date: parsed.data.date ? new Date(parsed.data.date) : new Date(),
     },
   });
 
   revalidatePath("/admin/documents");
+  revalidatePath("/admin/finances");
   return undefined;
+}
+
+// Éditable après coup (demande du 2026-08-16) : le mois affecté aux
+// Finances peut devoir être corrigé une fois le paiement déjà saisi.
+export async function updatePaymentRecordDate(recordId: string, dateValue: string) {
+  await verifyAdminSession();
+
+  const date = new Date(dateValue);
+  if (Number.isNaN(date.getTime())) return;
+
+  await db.paymentRecord.update({ where: { id: recordId }, data: { date } });
+
+  revalidatePath("/admin/documents");
+  revalidatePath("/admin/finances");
 }
 
 export async function setPaymentRecordStatus(recordId: string, status: "paid" | "unpaid") {
@@ -55,6 +76,7 @@ export async function setPaymentRecordStatus(recordId: string, status: "paid" | 
   });
 
   revalidatePath("/admin/documents");
+  revalidatePath("/admin/finances");
 }
 
 export async function deletePaymentRecord(recordId: string) {
@@ -63,4 +85,5 @@ export async function deletePaymentRecord(recordId: string) {
   await db.paymentRecord.delete({ where: { id: recordId } });
 
   revalidatePath("/admin/documents");
+  revalidatePath("/admin/finances");
 }

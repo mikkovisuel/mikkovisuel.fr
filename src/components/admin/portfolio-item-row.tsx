@@ -13,12 +13,12 @@ interface PortfolioItemRowProps {
     storageKey: string | null;
     mimeType: string | null;
   };
-  pillarId: string;
+  galleryId: string;
   isFirst: boolean;
   isLast: boolean;
 }
 
-export function PortfolioItemRow({ item, pillarId, isFirst, isLast }: PortfolioItemRowProps) {
+export function PortfolioItemRow({ item, galleryId, isFirst, isLast }: PortfolioItemRowProps) {
   const src = resolveItemSrc(item);
   const isUploadedVideo = item.mediaType === "video" && item.mimeType?.startsWith("video/");
 
@@ -39,7 +39,7 @@ export function PortfolioItemRow({ item, pillarId, isFirst, isLast }: PortfolioI
       </div>
       <p className="flex-1 text-sm font-medium text-ink">{item.title}</p>
       <div className="flex items-center gap-2">
-        <form action={moveMediaItem.bind(null, pillarId, item.id, "up")}>
+        <form action={moveMediaItem.bind(null, galleryId, item.id, "up")}>
           <button
             type="submit"
             disabled={isFirst}
@@ -49,7 +49,7 @@ export function PortfolioItemRow({ item, pillarId, isFirst, isLast }: PortfolioI
             <ArrowUp size={14} weight="bold" />
           </button>
         </form>
-        <form action={moveMediaItem.bind(null, pillarId, item.id, "down")}>
+        <form action={moveMediaItem.bind(null, galleryId, item.id, "down")}>
           <button
             type="submit"
             disabled={isLast}
@@ -60,7 +60,7 @@ export function PortfolioItemRow({ item, pillarId, isFirst, isLast }: PortfolioI
           </button>
         </form>
         <DeleteButton
-          action={deleteMediaItem.bind(null, item.id, pillarId)}
+          action={deleteMediaItem.bind(null, item.id, galleryId)}
           confirmMessage={`Supprimer "${item.title}" ?`}
         />
       </div>

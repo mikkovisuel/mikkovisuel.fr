@@ -97,40 +97,44 @@ export default async function AdminSettingsPage({
   const settings = await getAppSettings();
   const { gmail } = await searchParams;
 
-  const clients = await db.client.findMany({
-    // Seuls les contacts ayant un accès ouvert : les notifications parlent
-    // toutes de "votre espace client", proposer de les activer pour un simple
-    // contact du carnet d'adresses n'aurait pas de sens.
-    where: { ...ACTIVE_CLIENTS, contacts: { some: { portalAccessEnabled: true } } },
-    include: {
-      contacts: {
-        where: { portalAccessEnabled: true },
-        orderBy: { createdAt: "asc" },
-        include: { contact: true },
-      },
-    },
-    orderBy: { name: "asc" },
-  });
-
   // Tentatives de connexion échouées des 7 derniers jours — la table
   // `LoginAttempt` sert déjà à bloquer le brute-force (voir src/lib/
   // rate-limit.ts), mais rien ne l'affichait jusqu'ici. Utile pour un admin
   // seul détenteur de l'accès à toutes les données clients : un signal
   // simple si quelqu'un tente de deviner le mot de passe.
   const sevenDaysAgo = getSevenDaysAgo();
-  const recentFailedAttempts = await db.loginAttempt.findMany({
-    where: { succeeded: false, createdAt: { gte: sevenDaysAgo } },
-    orderBy: { createdAt: "desc" },
-    take: 10,
-  });
+
+  // Perf : ces trois requêtes sont indépendantes — lancées en parallèle
+  // plutôt qu'enchaînées, elles ne coûtent que le temps de la plus lente
+  // des trois au lieu de la somme des trois.
+  const [clients, recentFailedAttempts, admins] = await Promise.all([
+    db.client.findMany({
+      // Seuls les contacts ayant un accès ouvert : les notifications parlent
+      // toutes de "votre espace client", proposer de les activer pour un simple
+      // contact du carnet d'adresses n'aurait pas de sens.
+      where: { ...ACTIVE_CLIENTS, contacts: { some: { portalAccessEnabled: true } } },
+      include: {
+        contacts: {
+          where: { portalAccessEnabled: true },
+          orderBy: { createdAt: "asc" },
+          include: { contact: true },
+        },
+      },
+      orderBy: { name: "asc" },
+    }),
+    db.loginAttempt.findMany({
+      where: { succeeded: false, createdAt: { gte: sevenDaysAgo } },
+      orderBy: { createdAt: "desc" },
+      take: 10,
+    }),
+    db.admin.findMany({
+      select: { id: true, email: true, lastLoginAt: true },
+      orderBy: { createdAt: "asc" },
+    }),
+  ]);
   const adminFailedCount = recentFailedAttempts.filter(
     (attempt) => attempt.identifier === admin.email.toLowerCase(),
   ).length;
-
-  const admins = await db.admin.findMany({
-    select: { id: true, email: true, lastLoginAt: true },
-    orderBy: { createdAt: "asc" },
-  });
 
   return (
     // Auparavant une colonne unique en `max-w-2xl` : six sections empilées
@@ -191,7 +195,8 @@ export default async function AdminSettingsPage({
           <SettingsCard title="Paramètres généraux">
             <SettingsForm
               defaultValues={{
-                deliverableRetentionDays: settings.deliverableRetentionDays,
+                deliverableRetentionAfterEventDays: settings.deliverableRetentionAfterEventDays,
+                deliverableRetentionNoDateDays: settings.deliverableRetentionNoDateDays,
                 batWatermarkEnabled: settings.batWatermarkEnabled,
                 popupEnabled: settings.popupEnabled,
                 popupMessage: settings.popupMessage ?? "",

@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { isStripeConfigured } from "@/lib/stripe";
 import { PayButton } from "@/components/client/pay-button";
 import { AcceptDevisDialog } from "@/components/client/accept-devis-dialog";
+import { PaymentStatusBadge } from "@/components/payment-status-badge";
 import { DOCUMENT_TYPE } from "@/lib/dropdown-lists";
 
 const DEVIS_DATE_FORMATTER = new Intl.DateTimeFormat("fr-FR", {
@@ -59,13 +60,17 @@ export default async function ClientAdministrativePage() {
               className="flex flex-col gap-3 px-6 py-4 sm:flex-row sm:items-center sm:justify-between"
             >
               <div>
-                <p className="font-medium text-ink">{doc.fileName}</p>
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="font-medium text-ink">{doc.fileName}</p>
+                  {doc.amountCents !== null && doc.paymentStatus !== "n/a" && (
+                    <PaymentStatusBadge status={doc.paymentStatus === "paid" ? "paid" : "unpaid"} />
+                  )}
+                </div>
                 <p className="mt-1 text-sm text-ink-muted">
                   {doc.type.label}
                   {doc.amountCents !== null && ` · ${formatAmount(doc.amountCents, doc.currency)}`}
-                  {doc.paymentStatus === "unpaid" &&
-                    (stripeEnabled ? " · en attente de paiement" : " · en attente de paiement (paiement en ligne bientôt disponible)")}
-                  {doc.paymentStatus === "paid" && " · payée"}
+                  {doc.paymentStatus === "unpaid" && !stripeEnabled &&
+                    " · paiement en ligne bientôt disponible"}
                 </p>
               </div>
               <div className="flex flex-col items-start gap-2">

@@ -20,13 +20,14 @@ export function resolveItemSrc(item: {
   return item.externalUrl ?? "";
 }
 
-export function computePillarMediaType(
-  items: { mediaType: string }[],
-): "image" | "video" | "mixed" {
-  if (items.length === 0) return "mixed";
-  const allImages = items.every((item) => item.mediaType === "image");
-  if (allImages) return "image";
-  const allVideos = items.every((item) => item.mediaType === "video");
-  if (allVideos) return "video";
-  return "mixed";
+// Vignette d'une galerie (page pilier, façon Adobe Portfolio) : pas de champ
+// de couverture dédié sur `PortfolioGallery` — on réutilise son premier
+// média (voir prisma/schema.prisma) pour ne pas imposer un upload de plus.
+// `null` quand la galerie est encore vide (pilier fraîchement créé) : à
+// l'appelant de prévoir un état vide plutôt que d'afficher une image cassée.
+export function resolveGalleryCoverSrc(gallery: {
+  items: { id: string; externalUrl: string | null; storageKey: string | null }[];
+}): string | null {
+  const first = gallery.items[0];
+  return first ? resolveItemSrc(first) : null;
 }

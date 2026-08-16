@@ -1,13 +1,10 @@
-import { db } from "@/lib/db";
+import { getPortfolioPillars, getHomepageContent } from "@/lib/homepage-data";
 import { resolveCoverSrc } from "@/lib/portfolio-media";
 import { resolveHomepageContent } from "@/lib/homepage-content";
 import { PortfolioGrid } from "./portfolio-grid";
 
 export async function PortfolioSection() {
-  const [pillars, content] = await Promise.all([
-    db.portfolioPillar.findMany({ orderBy: { sortOrder: "asc" } }),
-    db.homepageContent.findUnique({ where: { id: "homepage" } }),
-  ]);
+  const [pillars, content] = await Promise.all([getPortfolioPillars(), getHomepageContent()]);
 
   const resolved = pillars.map((pillar) => ({
     id: pillar.id,

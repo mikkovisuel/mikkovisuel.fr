@@ -15,10 +15,18 @@ export async function updateSettings(
 ): Promise<SettingsFormState> {
   await verifyAdminSession();
 
-  const retentionRaw = formData.get("deliverableRetentionDays");
-  const retentionDays = typeof retentionRaw === "string" ? Number.parseInt(retentionRaw, 10) : NaN;
-  if (!Number.isInteger(retentionDays) || retentionDays < 1) {
-    return { error: "Le nombre de jours de rétention doit être un entier positif." };
+  const afterEventRaw = formData.get("deliverableRetentionAfterEventDays");
+  const deliverableRetentionAfterEventDays =
+    typeof afterEventRaw === "string" ? Number.parseInt(afterEventRaw, 10) : NaN;
+  if (!Number.isInteger(deliverableRetentionAfterEventDays) || deliverableRetentionAfterEventDays < 1) {
+    return { error: "Le délai de purge après l'évènement doit être un entier positif." };
+  }
+
+  const noDateRaw = formData.get("deliverableRetentionNoDateDays");
+  const deliverableRetentionNoDateDays =
+    typeof noDateRaw === "string" ? Number.parseInt(noDateRaw, 10) : NaN;
+  if (!Number.isInteger(deliverableRetentionNoDateDays) || deliverableRetentionNoDateDays < 1) {
+    return { error: "Le délai de purge sans date d'évènement doit être un entier positif." };
   }
 
   const popupMessageRaw = formData.get("popupMessage");
@@ -35,7 +43,8 @@ export async function updateSettings(
   }
 
   const data = {
-    deliverableRetentionDays: retentionDays,
+    deliverableRetentionAfterEventDays,
+    deliverableRetentionNoDateDays,
     batWatermarkEnabled: formData.get("batWatermarkEnabled") === "on",
     popupEnabled: formData.get("popupEnabled") === "on",
     popupMessage,

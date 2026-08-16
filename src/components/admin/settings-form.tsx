@@ -5,7 +5,8 @@ import { WarningCircle, CheckCircle } from "@phosphor-icons/react/dist/ssr";
 import { updateSettings, purgeDeliverablesNow, type PurgeState } from "@/lib/actions/settings";
 
 interface SettingsDefaults {
-  deliverableRetentionDays: number;
+  deliverableRetentionAfterEventDays: number;
+  deliverableRetentionNoDateDays: number;
   batWatermarkEnabled: boolean;
   popupEnabled: boolean;
   popupMessage: string;
@@ -24,24 +25,39 @@ export function SettingsForm({ defaultValues }: { defaultValues: SettingsDefault
       <form action={formAction} className="grid gap-8">
         <section className="grid gap-3">
           <h2 className="text-sm font-medium text-ink">Archivage des livrables</h2>
+          <p className="text-xs text-ink-muted">
+            Concerne uniquement les livrables finaux des tâches « Terminé ». Les BAT en attente
+            de validation ne sont jamais purgés automatiquement.
+          </p>
           <div className="flex flex-col gap-2">
-            <label htmlFor="deliverableRetentionDays" className="text-sm text-ink-muted">
-              Purger les livrables finaux (tâches « Terminé ») après ce nombre de jours
+            <label htmlFor="deliverableRetentionAfterEventDays" className="text-sm text-ink-muted">
+              Purger ce nombre de jours après la date de l&apos;évènement de la tâche
             </label>
             <input
-              id="deliverableRetentionDays"
-              name="deliverableRetentionDays"
+              id="deliverableRetentionAfterEventDays"
+              name="deliverableRetentionAfterEventDays"
               type="number"
               min={1}
               required
-              defaultValue={defaultValues.deliverableRetentionDays}
+              defaultValue={defaultValues.deliverableRetentionAfterEventDays}
               className="w-32 rounded-xl border border-line bg-surface-elevated px-4 py-2.5 text-sm text-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
             />
           </div>
-          <p className="text-xs text-ink-muted">
-            Les BAT en attente de validation ne sont jamais purgés automatiquement, seulement les
-            livrables déjà remis.
-          </p>
+          <div className="flex flex-col gap-2">
+            <label htmlFor="deliverableRetentionNoDateDays" className="text-sm text-ink-muted">
+              Si la tâche n&apos;a pas de date d&apos;évènement, purger ce nombre de jours après
+              l&apos;envoi du livrable
+            </label>
+            <input
+              id="deliverableRetentionNoDateDays"
+              name="deliverableRetentionNoDateDays"
+              type="number"
+              min={1}
+              required
+              defaultValue={defaultValues.deliverableRetentionNoDateDays}
+              className="w-32 rounded-xl border border-line bg-surface-elevated px-4 py-2.5 text-sm text-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
+            />
+          </div>
         </section>
 
         <section className="grid gap-3">

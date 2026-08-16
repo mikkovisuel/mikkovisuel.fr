@@ -3,7 +3,8 @@ import { db } from "@/lib/db";
 const SETTINGS_ID = "settings";
 
 const DEFAULT_SETTINGS = {
-  deliverableRetentionDays: 60,
+  deliverableRetentionAfterEventDays: 7,
+  deliverableRetentionNoDateDays: 30,
   batWatermarkEnabled: true,
   popupEnabled: false,
   popupMessage: null as string | null,

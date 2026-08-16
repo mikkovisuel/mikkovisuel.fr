@@ -19,7 +19,7 @@ export default async function AdminPortfolioPage() {
 
   const [pillars, hero, content] = await Promise.all([
     db.portfolioPillar.findMany({
-      include: { _count: { select: { items: true } } },
+      include: { _count: { select: { galleries: true } } },
       orderBy: { sortOrder: "asc" },
     }),
     db.homepageHero.findUnique({ where: { id: "hero" } }),
@@ -86,7 +86,7 @@ export default async function AdminPortfolioPage() {
               <div>
                 <p className="font-medium text-ink">{pillar.title}</p>
                 <p className="mt-0.5 text-sm text-ink-muted">
-                  {pillar._count.items} élément{pillar._count.items > 1 ? "s" : ""}
+                  {pillar._count.galleries} galerie{pillar._count.galleries > 1 ? "s" : ""}
                 </p>
               </div>
             </Link>

@@ -265,6 +265,7 @@ export default async function AdminDocumentsPage({
                   amountCents: record.amountCents,
                   currency: record.currency,
                   paymentStatus: record.paymentStatus,
+                  date: record.date.toISOString().slice(0, 10),
                 }}
               />
             ))}

@@ -89,11 +89,25 @@ export default async function FinancesPage({
     ...periodFilter,
   };
 
-  const [invoices, clients, timeEntries] = await Promise.all([
+  // Paiements "sans facture" (demande du 2026-08-16) — même filtre client/
+  // période que les factures ci-dessus, sur le champ `date` (mois affecté,
+  // éditable) plutôt que `createdAt` (date de saisie).
+  const paymentRecordWhere = {
+    client: EXCLUDE_DEMO_CLIENT,
+    ...(clientId ? { clientId } : {}),
+    ...(since && until ? { date: { gte: since, lt: until } } : {}),
+  };
+
+  const [invoices, paymentRecords, clients, timeEntries] = await Promise.all([
     db.document.findMany({
       where: invoiceWhere,
       include: { client: true },
       orderBy: { uploadedAt: "asc" },
+    }),
+    db.paymentRecord.findMany({
+      where: paymentRecordWhere,
+      include: { client: true },
+      orderBy: { date: "asc" },
     }),
     db.client.findMany({ where: ACTIVE_CLIENTS, orderBy: { name: "asc" } }),
     // Rapport temps/rentabilité — mêmes filtres que le résumé ci-dessus
@@ -151,6 +165,32 @@ export default async function FinancesPage({
     byClient.set(invoice.clientId, clientEntry);
   }
 
+  // Paiements sans facture : mêmes cumuls (facturé/encaissé, par mois, par
+  // client) que les factures ci-dessus, regroupés sur `date` plutôt que
+  // `uploadedAt`.
+  for (const record of paymentRecords) {
+    const amount = record.amountCents;
+    const collected = record.paymentStatus === "paid" ? amount : 0;
+    totalBilledCents += amount;
+    totalCollectedCents += collected;
+
+    const key = monthKey(record.date);
+    const monthEntry = monthly.get(key) ?? { billedCents: 0, collectedCents: 0 };
+    monthEntry.billedCents += amount;
+    monthEntry.collectedCents += collected;
+    monthly.set(key, monthEntry);
+
+    const clientEntry = byClient.get(record.clientId) ?? {
+      clientId: record.clientId,
+      clientName: record.client.name,
+      billedCents: 0,
+      collectedCents: 0,
+    };
+    clientEntry.billedCents += amount;
+    clientEntry.collectedCents += collected;
+    byClient.set(record.clientId, clientEntry);
+  }
+
   // Sans filtre d'année : les 12 derniers mois ayant des données (comme
   // avant). Avec une année choisie : les 12 mois de cette année précise,
   // dans l'ordre — montrer "les 12 derniers mois" glissants n'aurait plus
@@ -172,7 +212,7 @@ export default async function FinancesPage({
 
   const byClientData = Array.from(byClient.values()).sort((a, b) => b.billedCents - a.billedCents);
 
-  const currency = invoices[0]?.currency ?? "EUR";
+  const currency = invoices[0]?.currency ?? paymentRecords[0]?.currency ?? "EUR";
   const totalFormatted = new Intl.NumberFormat("fr-FR", { style: "currency", currency }).format(
     totalBilledCents / 100,
   );
@@ -193,7 +233,8 @@ export default async function FinancesPage({
         <div>
           <h1 className="font-display text-2xl font-medium tracking-tight text-ink">Finances</h1>
           <p className="mt-2 text-sm text-ink-muted">
-            Vue consolidée des factures (hors devis et contrats), client de démonstration exclu.
+            Vue consolidée des factures (hors devis et contrats) et des paiements sans facture,
+            client de démonstration exclu.
           </p>
         </div>
         <FilterMenu activeCount={activeFilterCount} label="Filtres">
@@ -280,11 +321,11 @@ export default async function FinancesPage({
         </div>
       </div>
 
-      {invoices.length === 0 ? (
+      {invoices.length === 0 && paymentRecords.length === 0 ? (
         <p className="mt-8 text-sm text-ink-muted">
           {activeFilterCount > 0
-            ? "Aucune facture ne correspond à ce filtre."
-            : "Aucune facture pour le moment."}
+            ? "Aucune facture ni paiement ne correspond à ce filtre."
+            : "Aucune facture ni paiement pour le moment."}
         </p>
       ) : (
         <>

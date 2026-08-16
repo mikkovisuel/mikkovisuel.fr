@@ -58,17 +58,34 @@ appliquée à l'ensemble du site :
 - 5 piliers : **Flyers Club, Motion Design, Direction Artistique, Photos
   Club, Vidéo Aftermovies**.
 - Administrable depuis le backend, sans toucher au code : ajout/suppression
-  de piliers, ajout/suppression/réorganisation de photos et vidéos par
-  pilier.
+  de piliers, ajout/suppression/réorganisation de galeries par pilier et de
+  photos/vidéos au sein d'une galerie (voir "Portfolio en galeries"
+  ci-dessous).
 - Page d'accueil : grille bento (5 tuiles) qui bascule en grille simple si le
   nombre de piliers est différent de 5.
-- Page de détail par pilier : filtres **Tous / Photos / Vidéos**.
+- **Portfolio en galeries** (2026-08-16, refonte façon Adobe Portfolio) : un
+  pilier contenait jusqu'ici des photos/vidéos posées à plat, sans texte de
+  présentation. Restructuré en `Pilier → Galeries → Médias` : chaque galerie
+  est un projet avec un titre, un texte facultatif avant ses médias et un
+  texte facultatif après (indépendants l'un de l'autre), et ses propres
+  photos/vidéos réordonnables (boutons monter/descendre, même principe que
+  l'ancien réordonnancement). La page d'un pilier liste désormais ses
+  galeries comme des cartes (vignette = premier média de la galerie, pas de
+  couverture à uploader séparément) ; cliquer une galerie ouvre sa page
+  dédiée (texte avant → médias empilés → texte après). L'ancien filtre
+  **Tous / Photos / Vidéos** de la page pilier a été retiré : une galerie
+  étant déjà un ensemble curaté, ce filtre par type n'avait plus vraiment de
+  sens à ce niveau. Migration des données : les photos/vidéos déjà en ligne
+  dans chaque pilier ont été regroupées automatiquement dans une galerie
+  "Galerie" par défaut (aucune perte), à réorganiser ensuite à la main par
+  l'admin en plusieurs galeries si besoin — choix explicite du client plutôt
+  qu'une galerie par média existant.
 - **Formats des médias uploadés** (précisé le 2026-07-14) :
   - Photos : format **3:4** ou **9:16**, au choix de l'admin à l'ajout.
   - Vidéos : toujours au format **9:16** (imposé automatiquement, pas de
     choix côté formulaire).
-  - Chaque tuile de la grille de détail épouse le format propre à son média
-    (donc une ligne peut mélanger des tuiles 3:4 et 9:16).
+  - Chaque média de la page d'une galerie épouse son propre format (une
+    galerie peut mélanger des médias 3:4 et 9:16).
 - Visuels du Hero administrables (2026-07-16) : les deux photos sous le
   bouton "Voir le travail" (composant `HeroVisual`) étaient codées en dur
   (placeholders Picsum) — corrigé sur le même principe que les couvertures
@@ -174,6 +191,17 @@ appliquée à l'ensemble du site :
   (ajouté le 2026-07-14) : bouton "Marquer comme payée"/"impayée" sur
   `/admin/documents`, pour les paiements reçus hors Stripe (virement,
   chèque, espèces...) ou pour corriger une erreur.
+- Indicateur visuel payé/en attente (2026-08-16) : le statut de paiement
+  n'était qu'une mention texte discrète — remplacé par une pastille colorée
+  (verte "Payée" / rouge "En attente"), sur `/admin/documents`, la fiche
+  client, l'espace client ("Administratif") et les paiements sans facture.
+- Paiements sans facture rattachés aux Finances (2026-08-16) : le suivi
+  "Paiements sans facture" (`PaymentRecord`, voir Backend interne) n'avait
+  jusqu'ici aucune date et n'apparaissait jamais dans la page `/admin/
+  finances` (seules les factures y comptaient). Nouveau champ `date`
+  (éditable, mois affecté), et ces montants s'ajoutent désormais au
+  Facturé/Encaissé, au graphique mensuel et au tableau par client de
+  Finances, avec les mêmes filtres client/année/mois que les factures.
 - Gestion des documents enrichie (2026-07-14) : documents visibles aussi
   sur la fiche de chaque client (pas seulement dans la liste globale) ;
   filtres par client/type/statut sur `/admin/documents` ; échéance
@@ -636,6 +664,15 @@ appliquée à l'ensemble du site :
   "Points encore ouverts") et disponible en déclenchement manuel immédiat
   ("Purger maintenant" sur `/admin/reglages`, utile en test ou en dehors de
   Scalingo).
+- Règle de purge revue (2026-08-16) : le délai unique "N jours après
+  l'upload" (60 par défaut) ne reflétait pas le bon repère — un livrable
+  doit rester disponible jusqu'à l'évènement du client, pas un nombre de
+  jours fixe depuis son envoi. Remplacé par deux délais indépendants et
+  toujours réglables sur `/admin/reglages` : purge **7 jours après la date
+  de l'évènement** de la tâche (par défaut) quand elle est renseignée, ou
+  **30 jours après l'envoi du livrable** (par défaut) si la tâche n'a pas de
+  date d'évènement. Toujours limité aux livrables **finaux** des tâches
+  "Terminé" — les BAT restent protégés dans tous les cas, comme avant.
 - Rapport PDF des tâches en cours, par client (2026-07-20) : bouton
   "Télécharger le rapport (PDF)" sur `/admin/clients/[clientId]`, à côté du
   titre "Tâches". Liste toutes les tâches non terminées (hors archivées)
@@ -1467,6 +1504,17 @@ Le client a explicitement délégué ces choix :
   PostgreSQL (installé via Homebrew), plus sur SQLite.
 - **Cycle de statut des tâches** : proposé par Claude Code, confirmé par le
   client le 2026-07-13 (voir ci-dessus).
+- **Passe de performance** (2026-08-16, suite à un signalement "le site est
+  relativement lent") : audit du SQL des migrations Prisma existantes, qui a
+  montré que la plupart des colonnes de clé étrangère (`Task.clientId`,
+  `Document.clientId`, `Deliverable.taskId`...) n'avaient jamais eu d'index
+  dédié — Prisma n'en crée pas automatiquement, contrairement à certains
+  autres ORM. 18 index ajoutés (migration purement additive, sans risque
+  pour les données). Corrigé en parallèle : la page d'accueil et les pages
+  pilier du portfolio (les plus visitées côté public) répétaient deux fois
+  la même requête (une fois pour les métadonnées de la page, une fois pour
+  son contenu) au lieu de la partager, et enchaînaient leurs sections l'une
+  après l'autre plutôt que de lancer leurs requêtes en parallèle.
 
 ## Points encore ouverts
 
@@ -1683,6 +1731,16 @@ Le client a explicitement délégué ces choix :
   client, à reprendre si besoin : **client le plus chargé** (répartition de
   la charge en cours par client) et **vélocité récente** (moyenne mobile des
   heures réellement travaillées par semaine).
+- **Filtre Tous/Photos/Vidéos retiré de la page pilier (2026-08-16)**, en
+  conséquence directe de la refonte en galeries : une galerie étant déjà un
+  ensemble curaté par l'admin, filtrer par type de média n'avait plus le
+  même sens à ce niveau qu'avant, quand la page listait tous les médias du
+  pilier à plat. Décision prise par Claude Code, pas explicitement demandée
+  — à reprendre si le client souhaite un filtre équivalent (par exemple,
+  filtrer *quelles galeries* afficher selon leur contenu).
+- **Rendu mobile des nouvelles pages portfolio en galeries (2026-08-16)** :
+  non vérifié, seul le rendu desktop a été observé en navigateur pour cette
+  passe. À confirmer à la première consultation depuis un téléphone.
 
 ## Journal des modifications demandées
 
@@ -1851,3 +1909,8 @@ Le client a explicitement délégué ces choix :
 | 2026-08-01 | "Mets aussi une vue par jours (en sélectionnant la semaine)" | Livré : nouvelle bascule "Vue semaine"/"Vue jour" sur `/admin/planning`, la vue jour affichant une jauge par jour (chargé vs capacité) pour une semaine choisie par une navigation dédiée, indépendante de la fenêtre de 16 semaines de la vue semaine. Repli sur la capacité journalière moyenne (capacité hebdomadaire moyenne ÷ 7) pour un jour sans capacité propre — testé en base avec des données temporaires réelles (agrégation exacte par jour, pas par semaine) |
 | 2026-08-01 | "Dans la vue planning par jour, ajoute une barre du temps réel restant (déduire le temps déjà fait)" | Livré : seconde barre "Reste" sous la jauge de chaque jour, temps estimé moins temps déjà chronométré sur ces mêmes tâches (agrégé par tâche tous jours confondus, pas seulement le jour affiché). Dépassement affiché explicitement ("Dépassé de Xh") plutôt que masqué à 0 — testé en base avec deux tâches réelles, l'une avec du temps restant, l'autre en dépassement |
 | 2026-08-02 | "Je souhaite ajouter un contact mais je l'avais supprimé auparavant, je ne peux pas le réaffecter" puis "Possible de supprimer définitivement un contact ?" | **Cause du premier symptôme identifiée** : retirer un contact d'un client ne supprime que le rattachement, l'identité reste en base orpheline et invisible dans l'admin — bloquant la recréation (email déjà pris) sans moyen de la retrouver. Livré, avec deux choix validés avant de coder (voir section "Backend interne") : filtre "Sans client" sur `/admin/contacts` avec action rapide "Affecter à un client", et suppression définitive toujours possible (avec avertissement listant les clients concernés si le contact est encore rattaché ailleurs, la suppression étant en cascade). Protégée par reconfirmation du mot de passe admin, journalisée dans l'audit — testé en base sur un cycle complet réel |
+| 2026-08-16 | "Le site est relativement lent, il faudrait voir pour accélérer les temps de réponse" | Audit du SQL des migrations existantes : la plupart des clés étrangères n'avaient jamais eu d'index dédié (Prisma ne les crée pas automatiquement) — 18 index ajoutés (migration additive, sans risque). Page d'accueil et pages pilier du portfolio : requêtes dupliquées dédupliquées (`React.cache`) et lancées en parallèle plutôt qu'enchaînées. Voir section "Décisions techniques déléguées à Claude Code" |
+| 2026-08-16 | "Dans la liste des factures, ajouter un élément visuel : payé ou en attente de paiement, vert et rouge" | Livré : pastille colorée (verte "Payée" / rouge "En attente"), sur `/admin/documents`, la fiche client, l'espace client et les paiements sans facture — testé en navigateur, voir "Espace client" |
+| 2026-08-16 | "Ajouter une fonction de suivi des paiements 'sans facture' : lié à un client, sans pièce jointe. Les dates doivent rentrer dans les finances des mois affectés" | Le suivi "Paiements sans facture" existait déjà (`PaymentRecord`, livré le 2026-07-31) mais sans date ni lien avec les Finances. Ajouté : champ `date` éditable (mois affecté), et ces montants s'ajoutent désormais au Facturé/Encaissé, au graphique mensuel et au tableau par client de `/admin/finances`, avec les mêmes filtres que les factures — testé en navigateur avec des montants réels, voir "Espace client" |
+| 2026-08-16 | "La purge doit fonctionner autrement : purger les livrables 1 semaine après la date de l'évènement, 30 jours si pas de date, les deux délais paramétrables" | Livré, avec deux points confirmés avant de coder (garde "Terminé" uniquement conservée, BAT toujours protégés) : deux délais indépendants et réglables sur `/admin/reglages` (7 jours après `Task.eventDate`, 30 jours après l'upload si pas de date) remplaçant l'ancien délai unique basé sur l'upload. Testé sur la base réelle avec 6 scénarios couvrant chaque règle et chaque garde-fou (déclenchement + non-déclenchement), voir section "Backend interne" |
+| 2026-08-16 | "Chaque item de chaque pilier doit être des galeries, avec du texte avant/après façon Adobe Portfolio, et la réorganisation des photos doit être possible" | Restructuration `Pilier → Galeries → Médias` (nouveau modèle `PortfolioGallery`), avec trois points confirmés avant de coder (garde-fou de statut hors sujet ici, mais même logique de confirmation préalable que pour la purge le même jour) : titre + texte avant/après indépendants et facultatifs par galerie, réordonnancement des galeries et des médias (boutons monter/descendre), page pilier listant les galeries en cartes, page dédiée par galerie. Médias existants migrés automatiquement dans une galerie "Galerie" par pilier (aucune perte, 24 médias vérifiés), à réorganiser ensuite à la main — choix explicite du client. Testé en navigateur de bout en bout (création, édition, texte, affichage public), voir "Portfolio public" |

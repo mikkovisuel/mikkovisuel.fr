@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { CurrencyCircleDollar, Trash } from "@phosphor-icons/react/dist/ssr";
 import { DeleteButton } from "@/components/admin/delete-button";
+import { PaymentStatusBadge } from "@/components/payment-status-badge";
+import { PaymentRecordDateField } from "@/components/admin/payment-record-date-field";
 import { setPaymentRecordStatus, deletePaymentRecord } from "@/lib/actions/payment-records";
 import { formatAmount } from "@/lib/documents";
 
@@ -21,22 +23,29 @@ export function PaymentRecordRow({
     amountCents: number;
     currency: string;
     paymentStatus: string;
+    /** Format ISO `yyyy-mm-dd`, pour l'input date. */
+    date: string;
   };
 }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-3">
       <div className="min-w-0">
-        <Link
-          href={`/admin/clients/${record.clientId}`}
-          className="font-medium text-ink transition-colors hover:text-accent"
-        >
-          {record.clientName}
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          <Link
+            href={`/admin/clients/${record.clientId}`}
+            className="font-medium text-ink transition-colors hover:text-accent"
+          >
+            {record.clientName}
+          </Link>
+          <PaymentStatusBadge status={record.paymentStatus === "paid" ? "paid" : "unpaid"} />
+        </div>
         <p className="mt-0.5 text-sm text-ink-muted">
           {record.label && `${record.label} · `}
           {formatAmount(record.amountCents, record.currency)}
-          {record.paymentStatus === "paid" ? " · payé" : " · en attente"}
         </p>
+        <div className="mt-1.5">
+          <PaymentRecordDateField recordId={record.id} date={record.date} />
+        </div>
       </div>
       <div className="flex shrink-0 items-center gap-2">
         <form

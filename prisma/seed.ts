@@ -364,7 +364,6 @@ interface SeedPortfolioPillar {
   title: string;
   description: string;
   sortOrder: number;
-  mediaType: "image" | "video" | "mixed";
   coverExternalUrl: string;
   items: SeedPortfolioItem[];
 }
@@ -377,7 +376,6 @@ const PORTFOLIO_PILLARS_SEED: SeedPortfolioPillar[] = [
     title: "Flyers Club",
     description: "Des affiches et flyers pensés pour capter l'attention en une fraction de seconde.",
     sortOrder: 1,
-    mediaType: "image",
     coverExternalUrl: "https://picsum.photos/seed/mikko-flyers-cover/1200/1400",
     items: [
       { slug: "fc-1", title: "Soirée Nocturne, janvier", mediaType: "image", aspectRatio: "3:4", externalUrl: "https://picsum.photos/seed/mikko-flyers-1/900/1200", sortOrder: 0 },
@@ -393,7 +391,6 @@ const PORTFOLIO_PILLARS_SEED: SeedPortfolioPillar[] = [
     title: "Motion Design",
     description: "Des animations courtes pour donner du mouvement à une identité visuelle.",
     sortOrder: 2,
-    mediaType: "video",
     coverExternalUrl: "https://picsum.photos/seed/mikko-motion-cover/1200/1400",
     items: [
       { slug: "md-1", title: "Teaser Instagram, label Volt", mediaType: "video", aspectRatio: "9:16", externalUrl: "https://picsum.photos/seed/mikko-motion-1/900/1200", sortOrder: 0 },
@@ -408,7 +405,6 @@ const PORTFOLIO_PILLARS_SEED: SeedPortfolioPillar[] = [
     title: "Direction Artistique",
     description: "Des univers visuels complets, de la palette de couleurs à la mise en page finale.",
     sortOrder: 3,
-    mediaType: "mixed",
     coverExternalUrl: "https://picsum.photos/seed/mikko-da-cover/1200/1400",
     items: [
       { slug: "da-1", title: "Identité, festival Ember", mediaType: "image", aspectRatio: "3:4", externalUrl: "https://picsum.photos/seed/mikko-da-1/900/1200", sortOrder: 0 },
@@ -422,7 +418,6 @@ const PORTFOLIO_PILLARS_SEED: SeedPortfolioPillar[] = [
     title: "Photos Club",
     description: "Des reportages photo en club et en soirée, entre énergie et lumière.",
     sortOrder: 4,
-    mediaType: "image",
     coverExternalUrl: "https://picsum.photos/seed/mikko-photos-cover/1200/1400",
     items: [
       { slug: "pc-1", title: "Warehouse #04, backstage", mediaType: "image", aspectRatio: "3:4", externalUrl: "https://picsum.photos/seed/mikko-photos-1/900/1200", sortOrder: 0 },
@@ -437,7 +432,6 @@ const PORTFOLIO_PILLARS_SEED: SeedPortfolioPillar[] = [
     title: "Vidéo Aftermovies",
     description: "Le condensé d'une soirée en une vidéo qui donne envie d'y être.",
     sortOrder: 5,
-    mediaType: "video",
     coverExternalUrl: "https://picsum.photos/seed/mikko-after-cover/1200/1400",
     items: [
       { slug: "va-1", title: "Aftermovie, Warehouse #04", mediaType: "video", aspectRatio: "9:16", externalUrl: "https://picsum.photos/seed/mikko-after-1/900/1200", sortOrder: 0 },
@@ -458,20 +452,36 @@ async function seedPortfolio() {
         title: pillar.title,
         description: pillar.description,
         sortOrder: pillar.sortOrder,
-        mediaType: pillar.mediaType,
         coverExternalUrl: pillar.coverExternalUrl,
       },
     });
 
+    // Refonte "galeries" (2026-08-16) : les médias d'un pilier vivent
+    // désormais sous une galerie, jamais directement sous le pilier. Une
+    // galerie existe déjà pour chaque pilier de ce seed dès la migration de
+    // données (voir prisma/migrations/20260816205000_portfolio_galleries,
+    // qui en crée une par pilier existant avec un id aléatoire) — donc on
+    // réutilise la première trouvée plutôt que d'upserter par un id
+    // synthétique, sans quoi relancer ce script créerait une seconde
+    // galerie (et dupliquerait les médias dedans) à chaque exécution.
+    const gallery =
+      (await prisma.portfolioGallery.findFirst({
+        where: { pillarId: row.id },
+        orderBy: { sortOrder: "asc" },
+      })) ??
+      (await prisma.portfolioGallery.create({
+        data: { pillarId: row.id, title: "Galerie", sortOrder: 0 },
+      }));
+
     for (const item of pillar.items) {
       const existing = await prisma.portfolioMediaItem.findFirst({
-        where: { pillarId: row.id, title: item.title },
+        where: { galleryId: gallery.id, title: item.title },
       });
       if (existing) continue;
 
       await prisma.portfolioMediaItem.create({
         data: {
-          pillarId: row.id,
+          galleryId: gallery.id,
           title: item.title,
           mediaType: item.mediaType,
           aspectRatio: item.aspectRatio,
