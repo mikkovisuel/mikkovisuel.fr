@@ -7,7 +7,9 @@ import { ProspectTable } from "@/components/admin/prospect-table";
 import { ProspectKanbanBoard } from "@/components/admin/prospect-kanban-board";
 import { ProspectSearchForm } from "@/components/admin/prospect-search-form";
 import { ProspectImportForm } from "@/components/admin/prospect-import-form";
+import { FranceProspectMap } from "@/components/admin/france-prospect-map";
 import { FilterMenu } from "@/components/admin/filter-menu";
+import { buildRegionStats } from "@/lib/prospects";
 
 export const metadata: Metadata = {
   title: "Prospection — Admin Mikko Visuel",
@@ -22,7 +24,7 @@ export default async function ProspectionPage({
   const { statusId, q, vue } = await searchParams;
   const view = vue === "kanban" ? "kanban" : "liste";
 
-  const [prospects, statusList] = await Promise.all([
+  const [prospects, statusList, allProspectsForMap] = await Promise.all([
     db.prospect.findMany({
       where: {
         ...(statusId ? { statusId } : {}),
@@ -42,9 +44,16 @@ export default async function ProspectionPage({
       where: { key: PROSPECT_STATUS_LIST_KEY },
       include: { items: { orderBy: { sortOrder: "asc" } } },
     }),
+    // Carte de France : toujours l'ensemble des prospects, indépendamment du
+    // filtre statut/recherche appliqué à la liste ci-dessous — voir
+    // buildRegionStats.
+    db.prospect.findMany({
+      select: { city: true, status: { select: { slug: true, label: true, color: true } } },
+    }),
   ]);
 
   const statusOptions = statusList?.items ?? [];
+  const regionStats = buildRegionStats(allProspectsForMap);
   const hasFilters = Boolean(statusId || q);
   const hasAiSearch = Boolean(process.env.ANTHROPIC_API_KEY);
 
@@ -58,6 +67,10 @@ export default async function ProspectionPage({
         >
           Nouveau prospect
         </Link>
+      </div>
+
+      <div className="mt-6">
+        <FranceProspectMap regions={regionStats} />
       </div>
 
       {hasAiSearch ? (
