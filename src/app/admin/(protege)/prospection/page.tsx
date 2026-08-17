@@ -3,7 +3,7 @@ import Link from "next/link";
 import { verifyAdminSession } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { PROSPECT_STATUS_LIST_KEY } from "@/lib/dropdown-lists";
-import { ProspectRow } from "@/components/admin/prospect-row";
+import { ProspectTable } from "@/components/admin/prospect-table";
 import { ProspectKanbanBoard } from "@/components/admin/prospect-kanban-board";
 import { ProspectSearchForm } from "@/components/admin/prospect-search-form";
 import { ProspectImportForm } from "@/components/admin/prospect-import-form";
@@ -156,14 +156,8 @@ export default async function ProspectionPage({
 
       {view === "kanban" ? (
         <ProspectKanbanBoard prospects={prospects} statuses={statusOptions} />
-      ) : prospects.length === 0 ? (
-        <p className="mt-8 text-sm text-ink-muted">Aucun prospect pour le moment.</p>
       ) : (
-        <div className="mt-8 divide-y divide-line rounded-2xl border border-line">
-          {prospects.map((prospect) => (
-            <ProspectRow key={prospect.id} prospect={prospect} />
-          ))}
-        </div>
+        <ProspectTable prospects={prospects} statuses={statusOptions} />
       )}
     </div>
   );

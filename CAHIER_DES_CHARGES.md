@@ -1459,6 +1459,17 @@ appliquée à l'ensemble du site :
     s'affiche directement sur sa ligne dans la vue Liste et sur sa carte
     dans le Kanban (pas seulement sur sa propre fiche), pour y accéder sans
     ouvrir le prospect d'abord.
+  - **Vue Liste façon tableur éditable, 2026-08-17** : nom, entreprise,
+    téléphone, email, Instagram et date de relance s'éditent désormais
+    directement dans chaque cellule de `/admin/prospection` (enregistrement
+    au blur/changement, sans ouvrir la fiche), même principe que le champ de
+    date déjà éditable en place sur `/admin/finances` et
+    `/admin/documents`. La pastille de statut reste le même
+    `ProspectStatusSelect` que le Kanban. Le nom ne peut pas être vidé
+    (champ requis, cellule ignorée si laissée vide) ; une cellule email
+    invalide est ignorée plutôt qu'enregistrée. La fiche complète (notes,
+    envoi d'email, historique, suppression) reste accessible en un clic via
+    une icône en fin de ligne.
 - **Guide client PDF ("mode d'emploi"), 2026-07-28** : nouveau bouton
   "Télécharger le mode d'emploi (PDF)" sur `/admin/reglages`, section "Mode
   d'emploi client". Document généré à la volée (`@react-pdf/renderer`, même
@@ -1914,3 +1925,4 @@ Le client a explicitement délégué ces choix :
 | 2026-08-16 | "Ajouter une fonction de suivi des paiements 'sans facture' : lié à un client, sans pièce jointe. Les dates doivent rentrer dans les finances des mois affectés" | Le suivi "Paiements sans facture" existait déjà (`PaymentRecord`, livré le 2026-07-31) mais sans date ni lien avec les Finances. Ajouté : champ `date` éditable (mois affecté), et ces montants s'ajoutent désormais au Facturé/Encaissé, au graphique mensuel et au tableau par client de `/admin/finances`, avec les mêmes filtres que les factures — testé en navigateur avec des montants réels, voir "Espace client" |
 | 2026-08-16 | "La purge doit fonctionner autrement : purger les livrables 1 semaine après la date de l'évènement, 30 jours si pas de date, les deux délais paramétrables" | Livré, avec deux points confirmés avant de coder (garde "Terminé" uniquement conservée, BAT toujours protégés) : deux délais indépendants et réglables sur `/admin/reglages` (7 jours après `Task.eventDate`, 30 jours après l'upload si pas de date) remplaçant l'ancien délai unique basé sur l'upload. Testé sur la base réelle avec 6 scénarios couvrant chaque règle et chaque garde-fou (déclenchement + non-déclenchement), voir section "Backend interne" |
 | 2026-08-16 | "Chaque item de chaque pilier doit être des galeries, avec du texte avant/après façon Adobe Portfolio, et la réorganisation des photos doit être possible" | Restructuration `Pilier → Galeries → Médias` (nouveau modèle `PortfolioGallery`), avec trois points confirmés avant de coder (garde-fou de statut hors sujet ici, mais même logique de confirmation préalable que pour la purge le même jour) : titre + texte avant/après indépendants et facultatifs par galerie, réordonnancement des galeries et des médias (boutons monter/descendre), page pilier listant les galeries en cartes, page dédiée par galerie. Médias existants migrés automatiquement dans une galerie "Galerie" par pilier (aucune perte, 24 médias vérifiés), à réorganiser ensuite à la main — choix explicite du client. Testé en navigateur de bout en bout (création, édition, texte, affichage public), voir "Portfolio public" |
+| 2026-08-17 | "La vue Liste de la prospection doit être plus comme un tableur éditable (en gardant les pastilles de statut), inspirée du champ déjà éditable en place ailleurs sur le site" | Livré : vue Liste de `/admin/prospection` transformée en tableau où nom, entreprise, téléphone, email, Instagram et date de relance s'éditent directement dans la cellule, même pattern que `PaymentRecordDateField` (Finances/Documents) plutôt qu'un nouveau composant générique — voir section "Backend interne" pour le détail |

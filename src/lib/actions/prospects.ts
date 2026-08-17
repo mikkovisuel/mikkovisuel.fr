@@ -3,6 +3,7 @@
 import { randomBytes } from "node:crypto";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { z } from "zod";
 import { db } from "@/lib/db";
 import { verifyAdminSession } from "@/lib/dal";
 import { hashPassword } from "@/lib/password";
@@ -152,6 +153,72 @@ export async function deleteProspect(prospectId: string) {
   await db.prospect.delete({ where: { id: prospectId } });
   revalidateProspectPaths();
   redirect("/admin/prospection");
+}
+
+const PROSPECT_TEXT_FIELDS = ["name", "company", "phone", "email", "instagram"] as const;
+export type ProspectTextField = (typeof PROSPECT_TEXT_FIELDS)[number];
+
+// Édition en place d'une seule cellule sur la vue Liste (tableur), miroir de
+// `updatePaymentRecordDate` pour les Finances — pas de formulaire complet ni
+// de redirection, juste la valeur de la cellule modifiée.
+export async function updateProspectField(prospectId: string, field: ProspectTextField, rawValue: string) {
+  await verifyAdminSession();
+  if (!PROSPECT_TEXT_FIELDS.includes(field)) return;
+
+  const value = rawValue.trim();
+
+  // Le nom est requis (ProspectSchema) : une cellule vidée par erreur ne
+  // doit pas effacer le nom en base, contrairement aux autres champs
+  // optionnels ci-dessous.
+  if (field === "name") {
+    if (value === "") return;
+    await db.prospect.update({ where: { id: prospectId }, data: { name: value } });
+    revalidateProspectPaths(prospectId);
+    return;
+  }
+
+  if (field === "email") {
+    if (value === "") {
+      await db.prospect.update({ where: { id: prospectId }, data: { email: null } });
+      revalidateProspectPaths(prospectId);
+      return;
+    }
+    const parsed = z.string().trim().toLowerCase().email().safeParse(value);
+    if (!parsed.success) return;
+    await db.prospect.update({ where: { id: prospectId }, data: { email: parsed.data } });
+    revalidateProspectPaths(prospectId);
+    return;
+  }
+
+  await db.prospect.update({ where: { id: prospectId }, data: { [field]: value || null } });
+  revalidateProspectPaths(prospectId);
+}
+
+// Champ "Relance" de la vue tableur — même logique que `updateProspect` pour
+// la remise à zéro de `reminderSentAt` quand la date change, sans passer par
+// le reste du formulaire.
+export async function updateProspectReminderDate(prospectId: string, dateValue: string) {
+  await verifyAdminSession();
+
+  const existing = await db.prospect.findUnique({
+    where: { id: prospectId },
+    select: { nextReminderAt: true },
+  });
+  if (!existing) return;
+
+  let nextReminderAt: Date | null = null;
+  if (dateValue) {
+    const parsedDate = new Date(dateValue);
+    if (Number.isNaN(parsedDate.getTime())) return;
+    nextReminderAt = parsedDate;
+  }
+
+  const reminderChanged = nextReminderAt?.getTime() !== existing.nextReminderAt?.getTime();
+  await db.prospect.update({
+    where: { id: prospectId },
+    data: { nextReminderAt, ...(reminderChanged ? { reminderSentAt: null } : {}) },
+  });
+  revalidateProspectPaths(prospectId);
 }
 
 // Pour le Kanban (glisser-déposer) et le sélecteur de statut rapide — miroir
