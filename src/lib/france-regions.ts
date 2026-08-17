@@ -102,6 +102,24 @@ const CITIES_BY_REGION: Record<string, string[]> = {
     "Juan-les-Pins", "Cassis", "La Ciotat",
   ],
   corse: ["Ajaccio", "Bastia", "Porto-Vecchio", "Corte", "Calvi", "Sartène", "Bonifacio", "Propriano", "L'Île-Rousse"],
+  // DROM (demande du 2026-08-17 "ajouter les DOM TOM") — "Saint-Denis" existe
+  // à la fois ici (préfecture de La Réunion) et en Île-de-France
+  // (Seine-Saint-Denis) : homonyme non résolu, même compromis assumé que le
+  // reste de ce fichier (celui déclaré en dernier l'emporte dans la table).
+  guadeloupe: [
+    "Pointe-à-Pitre", "Basse-Terre", "Les Abymes", "Le Gosier", "Sainte-Anne", "Saint-François",
+    "Baie-Mahault", "Petit-Bourg", "Le Moule", "Capesterre-Belle-Eau", "Morne-à-l'Eau", "Sainte-Rose",
+  ],
+  martinique: [
+    "Fort-de-France", "Le Lamentin", "Le Robert", "Sainte-Marie", "Le François", "Schœlcher",
+    "Ducos", "Rivière-Pilote", "Sainte-Luce", "Le Marin", "La Trinité",
+  ],
+  guyane: ["Cayenne", "Matoury", "Saint-Laurent-du-Maroni", "Kourou", "Rémire-Montjoly", "Macouria"],
+  "la-reunion": [
+    "Saint-Denis", "Saint-Paul", "Saint-Pierre", "Le Tampon", "Saint-André", "Saint-Louis",
+    "Sainte-Marie", "Le Port", "Saint-Benoît", "Saint-Joseph",
+  ],
+  mayotte: ["Mamoudzou", "Koungou", "Dzaoudzi", "Sada", "Dembéni", "Tsingoni"],
 };
 
 function normalizeCity(value: string): string {

@@ -2,7 +2,12 @@
 
 import { useState } from "react";
 import type { RegionStat } from "@/lib/prospects";
-import { FRANCE_REGION_GEOMETRY, FRANCE_MAP_VIEWBOX } from "@/lib/france-map-geometry";
+import {
+  FRANCE_REGION_GEOMETRY,
+  FRANCE_MAP_VIEWBOX,
+  DOMTOM_BOXES,
+  DOMTOM_BOX_SIZE,
+} from "@/lib/france-map-geometry";
 import { PALETTE_SWATCH_CLASSES, type PaletteColor } from "@/lib/dropdown-lists";
 
 function bubbleRadius(total: number): number {
@@ -17,10 +22,13 @@ function bubbleRadius(total: number): number {
 // géométrie (src/lib/france-map-geometry.ts), pas un schéma dessiné à la
 // main : un premier essai en silhouette stylisée a été jugé "ne ressemble
 // à rien" par le client, corrigé en régénérant les contours depuis un vrai
-// GeoJSON. Survol/tap = infobulle avec le détail par statut ; les 13
-// régions restent visibles même à 0 prospect (petit point discret), pour
-// que la carte reste "toutes les régions définies", pas seulement celles
-// qui ont déjà des prospects.
+// GeoJSON. Les 5 DROM (Guadeloupe, Martinique, Guyane, La Réunion, Mayotte —
+// ajoutés le 2026-08-17) sont trop loin de la métropole pour partager la
+// même échelle géographique : posés en encarts sous la métropole, chacun
+// avec sa propre projection locale (voir DOMTOM_BOXES). Survol/tap =
+// infobulle avec le détail par statut ; les 18 régions restent visibles
+// même à 0 prospect (petit point discret), pour que la carte reste "toutes
+// les régions définies", pas seulement celles qui ont déjà des prospects.
 export function FranceProspectMap({ regions }: { regions: RegionStat[] }) {
   const [hoveredSlug, setHoveredSlug] = useState<string | null>(null);
 
@@ -37,6 +45,30 @@ export function FranceProspectMap({ regions }: { regions: RegionStat[] }) {
           role="img"
           aria-label="Carte de France du nombre de prospects par région"
         >
+          {DOMTOM_BOXES.map((box) => {
+            const geometry = FRANCE_REGION_GEOMETRY.find((region) => region.slug === box.slug);
+            return (
+              <g key={`domtom-box-${box.slug}`}>
+                <rect
+                  x={box.boxX}
+                  y={box.boxY}
+                  width={DOMTOM_BOX_SIZE}
+                  height={DOMTOM_BOX_SIZE}
+                  rx={6}
+                  className="fill-surface stroke-line"
+                  strokeWidth={1}
+                />
+                <text
+                  x={box.boxX + DOMTOM_BOX_SIZE / 2}
+                  y={box.labelY}
+                  textAnchor="middle"
+                  className="select-none fill-ink-muted text-[9px]"
+                >
+                  {geometry?.label}
+                </text>
+              </g>
+            );
+          })}
           {FRANCE_REGION_GEOMETRY.map((geometry) => {
             const isHovered = hoveredSlug === geometry.slug;
             return (
