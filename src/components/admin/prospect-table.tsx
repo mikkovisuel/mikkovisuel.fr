@@ -2,18 +2,18 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { PencilSimple, InstagramLogo, WhatsappLogo } from "@phosphor-icons/react";
+import { PencilSimple, InstagramLogo, WhatsappLogo, EnvelopeSimple } from "@phosphor-icons/react";
 import { ProspectInlineField } from "@/components/admin/prospect-inline-field";
 import { ProspectReminderField } from "@/components/admin/prospect-reminder-field";
 import { ProspectStatusSelect } from "@/components/admin/prospect-status-select";
 import { bulkSetProspectStatus, bulkDeleteProspects } from "@/lib/actions/prospects";
 import { isProspectReminderOverdue } from "@/lib/prospects";
+import { buildGmailComposeUrl } from "@/lib/mail-draft";
 import type { ProspectStatusSlug } from "@/lib/dropdown-lists";
 
 interface TableProspect {
   id: string;
   name: string;
-  company: string | null;
   city: string | null;
   phone: string | null;
   email: string | null;
@@ -29,7 +29,6 @@ interface TableProspect {
 
 const COLUMNS = [
   "Ville",
-  "Entreprise",
   "Téléphone",
   "Email",
   "Instagram",
@@ -250,13 +249,6 @@ export function ProspectTable({
                   <td className="min-w-[5.5rem] py-1">
                     <ProspectInlineField prospectId={prospect.id} field="city" defaultValue={prospect.city ?? ""} />
                   </td>
-                  <td className="min-w-[6.5rem] py-1">
-                    <ProspectInlineField
-                      prospectId={prospect.id}
-                      field="company"
-                      defaultValue={prospect.company ?? ""}
-                    />
-                  </td>
                   <td className="min-w-[6rem] py-1">
                     <ProspectInlineField
                       prospectId={prospect.id}
@@ -265,13 +257,22 @@ export function ProspectTable({
                       defaultValue={prospect.phone ?? ""}
                     />
                   </td>
-                  <td className="min-w-[8rem] py-1">
-                    <ProspectInlineField
-                      prospectId={prospect.id}
-                      field="email"
-                      type="email"
-                      defaultValue={prospect.email ?? ""}
-                    />
+                  <td className="min-w-[9rem] py-1">
+                    <div className="flex items-center gap-0.5">
+                      <ProspectInlineField
+                        prospectId={prospect.id}
+                        field="email"
+                        type="email"
+                        defaultValue={prospect.email ?? ""}
+                      />
+                      {prospect.email && (
+                        <CellOpenLink
+                          href={buildGmailComposeUrl({ to: prospect.email })}
+                          label="Envoyer un mail (Gmail)"
+                          icon={<EnvelopeSimple size={14} weight="regular" />}
+                        />
+                      )}
+                    </div>
                   </td>
                   <td className="min-w-[7.5rem] py-1">
                     <ProspectInlineField

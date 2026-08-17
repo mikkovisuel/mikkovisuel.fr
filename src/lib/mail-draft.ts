@@ -76,6 +76,18 @@ export function buildDocumentMailDraft({
   });
 }
 
+// Lien "Envoyer un mail" sur la vue Liste de la prospection (demande du
+// 2026-08-17, explicitement "ouvrir mon gmail") — un `mailto:` classique
+// ouvre le client mail par défaut du système, pas forcément Gmail ; ce lien
+// pointe directement vers l'interface web de composition Gmail
+// (mail.google.com), qui s'ouvre dans l'onglet déjà connecté de l'admin.
+// Pas de sujet/corps préremplis : contrairement aux brouillons ci-dessus,
+// il n'y a pas de document ou de livrable précis à référencer, juste un
+// premier contact avec un prospect.
+export function buildGmailComposeUrl({ to }: { to: string }) {
+  return `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(to)}`;
+}
+
 export function buildDeliverablesMailDraft({
   to,
   taskTitle,
