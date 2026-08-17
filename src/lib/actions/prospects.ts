@@ -266,6 +266,24 @@ export async function setProspectStatus(prospectId: string, statusSlug: Prospect
   revalidateProspectPaths(prospectId);
 }
 
+// Sélection multi-lignes sur la vue Liste (demande du 2026-08-17), même
+// pattern que bulkSetTaskStatus/bulkArchiveTasks (src/lib/actions/tasks.ts) :
+// on rejoue l'action unitaire déjà existante pour chaque id plutôt que
+// dupliquer sa logique (log d'activité inclus pour le statut).
+export async function bulkSetProspectStatus(prospectIds: string[], statusSlug: ProspectStatusSlug) {
+  await Promise.all(prospectIds.map((id) => setProspectStatus(id, statusSlug)));
+}
+
+// Suppression groupée — pas un simple relais vers `deleteProspect`, qui se
+// termine par un `redirect()` (pensé pour le bouton de la fiche complète) :
+// appelé en boucle dans un `Promise.all`, ce redirect lèverait son signal
+// `NEXT_REDIRECT` dès le premier prospect et interromprait les suivants.
+export async function bulkDeleteProspects(prospectIds: string[]) {
+  await verifyAdminSession();
+  await db.prospect.deleteMany({ where: { id: { in: prospectIds } } });
+  revalidateProspectPaths();
+}
+
 // Bouton "Envoyer un email" sur la fiche prospect — réutilise le vrai Gmail
 // de l'admin (comme pour les clients), plus personnel qu'un envoi
 // no-reply@ via Resend. Si Gmail n'est pas connecté, l'appelant (page) doit
@@ -590,6 +608,89 @@ export async function importProspectsFromCsv(
   }
 
   const text = await file.text();
+  return insertProspectsFromCsvText(text, "import_csv");
+}
+
+// Import depuis un Google Sheet (demande du 2026-08-17) — même parseur/mêmes
+// colonnes reconnues que le CSV (COLUMN_SYNONYMS), pas un chemin séparé :
+// seule la façon d'obtenir le texte CSV change. Aucune API Google/OAuth
+// requise (contrairement à l'intégration Gmail existante, voir
+// src/lib/gmail.ts) : Google Sheets sait exporter n'importe quelle feuille
+// en CSV via une simple URL (`/export?format=csv`), tant qu'elle est
+// partagée en "Toute personne disposant du lien" — même modèle de partage
+// que `Client.driveUrl`, déjà utilisé ailleurs dans ce projet.
+const GOOGLE_SHEET_URL_PATTERN =
+  /^https:\/\/docs\.google\.com\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/;
+const MAX_SHEET_CSV_SIZE = 2 * 1024 * 1024;
+
+function buildSheetExportUrl(sheetUrl: string): string | null {
+  const match = sheetUrl.trim().match(GOOGLE_SHEET_URL_PATTERN);
+  if (!match) return null;
+  const spreadsheetId = match[1];
+  // Le gid (onglet précis) peut être en query (?gid=) ou en fragment
+  // (#gid=), selon comment le lien a été copié — on tente les deux.
+  const gidMatch = sheetUrl.match(/[?#&]gid=(\d+)/);
+  const gid = gidMatch?.[1];
+  return `https://docs.google.com/spreadsheets/d/${spreadsheetId}/export?format=csv${gid ? `&gid=${gid}` : ""}`;
+}
+
+export async function importProspectsFromGoogleSheet(
+  _prev: ImportProspectsState,
+  formData: FormData,
+): Promise<ImportProspectsState> {
+  await verifyAdminSession();
+
+  const sheetUrlRaw = formData.get("sheetUrl");
+  if (typeof sheetUrlRaw !== "string" || sheetUrlRaw.trim() === "") {
+    return { error: "Collez le lien de votre Google Sheet." };
+  }
+
+  const exportUrl = buildSheetExportUrl(sheetUrlRaw);
+  if (!exportUrl) {
+    return {
+      error:
+        "Lien non reconnu — collez l'URL d'un Google Sheet (https://docs.google.com/spreadsheets/d/...).",
+    };
+  }
+
+  let response: Response;
+  try {
+    // Timeout défensif : une requête sortante vers un service externe ne
+    // doit jamais bloquer indéfiniment une Server Action.
+    response = await fetch(exportUrl, { signal: AbortSignal.timeout(15_000) });
+  } catch {
+    return { error: "Impossible de joindre Google Sheets — réessayez dans un instant." };
+  }
+
+  // Un Sheet non partagé (ou lien invalide) renvoie une page de connexion
+  // Google HTML, pas une erreur HTTP franche — le Content-Type est le
+  // signal le plus fiable pour distinguer un vrai export CSV d'un refus
+  // d'accès déguisé en page web.
+  const contentType = response.headers.get("content-type") ?? "";
+  if (!response.ok || !contentType.includes("csv")) {
+    return {
+      error:
+        "Accès refusé par Google Sheets — vérifiez le partage : Partager → \"Toute personne disposant du lien\" → Lecteur.",
+    };
+  }
+
+  const contentLength = Number(response.headers.get("content-length") ?? 0);
+  if (contentLength > MAX_SHEET_CSV_SIZE) {
+    return { error: "Feuille trop volumineuse (2 Mo maximum une fois exportée en CSV)." };
+  }
+
+  const text = await response.text();
+  if (text.length > MAX_SHEET_CSV_SIZE) {
+    return { error: "Feuille trop volumineuse (2 Mo maximum une fois exportée en CSV)." };
+  }
+
+  return insertProspectsFromCsvText(text, "import_google_sheet");
+}
+
+async function insertProspectsFromCsvText(
+  text: string,
+  source: "import_csv" | "import_google_sheet",
+): Promise<ImportProspectsState> {
   const rows = parseCsv(text);
   if (rows.length < 2) {
     return { error: "Fichier vide ou sans ligne de données." };
@@ -680,6 +781,7 @@ export async function importProspectsFromCsv(
   if (toInsert.length > 0) {
     const statusItem = await getProspectStatusItem(PROSPECT_STATUS.A_FAIRE);
     const importDate = new Date().toLocaleDateString("fr-FR");
+    const importLabel = source === "import_google_sheet" ? "Importé depuis Google Sheets le" : "Importé via CSV le";
     await db.prospect.createMany({
       data: toInsert.map((candidate) => ({
         name: candidate.name,
@@ -693,9 +795,9 @@ export async function importProspectsFromCsv(
         website: candidate.website,
         whatsappUrl: candidate.whatsappUrl,
         activityLevel: candidate.activityLevel,
-        notes: [candidate.notes, `Importé via CSV le ${importDate}.`].filter(Boolean).join(" — "),
+        notes: [candidate.notes, `${importLabel} ${importDate}.`].filter(Boolean).join(" — "),
         statusId: statusItem.id,
-        source: "import_csv",
+        source,
       })),
     });
   }
