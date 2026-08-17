@@ -170,7 +170,11 @@ export function FileGrid({
 
       {previewFile && (
         <FileLightbox
-          file={previewFile}
+          file={{
+            fileName: previewFile.fileName,
+            mimeType: previewFile.mimeType,
+            sizeBytes: previewFile.sizeBytes,
+          }}
           href={`${downloadBasePath}/${previewFile.id}`}
           onClose={() => setPreviewFile(null)}
         />
