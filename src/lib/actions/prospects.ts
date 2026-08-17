@@ -51,10 +51,14 @@ function parseProspectForm(formData: FormData) {
     name: formData.get("name"),
     company: formData.get("company"),
     address: formData.get("address"),
+    city: formData.get("city"),
     phone: formData.get("phone"),
     email: formData.get("email"),
     instagram: formData.get("instagram"),
+    instagramUrl: formData.get("instagramUrl"),
     website: formData.get("website"),
+    whatsappUrl: formData.get("whatsappUrl"),
+    activityLevel: formData.get("activityLevel"),
     notes: formData.get("notes"),
     statusSlug: formData.get("statusSlug"),
     nextReminderAt: formData.get("nextReminderAt"),
@@ -79,10 +83,14 @@ export async function createProspect(
       name: parsed.data.name,
       company: parsed.data.company || null,
       address: parsed.data.address || null,
+      city: parsed.data.city || null,
       phone: parsed.data.phone || null,
       email: parsed.data.email,
       instagram: parsed.data.instagram || null,
+      instagramUrl: parsed.data.instagramUrl || null,
       website: parsed.data.website || null,
+      whatsappUrl: parsed.data.whatsappUrl || null,
+      activityLevel: parsed.data.activityLevel || null,
       notes: parsed.data.notes || null,
       statusId: statusItem.id,
       nextReminderAt: parsed.data.nextReminderAt ? new Date(parsed.data.nextReminderAt) : null,
@@ -123,10 +131,14 @@ export async function updateProspect(
       name: parsed.data.name,
       company: parsed.data.company || null,
       address: parsed.data.address || null,
+      city: parsed.data.city || null,
       phone: parsed.data.phone || null,
       email: parsed.data.email,
       instagram: parsed.data.instagram || null,
+      instagramUrl: parsed.data.instagramUrl || null,
       website: parsed.data.website || null,
+      whatsappUrl: parsed.data.whatsappUrl || null,
+      activityLevel: parsed.data.activityLevel || null,
       notes: parsed.data.notes || null,
       statusId: statusItem.id,
       nextReminderAt,
@@ -155,7 +167,17 @@ export async function deleteProspect(prospectId: string) {
   redirect("/admin/prospection");
 }
 
-const PROSPECT_TEXT_FIELDS = ["name", "company", "phone", "email", "instagram"] as const;
+const PROSPECT_TEXT_FIELDS = [
+  "name",
+  "company",
+  "city",
+  "phone",
+  "email",
+  "instagram",
+  "instagramUrl",
+  "whatsappUrl",
+  "activityLevel",
+] as const;
 export type ProspectTextField = (typeof PROSPECT_TEXT_FIELDS)[number];
 
 // Édition en place d'une seule cellule sur la vue Liste (tableur), miroir de
@@ -466,16 +488,60 @@ const MAX_CSV_SIZE = 2 * 1024 * 1024;
 // Tolère plusieurs libellés de colonne par champ (le fichier peut venir
 // d'un autre outil que le modèle fourni, ex. un agent externe) — normalisé
 // sans accents/casse/espaces avant comparaison.
+// "activite" est réservé à `activityLevel` (ex. "Très actif", "254 posts") —
+// avant d'avoir un vrai fichier de référence (2026-08-17), ce libellé était
+// pris comme synonyme de `company` ; ambigu maintenant que les deux notions
+// coexistent, tranché en faveur du sens le plus littéral.
 const COLUMN_SYNONYMS: Record<string, string[]> = {
-  name: ["nom", "name"],
-  company: ["entreprise", "societe", "company", "activite"],
+  name: ["nom", "etablissement", "name"],
+  company: ["entreprise", "societe", "company"],
   address: ["adresse", "address"],
+  city: ["ville", "city"],
   phone: ["telephone", "tel", "phone"],
   email: ["email", "mail", "e-mail"],
   instagram: ["instagram", "insta"],
+  instagramUrl: ["lien instagram", "url instagram", "instagram url", "lien insta"],
   website: ["siteweb", "site web", "siteinternet", "site internet", "website", "site"],
+  whatsappUrl: ["lien whatsapp", "whatsapp", "url whatsapp", "whatsapp url"],
+  activityLevel: ["activite", "niveau d'activite"],
+  // Colonne combinant souvent téléphone et email sur une même cellule (ex.
+  // repérage terrain) — jamais utilisée directement, voir `splitContactCell`.
+  contact: ["contact"],
   notes: ["notes", "note", "commentaire", "commentaires"],
 };
+
+const EMAIL_IN_TEXT = /[\w.+-]+@[\w-]+\.[a-z]{2,}/i;
+const PHONE_IN_TEXT = /(?:\+33|0)[\s.-]?[1-9](?:[\s.-]?\d{2}){4}/;
+
+// Sépare une cellule "Contact" mêlant téléphone(s)/email en une seule
+// chaîne (ex. "06 72 03 33 98 / thibault.lespotclub@gmail.com") — ne garde
+// que le premier téléphone et le premier email trouvés, le reste (numéro
+// secondaire, fixe...) est reversé dans les notes plutôt que perdu.
+function splitContactCell(raw: string): { phone: string | null; email: string | null; extra: string | null } {
+  const parts = raw
+    .split(/[/,;]+/)
+    .map((part) => part.trim())
+    .filter(Boolean);
+  let phone: string | null = null;
+  let email: string | null = null;
+  const leftovers: string[] = [];
+
+  for (const part of parts) {
+    const emailMatch = part.match(EMAIL_IN_TEXT);
+    if (emailMatch && !email) {
+      email = emailMatch[0].toLowerCase();
+      continue;
+    }
+    const phoneMatch = part.match(PHONE_IN_TEXT);
+    if (phoneMatch && !phone) {
+      phone = phoneMatch[0].trim();
+      continue;
+    }
+    leftovers.push(part);
+  }
+
+  return { phone, email, extra: leftovers.length > 0 ? leftovers.join(" / ") : null };
+}
 
 function normalizeHeader(value: string) {
   return value
@@ -540,10 +606,14 @@ export async function importProspectsFromCsv(
     name: string;
     company: string | null;
     address: string | null;
+    city: string | null;
     phone: string | null;
     email: string | null;
     instagram: string | null;
+    instagramUrl: string | null;
     website: string | null;
+    whatsappUrl: string | null;
+    activityLevel: string | null;
     notes: string | null;
   }[] = [];
 
@@ -554,16 +624,33 @@ export async function importProspectsFromCsv(
       skippedNoName++;
       continue;
     }
-    const email = getCell(row, columnIndex, "email");
+    let phone = getCell(row, columnIndex, "phone");
+    let email = getCell(row, columnIndex, "email");
+    let contactExtra: string | null = null;
+    // Repli sur la colonne "Contact" combinée seulement pour les champs pas
+    // déjà trouvés dans des colonnes dédiées.
+    if ((!phone || !email) && columnIndex.has("contact")) {
+      const rawContact = getCell(row, columnIndex, "contact");
+      if (rawContact) {
+        const split = splitContactCell(rawContact);
+        phone = phone ?? split.phone;
+        email = email ?? split.email;
+        contactExtra = split.extra;
+      }
+    }
     candidates.push({
       name,
       company: getCell(row, columnIndex, "company"),
       address: getCell(row, columnIndex, "address"),
-      phone: getCell(row, columnIndex, "phone"),
+      city: getCell(row, columnIndex, "city"),
+      phone,
       email: email ? email.toLowerCase() : null,
       instagram: getCell(row, columnIndex, "instagram"),
+      instagramUrl: getCell(row, columnIndex, "instagramUrl"),
       website: getCell(row, columnIndex, "website"),
-      notes: getCell(row, columnIndex, "notes"),
+      whatsappUrl: getCell(row, columnIndex, "whatsappUrl"),
+      activityLevel: getCell(row, columnIndex, "activityLevel"),
+      notes: [getCell(row, columnIndex, "notes"), contactExtra].filter(Boolean).join(" — ") || null,
     });
   }
 
@@ -598,10 +685,14 @@ export async function importProspectsFromCsv(
         name: candidate.name,
         company: candidate.company,
         address: candidate.address,
+        city: candidate.city,
         phone: candidate.phone,
         email: candidate.email,
         instagram: candidate.instagram,
+        instagramUrl: candidate.instagramUrl,
         website: candidate.website,
+        whatsappUrl: candidate.whatsappUrl,
+        activityLevel: candidate.activityLevel,
         notes: [candidate.notes, `Importé via CSV le ${importDate}.`].filter(Boolean).join(" — "),
         statusId: statusItem.id,
         source: "import_csv",
