@@ -26,15 +26,30 @@ export default async function ClientAdministrativePage() {
   const clientUser = await verifyClientSession();
   const stripeEnabled = isStripeConfigured();
 
-  const documents = await db.document.findMany({
-    where: { clientId: clientUser.clientId },
-    include: { type: true },
-    orderBy: { uploadedAt: "desc" },
-  });
+  // Paiements sans facture (2026-08-17, signalement client : "les impayés
+  // non facturés ne remontent pas") — jusqu'ici PaymentRecord n'était visible
+  // que côté admin (/admin/documents, Finances). Un acompte ou règlement
+  // suivi sans document associé doit quand même apparaître au client comme
+  // un encours, sinon il n'a aucune visibilité sur ce qu'il doit.
+  const [documents, paymentRecords] = await Promise.all([
+    db.document.findMany({
+      where: { clientId: clientUser.clientId },
+      include: { type: true },
+      orderBy: { uploadedAt: "desc" },
+    }),
+    db.paymentRecord.findMany({
+      where: { clientId: clientUser.clientId },
+      orderBy: { date: "desc" },
+    }),
+  ]);
 
-  const outstandingCents = documents
-    .filter((doc) => doc.paymentStatus === "unpaid" && doc.amountCents !== null)
-    .reduce((sum, doc) => sum + (doc.amountCents ?? 0), 0);
+  const outstandingCents =
+    documents
+      .filter((doc) => doc.paymentStatus === "unpaid" && doc.amountCents !== null)
+      .reduce((sum, doc) => sum + (doc.amountCents ?? 0), 0) +
+    paymentRecords
+      .filter((record) => record.paymentStatus === "unpaid")
+      .reduce((sum, record) => sum + record.amountCents, 0);
 
   return (
     <div className="mx-auto max-w-7xl 2xl:max-w-[100rem] px-4 py-10 sm:px-6 lg:px-8">
@@ -99,6 +114,33 @@ export default async function ClientAdministrativePage() {
             </div>
           ))}
         </div>
+      )}
+
+      {paymentRecords.length > 0 && (
+        <section className="mt-12">
+          <h2 className="font-display text-lg font-medium text-ink">Autres paiements</h2>
+          <p className="mt-1 text-sm text-ink-muted">
+            Acomptes ou règlements suivis sans document associé (virement, espèces...).
+          </p>
+          <div className="mt-4 divide-y divide-line rounded-2xl border border-line">
+            {paymentRecords.map((record) => (
+              <div
+                key={record.id}
+                className="flex flex-col gap-2 px-6 py-4 sm:flex-row sm:items-center sm:justify-between"
+              >
+                <div>
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="font-medium text-ink">{record.label || "Paiement"}</p>
+                    <PaymentStatusBadge status={record.paymentStatus === "paid" ? "paid" : "unpaid"} />
+                  </div>
+                  <p className="mt-1 text-sm text-ink-muted">
+                    {formatAmount(record.amountCents, record.currency)}
+                  </p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
       )}
     </div>
   );
