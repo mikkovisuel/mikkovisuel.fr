@@ -9,6 +9,7 @@ interface PortfolioGalleryRowProps {
   gallery: {
     id: string;
     title: string;
+    coverStorageKey: string | null;
     items: { id: string; externalUrl: string | null; storageKey: string | null }[];
     _count: { items: number };
   };

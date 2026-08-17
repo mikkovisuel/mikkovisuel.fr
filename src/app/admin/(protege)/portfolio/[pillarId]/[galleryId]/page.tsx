@@ -9,6 +9,7 @@ import { MediaItemUploadForm } from "@/components/admin/media-item-upload-form";
 import { PortfolioItemRow } from "@/components/admin/portfolio-item-row";
 import { DeleteButton } from "@/components/admin/delete-button";
 import { updateGallery, deleteGallery, createMediaItem } from "@/lib/actions/portfolio";
+import { resolveGalleryCoverSrc } from "@/lib/portfolio-media";
 
 export const metadata: Metadata = {
   title: "Galerie — Admin Mikko Visuel",
@@ -57,6 +58,7 @@ export default async function GalleryDetailPage({
               textBefore: gallery.textBefore ?? "",
               textAfter: gallery.textAfter ?? "",
             }}
+            coverSrc={resolveGalleryCoverSrc(gallery)}
             submitLabel="Enregistrer"
           />
         </div>

@@ -221,6 +221,34 @@ export async function createGallery(
   const pillar = await db.portfolioPillar.findUnique({ where: { id: pillarId } });
   if (!pillar) return { error: "Pilier introuvable." };
 
+  const cover = formData.get("cover");
+  const coverData: {
+    coverStorageKey?: string;
+    coverMimeType?: string;
+    coverStorageBackend?: string;
+  } = {};
+
+  if (cover instanceof File && cover.size > 0) {
+    if (cover.size > MAX_IMAGE_SIZE) {
+      return { error: "Image trop volumineuse (20 Mo maximum)." };
+    }
+    if (!ALLOWED_IMAGE_TYPES.has(cover.type)) {
+      return { error: "Format d'image non autorisé (PNG, JPEG ou WebP)." };
+    }
+    const coverBuffer = Buffer.from(await cover.arrayBuffer());
+    if (!(await contentMatchesDeclaredType(coverBuffer, cover.type))) {
+      return { error: "Le contenu du fichier ne correspond pas à une image valide." };
+    }
+
+    const storage = getStorageAdapter();
+    const storageKey = `portfolio/gallery-covers/${randomUUID()}`;
+    await storage.save(storageKey, coverBuffer);
+
+    coverData.coverStorageKey = storageKey;
+    coverData.coverMimeType = cover.type;
+    coverData.coverStorageBackend = storage.backend;
+  }
+
   const gallery = await db.portfolioGallery.create({
     data: {
       pillarId,
@@ -228,6 +256,7 @@ export async function createGallery(
       textBefore: parsed.data.textBefore || null,
       textAfter: parsed.data.textAfter || null,
       sortOrder: await nextGallerySortOrder(pillarId),
+      ...coverData,
     },
   });
 
@@ -259,14 +288,46 @@ export async function updateGallery(
   });
   if (!gallery) return { error: "Galerie introuvable." };
 
-  await db.portfolioGallery.update({
-    where: { id: galleryId },
-    data: {
-      title: parsed.data.title,
-      textBefore: parsed.data.textBefore || null,
-      textAfter: parsed.data.textAfter || null,
-    },
-  });
+  const cover = formData.get("cover");
+  const data: {
+    title: string;
+    textBefore: string | null;
+    textAfter: string | null;
+    coverStorageKey?: string;
+    coverMimeType?: string;
+    coverStorageBackend?: string;
+  } = {
+    title: parsed.data.title,
+    textBefore: parsed.data.textBefore || null,
+    textAfter: parsed.data.textAfter || null,
+  };
+
+  if (cover instanceof File && cover.size > 0) {
+    if (cover.size > MAX_IMAGE_SIZE) {
+      return { error: "Image trop volumineuse (20 Mo maximum)." };
+    }
+    if (!ALLOWED_IMAGE_TYPES.has(cover.type)) {
+      return { error: "Format d'image non autorisé (PNG, JPEG ou WebP)." };
+    }
+    const coverBuffer = Buffer.from(await cover.arrayBuffer());
+    if (!(await contentMatchesDeclaredType(coverBuffer, cover.type))) {
+      return { error: "Le contenu du fichier ne correspond pas à une image valide." };
+    }
+
+    const storage = getStorageAdapter();
+    const storageKey = `portfolio/gallery-covers/${randomUUID()}`;
+    await storage.save(storageKey, coverBuffer);
+
+    if (gallery.coverStorageKey) {
+      await storage.delete(gallery.coverStorageKey).catch(() => {});
+    }
+
+    data.coverStorageKey = storageKey;
+    data.coverMimeType = cover.type;
+    data.coverStorageBackend = storage.backend;
+  }
+
+  await db.portfolioGallery.update({ where: { id: galleryId }, data });
 
   revalidatePath("/");
   revalidatePath(`/portfolio/${gallery.pillar.slug}`);
@@ -290,6 +351,9 @@ export async function deleteGallery(galleryId: string, pillarId: string) {
     if (item.storageKey) {
       await storage.delete(item.storageKey).catch(() => {});
     }
+  }
+  if (gallery.coverStorageKey) {
+    await storage.delete(gallery.coverStorageKey).catch(() => {});
   }
 
   await db.portfolioGallery.delete({ where: { id: galleryId } });

@@ -1,20 +1,29 @@
 "use client";
 
 import { useActionState } from "react";
+import Image from "next/image";
 import { WarningCircle, CheckCircle } from "@phosphor-icons/react/dist/ssr";
+import { FilePicker } from "@/components/file-picker";
 import type { GalleryFormState } from "@/lib/validation/portfolio";
 
 // Formulaire d'une galerie (titre + texte avant/après ses médias — demande
 // du 2026-08-16, façon Adobe Portfolio). Les deux textes sont facultatifs
 // et indépendants : laisser vide n'affiche simplement pas le bloc côté
 // public, pas de valeur par défaut à restaurer.
+//
+// Couverture facultative (2026-08-17) : contrairement à celle d'un pilier,
+// jamais requise — une galerie retombe sur son premier média si aucune
+// couverture n'est choisie (voir resolveGalleryCoverSrc), donc laisser le
+// champ vide ne casse jamais l'affichage.
 export function GalleryForm({
   action,
   defaultValues,
+  coverSrc,
   submitLabel,
 }: {
   action: (state: GalleryFormState, formData: FormData) => Promise<GalleryFormState>;
   defaultValues?: { title: string; textBefore: string; textAfter: string };
+  coverSrc?: string | null;
   submitLabel: string;
 }) {
   const [state, formAction, pending] = useActionState(action, undefined);
@@ -34,6 +43,18 @@ export function GalleryForm({
           className="rounded-xl border border-line bg-surface-elevated px-4 py-3 text-sm text-ink placeholder:text-ink-muted/70 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
           placeholder="Ex : Warehouse #04"
         />
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <span className="text-sm font-medium text-ink">
+          Couverture <span className="text-ink-muted">(facultatif — sinon le premier média sert de couverture)</span>
+        </span>
+        {coverSrc && (
+          <div className="relative h-24 w-24 overflow-hidden rounded-xl border border-line">
+            <Image src={coverSrc} alt="Couverture actuelle" fill sizes="96px" className="object-cover" />
+          </div>
+        )}
+        <FilePicker name="cover" accept="image/png,image/jpeg,image/webp" />
       </div>
 
       <div className="flex flex-col gap-2">

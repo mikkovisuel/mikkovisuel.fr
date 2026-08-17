@@ -359,24 +359,24 @@ model Task {
 // pour ne jamais rater ou dupliquer une alerte planifiée
 // (src/lib/prospect-reminders.ts, cron quotidien).
 model Prospect {
-  id        String       @id @default(cuid())
-  name      String
-  company   String?
-  address   String?
-  city      String?
-  phone     String?
-  email     String?
-  instagram String?
+  id            String       @id @default(cuid())
+  name          String
+  company       String?
+  address       String?
+  city          String?
+  phone         String?
+  email         String?
+  instagram     String?
   // URL directe vers le profil Instagram — distinct du champ `instagram`
   // (identifiant "@compte", parfois enrichi d'un nombre d'abonnés dans les
   // fichiers importés) : garder les deux plutôt que reconstruire l'URL,
   // certains comptes trouvés en repérage n'ont pas de format prévisible.
-  instagramUrl String?
-  website      String?
+  instagramUrl  String?
+  website       String?
   // Lien wa.me direct — repérage terrain (ex. import d'un tableur de
   // prospection), distinct du champ `phone` : le lien encode déjà l'indicatif
   // international, pas toujours évident à reconstituer depuis un numéro local.
-  whatsappUrl String?
+  whatsappUrl   String?
   // Note libre qualitative sur l'activité du prospect (ex. "Très actif",
   // "Actif, peu de posts") — descriptif, pas un statut verrouillé comme
   // `status` ci-dessous.
@@ -759,15 +759,24 @@ model PortfolioPillar {
 // src/lib/portfolio-media.ts), pour ne pas imposer un upload de plus à
 // l'admin pour un projet qui a déjà ses propres visuels.
 model PortfolioGallery {
-  id         String          @id @default(cuid())
-  pillarId   String
-  pillar     PortfolioPillar @relation(fields: [pillarId], references: [id], onDelete: Cascade)
-  title      String
-  textBefore String?
-  textAfter  String?
-  sortOrder  Int             @default(0)
-  createdAt  DateTime        @default(now())
-  updatedAt  DateTime        @updatedAt
+  id                  String          @id @default(cuid())
+  pillarId            String
+  pillar              PortfolioPillar @relation(fields: [pillarId], references: [id], onDelete: Cascade)
+  title               String
+  textBefore          String?
+  textAfter           String?
+  // Couverture facultative (demande du 2026-08-17) — au départ volontairement
+  // absente (voir la note plus haut sur `resolveGalleryCoverSrc`) : la
+  // vignette retombait uniquement sur le premier média de la galerie. Un
+  // vrai champ de couverture reste prioritaire quand il est renseigné, la
+  // galerie continue de retomber sur son premier média sinon (jamais les
+  // deux en même temps, même pattern que `PortfolioPillar`).
+  coverStorageKey     String?
+  coverMimeType       String?
+  coverStorageBackend String?
+  sortOrder           Int             @default(0)
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
 
   items PortfolioMediaItem[]
 

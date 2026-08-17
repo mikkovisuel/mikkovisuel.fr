@@ -20,14 +20,19 @@ export function resolveItemSrc(item: {
   return item.externalUrl ?? "";
 }
 
-// Vignette d'une galerie (page pilier, façon Adobe Portfolio) : pas de champ
-// de couverture dédié sur `PortfolioGallery` — on réutilise son premier
-// média (voir prisma/schema.prisma) pour ne pas imposer un upload de plus.
-// `null` quand la galerie est encore vide (pilier fraîchement créé) : à
-// l'appelant de prévoir un état vide plutôt que d'afficher une image cassée.
+// Vignette d'une galerie (page pilier, façon Adobe Portfolio). Couverture
+// dédiée facultative (ajoutée le 2026-08-17) prioritaire quand elle est
+// renseignée ; à défaut, on retombe sur le premier média de la galerie
+// (comportement d'origine, pour ne jamais imposer un upload de plus quand
+// la galerie a déjà ses propres visuels). `null` seulement quand ni l'un ni
+// l'autre n'existe (galerie fraîchement créée, encore vide) : à l'appelant
+// de prévoir un état vide plutôt que d'afficher une image cassée.
 export function resolveGalleryCoverSrc(gallery: {
+  id: string;
+  coverStorageKey?: string | null;
   items: { id: string; externalUrl: string | null; storageKey: string | null }[];
 }): string | null {
+  if (gallery.coverStorageKey) return `/api/portfolio-media/gallery-covers/${gallery.id}`;
   const first = gallery.items[0];
   return first ? resolveItemSrc(first) : null;
 }
