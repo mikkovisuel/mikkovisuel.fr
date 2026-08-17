@@ -1,2 +1,2 @@
-nom,entreprise,adresse,telephone,email,instagram,site_web,notes
-Le Klub,Le Klub (discothèque),"12 rue de la Paix, 69001 Lyon",0472000000,contact@leklub.fr,@leklubofficiel,https://leklub.fr,Actif sur Instagram avec forte audience
+nom,entreprise,adresse,ville,telephone,email,instagram,lien_instagram,site_web,lien_whatsapp,activite,notes
+Le Klub,Le Klub (discothèque),"12 rue de la Paix, 69001 Lyon",Lyon,0472000000,contact@leklub.fr,@leklubofficiel,https://www.instagram.com/leklubofficiel/,https://leklub.fr,https://wa.me/33472000000,Très actif - 12K abonnés,Actif sur Instagram avec forte audience

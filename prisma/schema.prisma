@@ -363,14 +363,28 @@ model Prospect {
   name      String
   company   String?
   address   String?
+  city      String?
   phone     String?
   email     String?
   instagram String?
-  website   String?
-  notes     String?
-  statusId  String
-  status    DropdownItem @relation(fields: [statusId], references: [id])
-  source    String       @default("manuel")
+  // URL directe vers le profil Instagram — distinct du champ `instagram`
+  // (identifiant "@compte", parfois enrichi d'un nombre d'abonnés dans les
+  // fichiers importés) : garder les deux plutôt que reconstruire l'URL,
+  // certains comptes trouvés en repérage n'ont pas de format prévisible.
+  instagramUrl String?
+  website      String?
+  // Lien wa.me direct — repérage terrain (ex. import d'un tableur de
+  // prospection), distinct du champ `phone` : le lien encode déjà l'indicatif
+  // international, pas toujours évident à reconstituer depuis un numéro local.
+  whatsappUrl String?
+  // Note libre qualitative sur l'activité du prospect (ex. "Très actif",
+  // "Actif, peu de posts") — descriptif, pas un statut verrouillé comme
+  // `status` ci-dessous.
+  activityLevel String?
+  notes         String?
+  statusId      String
+  status        DropdownItem @relation(fields: [statusId], references: [id])
+  source        String       @default("manuel")
 
   nextReminderAt DateTime?
   reminderSentAt DateTime?
