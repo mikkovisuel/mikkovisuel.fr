@@ -22,7 +22,7 @@ export function ProspectReminderField({ prospectId, date }: { prospectId: string
           updateProspectReminderDate(prospectId, next);
         });
       }}
-      className="rounded-lg border border-line bg-surface-elevated px-2 py-1.5 text-xs text-ink-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30 disabled:opacity-60"
+      className="w-full min-w-0 rounded-lg border border-line bg-surface-elevated px-1.5 py-1 text-[11px] text-ink-muted focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30 disabled:opacity-60"
     />
   );
 }
