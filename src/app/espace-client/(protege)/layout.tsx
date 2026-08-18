@@ -23,13 +23,19 @@ export default async function ClientProtectedLayout({
   const cookieStore = await cookies();
   const isImpersonating = cookieStore.has("admin_return_token");
 
-  const [toValidateCount, unpaidCount, settings] = await Promise.all([
+  const [toValidateCount, unpaidDocumentCount, unpaidPaymentRecordCount, settings] = await Promise.all([
     db.task.count({
       where: { clientId: clientUser.clientId, archivedAt: null, status: { slug: TASK_STATUS.A_VALIDER } },
     }),
     db.document.count({ where: { clientId: clientUser.clientId, paymentStatus: "unpaid" } }),
+    // Paiements sans facture (2026-08-17, même signalement que la page
+    // Administratif : "les impayés non facturés ne remontent pas") — la
+    // pastille "Administratif" ne comptait jusqu'ici que les Document
+    // impayés.
+    db.paymentRecord.count({ where: { clientId: clientUser.clientId, paymentStatus: "unpaid" } }),
     getAppSettings(),
   ]);
+  const unpaidCount = unpaidDocumentCount + unpaidPaymentRecordCount;
 
   const tabs = [
     { href: "/espace-client", label: "Accueil", tourId: "accueil" },

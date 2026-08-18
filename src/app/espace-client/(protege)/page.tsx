@@ -18,12 +18,18 @@ function formatAmount(amountCents: number, currency: string) {
 export default async function ClientHomePage() {
   const clientUser = await verifyClientSession();
 
-  const [toValidateCount, unpaidDocuments, activeTasks] = await Promise.all([
+  const [toValidateCount, unpaidDocuments, unpaidPaymentRecords, activeTasks] = await Promise.all([
     db.task.count({
       where: { clientId: clientUser.clientId, archivedAt: null, status: { slug: TASK_STATUS.A_VALIDER } },
     }),
     db.document.findMany({
       where: { clientId: clientUser.clientId, paymentStatus: "unpaid", amountCents: { not: null } },
+    }),
+    // Paiements sans facture (2026-08-17, même signalement que la carte
+    // "Documents impayés" de la page Administratif) — sinon un acompte suivi
+    // sans document n'apparaît nulle part pour le client.
+    db.paymentRecord.findMany({
+      where: { clientId: clientUser.clientId, paymentStatus: "unpaid" },
     }),
     db.task.findMany({
       where: {
@@ -37,7 +43,9 @@ export default async function ClientHomePage() {
     }),
   ]);
 
-  const unpaidCents = unpaidDocuments.reduce((sum, doc) => sum + (doc.amountCents ?? 0), 0);
+  const unpaidCents =
+    unpaidDocuments.reduce((sum, doc) => sum + (doc.amountCents ?? 0), 0) +
+    unpaidPaymentRecords.reduce((sum, record) => sum + record.amountCents, 0);
   const nextDeadline = activeTasks.find((task) => task.dueDate !== null);
 
   return (
@@ -75,7 +83,7 @@ export default async function ClientHomePage() {
           href="/espace-client/administratif"
           className="rounded-2xl border border-line p-6 transition-colors hover:border-accent"
         >
-          <p className="text-sm text-ink-muted">Documents impayés</p>
+          <p className="text-sm text-ink-muted">Montant impayé</p>
           <p className="mt-2 font-display text-3xl font-medium text-ink">
             {unpaidCents > 0 ? formatAmount(unpaidCents, "EUR") : "0 €"}
           </p>
