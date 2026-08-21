@@ -29,6 +29,10 @@ export const ClientSchema = z.object({
   // Référence un `DropdownItem` de la liste `client_category`. `null` = client
   // non catégorisé, un état parfaitement valide.
   categoryId: z.preprocess(emptyToNull, z.string().nullable()),
+  // Réglage par défaut "paiement requis avant accès aux livrables" pour tous
+  // les évènements de ce client — voir `Task.deliverablesLockOverride` pour
+  // l'exception ponctuelle par évènement.
+  requirePaymentForDeliverables: z.boolean(),
 });
 
 // Trois façons de créer un contact, choisies dans le formulaire :

@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
 import { verifyAdminSession, verifyClientSession, assertNotDemo } from "@/lib/dal";
 import { getStripeClient } from "@/lib/stripe";
+import { createPaypalOrder } from "@/lib/paypal";
 import { sendEmail } from "@/lib/email/service";
 import { formatAmount } from "@/lib/documents";
 import { getStorageAdapter } from "@/lib/storage";
@@ -48,6 +49,38 @@ export async function createCheckoutSession(documentId: string) {
   if (session.url) {
     redirect(session.url);
   }
+}
+
+// Même rôle que `createCheckoutSession` ci-dessus, pour PayPal — deuxième
+// moyen de paiement en ligne (demande du 2026-08-17), Stripe reste
+// disponible en parallèle plutôt que remplacé. Capture faite au retour côté
+// `/api/paypal/capture`, pas ici : PayPal ne débite qu'après approbation du
+// payeur sur son propre site.
+export async function createPaypalCheckout(documentId: string) {
+  const clientUser = await verifyClientSession();
+  assertNotDemo(clientUser);
+
+  const document = await db.document.findUnique({ where: { id: documentId } });
+  if (!document || document.clientId !== clientUser.clientId) return;
+  if (document.paymentStatus !== "unpaid" || document.amountCents === null) return;
+
+  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
+
+  const order = await createPaypalOrder({
+    amountCents: document.amountCents,
+    currency: document.currency,
+    description: document.fileName,
+    returnUrl: `${siteUrl}/api/paypal/capture?documentId=${document.id}`,
+    cancelUrl: `${siteUrl}/espace-client/administratif?paiement=annule`,
+  });
+  if (!order) return;
+
+  await db.document.update({
+    where: { id: document.id },
+    data: { paypalOrderId: order.orderId },
+  });
+
+  redirect(order.approveUrl);
 }
 
 // Manual override for payments received outside Stripe (virement, chèque,

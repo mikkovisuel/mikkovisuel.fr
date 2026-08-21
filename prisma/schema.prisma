@@ -90,6 +90,12 @@ model Client {
   // un client ne doit pas réécrire l'historique comptable ni amputer une
   // sauvegarde. Voir `ACTIVE_CLIENTS` (src/lib/clients.ts).
   archivedAt           DateTime?
+  // Réglage par défaut pour tous les évènements de ce client : verrouille
+  // l'accès aux livrables finaux tant que le paiement n'est pas confirmé
+  // (voir `Task.deliverablesLockOverride`/`deliverablesPaymentConfirmedAt`
+  // pour l'exception ponctuelle par évènement, et
+  // `src/lib/deliverables-lock.ts` pour le calcul de l'état effectif).
+  requirePaymentForDeliverables Boolean @default(false)
   createdAt            DateTime      @default(now())
   updatedAt            DateTime      @updatedAt
 
@@ -332,6 +338,16 @@ model Task {
   // `/admin/taches`. Jamais exposé côté espace client (suivi interne
   // uniquement).
   estimatedMinutes   Int?
+  // Exception ponctuelle au réglage `Client.requirePaymentForDeliverables`
+  // pour CET évènement précis : `null` = suit le réglage du client (défaut),
+  // "locked"/"unlocked" = force explicitement l'état pour cet évènement,
+  // quel que soit le réglage client. Voir `src/lib/deliverables-lock.ts`.
+  deliverablesLockOverride String?
+  // Confirmation manuelle de paiement pour cet évènement — volontairement
+  // indépendante du système de facturation (`Document`/`PaymentRecord`) :
+  // l'admin la pose à la main une fois le règlement constaté, quel que soit
+  // le moyen (Stripe, PayPal, virement, espèces...). `null` = pas confirmé.
+  deliverablesPaymentConfirmedAt DateTime?
   createdAt          DateTime     @default(now())
   updatedAt          DateTime     @updatedAt
 
@@ -573,6 +589,11 @@ model Document {
   currency                String       @default("EUR")
   paymentStatus           String       @default("n/a")
   stripeCheckoutSessionId String?
+  // Commande PayPal en cours pour ce document (Orders API v2, `id` renvoyé
+  // par `createPaypalOrder`) — même rôle que `stripeCheckoutSessionId`,
+  // vérifié au retour du paiement (`/api/paypal/capture`) avant de marquer
+  // le document payé.
+  paypalOrderId           String?
   paidAt                  DateTime?
   dueDate                 DateTime?
   lastReminderAt          DateTime?

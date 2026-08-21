@@ -1516,6 +1516,44 @@ appliquée à l'ensemble du site :
   Portée de cette première version : les fonctionnalités livrées le
   2026-07-28 seulement (l'historique complet n'a pas été rejoué
   rétroactivement).
+- **Verrou paiement sur les livrables finaux, 2026-08-21** : accès aux
+  livrables finaux (jamais les BAT, toujours visibles pour validation)
+  conditionnable au paiement, activable par client (réglage par défaut pour
+  tous ses évènements, case à cocher "Paiement requis avant l'accès aux
+  livrables finaux" sur la fiche client) et/ou évènement par évènement
+  (exception ponctuelle sur la fiche tâche : "Suivre le réglage client" /
+  "Toujours verrouillé" / "Toujours débloqué" — le réglage évènement prime
+  toujours sur celui du client). Quatre décisions confirmées avec le client
+  avant de coder : (1) granularité à l'évènement, pas au fichier individuel ;
+  (2) le réglage client est un défaut avec exceptions par évènement, pas deux
+  interrupteurs indépendants ; (3) le déblocage est une **confirmation
+  manuelle par l'admin** ("Marquer comme payé" sur la fiche tâche,
+  annulable), volontairement indépendante du système de facturation — un
+  évènement peut être débloqué avant même qu'une facture existe, ou laissé
+  verrouillé après un paiement en ligne si l'admin veut garder la main ; (4)
+  le client bloqué voit un message avec un bouton vers
+  `/espace-client/administratif` plutôt qu'un blocage silencieux. Nouveaux
+  champs `Client.requirePaymentForDeliverables`,
+  `Task.deliverablesLockOverride`, `Task.deliverablesPaymentConfirmedAt` —
+  calcul centralisé dans `src/lib/deliverables-lock.ts`. Verrou appliqué à
+  deux endroits : l'affichage (`/espace-client/livrables`) **et** le
+  téléchargement lui-même (`/api/fichiers/livrables/[id]`, code 402), pour
+  qu'un lien direct ne contourne pas le blocage.
+- **Deuxième moyen de paiement en ligne : PayPal, 2026-08-21** : à la
+  demande explicite du client pendant la conception du verrou paiement
+  ci-dessus ("est-ce possible avec PayPal ou Revolut ?"), PayPal ajouté **en
+  plus** de Stripe (les deux boutons "Payer"/"Payer avec PayPal" s'affichent
+  côte à côte sur `/espace-client/administratif` si les deux sont
+  configurés) — Revolut écarté pour l'instant (compte Business avec accès
+  API requis, non disponible sur tous les plans). Intégration via l'API REST
+  PayPal Orders v2 en appel direct (`fetch`, pas de SDK Node officiel
+  maintenu, contrairement à Stripe) — voir `src/lib/paypal.ts`. Capture au
+  retour du paiement (`/api/paypal/capture`) plutôt qu'un webhook séparé :
+  plus simple à configurer côté PayPal (aucune URL à déclarer dans leur
+  tableau de bord), au prix de ne pas confirmer un paiement si le client
+  ferme l'onglet avant d'être redirigé — limite connue, voir
+  `VALIDATION.md`. `PAYPAL_CLIENT_ID`/`PAYPAL_CLIENT_SECRET` absents =
+  bouton masqué proprement, même dégradation que Stripe.
 
 ## Décisions techniques déléguées à Claude Code
 
@@ -1956,3 +1994,5 @@ Le client a explicitement délégué ces choix :
 | 2026-08-16 | "Chaque item de chaque pilier doit être des galeries, avec du texte avant/après façon Adobe Portfolio, et la réorganisation des photos doit être possible" | Restructuration `Pilier → Galeries → Médias` (nouveau modèle `PortfolioGallery`), avec trois points confirmés avant de coder (garde-fou de statut hors sujet ici, mais même logique de confirmation préalable que pour la purge le même jour) : titre + texte avant/après indépendants et facultatifs par galerie, réordonnancement des galeries et des médias (boutons monter/descendre), page pilier listant les galeries en cartes, page dédiée par galerie. Médias existants migrés automatiquement dans une galerie "Galerie" par pilier (aucune perte, 24 médias vérifiés), à réorganiser ensuite à la main — choix explicite du client. Testé en navigateur de bout en bout (création, édition, texte, affichage public), voir "Portfolio public" |
 | 2026-08-17 | "La vue Liste de la prospection doit être plus comme un tableur éditable (en gardant les pastilles de statut), inspirée du champ déjà éditable en place ailleurs sur le site" | Livré : vue Liste de `/admin/prospection` transformée en tableau où nom, entreprise, téléphone, email, Instagram et date de relance s'éditent directement dans la cellule, même pattern que `PaymentRecordDateField` (Finances/Documents) plutôt qu'un nouveau composant générique — voir section "Backend interne" pour le détail |
 | 2026-08-17 | Fichier réel de repérage (~90 lieux) fourni ("MIKKO_VISUEL_PROSPECTION_v11.xlsx") : "peux-tu mettre ces colonnes là ? C'est un fichier que je peux importer directement ?" | Colonnes du fichier confrontées au modèle existant : Ville/Activité/Lien Instagram/Lien WhatsApp n'avaient pas d'équivalent — choix confirmé avant de coder (nouveaux champs dédiés plutôt que tout regrouper en Notes). Livré : 4 nouveaux champs `Prospect` (colonnes dans le tableau et la fiche), import CSV élargi (nouveaux synonymes d'en-têtes + repli de découpage automatique d'une colonne "Contact" téléphone+email combinés) — voir section "Backend interne". Le fichier n'était pas importable tel quel (.xlsx, pas de colonne "Nom" reconnue, "Contact" mélangé) ; converti en CSV et rejoué de bout en bout contre une base réelle avant livraison, les 87 lignes s'importent proprement avec les nouveaux en-têtes du fichier — voir `VALIDATION.md` |
+| 2026-08-21 | "Fonction activable par client, par livrable, qui demanderait un paiement avant l'accès aux fichiers finaux par évènement ou activable par client en entier — as-tu bien compris, ou des suggestions/précisions ?" | Quatre points de conception soumis et confirmés avant de coder (granularité à l'évènement, réglage client en défaut+exceptions, confirmation manuelle indépendante de la facturation, message + bouton "Payer" côté client) — voir section "Backend interne" pour le détail complet et le raisonnement. Livré : case à cocher sur la fiche client, contrôle tri-état + bouton "Marquer comme payé" sur la fiche tâche, blocage appliqué à l'affichage **et** au téléchargement des livrables. Testé de bout en bout en navigateur (les 6 combinaisons client/évènement/paiement rejouées contre une base réelle, plus capture d'écran des 4 états) — voir `VALIDATION.md` |
+| 2026-08-21 | "Penses-tu que c'est possible de faire quelque chose avec PayPal ou Revolut ?" (en discutant du signal de paiement ci-dessus) | PayPal ajouté en plus de Stripe (bouton "Payer avec PayPal" sur `/espace-client/administratif`) — Revolut écarté pour l'instant (compte Business + accès API requis, non vérifiable sans compte réel). Voir section "Backend interne" pour le détail technique. **Non testé en conditions réelles** : nécessite un compte PayPal Developer (sandbox) que seul le client peut fournir — voir `VALIDATION.md` |

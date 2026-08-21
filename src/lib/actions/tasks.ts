@@ -395,6 +395,48 @@ export async function toggleTaskPin(taskId: string) {
   revalidatePath("/admin");
 }
 
+const DELIVERABLES_LOCK_OVERRIDES = new Set(["locked", "unlocked"]);
+
+// Bascule l'exception ponctuelle "Verrou paiement" pour CET évènement —
+// voir `isDeliverablesLocked` (src/lib/deliverables-lock.ts). Valeur vide =
+// retour au réglage par défaut du client.
+export async function setTaskDeliverablesLockOverride(taskId: string, value: string) {
+  await verifyAdminSession();
+
+  const override = DELIVERABLES_LOCK_OVERRIDES.has(value) ? value : null;
+  const task = await db.task.findUnique({ where: { id: taskId } });
+  if (!task) return;
+
+  await db.task.update({ where: { id: taskId }, data: { deliverablesLockOverride: override } });
+  revalidateTaskPaths(task.clientId);
+}
+
+// Confirmation manuelle de paiement pour cet évènement — voir le commentaire
+// sur `Task.deliverablesPaymentConfirmedAt` (prisma/schema.prisma) : posée à
+// la main, indépendamment du moyen de paiement effectivement utilisé.
+export async function confirmTaskDeliverablesPayment(taskId: string) {
+  await verifyAdminSession();
+
+  const task = await db.task.findUnique({ where: { id: taskId } });
+  if (!task) return;
+
+  await db.task.update({ where: { id: taskId }, data: { deliverablesPaymentConfirmedAt: new Date() } });
+  revalidateTaskPaths(task.clientId);
+}
+
+// Annule la confirmation ci-dessus (erreur de saisie, remboursement...) — le
+// verrou reprend effet immédiatement si le réglage client/évènement
+// l'impose toujours.
+export async function unconfirmTaskDeliverablesPayment(taskId: string) {
+  await verifyAdminSession();
+
+  const task = await db.task.findUnique({ where: { id: taskId } });
+  if (!task) return;
+
+  await db.task.update({ where: { id: taskId }, data: { deliverablesPaymentConfirmedAt: null } });
+  revalidateTaskPaths(task.clientId);
+}
+
 export async function validateTask(taskId: string) {
   const clientUser = await verifyClientSession();
   assertNotDemo(clientUser);

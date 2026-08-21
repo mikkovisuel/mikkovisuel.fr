@@ -3,7 +3,9 @@ import { DownloadSimple } from "@phosphor-icons/react/dist/ssr";
 import { verifyClientSession } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { isStripeConfigured } from "@/lib/stripe";
+import { isPaypalConfigured } from "@/lib/paypal";
 import { PayButton } from "@/components/client/pay-button";
+import { PaypalButton } from "@/components/client/paypal-button";
 import { AcceptDevisDialog } from "@/components/client/accept-devis-dialog";
 import { PaymentStatusBadge } from "@/components/payment-status-badge";
 import { DOCUMENT_TYPE } from "@/lib/dropdown-lists";
@@ -25,6 +27,7 @@ function formatAmount(amountCents: number, currency: string) {
 export default async function ClientAdministrativePage() {
   const clientUser = await verifyClientSession();
   const stripeEnabled = isStripeConfigured();
+  const paypalEnabled = isPaypalConfigured();
 
   // Paiements sans facture (2026-08-17, signalement client : "les impayés
   // non facturés ne remontent pas") — jusqu'ici PaymentRecord n'était visible
@@ -84,7 +87,7 @@ export default async function ClientAdministrativePage() {
                 <p className="mt-1 text-sm text-ink-muted">
                   {doc.type.label}
                   {doc.amountCents !== null && ` · ${formatAmount(doc.amountCents, doc.currency)}`}
-                  {doc.paymentStatus === "unpaid" && !stripeEnabled &&
+                  {doc.paymentStatus === "unpaid" && !stripeEnabled && !paypalEnabled &&
                     " · paiement en ligne bientôt disponible"}
                 </p>
               </div>
@@ -92,6 +95,9 @@ export default async function ClientAdministrativePage() {
                 <div className="flex items-center gap-2 self-start">
                   {doc.paymentStatus === "unpaid" && stripeEnabled && !clientUser.client.isDemo && (
                     <PayButton documentId={doc.id} />
+                  )}
+                  {doc.paymentStatus === "unpaid" && paypalEnabled && !clientUser.client.isDemo && (
+                    <PaypalButton documentId={doc.id} />
                   )}
                   <a
                     href={`/api/fichiers/documents/${doc.id}`}

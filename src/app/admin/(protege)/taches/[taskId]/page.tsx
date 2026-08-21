@@ -6,6 +6,7 @@ import { verifyAdminSession } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { TaskEditForm } from "@/components/admin/task-edit-form";
 import { TaskPinButton } from "@/components/admin/task-pin-button";
+import { TaskPaymentLockControl } from "@/components/admin/task-payment-lock-control";
 import { TaskStatusSelect } from "@/components/admin/task-status-select";
 import { TaskValidationButton } from "@/components/admin/task-validation-button";
 import { TaskValidateRefuseButtons } from "@/components/admin/task-validate-refuse-buttons";
@@ -280,6 +281,14 @@ export default async function TaskDetailPage({
                 <h3 className="text-xs font-medium uppercase tracking-wide text-ink-muted">
                   Livrables finaux ({finalDeliverables.length})
                 </h3>
+                <div className="mt-3 mb-3">
+                  <TaskPaymentLockControl
+                    taskId={task.id}
+                    clientRequiresPayment={task.client.requirePaymentForDeliverables}
+                    lockOverride={task.deliverablesLockOverride}
+                    paymentConfirmedAt={task.deliverablesPaymentConfirmedAt}
+                  />
+                </div>
                 <div className="mt-3">
                   {finalDeliverables.length > 0 ? (
                     <FileGrid

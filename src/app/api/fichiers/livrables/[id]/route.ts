@@ -5,6 +5,7 @@ import { getStorageAdapter } from "@/lib/storage";
 import { getAppSettings } from "@/lib/settings";
 import { watermarkImage } from "@/lib/watermark";
 import { createThumbnail } from "@/lib/thumbnail";
+import { isDeliverablesLocked } from "@/lib/deliverables-lock";
 
 export async function GET(
   request: Request,
@@ -14,7 +15,7 @@ export async function GET(
 
   const deliverable = await db.deliverable.findUnique({
     where: { id },
-    include: { task: true },
+    include: { task: { include: { client: true } } },
   });
   if (!deliverable) {
     return new NextResponse(null, { status: 404 });
@@ -24,6 +25,13 @@ export async function GET(
   const isOwner = clientUser?.clientId === deliverable.task.clientId;
   if (!admin && !isOwner) {
     return new NextResponse(null, { status: 403 });
+  }
+
+  // Verrou paiement : ne s'applique jamais à l'admin, ni aux BAT (le client
+  // doit pouvoir les consulter pour les valider avant même tout paiement) —
+  // seulement aux livrables finaux vus par le client propriétaire.
+  if (!admin && isOwner && deliverable.kind === "final" && isDeliverablesLocked(deliverable.task, deliverable.task.client)) {
+    return new NextResponse(null, { status: 402 });
   }
 
   const storage = getStorageAdapter();

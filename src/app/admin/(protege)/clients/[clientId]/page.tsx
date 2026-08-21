@@ -215,6 +215,7 @@ export default async function ClientDetailPage({
           billingEmail: client.billingEmail,
           driveUrl: client.driveUrl,
           categoryId: client.categoryId,
+          requirePaymentForDeliverables: client.requirePaymentForDeliverables,
         }}
         categoryOptions={categoryOptions}
       />
