@@ -72,7 +72,8 @@ appliquée à l'ensemble du site :
   l'ancien réordonnancement). La page d'un pilier liste désormais ses
   galeries comme des cartes (vignette = premier média de la galerie, pas de
   couverture à uploader séparément) ; cliquer une galerie ouvre sa page
-  dédiée (texte avant → médias empilés → texte après). L'ancien filtre
+  dédiée (texte avant → médias → texte après, médias en 2 colonnes à partir
+  de `sm` depuis le 2026-08-22, voir plus bas). L'ancien filtre
   **Tous / Photos / Vidéos** de la page pilier a été retiré : une galerie
   étant déjà un ensemble curaté, ce filtre par type n'avait plus vraiment de
   sens à ce niveau. Migration des données : les photos/vidéos déjà en ligne
@@ -86,6 +87,16 @@ appliquée à l'ensemble du site :
     choix côté formulaire).
   - Chaque média de la page d'une galerie épouse son propre format (une
     galerie peut mélanger des médias 3:4 et 9:16).
+- **Galerie publique en 2 colonnes, 2026-08-22** : les médias d'une galerie
+  s'affichent désormais sur 2 colonnes à partir de `sm` (≥640px), en une
+  seule colonne en dessous. Implémenté en colonnes CSS (`columns-2`,
+  `break-inside-avoid`) plutôt qu'une grille : chaque média garde son propre
+  format (3:4 ou 9:16, voir ci-dessus), une grille classique aurait laissé
+  des trous béants dès que deux médias voisins n'ont pas la même hauteur —
+  les colonnes CSS empilent chaque média à la suite dans sa colonne,
+  indépendamment des autres, façon mur de photos. Conteneur de la page
+  élargi (`max-w-3xl` → `max-w-5xl`) pour donner de la place aux deux
+  colonnes, texte avant/après gardé lisible via `max-w-[65ch]`.
 - Visuels du Hero administrables (2026-07-16) : les deux photos sous le
   bouton "Voir le travail" (composant `HeroVisual`) étaient codées en dur
   (placeholders Picsum) — corrigé sur le même principe que les couvertures
@@ -2024,3 +2035,4 @@ Le client a explicitement délégué ces choix :
 | 2026-08-21 | "Fonction activable par client, par livrable, qui demanderait un paiement avant l'accès aux fichiers finaux par évènement ou activable par client en entier — as-tu bien compris, ou des suggestions/précisions ?" | Quatre points de conception soumis et confirmés avant de coder (granularité à l'évènement, réglage client en défaut+exceptions, confirmation manuelle indépendante de la facturation, message + bouton "Payer" côté client) — voir section "Backend interne" pour le détail complet et le raisonnement. Livré : case à cocher sur la fiche client, contrôle tri-état + bouton "Marquer comme payé" sur la fiche tâche, blocage appliqué à l'affichage **et** au téléchargement des livrables. Testé de bout en bout en navigateur (les 6 combinaisons client/évènement/paiement rejouées contre une base réelle, plus capture d'écran des 4 états) — voir `VALIDATION.md` |
 | 2026-08-21 | "Penses-tu que c'est possible de faire quelque chose avec PayPal ou Revolut ?" (en discutant du signal de paiement ci-dessus) | PayPal ajouté en plus de Stripe (bouton "Payer avec PayPal" sur `/espace-client/administratif`) — Revolut écarté pour l'instant (compte Business + accès API requis, non vérifiable sans compte réel). Voir section "Backend interne" pour le détail technique. **Non testé en conditions réelles** : nécessite un compte PayPal Developer (sandbox) que seul le client peut fournir — voir `VALIDATION.md` |
 | 2026-08-22 | "Pour le moment il ne s'agit pas de factures mais bien de paiement, on fera les liens aux factures beaucoup plus tard ! Peux-tu renommer en conséquence ? Peux-tu également me donner la possibilité de faire le paiement avant de travailler ? Au début de la tâche ?" | Renommage : le message client bloqué ne renvoie plus vers les factures (bouton "Voir mes factures et payer" supprimé, celui-ci les liait prématurément à un système de facturation volontairement pas encore branché). Deux points confirmés avant de coder pour le nouveau verrou "avant de travailler" : interrupteur manuel (pas de vrai bouton de paiement Stripe/PayPal pour ce lot) et blocage réel du statut (pas un simple rappel) — voir section "Backend interne". Livré : même mécanique que le verrou livrables (réglage client par défaut + exception par évènement + confirmation manuelle), appliquée cette fois à l'entrée de la tâche plutôt qu'à la sortie — `setTaskStatus` refuse toute sortie du statut "Nouveau" tant que non payé. Testé de bout en bout (logique + navigateur, tentative de changement de statut réellement bloquée puis débloquée après confirmation) — voir `VALIDATION.md` |
+| 2026-08-22 | "Est-il possible de faire en sorte que les galeries dans les piliers affichent 2 colonnes en visuel sur le site internet (vision clients) ?" | Livré : page galerie publique (`/portfolio/[slug]/[galleryId]`) passée en 2 colonnes à partir de `sm`, 1 colonne en dessous, via colonnes CSS plutôt qu'une grille (voir section "Portfolio public" pour le raisonnement — une grille aurait laissé des trous dès que deux médias voisins n'ont pas la même hauteur, les galeries mélangeant librement du 3:4 et du 9:16). Testé en navigateur, desktop et mobile, avec des médias de hauteurs volontairement différentes pour vérifier l'absence de trous — voir `VALIDATION.md` |
