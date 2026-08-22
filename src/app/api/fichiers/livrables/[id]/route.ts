@@ -5,7 +5,7 @@ import { getStorageAdapter } from "@/lib/storage";
 import { getAppSettings } from "@/lib/settings";
 import { watermarkImage } from "@/lib/watermark";
 import { createThumbnail } from "@/lib/thumbnail";
-import { isDeliverablesLocked } from "@/lib/deliverables-lock";
+import { isDeliverablesLocked } from "@/lib/payment-locks";
 
 export async function GET(
   request: Request,

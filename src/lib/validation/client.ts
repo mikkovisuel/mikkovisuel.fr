@@ -33,6 +33,9 @@ export const ClientSchema = z.object({
   // les évènements de ce client — voir `Task.deliverablesLockOverride` pour
   // l'exception ponctuelle par évènement.
   requirePaymentForDeliverables: z.boolean(),
+  // Même principe, mais en amont : bloque le démarrage du travail (sortie
+  // du statut "Nouveau") tant que le paiement n'est pas confirmé.
+  requirePaymentBeforeWork: z.boolean(),
 });
 
 // Trois façons de créer un contact, choisies dans le formulaire :

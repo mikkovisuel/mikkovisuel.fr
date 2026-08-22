@@ -51,6 +51,7 @@ export function ClientInfoForm({
     driveUrl: string | null;
     categoryId: string | null;
     requirePaymentForDeliverables: boolean;
+    requirePaymentBeforeWork: boolean;
   };
   categoryOptions: { id: string; label: string }[];
 }) {
@@ -255,8 +256,24 @@ export function ClientInfoForm({
                 />
               </div>
 
-              <div className="flex flex-col gap-2 rounded-xl border border-line bg-surface-elevated p-4">
+              <div className="flex flex-col gap-3 rounded-xl border border-line bg-surface-elevated p-4">
                 <label className="flex items-center gap-2 text-sm text-ink">
+                  <input
+                    type="checkbox"
+                    name="requirePaymentBeforeWork"
+                    defaultChecked={defaultValues.requirePaymentBeforeWork}
+                    className="h-4 w-4 rounded border-line"
+                  />
+                  Paiement requis avant de commencer le travail
+                </label>
+                <p className="text-xs text-ink-muted">
+                  Réglage par défaut pour tous les évènements de ce client — bloque le changement de
+                  statut d&apos;un évènement hors de &quot;Nouveau&quot; tant que le paiement
+                  n&apos;est pas confirmé. Modifiable ponctuellement évènement par évènement depuis sa
+                  fiche.
+                </p>
+
+                <label className="mt-2 flex items-center gap-2 border-t border-line pt-3 text-sm text-ink">
                   <input
                     type="checkbox"
                     name="requirePaymentForDeliverables"

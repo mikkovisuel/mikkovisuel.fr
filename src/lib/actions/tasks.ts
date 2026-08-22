@@ -10,6 +10,7 @@ import { escapeHtml } from "@/lib/html-escape";
 import { getStorageAdapter } from "@/lib/storage";
 import { isTaskOverdue, taskDateFormatter } from "@/lib/tasks";
 import { notifiableEmails, notifiableEmailsFromContacts } from "@/lib/clients";
+import { isWorkLocked } from "@/lib/payment-locks";
 
 const MAX_ATTACHMENT_SIZE = 20 * 1024 * 1024;
 const ALLOWED_ATTACHMENT_TYPES = new Set([
@@ -339,8 +340,21 @@ async function notifyClientUsersOfNewTaskToValidate(taskId: string) {
 export async function setTaskStatus(taskId: string, statusSlug: TaskStatusSlug) {
   const admin = await verifyAdminSession();
 
-  const task = await db.task.findUnique({ where: { id: taskId } });
+  const task = await db.task.findUnique({ where: { id: taskId }, include: { status: true, client: true } });
   if (!task) return;
+
+  // Verrou "avant de travailler" : bloque réellement toute sortie du statut
+  // initial ("Nouveau") tant que le paiement n'est pas confirmé — voir
+  // `isWorkLocked` (src/lib/payment-locks.ts). Confirmé avec le client :
+  // un vrai blocage, pas un simple rappel visuel. Sans effet une fois la
+  // tâche déjà sortie de "Nouveau" (le verrou ne concerne que le démarrage).
+  if (
+    task.status.slug === TASK_STATUS.NOUVEAU &&
+    statusSlug !== TASK_STATUS.NOUVEAU &&
+    isWorkLocked(task, task.client)
+  ) {
+    return;
+  }
 
   const statusItem = await getStatusItem(statusSlug);
   await db.task.update({
@@ -395,15 +409,15 @@ export async function toggleTaskPin(taskId: string) {
   revalidatePath("/admin");
 }
 
-const DELIVERABLES_LOCK_OVERRIDES = new Set(["locked", "unlocked"]);
+const PAYMENT_LOCK_OVERRIDES = new Set(["locked", "unlocked"]);
 
 // Bascule l'exception ponctuelle "Verrou paiement" pour CET évènement —
-// voir `isDeliverablesLocked` (src/lib/deliverables-lock.ts). Valeur vide =
+// voir `isDeliverablesLocked` (src/lib/payment-locks.ts). Valeur vide =
 // retour au réglage par défaut du client.
 export async function setTaskDeliverablesLockOverride(taskId: string, value: string) {
   await verifyAdminSession();
 
-  const override = DELIVERABLES_LOCK_OVERRIDES.has(value) ? value : null;
+  const override = PAYMENT_LOCK_OVERRIDES.has(value) ? value : null;
   const task = await db.task.findUnique({ where: { id: taskId } });
   if (!task) return;
 
@@ -434,6 +448,40 @@ export async function unconfirmTaskDeliverablesPayment(taskId: string) {
   if (!task) return;
 
   await db.task.update({ where: { id: taskId }, data: { deliverablesPaymentConfirmedAt: null } });
+  revalidateTaskPaths(task.clientId);
+}
+
+// Même trio que ci-dessus, pour le verrou "avant de travailler" — voir
+// `isWorkLocked` (src/lib/payment-locks.ts) et la garde dans `setTaskStatus`
+// ci-dessous, qui bloque réellement la sortie du statut "Nouveau".
+export async function setTaskWorkLockOverride(taskId: string, value: string) {
+  await verifyAdminSession();
+
+  const override = PAYMENT_LOCK_OVERRIDES.has(value) ? value : null;
+  const task = await db.task.findUnique({ where: { id: taskId } });
+  if (!task) return;
+
+  await db.task.update({ where: { id: taskId }, data: { workLockOverride: override } });
+  revalidateTaskPaths(task.clientId);
+}
+
+export async function confirmTaskWorkPayment(taskId: string) {
+  await verifyAdminSession();
+
+  const task = await db.task.findUnique({ where: { id: taskId } });
+  if (!task) return;
+
+  await db.task.update({ where: { id: taskId }, data: { workPaymentConfirmedAt: new Date() } });
+  revalidateTaskPaths(task.clientId);
+}
+
+export async function unconfirmTaskWorkPayment(taskId: string) {
+  await verifyAdminSession();
+
+  const task = await db.task.findUnique({ where: { id: taskId } });
+  if (!task) return;
+
+  await db.task.update({ where: { id: taskId }, data: { workPaymentConfirmedAt: null } });
   revalidateTaskPaths(task.clientId);
 }
 

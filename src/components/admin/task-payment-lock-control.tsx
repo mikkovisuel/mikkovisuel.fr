@@ -6,32 +6,61 @@ import {
   setTaskDeliverablesLockOverride,
   confirmTaskDeliverablesPayment,
   unconfirmTaskDeliverablesPayment,
+  setTaskWorkLockOverride,
+  confirmTaskWorkPayment,
+  unconfirmTaskWorkPayment,
 } from "@/lib/actions/tasks";
-import { isDeliverablesLocked } from "@/lib/deliverables-lock";
+import { isDeliverablesLocked, isWorkLocked } from "@/lib/payment-locks";
 import { taskDateTimeFormatter } from "@/lib/tasks";
 
-// Contrôle "Verrou paiement" sur la fiche tâche — pilote
-// `Task.deliverablesLockOverride` (exception ponctuelle au réglage par
-// défaut du client) et `Task.deliverablesPaymentConfirmedAt` (confirmation
-// manuelle, indépendante de la facturation). Même trio pastille/select/
-// bouton que `ProspectStatusSelect`/`TaskStatusSelect`, pas un nouveau
-// pattern.
+const KIND_CONFIG = {
+  livrables: {
+    lockedLabel: "Livrables verrouillés",
+    unlockedLabel: "Livrables débloqués",
+    setOverride: setTaskDeliverablesLockOverride,
+    confirm: confirmTaskDeliverablesPayment,
+    unconfirm: unconfirmTaskDeliverablesPayment,
+  },
+  travail: {
+    lockedLabel: "Travail verrouillé",
+    unlockedLabel: "Travail débloqué",
+    setOverride: setTaskWorkLockOverride,
+    confirm: confirmTaskWorkPayment,
+    unconfirm: unconfirmTaskWorkPayment,
+  },
+} as const;
+
+// Contrôle "Verrou paiement" sur la fiche tâche — deux instances possibles
+// (`kind`), même mécanique tri-état pour les deux (voir
+// src/lib/payment-locks.ts) : "livrables" pilote l'accès aux livrables
+// finaux, "travail" pilote le blocage réel du statut avant de commencer
+// (voir `setTaskStatus`). Même trio pastille/select/bouton que
+// `ProspectStatusSelect`/`TaskStatusSelect`, pas un nouveau pattern.
 export function TaskPaymentLockControl({
   taskId,
+  kind,
   clientRequiresPayment,
   lockOverride,
   paymentConfirmedAt,
 }: {
   taskId: string;
+  kind: "livrables" | "travail";
   clientRequiresPayment: boolean;
   lockOverride: string | null;
   paymentConfirmedAt: Date | null;
 }) {
   const [isPending, startTransition] = useTransition();
-  const locked = isDeliverablesLocked(
-    { deliverablesLockOverride: lockOverride, deliverablesPaymentConfirmedAt: paymentConfirmedAt },
-    { requirePaymentForDeliverables: clientRequiresPayment },
-  );
+  const config = KIND_CONFIG[kind];
+  const locked =
+    kind === "livrables"
+      ? isDeliverablesLocked(
+          { deliverablesLockOverride: lockOverride, deliverablesPaymentConfirmedAt: paymentConfirmedAt },
+          { requirePaymentForDeliverables: clientRequiresPayment },
+        )
+      : isWorkLocked(
+          { workLockOverride: lockOverride, workPaymentConfirmedAt: paymentConfirmedAt },
+          { requirePaymentBeforeWork: clientRequiresPayment },
+        );
 
   return (
     <div className="flex flex-wrap items-center gap-3 rounded-xl border border-line bg-surface-elevated px-4 py-3 text-sm">
@@ -43,7 +72,7 @@ export function TaskPaymentLockControl({
         }`}
       >
         {locked ? <LockSimple size={12} weight="bold" /> : <LockSimpleOpen size={12} weight="bold" />}
-        {locked ? "Livrables verrouillés" : "Livrables débloqués"}
+        {locked ? config.lockedLabel : config.unlockedLabel}
       </span>
 
       <select
@@ -53,7 +82,7 @@ export function TaskPaymentLockControl({
         onChange={(event) => {
           const value = event.target.value;
           startTransition(() => {
-            setTaskDeliverablesLockOverride(taskId, value);
+            config.setOverride(taskId, value);
           });
         }}
         className="rounded-lg border border-line bg-surface px-2.5 py-1.5 text-xs text-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30 disabled:opacity-60"
@@ -69,7 +98,7 @@ export function TaskPaymentLockControl({
           <button
             type="button"
             disabled={isPending}
-            onClick={() => startTransition(() => unconfirmTaskDeliverablesPayment(taskId))}
+            onClick={() => startTransition(() => config.unconfirm(taskId))}
             className="text-ink-muted underline decoration-dotted underline-offset-2 transition-colors hover:text-ink disabled:opacity-60"
           >
             Annuler
@@ -79,7 +108,7 @@ export function TaskPaymentLockControl({
         <button
           type="button"
           disabled={isPending}
-          onClick={() => startTransition(() => confirmTaskDeliverablesPayment(taskId))}
+          onClick={() => startTransition(() => config.confirm(taskId))}
           className="rounded-full border border-line px-3 py-1.5 text-xs text-ink-muted transition-colors hover:border-accent hover:bg-accent hover:text-accent-ink disabled:opacity-60"
         >
           Marquer comme payé

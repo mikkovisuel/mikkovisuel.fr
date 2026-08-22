@@ -1531,14 +1531,41 @@ appliquée à l'ensemble du site :
   annulable), volontairement indépendante du système de facturation — un
   évènement peut être débloqué avant même qu'une facture existe, ou laissé
   verrouillé après un paiement en ligne si l'admin veut garder la main ; (4)
-  le client bloqué voit un message avec un bouton vers
-  `/espace-client/administratif` plutôt qu'un blocage silencieux. Nouveaux
-  champs `Client.requirePaymentForDeliverables`,
+  le client bloqué voit un message l'informant qu'un paiement est requis.
+  Nouveaux champs `Client.requirePaymentForDeliverables`,
   `Task.deliverablesLockOverride`, `Task.deliverablesPaymentConfirmedAt` —
-  calcul centralisé dans `src/lib/deliverables-lock.ts`. Verrou appliqué à
-  deux endroits : l'affichage (`/espace-client/livrables`) **et** le
+  calcul centralisé dans `src/lib/payment-locks.ts`. Verrou appliqué à deux
+  endroits : l'affichage (`/espace-client/livrables`) **et** le
   téléchargement lui-même (`/api/fichiers/livrables/[id]`, code 402), pour
   qu'un lien direct ne contourne pas le blocage.
+  - **Correction du 2026-08-22, "il ne s'agit pas de factures mais bien de
+    paiement, on fera les liens aux factures beaucoup plus tard"** : le
+    message côté client renvoyait vers `/espace-client/administratif` (les
+    factures) avec le bouton "Voir mes factures et payer" — supprimé,
+    laissant seulement le message d'attente de paiement, pour ne pas
+    laisser croire à un lien avec une facture réelle qui n'existe pas
+    encore.
+- **Verrou paiement "avant de travailler", 2026-08-22** : même mécanique que
+  le verrou livrables ci-dessus (réglage par défaut par client + exception
+  ponctuelle par évènement, confirmation manuelle indépendante de la
+  facturation), mais appliqué en amont plutôt qu'en aval : case à cocher
+  "Paiement requis avant de commencer le travail" sur la fiche client,
+  contrôle identique sur la fiche tâche (affiché seulement tant que la
+  tâche est au statut "Nouveau", puisque le verrou ne concerne que le
+  démarrage). Deux points confirmés avant de coder : (1) interrupteur
+  manuel comme le verrou livrables, pas de bouton de paiement réel Stripe/
+  PayPal pour ce lot (resterait à faire si besoin plus tard) ; (2)
+  **blocage réel**, pas un simple rappel visuel — `setTaskStatus` refuse
+  désormais toute sortie du statut "Nouveau" tant que le paiement n'est pas
+  confirmé (Kanban glisser-déposer et sélecteur de statut inclus, les deux
+  appellent la même fonction). Nouveaux champs
+  `Client.requirePaymentBeforeWork`, `Task.workLockOverride`,
+  `Task.workPaymentConfirmedAt`. Purement un contrôle interne admin, sans
+  volet client-facing dans ce lot (non demandé). `src/lib/payment-locks.ts`
+  (renommé depuis `deliverables-lock.ts`, qui ne portait plus que la
+  moitié de la logique) centralise désormais les deux calculs
+  (`isDeliverablesLocked`/`isWorkLocked`), et `TaskPaymentLockControl` sert
+  les deux contrôles via une prop `kind`.
 - **Deuxième moyen de paiement en ligne : PayPal, 2026-08-21** : à la
   demande explicite du client pendant la conception du verrou paiement
   ci-dessus ("est-ce possible avec PayPal ou Revolut ?"), PayPal ajouté **en
@@ -1996,3 +2023,4 @@ Le client a explicitement délégué ces choix :
 | 2026-08-17 | Fichier réel de repérage (~90 lieux) fourni ("MIKKO_VISUEL_PROSPECTION_v11.xlsx") : "peux-tu mettre ces colonnes là ? C'est un fichier que je peux importer directement ?" | Colonnes du fichier confrontées au modèle existant : Ville/Activité/Lien Instagram/Lien WhatsApp n'avaient pas d'équivalent — choix confirmé avant de coder (nouveaux champs dédiés plutôt que tout regrouper en Notes). Livré : 4 nouveaux champs `Prospect` (colonnes dans le tableau et la fiche), import CSV élargi (nouveaux synonymes d'en-têtes + repli de découpage automatique d'une colonne "Contact" téléphone+email combinés) — voir section "Backend interne". Le fichier n'était pas importable tel quel (.xlsx, pas de colonne "Nom" reconnue, "Contact" mélangé) ; converti en CSV et rejoué de bout en bout contre une base réelle avant livraison, les 87 lignes s'importent proprement avec les nouveaux en-têtes du fichier — voir `VALIDATION.md` |
 | 2026-08-21 | "Fonction activable par client, par livrable, qui demanderait un paiement avant l'accès aux fichiers finaux par évènement ou activable par client en entier — as-tu bien compris, ou des suggestions/précisions ?" | Quatre points de conception soumis et confirmés avant de coder (granularité à l'évènement, réglage client en défaut+exceptions, confirmation manuelle indépendante de la facturation, message + bouton "Payer" côté client) — voir section "Backend interne" pour le détail complet et le raisonnement. Livré : case à cocher sur la fiche client, contrôle tri-état + bouton "Marquer comme payé" sur la fiche tâche, blocage appliqué à l'affichage **et** au téléchargement des livrables. Testé de bout en bout en navigateur (les 6 combinaisons client/évènement/paiement rejouées contre une base réelle, plus capture d'écran des 4 états) — voir `VALIDATION.md` |
 | 2026-08-21 | "Penses-tu que c'est possible de faire quelque chose avec PayPal ou Revolut ?" (en discutant du signal de paiement ci-dessus) | PayPal ajouté en plus de Stripe (bouton "Payer avec PayPal" sur `/espace-client/administratif`) — Revolut écarté pour l'instant (compte Business + accès API requis, non vérifiable sans compte réel). Voir section "Backend interne" pour le détail technique. **Non testé en conditions réelles** : nécessite un compte PayPal Developer (sandbox) que seul le client peut fournir — voir `VALIDATION.md` |
+| 2026-08-22 | "Pour le moment il ne s'agit pas de factures mais bien de paiement, on fera les liens aux factures beaucoup plus tard ! Peux-tu renommer en conséquence ? Peux-tu également me donner la possibilité de faire le paiement avant de travailler ? Au début de la tâche ?" | Renommage : le message client bloqué ne renvoie plus vers les factures (bouton "Voir mes factures et payer" supprimé, celui-ci les liait prématurément à un système de facturation volontairement pas encore branché). Deux points confirmés avant de coder pour le nouveau verrou "avant de travailler" : interrupteur manuel (pas de vrai bouton de paiement Stripe/PayPal pour ce lot) et blocage réel du statut (pas un simple rappel) — voir section "Backend interne". Livré : même mécanique que le verrou livrables (réglage client par défaut + exception par évènement + confirmation manuelle), appliquée cette fois à l'entrée de la tâche plutôt qu'à la sortie — `setTaskStatus` refuse toute sortie du statut "Nouveau" tant que non payé. Testé de bout en bout (logique + navigateur, tentative de changement de statut réellement bloquée puis débloquée après confirmation) — voir `VALIDATION.md` |

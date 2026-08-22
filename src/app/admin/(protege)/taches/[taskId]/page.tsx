@@ -202,6 +202,21 @@ export default async function TaskDetailPage({
         </div>
       )}
 
+      {/* Verrou "avant de travailler" : n'a plus de sens à afficher une fois
+          la tâche sortie de "Nouveau", le blocage ne concerne que le
+          démarrage — voir la garde dans `setTaskStatus`. */}
+      {task.status.slug === TASK_STATUS.NOUVEAU && (
+        <div className="mt-4">
+          <TaskPaymentLockControl
+            taskId={task.id}
+            kind="travail"
+            clientRequiresPayment={task.client.requirePaymentBeforeWork}
+            lockOverride={task.workLockOverride}
+            paymentConfirmedAt={task.workPaymentConfirmedAt}
+          />
+        </div>
+      )}
+
       {task.refusalReason && (
         <p className="mt-3 text-sm text-danger">Motif de refus : {task.refusalReason}</p>
       )}
@@ -284,6 +299,7 @@ export default async function TaskDetailPage({
                 <div className="mt-3 mb-3">
                   <TaskPaymentLockControl
                     taskId={task.id}
+                    kind="livrables"
                     clientRequiresPayment={task.client.requirePaymentForDeliverables}
                     lockOverride={task.deliverablesLockOverride}
                     paymentConfirmedAt={task.deliverablesPaymentConfirmedAt}

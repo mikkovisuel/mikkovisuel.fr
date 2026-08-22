@@ -216,6 +216,7 @@ export default async function ClientDetailPage({
           driveUrl: client.driveUrl,
           categoryId: client.categoryId,
           requirePaymentForDeliverables: client.requirePaymentForDeliverables,
+          requirePaymentBeforeWork: client.requirePaymentBeforeWork,
         }}
         categoryOptions={categoryOptions}
       />

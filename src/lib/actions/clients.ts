@@ -39,6 +39,7 @@ export async function createClient(
     driveUrl: formData.get("driveUrl"),
     categoryId: formData.get("categoryId"),
     requirePaymentForDeliverables: formData.get("requirePaymentForDeliverables") === "on",
+    requirePaymentBeforeWork: formData.get("requirePaymentBeforeWork") === "on",
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Formulaire invalide." };
@@ -67,6 +68,7 @@ export async function updateClient(
     driveUrl: formData.get("driveUrl"),
     categoryId: formData.get("categoryId"),
     requirePaymentForDeliverables: formData.get("requirePaymentForDeliverables") === "on",
+    requirePaymentBeforeWork: formData.get("requirePaymentBeforeWork") === "on",
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Formulaire invalide." };

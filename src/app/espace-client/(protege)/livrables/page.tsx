@@ -5,7 +5,7 @@ import { verifyClientSession } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { TASK_STATUS } from "@/lib/dropdown-lists";
 import { taskDateFormatterShort } from "@/lib/tasks";
-import { isDeliverablesLocked } from "@/lib/deliverables-lock";
+import { isDeliverablesLocked } from "@/lib/payment-locks";
 import { FileGrid } from "@/components/file-grid";
 
 export const metadata: Metadata = {
@@ -123,12 +123,6 @@ export default async function ClientDeliverablesPage({
                       <p className="text-ink">
                         Le paiement doit être confirmé avant l&apos;accès à vos livrables finaux.
                       </p>
-                      <Link
-                        href="/espace-client/administratif"
-                        className="inline-flex items-center rounded-full bg-accent px-4 py-2 text-sm font-medium text-accent-ink transition-transform active:scale-[0.98]"
-                      >
-                        Voir mes factures et payer
-                      </Link>
                     </div>
                   ) : finalDeliverables.length === 0 ? (
                     <p className="text-sm text-ink-muted">Aucun fichier déposé pour l&apos;instant.</p>
