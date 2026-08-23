@@ -1631,6 +1631,46 @@ Le client a explicitement délégué ces choix :
   la même requête (une fois pour les métadonnées de la page, une fois pour
   son contenu) au lieu de la partager, et enchaînaient leurs sections l'une
   après l'autre plutôt que de lancer leurs requêtes en parallèle.
+- **Deuxième passe de performance — cause des crashs trouvée** (2026-08-23,
+  signalement "le site et l'app sont lentes, et ça crashe souvent") :
+  diagnostic mené par la mesure, pas par lecture de code seule.
+  - **Cause des crashs : saturation mémoire à l'envoi de livrables.** Le
+    conteneur web Scalingo fait **512 Mo** (confirmé par le client). Or
+    recevoir un fichier coûte **~2,5 fois sa taille** en mémoire (mesuré :
+    corps de requête bufferisé par Next, puis copie de `file.arrayBuffer()`),
+    et la limite applicative était de **500 Mo par fichier**, avec
+    `bodySizeLimit`/`proxyClientMaxBodySize` à **2 Go** dans
+    `next.config.ts`. Autrement dit, un seul livrable de 200 Mo réclamait
+    ~500 Mo, soit plus que la machine entière : le conteneur était tué, ce
+    qui explique à la fois les redémarrages et la lenteur juste avant
+    (ramassage mémoire sous pression). Le message d'erreur du code
+    anticipait d'ailleurs déjà ce cas ("fichier trop lourd pour la mémoire
+    du serveur"). Corrigé en plafonnant à **50 Mo par fichier / 80 Mo par
+    envoi**, avec les limites de corps de `next.config.ts` calées juste
+    au-dessus (100 Mo). Les tailles sont désormais vérifiées **avant** toute
+    lecture en mémoire, donc un envoi trop lourd est refusé sans rien
+    allouer.
+  - **Piste explorée puis abandonnée après mesure** : traiter les fichiers
+    un par un plutôt que tous en mémoire. Sans effet — en Node,
+    `File.arrayBuffer()` matérialise une copie que l'objet `File` retient
+    ensuite lui-même (vérifié : 80 Mo → 160 Mo après copie, toujours 160 Mo
+    après mise à `null` et `gc()`). Le code reste donc en envoi parallèle,
+    qui protège du timeout routeur, et le seul levier réel est le plafond de
+    cumul. Consigné ici pour éviter qu'on retente ce faux correctif.
+  - **Mémoire réduite ailleurs** : les téléchargements de documents, de
+    documents Société et de pièces jointes chargeaient le fichier entier en
+    RAM (`storage.read`) **puis en faisaient une seconde copie**
+    (`new Uint8Array(buffer)`), soit 2× la taille par téléchargement.
+    Passés en streaming, l'adaptateur de stockage sachant déjà le faire.
+  - **Avatars clients** : servis avec `max-age=0` sans `ETag`, donc
+    intégralement retéléchargés depuis le stockage à **chaque** affichage
+    d'une liste de clients. Ajout d'un `ETag` valant la clé de stockage (qui
+    change à chaque remplacement) : le navigateur revalide toujours — un
+    nouvel avatar apparaît donc immédiatement, comportement voulu préservé —
+    mais reçoit un `304` sans lecture du stockage ni octet transféré.
+  - **Écarté après mesure** : les vignettes (`createThumbnail`) étaient
+    suspectées, à tort — 12 vignettes d'une photo 6000×4000 prennent 158 ms
+    et +25 Mo. Ce n'est pas un problème.
 
 ## Points encore ouverts
 
@@ -1857,6 +1897,35 @@ Le client a explicitement délégué ces choix :
 - **Rendu mobile des nouvelles pages portfolio en galeries (2026-08-16)** :
   non vérifié, seul le rendu desktop a été observé en navigateur pour cette
   passe. À confirmer à la première consultation depuis un téléphone.
+- **Livrables volumineux (>50 Mo) — régression assumée du 2026-08-23.** Le
+  plafond est redescendu de 500 Mo à 50 Mo par fichier parce que la machine
+  ne peut pas faire autrement (voir "Deuxième passe de performance"), ce qui
+  annule de fait la demande du 2026-07-14 ("retirer la limite de taille des
+  livrables"). Deux façons de récupérer les gros fichiers vidéo, à
+  arbitrer avec le client : (1) **envoi direct au stockage S3** depuis le
+  navigateur, les octets ne transitant plus par la mémoire du serveur —
+  c'est la vraie solution, elle demande une route d'upload dédiée et une
+  configuration CORS côté OVH que seul le client peut faire ; (2)
+  **augmenter le conteneur** Scalingo (512 Mo → 1 Go ou plus), solution
+  immédiate mais payante et qui ne fait que déplacer le plafond.
+- **Aucune pagination sur les listes admin.** Tâches, Clients, Documents,
+  Prospection et Notes chargent l'intégralité de leurs enregistrements à
+  chaque affichage (seul l'Audit a un `take`). Sans conséquence visible au
+  volume actuel, mais la lenteur croîtra mécaniquement avec la base. Repéré
+  le 2026-08-23, non traité (ajouter une pagination touche l'interface de
+  cinq pages, chantier à part entière).
+- **Cache d'images perdu à chaque redémarrage.** Next optimise les photos du
+  portfolio avec sharp et met le résultat dans `.next/cache`, or le disque
+  Scalingo est éphémère : le cache est vidé à chaque déploiement et à chaque
+  redémarrage, et les originaux pleine résolution sont alors re-décodés.
+  Repéré le 2026-08-23, non traité — la correction passe par un CDN devant
+  le site ou par la livraison des médias directement depuis le stockage,
+  décision d'infrastructure qui appartient au client.
+- **Sessions expirées jamais purgées.** Une session n'est supprimée que si
+  quelqu'un la présente après expiration ; les sessions abandonnées restent
+  en base indéfiniment. Sans effet sur la vitesse (la recherche se fait sur
+  un index unique), mais la table grossit sans limite. Repéré le
+  2026-08-23, non traité.
 
 ## Journal des modifications demandées
 
@@ -2036,3 +2105,4 @@ Le client a explicitement délégué ces choix :
 | 2026-08-21 | "Penses-tu que c'est possible de faire quelque chose avec PayPal ou Revolut ?" (en discutant du signal de paiement ci-dessus) | PayPal ajouté en plus de Stripe (bouton "Payer avec PayPal" sur `/espace-client/administratif`) — Revolut écarté pour l'instant (compte Business + accès API requis, non vérifiable sans compte réel). Voir section "Backend interne" pour le détail technique. **Non testé en conditions réelles** : nécessite un compte PayPal Developer (sandbox) que seul le client peut fournir — voir `VALIDATION.md` |
 | 2026-08-22 | "Pour le moment il ne s'agit pas de factures mais bien de paiement, on fera les liens aux factures beaucoup plus tard ! Peux-tu renommer en conséquence ? Peux-tu également me donner la possibilité de faire le paiement avant de travailler ? Au début de la tâche ?" | Renommage : le message client bloqué ne renvoie plus vers les factures (bouton "Voir mes factures et payer" supprimé, celui-ci les liait prématurément à un système de facturation volontairement pas encore branché). Deux points confirmés avant de coder pour le nouveau verrou "avant de travailler" : interrupteur manuel (pas de vrai bouton de paiement Stripe/PayPal pour ce lot) et blocage réel du statut (pas un simple rappel) — voir section "Backend interne". Livré : même mécanique que le verrou livrables (réglage client par défaut + exception par évènement + confirmation manuelle), appliquée cette fois à l'entrée de la tâche plutôt qu'à la sortie — `setTaskStatus` refuse toute sortie du statut "Nouveau" tant que non payé. Testé de bout en bout (logique + navigateur, tentative de changement de statut réellement bloquée puis débloquée après confirmation) — voir `VALIDATION.md` |
 | 2026-08-22 | "Est-il possible de faire en sorte que les galeries dans les piliers affichent 2 colonnes en visuel sur le site internet (vision clients) ?" | Livré : page galerie publique (`/portfolio/[slug]/[galleryId]`) passée en 2 colonnes à partir de `sm`, 1 colonne en dessous, via colonnes CSS plutôt qu'une grille (voir section "Portfolio public" pour le raisonnement — une grille aurait laissé des trous dès que deux médias voisins n'ont pas la même hauteur, les galeries mélangeant librement du 3:4 et du 9:16). Testé en navigateur, desktop et mobile, avec des médias de hauteurs volontairement différentes pour vérifier l'absence de trous — voir `VALIDATION.md` |
+| 2026-08-23 | "Peux-tu regarder pourquoi mon site et l'app sont lentes, et regarder pourquoi ça crash souvent ?" (capture Scalingo fournie : conteneur web M — 512 Mo) | **Cause des crashs trouvée et corrigée** : la limite d'envoi des livrables (500 Mo/fichier, corps de requête autorisé à 2 Go) dépassait la mémoire totale de la machine, un fichier coûtant ~2,5× sa taille en RAM — mesuré, pas supposé. Plafonds ramenés à 50 Mo/fichier et 80 Mo/envoi, vérification faite avant toute lecture en mémoire. Mémoire réduite en plus sur les téléchargements (documents, documents Société, pièces jointes passés en streaming au lieu de 2 copies en RAM) et sur les avatars clients (`ETag` → `304` au lieu d'un retéléchargement complet à chaque liste). Deux fausses pistes écartées **par la mesure** et consignées : les vignettes (158 ms pour 12, non coupables) et le traitement des fichiers un par un (sans effet, le `File` retient la copie). Régression assumée à arbitrer : les livrables >50 Mo ne passent plus — voir "Points encore ouverts" pour les deux façons de les récupérer (envoi direct S3, ou conteneur plus grand). Trois causes de lenteur restantes identifiées mais non traitées (pagination absente, cache d'images sur disque éphémère, sessions jamais purgées) |

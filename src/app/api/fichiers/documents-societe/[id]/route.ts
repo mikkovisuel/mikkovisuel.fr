@@ -17,10 +17,13 @@ export async function GET(
   const document = await db.companyDocument.findUnique({ where: { id } });
   if (!document) return new NextResponse(null, { status: 404 });
 
+  // Streamé plutôt que chargé en mémoire (2026-08-23), même raison que
+  // `/api/fichiers/documents/[id]` : évite deux copies du fichier en RAM par
+  // téléchargement sur un conteneur de 512 Mo.
   const storage = getStorageAdapter();
-  const buffer = await storage.read(document.storageKey);
+  const body = await storage.readStream(document.storageKey);
 
-  return new NextResponse(new Uint8Array(buffer), {
+  return new NextResponse(body, {
     headers: {
       "Content-Type": document.mimeType,
       "Content-Disposition": `attachment; filename="${encodeURIComponent(document.fileName)}"`,

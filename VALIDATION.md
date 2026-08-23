@@ -470,6 +470,21 @@ Signalé par le client ("je ne peux pas réaffecter un contact supprimé") puis 
 | Lisibilité du texte avant/après malgré le conteneur élargi | — | ⚠️ Vérifié par relecture de code (`max-w-[65ch]` sur les deux paragraphes) — non re-testé avec un texte réellement long dans cette passe (la galerie de test n'avait pas de texte avant/après renseigné) | — | — | 2026-08-22 |
 | Vidéos dans la mise en page 2 colonnes | — | ⚠️ Non testé — la galerie utilisée pour ce lot ne contenait que des photos. `PortfolioVideo` reçoit la même classe `absolute inset-0` que l'image, comportement attendu identique par construction, à confirmer à la première ouverture d'une galerie mixte photo/vidéo | — | — | 2026-08-22 |
 
+## Performance et crashs : plafonds mémoire d'envoi, streaming, ETag (2026-08-23)
+
+`tsc --noEmit` et lint propres. Diagnostic **conduit par la mesure** (scripts jetables lancés dans cet environnement, supprimés depuis), puis correctifs vérifiés de bout en bout en navigateur contre une base Postgres locale réelle avec fichiers réels.
+
+| Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |
+|---|---|---|---|---|---|
+| Mesure : coût mémoire de la réception d'un fichier | Fichiers de 50 / 100 / 200 Mo passés par `File` → `arrayBuffer()` → `Buffer` | ✅ **Mesuré** : surcoût ×2,5 stable (200 Mo → +502 Mo). Sur un conteneur de 512 Mo, un seul fichier de 200 Mo dépasse donc la machine entière — cause directe des crashs | — | — | 2026-08-23 |
+| Mesure : le traitement fichier par fichier réduit-il le pic ? | Copie relâchée (`b = null`) puis `gc()` forcé | ✅ **Mesuré, hypothèse infirmée** : 80 Mo → 160 Mo après copie, **toujours 160 Mo** après relâchement — le `File` retient la copie. Le correctif envisagé était donc inopérant ; abandonné et consigné plutôt que livré | — | — | 2026-08-23 |
+| Mesure : les vignettes sont-elles en cause ? | 12 vignettes d'une photo 6000×4000, en parallèle | ✅ **Mesuré, hypothèse infirmée** : 158 ms et +25 Mo au total. Piste écartée | — | — | 2026-08-23 |
+| Envoi d'un livrable de taille normale (non-régression) | PDF de 2 Mo envoyé depuis la fiche tâche | ✅ **Testé en navigateur** : fichier accepté et listé dans les livrables après rechargement — confirme que le passage de la validation de contenu dans le `Promise.all` (via `InvalidFileContentError`) n'a rien cassé | Fichier de 55 Mo (au-dessus du plafond de 50 Mo) | ✅ Testé en navigateur : refusé avec le message "trop volumineux", **aucun plantage ni écran blanc**, et refus prononcé avant toute lecture en mémoire |
+| Téléchargement de document (converti en streaming) | Document de 3 145 728 octets | ✅ Testé en navigateur : HTTP 200, **3 145 728 octets exactement** — aucune troncature ni corruption introduite par le passage de `read()` à `readStream()` | — | — | 2026-08-23 |
+| Téléchargement de pièce jointe (converti en streaming) | Pièce jointe de 1 048 576 octets | ✅ Testé en navigateur : HTTP 200, **1 048 576 octets exactement** | Chemin `?thumb=1`, qui a toujours besoin du fichier entier pour sharp | ✅ Testé : répond 200, chemin bufferisé conservé volontairement (non régressé) |
+| `ETag` sur l'avatar client | Deux appels successifs, le second avec `If-None-Match` | ✅ Testé en navigateur : 1er appel HTTP 200 avec `ETag`, 2e appel **HTTP 304 sans aucun octet renvoyé** — la revalidation est conservée (un nouvel avatar reste visible immédiatement) mais ne relit plus le stockage | — | — | 2026-08-23 |
+| Absence de régression générale | Parcours admin complet pendant les tests | ✅ Aucune erreur 5xx ni erreur JavaScript relevée pendant toute la session de vérification | — | — | 2026-08-23 |
+
 ## Points restant ouverts pour une prochaine passe de validation
 
 - Glisser-déposer et `<select>` natif du Kanban Prospection (limite outil, voir ci-dessus).
@@ -534,3 +549,7 @@ Signalé par le client ("je ne peux pas réaffecter un contact supprimé") puis 
 - Rendu mobile des nouveaux contrôles "avant de travailler" (case client, contrôle tri-état sur la fiche tâche) : seul le rendu desktop a été observé en navigateur (2026-08-22).
 - Galerie publique 2 colonnes avec une vraie vidéo uploadée (2026-08-22) : non observé, voir section dédiée — la galerie de test ne contenait que des photos.
 - Galerie publique 2 colonnes avec un texte avant/après réellement long (2026-08-22) : `max-w-[65ch]` vérifié par lecture de code seulement, non observé avec du vrai contenu.
+- **Comportement réel sous les 512 Mo de production (2026-08-23)** : les mesures mémoire ont été faites dans cet environnement de développement, pas dans le conteneur Scalingo. Le facteur ×2,5 et le raisonnement sur les plafonds valent donc par construction, mais le fait que les crashs cessent effectivement ne pourra être confirmé qu'après mise en ligne, en surveillant les redémarrages et les emails "Erreur serveur".
+- **Envoi d'un fichier entre 50 et 80 Mo** (juste sous le plafond par fichier, proche du plafond de cumul) : non exercé, seuls un fichier de 2 Mo (accepté) et un de 55 Mo (refusé) l'ont été. Le comportement attendu est un envoi qui aboutit, à confirmer en usage réel.
+- **Envoi multi-fichiers dépassant le cumul de 80 Mo** : le garde `MAX_UPLOAD_TOTAL_SIZE` a été vérifié par lecture de code seulement, non exercé avec plusieurs fichiers réels.
+- **Téléchargement en streaming depuis un stockage S3 réel** : vérifié uniquement contre le stockage local (`storage/`), les deux implémentations partageant la même interface `readStream` déjà utilisée en production pour les livrables. À confirmer au premier téléchargement réel de document en ligne.

@@ -25,15 +25,17 @@ export async function GET(
   }
 
   const storage = getStorageAdapter();
-  const buffer = await storage.read(attachment.storageKey);
 
   // Vignette pour la grille (`FileGrid`, partagée avec les livrables) —
-  // voir src/lib/thumbnail.ts.
+  // voir src/lib/thumbnail.ts. Seul ce chemin a besoin du fichier entier en
+  // mémoire (sharp doit décoder l'image) ; le téléchargement normal, lui, est
+  // streamé depuis 2026-08-23 pour ne plus recopier chaque pièce jointe deux
+  // fois en RAM (`read` + `new Uint8Array`) sur un conteneur de 512 Mo.
   const wantsThumbnail =
     new URL(request.url).searchParams.get("thumb") === "1" &&
     attachment.mimeType.startsWith("image/");
   if (wantsThumbnail) {
-    const thumbnail = await createThumbnail(buffer);
+    const thumbnail = await createThumbnail(await storage.read(attachment.storageKey));
     return new NextResponse(new Uint8Array(thumbnail), {
       headers: { "Content-Type": "image/webp", "Cache-Control": "private, max-age=3600" },
     });
@@ -44,7 +46,8 @@ export async function GET(
       ? "inline"
       : "attachment";
 
-  return new NextResponse(new Uint8Array(buffer), {
+  const body = await storage.readStream(attachment.storageKey);
+  return new NextResponse(body, {
     headers: {
       "Content-Type": attachment.mimeType,
       "Content-Disposition": `${disposition}; filename="${encodeURIComponent(attachment.fileName)}"`,

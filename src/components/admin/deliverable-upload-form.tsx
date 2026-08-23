@@ -31,7 +31,7 @@ export function DeliverableUploadForm({
         required
         multiple
         dropzone
-        helperText="PDF, JPG, PNG, WEBP, MP4, ZIP · 500 Mo max par fichier"
+        helperText="PDF, JPG, PNG, WEBP, MP4, ZIP · 50 Mo max par fichier, 80 Mo par envoi"
       />
       <div className="flex flex-wrap items-end gap-3">
         <label className="flex flex-col gap-1 text-xs text-ink-muted">

@@ -13,7 +13,27 @@ import { contentMatchesDeclaredType } from "@/lib/file-signature";
 import { notifiableEmailsFromContacts } from "@/lib/clients";
 
 const MAX_DOCUMENT_SIZE = 20 * 1024 * 1024;
-const MAX_DELIVERABLE_SIZE = 500 * 1024 * 1024;
+// Plafond dicté par la mémoire réelle du conteneur, pas par une préférence
+// (2026-08-23). Le conteneur web Scalingo fait **512 Mo**, et recevoir un
+// fichier en coûte ~2,5 fois la taille (mesuré) : le corps de la requête est
+// bufferisé par Next, puis recopié par `file.arrayBuffer()`. Un fichier de
+// 200 Mo demandait donc à lui seul ~500 Mo — plus que la machine entière,
+// d'où les redémarrages intempestifs constatés. À 50 Mo le pic reste sous
+// ~125 Mo, ce qui laisse de la marge pour servir d'autres requêtes en même
+// temps. Voir `MAX_UPLOAD_TOTAL_SIZE` pour le cumul d'un même envoi.
+//
+// Pour retrouver des livrables vidéo lourds, il faut que les octets cessent
+// de transiter par la mémoire du serveur (envoi direct au stockage S3) —
+// chantier séparé, voir CAHIER_DES_CHARGES.md.
+const MAX_DELIVERABLE_SIZE = 50 * 1024 * 1024;
+// Le plafond qui protège réellement la machine, c'est celui-ci : le **cumul**
+// d'un envoi. Mesuré, la mémoire consommée vaut ~2,5× la taille totale reçue
+// (corps bufferisé par Next + copie de `arrayBuffer()`, que le `File` retient
+// — voir `uploadDeliverable`), et ce quel que soit le nombre de fichiers.
+// 80 Mo cumulés → ~200 Mo de pic, à quoi s'ajoute le processus Next au repos
+// (~150 Mo) : on reste autour de 350 Mo sur les 512 Mo disponibles, avec de
+// la marge pour servir d'autres requêtes pendant l'envoi.
+const MAX_UPLOAD_TOTAL_SIZE = 80 * 1024 * 1024;
 const MAX_ATTACHMENT_SIZE = 20 * 1024 * 1024;
 // Marge de sécurité sous la limite réelle de Resend (~40 Mo par email, tout
 // compris) : l'encodage base64 des pièces jointes gonfle leur taille
@@ -39,6 +59,17 @@ const ALLOWED_ATTACHMENT_TYPES = new Set([
 
 export type FileUploadState = { error?: string } | undefined;
 
+// La validation du contenu se fait à l'intérieur du `Promise.all` d'envoi
+// (voir `uploadDeliverable`), d'où cette erreur dédiée : elle permet de
+// distinguer un fichier au contenu invalide — message précis à l'admin — d'une
+// vraie panne de stockage, sans transformer le rejet en écran blanc.
+class InvalidFileContentError extends Error {
+  constructor(readonly fileName: string) {
+    super(`Invalid content for ${fileName}`);
+    this.name = "InvalidFileContentError";
+  }
+}
+
 export async function uploadDeliverable(
   taskId: string,
   _prev: FileUploadState,
@@ -50,19 +81,24 @@ export async function uploadDeliverable(
   if (files.length === 0) {
     return { error: "Choisissez au moins un fichier." };
   }
-  const buffers = new Map<File, Buffer>();
+  // Validation d'abord, sur les métadonnées seules : refuser un envoi trop
+  // lourd AVANT de lire le moindre octet en mémoire.
+  let totalSize = 0;
   for (const file of files) {
     if (file.size > MAX_DELIVERABLE_SIZE) {
-      return { error: `"${file.name}" est trop volumineux (500 Mo maximum).` };
+      return {
+        error: `"${file.name}" est trop volumineux (${formatFileSize(MAX_DELIVERABLE_SIZE)} maximum par fichier).`,
+      };
     }
     if (!ALLOWED_DELIVERABLE_TYPES.has(file.type)) {
       return { error: `"${file.name}" : type de fichier non autorisé.` };
     }
-    const buffer = Buffer.from(await file.arrayBuffer());
-    if (!(await contentMatchesDeclaredType(buffer, file.type))) {
-      return { error: `"${file.name}" : le contenu du fichier ne correspond pas à son type déclaré.` };
-    }
-    buffers.set(file, buffer);
+    totalSize += file.size;
+  }
+  if (totalSize > MAX_UPLOAD_TOTAL_SIZE) {
+    return {
+      error: `Envoi trop volumineux au total (${formatFileSize(totalSize)}, ${formatFileSize(MAX_UPLOAD_TOTAL_SIZE)} maximum) — envoyez-les en plusieurs fois.`,
+    };
   }
 
   const kindRaw = formData.get("kind");
@@ -78,6 +114,16 @@ export async function uploadDeliverable(
   // En parallèle plutôt que fichier par fichier : avec plusieurs livrables
   // en un envoi, un upload séquentiel vers le stockage S3 peut prendre assez
   // de temps pour dépasser le délai d'attente du routeur.
+  //
+  // Traiter les fichiers un par un a été essayé le 2026-08-23 pour réduire le
+  // pic mémoire, puis **abandonné après mesure** : en Node, `File.arrayBuffer()`
+  // matérialise une copie que l'objet `File` conserve ensuite lui-même. Relâcher
+  // la variable ne libère donc rien tant que la requête vit (vérifié : 80 Mo →
+  // 160 Mo après copie, toujours 160 Mo après mise à `null` et `gc()`). Le
+  // séquentiel n'apportait aucun gain et rouvrait le risque de timeout ci-dessus.
+  // Le seul levier réel est donc de plafonner le **cumul** en amont — voir
+  // `MAX_UPLOAD_TOTAL_SIZE` et les limites de corps dans `next.config.ts`.
+  //
   // Attrapé explicitement : sans ce try/catch, un échec de stockage (S3 hors
   // service, mémoire serveur saturée par un gros fichier vidéo, etc.) remonte
   // comme une exception non gérée et fait planter toute la page côté admin
@@ -85,8 +131,12 @@ export async function uploadDeliverable(
   try {
     await Promise.all(
       files.map(async (file) => {
+        const buffer = Buffer.from(await file.arrayBuffer());
+        if (!(await contentMatchesDeclaredType(buffer, file.type))) {
+          throw new InvalidFileContentError(file.name);
+        }
+
         const storageKey = `deliverables/${randomUUID()}`;
-        const buffer = buffers.get(file)!;
         await storage.save(storageKey, buffer);
 
         await db.deliverable.create({
@@ -103,6 +153,11 @@ export async function uploadDeliverable(
       }),
     );
   } catch (error) {
+    if (error instanceof InvalidFileContentError) {
+      return {
+        error: `"${error.fileName}" : le contenu du fichier ne correspond pas à son type déclaré.`,
+      };
+    }
     console.error("uploadDeliverable failed", error);
     return {
       error:
