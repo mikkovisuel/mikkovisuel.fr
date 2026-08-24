@@ -498,6 +498,17 @@ Signalé par le client ("je ne peux pas réaffecter un contact supprimé") puis 
 | Encours de paiement exact malgré la pagination | `/admin/documents` page 1 puis page 2, même filtre | ✅ Testé en navigateur : "Encours de paiement : 60 000,00 €" identique sur les deux pages (calculé par une requête séparée non paginée, pas par somme des documents affichés) | — | — | 2026-08-24 |
 | Absence de régression générale | Parcours Tâches/Documents pendant les tests | ✅ Aucune erreur 5xx ni erreur JavaScript relevée | — | — | 2026-08-24 |
 
+## Ajustement pagination Tâches — actives non paginées, seule "Terminées" pagine (2026-08-24)
+
+Suite au signalement client sur `/admin/taches` : la pagination initiale (voir section ci-dessus) portait sur l'ensemble actives+terminées confondu avant leur séparation à l'affichage, si bien qu'une tâche active pouvait tomber sur la page 2 ou 3 selon le tri. `tsc --noEmit` et lint propres. Vérifié contre la base de dev locale, 90 tâches "Terminée" insérées temporairement (client réel non-démo) puis retirées après test.
+
+| Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |
+|---|---|---|---|---|---|
+| Tâches actives affichées en entier, sans pagination | `/admin/taches` (vue Liste, aucun filtre de statut), 6 tâches actives + 90 "Terminée" | ✅ Testé en navigateur : les 6 tâches actives présentes en page 1 **et** en page 2 de la section "Terminées" — jamais coupées par la pagination | — | — | 2026-08-24 |
+| Pagination déplacée sur la seule section "Terminées" | Repli "Terminées (90)" déplié | ✅ Testé en navigateur : "Page 1 / 3" puis "Page 2 / 3" après clic "Suivant" (lien `?page=2`), contenu différent (tâches #90→#51 puis #50→#11) | — | — | 2026-08-24 |
+| Comportement inchangé avec un statut précis filtré | `/admin/taches?status=termine` | ✅ Relu en code : bascule `paginateDoneOnly = isListe && !status` — avec un statut sélectionné, retombe sur l'ancien comportement (pagination de l'ensemble filtré, 40/page) | Filtre sur un statut actif (ex. "En cours") avec 0 résultat | ✅ Relu en code : `Math.max(1, Math.ceil(0/40))` → 1 page, pas de lien "Suivant" | 2026-08-24 |
+| Absence de régression sur les autres vues | `/admin/taches?vue=kanban`, `?vue=calendrier`, `?vue=archivees` | ✅ Non ré-exercées en navigateur pour cet ajustement (aucune modification de leur chemin de code — `paginateDoneOnly` est toujours `false` hors vue Liste) | — | — | 2026-08-24 |
+
 ## Points restant ouverts pour une prochaine passe de validation
 
 - Glisser-déposer et `<select>` natif du Kanban Prospection (limite outil, voir ci-dessus).

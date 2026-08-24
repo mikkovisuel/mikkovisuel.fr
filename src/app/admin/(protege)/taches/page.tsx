@@ -80,39 +80,67 @@ export default async function AdminTasksPage({
     ...(isListe && format ? { formats: { some: { slug: format } } } : {}),
   };
 
-  const [tasks, taskCount, statusList, typeList, formatList, clients] = await Promise.all([
-    db.task.findMany({
-      where: taskWhere,
-      include: {
-        client: true,
-        status: true,
-        types: true,
-        formats: true,
-        timeEntries: { select: { startedAt: true, endedAt: true } },
-        _count: { select: { deliverables: true, attachments: true } },
-      },
-      orderBy: buildTaskOrderBy(sortField, sortDir),
-      // Kanban/Calendrier/Archivées ont besoin du jeu complet — seule la
-      // vue Liste pagine.
-      ...(isListe ? { skip: (currentPage - 1) * PAGE_SIZE, take: PAGE_SIZE } : {}),
-    }),
-    isListe ? db.task.count({ where: taskWhere }) : Promise.resolve(0),
-    db.dropdownList.findUnique({
-      where: { key: TASK_STATUS_LIST_KEY },
-      include: { items: { orderBy: { sortOrder: "asc" } } },
-    }),
-    db.dropdownList.findUnique({
-      where: { key: TASK_TYPE_LIST_KEY },
-      include: { items: { orderBy: { sortOrder: "asc" } } },
-    }),
-    db.dropdownList.findUnique({
-      where: { key: TASK_FORMAT_LIST_KEY },
-      include: { items: { orderBy: { sortOrder: "asc" } } },
-    }),
-    db.client.findMany({ where: ACTIVE_CLIENTS, orderBy: { name: "asc" } }),
-  ]);
+  // Pagination (2026-08-24, suite au signalement de lenteur ; ajustée le
+  // 2026-08-24 sur demande client : les tâches actives doivent rester
+  // affichées en entier, seule la section "Terminées" (repliée par défaut)
+  // pagine — sinon une tâche active pouvait se retrouver "cachée" sur une
+  // page suivante selon le tri). Ne s'applique qu'en vue Liste sans filtre
+  // de statut explicite ; avec un statut précis sélectionné, on repagine
+  // l'ensemble filtré comme avant.
+  const paginateDoneOnly = isListe && !status;
+  const taskInclude = {
+    client: true,
+    status: true,
+    types: true,
+    formats: true,
+    timeEntries: { select: { startedAt: true, endedAt: true } },
+    _count: { select: { deliverables: true, attachments: true } },
+  } as const;
+  const taskOrderBy = buildTaskOrderBy(sortField, sortDir);
 
-  const totalPages = isListe ? Math.max(1, Math.ceil(taskCount / PAGE_SIZE)) : 1;
+  const [tasks, doneTasksPaginated, pageCount, statusList, typeList, formatList, clients] =
+    await Promise.all([
+      db.task.findMany({
+        where: paginateDoneOnly
+          ? { ...taskWhere, status: { slug: { not: TASK_STATUS.TERMINE } } }
+          : taskWhere,
+        include: taskInclude,
+        orderBy: taskOrderBy,
+        // Kanban/Calendrier/Archivées ont besoin du jeu complet — seule la
+        // vue Liste pagine (et seulement quand un statut précis est filtré,
+        // sinon les actives sont récupérées en entier ci-dessus).
+        ...(isListe && !paginateDoneOnly ? { skip: (currentPage - 1) * PAGE_SIZE, take: PAGE_SIZE } : {}),
+      }),
+      paginateDoneOnly
+        ? db.task.findMany({
+            where: { ...taskWhere, status: { slug: TASK_STATUS.TERMINE } },
+            include: taskInclude,
+            orderBy: taskOrderBy,
+            skip: (currentPage - 1) * PAGE_SIZE,
+            take: PAGE_SIZE,
+          })
+        : Promise.resolve([]),
+      paginateDoneOnly
+        ? db.task.count({ where: { ...taskWhere, status: { slug: TASK_STATUS.TERMINE } } })
+        : isListe
+          ? db.task.count({ where: taskWhere })
+          : Promise.resolve(0),
+      db.dropdownList.findUnique({
+        where: { key: TASK_STATUS_LIST_KEY },
+        include: { items: { orderBy: { sortOrder: "asc" } } },
+      }),
+      db.dropdownList.findUnique({
+        where: { key: TASK_TYPE_LIST_KEY },
+        include: { items: { orderBy: { sortOrder: "asc" } } },
+      }),
+      db.dropdownList.findUnique({
+        where: { key: TASK_FORMAT_LIST_KEY },
+        include: { items: { orderBy: { sortOrder: "asc" } } },
+      }),
+      db.client.findMany({ where: ACTIVE_CLIENTS, orderBy: { name: "asc" } }),
+    ]);
+
+  const totalPages = isListe ? Math.max(1, Math.ceil(pageCount / PAGE_SIZE)) : 1;
 
   const statusOptions =
     statusList?.items.map((item) => ({ slug: item.slug, label: item.label, color: item.color })) ??
@@ -315,8 +343,21 @@ export default async function AdminTasksPage({
 
       {view === "liste" &&
         (() => {
-          const activeTasks = tasks.filter((task) => task.status.slug !== TASK_STATUS.TERMINE);
-          const doneTasks = tasks.filter((task) => task.status.slug === TASK_STATUS.TERMINE);
+          const activeTasks = paginateDoneOnly
+            ? tasks
+            : tasks.filter((task) => task.status.slug !== TASK_STATUS.TERMINE);
+          const doneTasks = paginateDoneOnly
+            ? doneTasksPaginated
+            : tasks.filter((task) => task.status.slug === TASK_STATUS.TERMINE);
+          const doneCount = paginateDoneOnly ? pageCount : doneTasks.length;
+          const pagination = (
+            <Pagination
+              basePath="/admin/taches"
+              currentPage={currentPage}
+              totalPages={totalPages}
+              searchParams={{ clientId, status, mois, tri, dir, q, type, format, epingle }}
+            />
+          );
           return (
             <>
               <TaskTable
@@ -330,10 +371,13 @@ export default async function AdminTasksPage({
               />
               {/* Repliées par défaut (demande du client le 2026-07-30) : les
                   tâches terminées n'appellent plus d'action et poussaient le
-                  reste de la liste hors de l'écran. */}
-              {doneTasks.length > 0 && (
+                  reste de la liste hors de l'écran. Paginées (voir
+                  paginateDoneOnly ci-dessus) sans filtre de statut explicite,
+                  pour garder les tâches actives entièrement visibles tout en
+                  limitant la requête sur l'historique des terminées. */}
+              {doneCount > 0 && (
                 <div className="mt-10">
-                  <CollapsibleSection title="Terminées" count={doneTasks.length}>
+                  <CollapsibleSection title="Terminées" count={doneCount}>
                     <TaskTable
                       tasks={doneTasks}
                       statusOptions={statusOptions}
@@ -342,15 +386,11 @@ export default async function AdminTasksPage({
                       clientId={clientId}
                       status={status}
                     />
+                    {paginateDoneOnly && pagination}
                   </CollapsibleSection>
                 </div>
               )}
-              <Pagination
-                basePath="/admin/taches"
-                currentPage={currentPage}
-                totalPages={totalPages}
-                searchParams={{ clientId, status, mois, tri, dir, q, type, format, epingle }}
-              />
+              {!paginateDoneOnly && pagination}
             </>
           );
         })()}
