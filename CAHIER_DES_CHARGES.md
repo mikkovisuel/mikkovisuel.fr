@@ -1671,6 +1671,41 @@ Le client a explicitement délégué ces choix :
   - **Écarté après mesure** : les vignettes (`createThumbnail`) étaient
     suspectées, à tort — 12 vignettes d'une photo 6000×4000 prennent 158 ms
     et +25 Mo. Ce n'est pas un problème.
+- **Troisième passe de performance — pagination des listes Tâches et
+  Documents** (2026-08-24, suite de la passe précédente, "oui tu peux") :
+  la base de données seule n'expliquait pas la lenteur mesurée sur ces deux
+  pages (toutes les requêtes Prisma seules < 200 ms) — la cause était la
+  taille de la page HTML+React renvoyée à chaque affichage, qui grossit
+  linéairement avec le nombre d'enregistrements puisque tout était chargé
+  sans limite. Vérifié sur une base réaliste (120 clients / 724 tâches /
+  120 documents, seedée pour l'occasion) : `/admin/documents` pesait 1,5 Mo
+  et répondait en 2 à 2,6 s, `/admin/taches` 4,4 Mo en ~1 s — décomposition
+  du payload Documents faite (56 % dû à la duplication du payload
+  d'hydratation React, 17 % icônes SVG inline, 7 % câblage des Server
+  Actions liées, ~20 % contenu réel), confirmant que réduire le nombre
+  d'enregistrements envoyés était le levier le plus rentable, plutôt que la
+  dédoublication d'icônes ou une virtualisation côté client (gains bien
+  moindres pour un chantier plus lourd). Nouveau composant
+  `src/components/admin/pagination.tsx` (Précédent/Page X sur Y/Suivant,
+  conserve tous les filtres/tri déjà dans l'URL). Appliqué uniquement là où
+  la lenteur était mesurée et où une vue paginée a du sens :
+  - `/admin/taches`, vue **Liste** uniquement (40/page) — Kanban,
+    Calendrier et Archivées gardent le jeu complet, ils en ont besoin pour
+    fonctionner (répartition par statut, par date...).
+  - `/admin/documents`, vue **Détaillé** uniquement (30/page) — la vue
+    "Bacs" (regroupement par type) garde le jeu complet pour la même
+    raison. L'encours de paiement affiché en haut de page reste calculé
+    sur une requête séparée et non paginée, pour rester exact quelle que
+    soit la page consultée (sommer uniquement les documents affichés
+    aurait donné un total faux).
+  - Mesuré après coup (même base, même méthode) : `/admin/taches` (Liste)
+    passe de ~1,1 s / 4,4 Mo à ~0,3 s / 320 Ko une fois la compilation
+    chaude ; `/admin/documents` (Détaillé) de ~2 à 2,6 s / 1,5 Mo à ~0,8 s /
+    480 Ko. Kanban et Bacs, volontairement non paginés, restent inchangés
+    (vérifié : toujours le jeu complet, aucune régression).
+  - Clients, Prospection et Notes restent non paginés — volumes mesurés
+    trop faibles à ce jour pour justifier le chantier (voir "Points encore
+    ouverts" si la base grossit).
 
 ## Points encore ouverts
 
@@ -1908,12 +1943,13 @@ Le client a explicitement délégué ces choix :
   configuration CORS côté OVH que seul le client peut faire ; (2)
   **augmenter le conteneur** Scalingo (512 Mo → 1 Go ou plus), solution
   immédiate mais payante et qui ne fait que déplacer le plafond.
-- **Aucune pagination sur les listes admin.** Tâches, Clients, Documents,
-  Prospection et Notes chargent l'intégralité de leurs enregistrements à
-  chaque affichage (seul l'Audit a un `take`). Sans conséquence visible au
-  volume actuel, mais la lenteur croîtra mécaniquement avec la base. Repéré
-  le 2026-08-23, non traité (ajouter une pagination touche l'interface de
-  cinq pages, chantier à part entière).
+- **Pagination admin — livrée le 2026-08-24 pour Tâches (Liste) et
+  Documents (Détaillé)**, voir "Troisième passe de performance" ci-dessus.
+  Clients, Prospection et Notes chargent toujours l'intégralité de leurs
+  enregistrements à chaque affichage (seul l'Audit a par ailleurs un
+  `take` fixe sans navigation) — sans conséquence visible au volume actuel
+  de ces trois pages, mais à reprendre si leur volume grossit
+  significativement.
 - **Cache d'images perdu à chaque redémarrage.** Next optimise les photos du
   portfolio avec sharp et met le résultat dans `.next/cache`, or le disque
   Scalingo est éphémère : le cache est vidé à chaque déploiement et à chaque
@@ -2106,3 +2142,4 @@ Le client a explicitement délégué ces choix :
 | 2026-08-22 | "Pour le moment il ne s'agit pas de factures mais bien de paiement, on fera les liens aux factures beaucoup plus tard ! Peux-tu renommer en conséquence ? Peux-tu également me donner la possibilité de faire le paiement avant de travailler ? Au début de la tâche ?" | Renommage : le message client bloqué ne renvoie plus vers les factures (bouton "Voir mes factures et payer" supprimé, celui-ci les liait prématurément à un système de facturation volontairement pas encore branché). Deux points confirmés avant de coder pour le nouveau verrou "avant de travailler" : interrupteur manuel (pas de vrai bouton de paiement Stripe/PayPal pour ce lot) et blocage réel du statut (pas un simple rappel) — voir section "Backend interne". Livré : même mécanique que le verrou livrables (réglage client par défaut + exception par évènement + confirmation manuelle), appliquée cette fois à l'entrée de la tâche plutôt qu'à la sortie — `setTaskStatus` refuse toute sortie du statut "Nouveau" tant que non payé. Testé de bout en bout (logique + navigateur, tentative de changement de statut réellement bloquée puis débloquée après confirmation) — voir `VALIDATION.md` |
 | 2026-08-22 | "Est-il possible de faire en sorte que les galeries dans les piliers affichent 2 colonnes en visuel sur le site internet (vision clients) ?" | Livré : page galerie publique (`/portfolio/[slug]/[galleryId]`) passée en 2 colonnes à partir de `sm`, 1 colonne en dessous, via colonnes CSS plutôt qu'une grille (voir section "Portfolio public" pour le raisonnement — une grille aurait laissé des trous dès que deux médias voisins n'ont pas la même hauteur, les galeries mélangeant librement du 3:4 et du 9:16). Testé en navigateur, desktop et mobile, avec des médias de hauteurs volontairement différentes pour vérifier l'absence de trous — voir `VALIDATION.md` |
 | 2026-08-23 | "Peux-tu regarder pourquoi mon site et l'app sont lentes, et regarder pourquoi ça crash souvent ?" (capture Scalingo fournie : conteneur web M — 512 Mo) | **Cause des crashs trouvée et corrigée** : la limite d'envoi des livrables (500 Mo/fichier, corps de requête autorisé à 2 Go) dépassait la mémoire totale de la machine, un fichier coûtant ~2,5× sa taille en RAM — mesuré, pas supposé. Plafonds ramenés à 50 Mo/fichier et 80 Mo/envoi, vérification faite avant toute lecture en mémoire. Mémoire réduite en plus sur les téléchargements (documents, documents Société, pièces jointes passés en streaming au lieu de 2 copies en RAM) et sur les avatars clients (`ETag` → `304` au lieu d'un retéléchargement complet à chaque liste). Deux fausses pistes écartées **par la mesure** et consignées : les vignettes (158 ms pour 12, non coupables) et le traitement des fichiers un par un (sans effet, le `File` retient la copie). Régression assumée à arbitrer : les livrables >50 Mo ne passent plus — voir "Points encore ouverts" pour les deux façons de les récupérer (envoi direct S3, ou conteneur plus grand). Trois causes de lenteur restantes identifiées mais non traitées (pagination absente, cache d'images sur disque éphémère, sessions jamais purgées) |
+| 2026-08-24 | "oui tu peux" (feu vert pour poursuivre les causes de lenteur restantes identifiées le 2026-08-23) | Pagination livrée pour les deux pages mesurées lentes à volume réaliste : `/admin/taches` (vue Liste, 40/page) et `/admin/documents` (vue Détaillé, 30/page) — Kanban/Calendrier/Archivées et la vue Bacs gardent le jeu complet, ils en ont besoin. Nouveau composant partagé `src/components/admin/pagination.tsx`. Vérifié avant/après sur une base seedée réaliste (120 clients/724 tâches/120 documents) : Tâches Liste 4,4 Mo/~1,1 s → 320 Ko/~0,3 s, Documents Détaillé 1,5 Mo/2 à 2,6 s → 480 Ko/~0,8 s — voir "Troisième passe de performance" et `VALIDATION.md`. Cache d'images éphémère et sessions non purgées restent non traités, voir "Points encore ouverts" |

@@ -25,6 +25,7 @@ import {
   type TaskSortDir,
 } from "@/lib/tasks";
 import { ACTIVE_CLIENTS } from "@/lib/clients";
+import { Pagination } from "@/components/admin/pagination";
 
 export const metadata: Metadata = {
   title: "Tâches — Admin Mikko Visuel",
@@ -35,6 +36,10 @@ export const metadata: Metadata = {
 // sur "liste" via le ternaire ci-dessous, plutôt que d'afficher une vue qui
 // n'existe plus.
 const VALID_VIEWS: TaskView[] = ["liste", "kanban", "calendrier", "archivees"];
+
+// Pagination (2026-08-24, suite au signalement de lenteur) : uniquement en
+// vue Liste — Kanban/Calendrier/Archivées ont besoin du jeu complet.
+const PAGE_SIZE = 40;
 
 export default async function AdminTasksPage({
   searchParams,
@@ -50,10 +55,11 @@ export default async function AdminTasksPage({
     type?: string;
     format?: string;
     epingle?: string;
+    page?: string;
   }>;
 }) {
   await verifyAdminSession();
-  const { clientId, status, vue, mois, tri, dir, q, type, format, epingle } = await searchParams;
+  const { clientId, status, vue, mois, tri, dir, q, type, format, epingle, page } = await searchParams;
   const view: TaskView = VALID_VIEWS.includes(vue as TaskView) ? (vue as TaskView) : "liste";
   const sortField: TaskSortField = isTaskSortField(tri) ? tri : "evenement";
   const sortDir: TaskSortDir = dir === "desc" ? "desc" : "asc";
@@ -61,19 +67,22 @@ export default async function AdminTasksPage({
   // (pas de plomberie de propagation vers Kanban/Calendrier/Par client).
   const isListe = view === "liste";
   const pinnedOnly = epingle === "1";
+  const currentPage = Math.max(1, Number(page) || 1);
 
-  const [tasks, statusList, typeList, formatList, clients] = await Promise.all([
+  const taskWhere = {
+    ...EXCLUDE_DEMO_CLIENT_TASKS,
+    archivedAt: view === "archivees" ? { not: null } : null,
+    ...(clientId ? { clientId } : {}),
+    ...(status ? { status: { slug: status } } : {}),
+    ...(pinnedOnly ? { pinnedAt: { not: null } } : {}),
+    ...(isListe && q ? { title: { contains: q } } : {}),
+    ...(isListe && type ? { types: { some: { slug: type } } } : {}),
+    ...(isListe && format ? { formats: { some: { slug: format } } } : {}),
+  };
+
+  const [tasks, taskCount, statusList, typeList, formatList, clients] = await Promise.all([
     db.task.findMany({
-      where: {
-        ...EXCLUDE_DEMO_CLIENT_TASKS,
-        archivedAt: view === "archivees" ? { not: null } : null,
-        ...(clientId ? { clientId } : {}),
-        ...(status ? { status: { slug: status } } : {}),
-        ...(pinnedOnly ? { pinnedAt: { not: null } } : {}),
-        ...(isListe && q ? { title: { contains: q } } : {}),
-        ...(isListe && type ? { types: { some: { slug: type } } } : {}),
-        ...(isListe && format ? { formats: { some: { slug: format } } } : {}),
-      },
+      where: taskWhere,
       include: {
         client: true,
         status: true,
@@ -83,7 +92,11 @@ export default async function AdminTasksPage({
         _count: { select: { deliverables: true, attachments: true } },
       },
       orderBy: buildTaskOrderBy(sortField, sortDir),
+      // Kanban/Calendrier/Archivées ont besoin du jeu complet — seule la
+      // vue Liste pagine.
+      ...(isListe ? { skip: (currentPage - 1) * PAGE_SIZE, take: PAGE_SIZE } : {}),
     }),
+    isListe ? db.task.count({ where: taskWhere }) : Promise.resolve(0),
     db.dropdownList.findUnique({
       where: { key: TASK_STATUS_LIST_KEY },
       include: { items: { orderBy: { sortOrder: "asc" } } },
@@ -98,6 +111,8 @@ export default async function AdminTasksPage({
     }),
     db.client.findMany({ where: ACTIVE_CLIENTS, orderBy: { name: "asc" } }),
   ]);
+
+  const totalPages = isListe ? Math.max(1, Math.ceil(taskCount / PAGE_SIZE)) : 1;
 
   const statusOptions =
     statusList?.items.map((item) => ({ slug: item.slug, label: item.label, color: item.color })) ??
@@ -330,6 +345,12 @@ export default async function AdminTasksPage({
                   </CollapsibleSection>
                 </div>
               )}
+              <Pagination
+                basePath="/admin/taches"
+                currentPage={currentPage}
+                totalPages={totalPages}
+                searchParams={{ clientId, status, mois, tri, dir, q, type, format, epingle }}
+              />
             </>
           );
         })()}

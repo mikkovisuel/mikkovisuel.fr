@@ -485,6 +485,19 @@ Signalé par le client ("je ne peux pas réaffecter un contact supprimé") puis 
 | `ETag` sur l'avatar client | Deux appels successifs, le second avec `If-None-Match` | ✅ Testé en navigateur : 1er appel HTTP 200 avec `ETag`, 2e appel **HTTP 304 sans aucun octet renvoyé** — la revalidation est conservée (un nouvel avatar reste visible immédiatement) mais ne relit plus le stockage | — | — | 2026-08-23 |
 | Absence de régression générale | Parcours admin complet pendant les tests | ✅ Aucune erreur 5xx ni erreur JavaScript relevée pendant toute la session de vérification | — | — | 2026-08-23 |
 
+## Pagination Tâches (Liste) et Documents (Détaillé) (2026-08-24)
+
+`tsc --noEmit` et lint propres. Vérifié contre une base Postgres locale réaliste (120 clients / 724 tâches / 120 documents, seedée pour l'occasion), avant/après en mode production (`npm run build && npm start`, pas le serveur de dev qui compile à la demande et fausse les temps).
+
+| Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |
+|---|---|---|---|---|---|
+| Mesure : gain réel de la pagination | `/admin/taches` (Liste) et `/admin/documents` (Détaillé), avant/après, même base | ✅ **Mesuré** : Tâches Liste 4,4 Mo / ~1,1 s → 320 Ko / ~0,3 s ; Documents Détaillé 1,5 Mo / 2 à 2,6 s → 480 Ko / ~0,8 s | — | — | 2026-08-24 |
+| Navigation "Suivant" en vue Liste des tâches | Clic sur "Suivant" depuis `/admin/taches` | ✅ Testé en navigateur : URL passe à `?page=2`, libellé "Page 2 / 18" affiché, contenu différent de la page 1 | — | — | 2026-08-24 |
+| Filtres/tri préservés en changeant de page | `/admin/taches?tri=titre&dir=desc` puis clic "Suivant" | ✅ Testé en navigateur : URL résultante conserve `tri=titre&dir=desc` en plus de `page=2` | — | — | 2026-08-24 |
+| Vues non paginées inchangées | `/admin/taches?vue=kanban` et `/admin/documents?vue=bacs` | ✅ Testé en navigateur : aucun contrôle de pagination affiché, taille de payload Kanban inchangée (3,2 Mo, jeu complet des 724 tâches) | — | — | 2026-08-24 |
+| Encours de paiement exact malgré la pagination | `/admin/documents` page 1 puis page 2, même filtre | ✅ Testé en navigateur : "Encours de paiement : 60 000,00 €" identique sur les deux pages (calculé par une requête séparée non paginée, pas par somme des documents affichés) | — | — | 2026-08-24 |
+| Absence de régression générale | Parcours Tâches/Documents pendant les tests | ✅ Aucune erreur 5xx ni erreur JavaScript relevée | — | — | 2026-08-24 |
+
 ## Points restant ouverts pour une prochaine passe de validation
 
 - Glisser-déposer et `<select>` natif du Kanban Prospection (limite outil, voir ci-dessus).
@@ -553,3 +566,5 @@ Signalé par le client ("je ne peux pas réaffecter un contact supprimé") puis 
 - **Envoi d'un fichier entre 50 et 80 Mo** (juste sous le plafond par fichier, proche du plafond de cumul) : non exercé, seuls un fichier de 2 Mo (accepté) et un de 55 Mo (refusé) l'ont été. Le comportement attendu est un envoi qui aboutit, à confirmer en usage réel.
 - **Envoi multi-fichiers dépassant le cumul de 80 Mo** : le garde `MAX_UPLOAD_TOTAL_SIZE` a été vérifié par lecture de code seulement, non exercé avec plusieurs fichiers réels.
 - **Téléchargement en streaming depuis un stockage S3 réel** : vérifié uniquement contre le stockage local (`storage/`), les deux implémentations partageant la même interface `readStream` déjà utilisée en production pour les livrables. À confirmer au premier téléchargement réel de document en ligne.
+- **Pagination : cas limite "page au-delà du total"** (ex. `?page=999` sur une liste qui n'a que 18 pages) : non exercé — `skip`/`take` de Prisma renvoie simplement une liste vide dans ce cas, la page afficherait "Aucun document/aucune tâche" sans lien "Précédent" cassé (le composant `Pagination` recalcule ses liens à partir de `currentPage` et `totalPages`, pas de code spécifique à ce cas), à confirmer en usage réel.
+- **Rendu mobile de la pagination** (2026-08-24) : seul le rendu desktop a été observé en navigateur.
