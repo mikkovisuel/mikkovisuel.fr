@@ -14,6 +14,7 @@ import { deleteDocument } from "@/lib/actions/files";
 import { DOCUMENT_TYPE_LIST_KEY, COMPANY_DOCUMENT_CATEGORY, COMPANY_DOCUMENT_CATEGORY_LABELS } from "@/lib/dropdown-lists";
 import { formatAmount } from "@/lib/documents";
 import { ACTIVE_CLIENTS } from "@/lib/clients";
+import { Pagination } from "@/components/admin/pagination";
 
 export const metadata: Metadata = {
   title: "Documents — Admin Mikko Visuel",
@@ -25,39 +26,66 @@ const STATUS_OPTIONS = [
   { value: "n/a", label: "Sans montant" },
 ];
 
+// Pagination (2026-08-24, suite au signalement de lenteur) : uniquement en
+// vue "Détaillé" — la vue "Bacs" a besoin de l'ensemble des documents pour
+// son regroupement par type.
+const PAGE_SIZE = 30;
+
 export default async function AdminDocumentsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ clientId?: string; typeId?: string; status?: string; vue?: string }>;
+  searchParams: Promise<{
+    clientId?: string;
+    typeId?: string;
+    status?: string;
+    vue?: string;
+    page?: string;
+  }>;
 }) {
   await verifyAdminSession();
-  const { clientId, typeId, status, vue } = await searchParams;
+  const { clientId, typeId, status, vue, page } = await searchParams;
   const isBinView = vue === "bacs";
+  const currentPage = Math.max(1, Number(page) || 1);
 
-  const [documents, clients, typeList, companyDocuments, paymentRecords] = await Promise.all([
-    db.document.findMany({
-      where: {
-        ...(clientId ? { clientId } : {}),
-        ...(typeId ? { typeId } : {}),
-        ...(status ? { paymentStatus: status } : {}),
-      },
-      include: { client: true, type: true },
-      orderBy: { uploadedAt: "desc" },
-    }),
-    db.client.findMany({ where: ACTIVE_CLIENTS, orderBy: { name: "asc" } }),
-    db.dropdownList.findUnique({
-      where: { key: DOCUMENT_TYPE_LIST_KEY },
-      include: { items: { orderBy: { sortOrder: "asc" } } },
-    }),
-    db.companyDocument.findMany({ orderBy: { uploadedAt: "desc" } }),
-    db.paymentRecord.findMany({
-      include: { client: { select: { name: true } } },
-      orderBy: { createdAt: "desc" },
-    }),
-  ]);
+  const documentWhere = {
+    ...(clientId ? { clientId } : {}),
+    ...(typeId ? { typeId } : {}),
+    ...(status ? { paymentStatus: status } : {}),
+  };
 
-  const outstandingCents = documents
-    .filter((doc) => doc.paymentStatus === "unpaid" && doc.amountCents !== null)
+  const [documents, documentCount, outstandingDocuments, clients, typeList, companyDocuments, paymentRecords] =
+    await Promise.all([
+      db.document.findMany({
+        where: documentWhere,
+        include: { client: true, type: true },
+        orderBy: { uploadedAt: "desc" },
+        // La vue "Bacs" a besoin de l'ensemble des documents (regroupement
+        // par type) — seule la vue "Détaillé" pagine.
+        ...(isBinView ? {} : { skip: (currentPage - 1) * PAGE_SIZE, take: PAGE_SIZE }),
+      }),
+      isBinView ? Promise.resolve(0) : db.document.count({ where: documentWhere }),
+      // Requête séparée, non paginée, pour que l'encours reste juste quelle
+      // que soit la page affichée (ne pas sommer uniquement `documents`).
+      db.document.findMany({
+        where: { ...documentWhere, paymentStatus: "unpaid" },
+        select: { amountCents: true },
+      }),
+      db.client.findMany({ where: ACTIVE_CLIENTS, orderBy: { name: "asc" } }),
+      db.dropdownList.findUnique({
+        where: { key: DOCUMENT_TYPE_LIST_KEY },
+        include: { items: { orderBy: { sortOrder: "asc" } } },
+      }),
+      db.companyDocument.findMany({ orderBy: { uploadedAt: "desc" } }),
+      db.paymentRecord.findMany({
+        include: { client: { select: { name: true } } },
+        orderBy: { createdAt: "desc" },
+      }),
+    ]);
+
+  const totalPages = isBinView ? 1 : Math.max(1, Math.ceil(documentCount / PAGE_SIZE));
+
+  const outstandingCents = outstandingDocuments
+    .filter((doc) => doc.amountCents !== null)
     .reduce((sum, doc) => sum + (doc.amountCents ?? 0), 0);
 
   const activeFilterCount = [clientId, typeId, status].filter(Boolean).length;
@@ -89,7 +117,7 @@ export default async function AdminDocumentsPage({
       {outstandingCents > 0 && (
         <div className="mt-6 rounded-2xl border border-line bg-surface-elevated p-4">
           <p className="text-sm text-ink-muted">
-            Encours de paiement (documents affichés) :{" "}
+            Encours de paiement :{" "}
             <span className="font-medium text-ink">{formatAmount(outstandingCents, "EUR")}</span>
           </p>
         </div>
@@ -197,17 +225,25 @@ export default async function AdminDocumentsPage({
       ) : isBinView ? (
         <DocumentBinView groups={binGroups} />
       ) : (
-        <div className="mt-8 divide-y divide-line rounded-2xl border border-line">
-          {documents.map((doc) => (
-            <DocumentRow
-              key={doc.id}
-              document={doc}
-              showClient
-              billingEmail={doc.client.billingEmail}
-              deleteAction={deleteDocument}
-            />
-          ))}
-        </div>
+        <>
+          <div className="mt-8 divide-y divide-line rounded-2xl border border-line">
+            {documents.map((doc) => (
+              <DocumentRow
+                key={doc.id}
+                document={doc}
+                showClient
+                billingEmail={doc.client.billingEmail}
+                deleteAction={deleteDocument}
+              />
+            ))}
+          </div>
+          <Pagination
+            basePath="/admin/documents"
+            currentPage={currentPage}
+            totalPages={totalPages}
+            searchParams={{ clientId, typeId, status, vue }}
+          />
+        </>
       )}
 
       {/* Section ajoutée le 2026-07-31 : documents internes sans client
