@@ -20,10 +20,16 @@ export async function GET(
     return new NextResponse(null, { status: 403 });
   }
 
+  // Streamé plutôt que lu en entier (2026-08-23) : `storage.read` chargeait
+  // le fichier en mémoire, puis `new Uint8Array(buffer)` en faisait une
+  // seconde copie — soit 2× la taille du document par téléchargement, sur un
+  // conteneur qui n'a que 512 Mo. Plusieurs téléchargements simultanés
+  // suffisaient à faire monter la mémoire pour rien, alors que l'adaptateur
+  // de stockage sait déjà streamer (`readStream`, utilisé pour les livrables).
   const storage = getStorageAdapter();
-  const buffer = await storage.read(document.storageKey);
+  const body = await storage.readStream(document.storageKey);
 
-  return new NextResponse(new Uint8Array(buffer), {
+  return new NextResponse(body, {
     headers: {
       "Content-Type": document.mimeType,
       "Content-Disposition": `attachment; filename="${encodeURIComponent(document.fileName)}"`,

@@ -53,12 +53,20 @@ const nextConfig: NextConfig = {
   async headers() {
     return [{ source: "/(.*)", headers: securityHeaders }];
   },
-  // Default Server Actions body limit is 1 MB. Deliverables can be large
-  // design/video files, uploaded several at a time - see MAX_DELIVERABLE_SIZE
-  // in src/lib/actions/files.ts for the per-file cap.
+  // Default Server Actions body limit is 1 MB. Deliverables can be several
+  // files at a time - see MAX_DELIVERABLE_SIZE / MAX_UPLOAD_TOTAL_SIZE in
+  // src/lib/actions/files.ts for the caps actually enforced.
+  //
+  // Ces deux valeurs étaient à "2gb" jusqu'au 2026-08-23. C'était intenable :
+  // le corps de la requête est **bufferisé en mémoire**, sur un conteneur qui
+  // n'a que 512 Mo au total. Autoriser 2 Go revenait à autoriser n'importe
+  // quel envoi à tuer le processus. Elles sont désormais calées juste
+  // au-dessus du plafond applicatif (80 Mo cumulés) : la marge couvre le
+  // surcoût d'encodage multipart, sans laisser passer un envoi que la machine
+  // ne pourrait pas absorber.
   experimental: {
     serverActions: {
-      bodySizeLimit: "2gb",
+      bodySizeLimit: "100mb",
     },
     // Separate from the Server Actions limit above: `src/proxy.ts` matches
     // every /admin and /espace-client request, and Next.js buffers the full
@@ -66,7 +74,7 @@ const nextConfig: NextConfig = {
     // route handler read it. Without raising this, any upload over the
     // default 10 MB gets cut off mid-stream and the multipart parser throws
     // "Unexpected end of form" downstream.
-    proxyClientMaxBodySize: "2gb",
+    proxyClientMaxBodySize: "100mb",
   },
 };
 

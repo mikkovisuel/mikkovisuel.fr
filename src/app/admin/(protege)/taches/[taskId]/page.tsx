@@ -6,6 +6,7 @@ import { verifyAdminSession } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { TaskEditForm } from "@/components/admin/task-edit-form";
 import { TaskPinButton } from "@/components/admin/task-pin-button";
+import { TaskPaymentLockControl } from "@/components/admin/task-payment-lock-control";
 import { TaskStatusSelect } from "@/components/admin/task-status-select";
 import { TaskValidationButton } from "@/components/admin/task-validation-button";
 import { TaskValidateRefuseButtons } from "@/components/admin/task-validate-refuse-buttons";
@@ -201,6 +202,21 @@ export default async function TaskDetailPage({
         </div>
       )}
 
+      {/* Verrou "avant de travailler" : n'a plus de sens à afficher une fois
+          la tâche sortie de "Nouveau", le blocage ne concerne que le
+          démarrage — voir la garde dans `setTaskStatus`. */}
+      {task.status.slug === TASK_STATUS.NOUVEAU && (
+        <div className="mt-4">
+          <TaskPaymentLockControl
+            taskId={task.id}
+            kind="travail"
+            clientRequiresPayment={task.client.requirePaymentBeforeWork}
+            lockOverride={task.workLockOverride}
+            paymentConfirmedAt={task.workPaymentConfirmedAt}
+          />
+        </div>
+      )}
+
       {task.refusalReason && (
         <p className="mt-3 text-sm text-danger">Motif de refus : {task.refusalReason}</p>
       )}
@@ -280,6 +296,15 @@ export default async function TaskDetailPage({
                 <h3 className="text-xs font-medium uppercase tracking-wide text-ink-muted">
                   Livrables finaux ({finalDeliverables.length})
                 </h3>
+                <div className="mt-3 mb-3">
+                  <TaskPaymentLockControl
+                    taskId={task.id}
+                    kind="livrables"
+                    clientRequiresPayment={task.client.requirePaymentForDeliverables}
+                    lockOverride={task.deliverablesLockOverride}
+                    paymentConfirmedAt={task.deliverablesPaymentConfirmedAt}
+                  />
+                </div>
                 <div className="mt-3">
                   {finalDeliverables.length > 0 ? (
                     <FileGrid

@@ -72,7 +72,8 @@ appliquée à l'ensemble du site :
   l'ancien réordonnancement). La page d'un pilier liste désormais ses
   galeries comme des cartes (vignette = premier média de la galerie, pas de
   couverture à uploader séparément) ; cliquer une galerie ouvre sa page
-  dédiée (texte avant → médias empilés → texte après). L'ancien filtre
+  dédiée (texte avant → médias → texte après, médias en 2 colonnes à partir
+  de `sm` depuis le 2026-08-22, voir plus bas). L'ancien filtre
   **Tous / Photos / Vidéos** de la page pilier a été retiré : une galerie
   étant déjà un ensemble curaté, ce filtre par type n'avait plus vraiment de
   sens à ce niveau. Migration des données : les photos/vidéos déjà en ligne
@@ -86,6 +87,16 @@ appliquée à l'ensemble du site :
     choix côté formulaire).
   - Chaque média de la page d'une galerie épouse son propre format (une
     galerie peut mélanger des médias 3:4 et 9:16).
+- **Galerie publique en 2 colonnes, 2026-08-22** : les médias d'une galerie
+  s'affichent désormais sur 2 colonnes à partir de `sm` (≥640px), en une
+  seule colonne en dessous. Implémenté en colonnes CSS (`columns-2`,
+  `break-inside-avoid`) plutôt qu'une grille : chaque média garde son propre
+  format (3:4 ou 9:16, voir ci-dessus), une grille classique aurait laissé
+  des trous béants dès que deux médias voisins n'ont pas la même hauteur —
+  les colonnes CSS empilent chaque média à la suite dans sa colonne,
+  indépendamment des autres, façon mur de photos. Conteneur de la page
+  élargi (`max-w-3xl` → `max-w-5xl`) pour donner de la place aux deux
+  colonnes, texte avant/après gardé lisible via `max-w-[65ch]`.
 - Visuels du Hero administrables (2026-07-16) : les deux photos sous le
   bouton "Voir le travail" (composant `HeroVisual`) étaient codées en dur
   (placeholders Picsum) — corrigé sur le même principe que les couvertures
@@ -1516,6 +1527,71 @@ appliquée à l'ensemble du site :
   Portée de cette première version : les fonctionnalités livrées le
   2026-07-28 seulement (l'historique complet n'a pas été rejoué
   rétroactivement).
+- **Verrou paiement sur les livrables finaux, 2026-08-21** : accès aux
+  livrables finaux (jamais les BAT, toujours visibles pour validation)
+  conditionnable au paiement, activable par client (réglage par défaut pour
+  tous ses évènements, case à cocher "Paiement requis avant l'accès aux
+  livrables finaux" sur la fiche client) et/ou évènement par évènement
+  (exception ponctuelle sur la fiche tâche : "Suivre le réglage client" /
+  "Toujours verrouillé" / "Toujours débloqué" — le réglage évènement prime
+  toujours sur celui du client). Quatre décisions confirmées avec le client
+  avant de coder : (1) granularité à l'évènement, pas au fichier individuel ;
+  (2) le réglage client est un défaut avec exceptions par évènement, pas deux
+  interrupteurs indépendants ; (3) le déblocage est une **confirmation
+  manuelle par l'admin** ("Marquer comme payé" sur la fiche tâche,
+  annulable), volontairement indépendante du système de facturation — un
+  évènement peut être débloqué avant même qu'une facture existe, ou laissé
+  verrouillé après un paiement en ligne si l'admin veut garder la main ; (4)
+  le client bloqué voit un message l'informant qu'un paiement est requis.
+  Nouveaux champs `Client.requirePaymentForDeliverables`,
+  `Task.deliverablesLockOverride`, `Task.deliverablesPaymentConfirmedAt` —
+  calcul centralisé dans `src/lib/payment-locks.ts`. Verrou appliqué à deux
+  endroits : l'affichage (`/espace-client/livrables`) **et** le
+  téléchargement lui-même (`/api/fichiers/livrables/[id]`, code 402), pour
+  qu'un lien direct ne contourne pas le blocage.
+  - **Correction du 2026-08-22, "il ne s'agit pas de factures mais bien de
+    paiement, on fera les liens aux factures beaucoup plus tard"** : le
+    message côté client renvoyait vers `/espace-client/administratif` (les
+    factures) avec le bouton "Voir mes factures et payer" — supprimé,
+    laissant seulement le message d'attente de paiement, pour ne pas
+    laisser croire à un lien avec une facture réelle qui n'existe pas
+    encore.
+- **Verrou paiement "avant de travailler", 2026-08-22** : même mécanique que
+  le verrou livrables ci-dessus (réglage par défaut par client + exception
+  ponctuelle par évènement, confirmation manuelle indépendante de la
+  facturation), mais appliqué en amont plutôt qu'en aval : case à cocher
+  "Paiement requis avant de commencer le travail" sur la fiche client,
+  contrôle identique sur la fiche tâche (affiché seulement tant que la
+  tâche est au statut "Nouveau", puisque le verrou ne concerne que le
+  démarrage). Deux points confirmés avant de coder : (1) interrupteur
+  manuel comme le verrou livrables, pas de bouton de paiement réel Stripe/
+  PayPal pour ce lot (resterait à faire si besoin plus tard) ; (2)
+  **blocage réel**, pas un simple rappel visuel — `setTaskStatus` refuse
+  désormais toute sortie du statut "Nouveau" tant que le paiement n'est pas
+  confirmé (Kanban glisser-déposer et sélecteur de statut inclus, les deux
+  appellent la même fonction). Nouveaux champs
+  `Client.requirePaymentBeforeWork`, `Task.workLockOverride`,
+  `Task.workPaymentConfirmedAt`. Purement un contrôle interne admin, sans
+  volet client-facing dans ce lot (non demandé). `src/lib/payment-locks.ts`
+  (renommé depuis `deliverables-lock.ts`, qui ne portait plus que la
+  moitié de la logique) centralise désormais les deux calculs
+  (`isDeliverablesLocked`/`isWorkLocked`), et `TaskPaymentLockControl` sert
+  les deux contrôles via une prop `kind`.
+- **Deuxième moyen de paiement en ligne : PayPal, 2026-08-21** : à la
+  demande explicite du client pendant la conception du verrou paiement
+  ci-dessus ("est-ce possible avec PayPal ou Revolut ?"), PayPal ajouté **en
+  plus** de Stripe (les deux boutons "Payer"/"Payer avec PayPal" s'affichent
+  côte à côte sur `/espace-client/administratif` si les deux sont
+  configurés) — Revolut écarté pour l'instant (compte Business avec accès
+  API requis, non disponible sur tous les plans). Intégration via l'API REST
+  PayPal Orders v2 en appel direct (`fetch`, pas de SDK Node officiel
+  maintenu, contrairement à Stripe) — voir `src/lib/paypal.ts`. Capture au
+  retour du paiement (`/api/paypal/capture`) plutôt qu'un webhook séparé :
+  plus simple à configurer côté PayPal (aucune URL à déclarer dans leur
+  tableau de bord), au prix de ne pas confirmer un paiement si le client
+  ferme l'onglet avant d'être redirigé — limite connue, voir
+  `VALIDATION.md`. `PAYPAL_CLIENT_ID`/`PAYPAL_CLIENT_SECRET` absents =
+  bouton masqué proprement, même dégradation que Stripe.
 
 ## Décisions techniques déléguées à Claude Code
 
@@ -1555,6 +1631,46 @@ Le client a explicitement délégué ces choix :
   la même requête (une fois pour les métadonnées de la page, une fois pour
   son contenu) au lieu de la partager, et enchaînaient leurs sections l'une
   après l'autre plutôt que de lancer leurs requêtes en parallèle.
+- **Deuxième passe de performance — cause des crashs trouvée** (2026-08-23,
+  signalement "le site et l'app sont lentes, et ça crashe souvent") :
+  diagnostic mené par la mesure, pas par lecture de code seule.
+  - **Cause des crashs : saturation mémoire à l'envoi de livrables.** Le
+    conteneur web Scalingo fait **512 Mo** (confirmé par le client). Or
+    recevoir un fichier coûte **~2,5 fois sa taille** en mémoire (mesuré :
+    corps de requête bufferisé par Next, puis copie de `file.arrayBuffer()`),
+    et la limite applicative était de **500 Mo par fichier**, avec
+    `bodySizeLimit`/`proxyClientMaxBodySize` à **2 Go** dans
+    `next.config.ts`. Autrement dit, un seul livrable de 200 Mo réclamait
+    ~500 Mo, soit plus que la machine entière : le conteneur était tué, ce
+    qui explique à la fois les redémarrages et la lenteur juste avant
+    (ramassage mémoire sous pression). Le message d'erreur du code
+    anticipait d'ailleurs déjà ce cas ("fichier trop lourd pour la mémoire
+    du serveur"). Corrigé en plafonnant à **50 Mo par fichier / 80 Mo par
+    envoi**, avec les limites de corps de `next.config.ts` calées juste
+    au-dessus (100 Mo). Les tailles sont désormais vérifiées **avant** toute
+    lecture en mémoire, donc un envoi trop lourd est refusé sans rien
+    allouer.
+  - **Piste explorée puis abandonnée après mesure** : traiter les fichiers
+    un par un plutôt que tous en mémoire. Sans effet — en Node,
+    `File.arrayBuffer()` matérialise une copie que l'objet `File` retient
+    ensuite lui-même (vérifié : 80 Mo → 160 Mo après copie, toujours 160 Mo
+    après mise à `null` et `gc()`). Le code reste donc en envoi parallèle,
+    qui protège du timeout routeur, et le seul levier réel est le plafond de
+    cumul. Consigné ici pour éviter qu'on retente ce faux correctif.
+  - **Mémoire réduite ailleurs** : les téléchargements de documents, de
+    documents Société et de pièces jointes chargeaient le fichier entier en
+    RAM (`storage.read`) **puis en faisaient une seconde copie**
+    (`new Uint8Array(buffer)`), soit 2× la taille par téléchargement.
+    Passés en streaming, l'adaptateur de stockage sachant déjà le faire.
+  - **Avatars clients** : servis avec `max-age=0` sans `ETag`, donc
+    intégralement retéléchargés depuis le stockage à **chaque** affichage
+    d'une liste de clients. Ajout d'un `ETag` valant la clé de stockage (qui
+    change à chaque remplacement) : le navigateur revalide toujours — un
+    nouvel avatar apparaît donc immédiatement, comportement voulu préservé —
+    mais reçoit un `304` sans lecture du stockage ni octet transféré.
+  - **Écarté après mesure** : les vignettes (`createThumbnail`) étaient
+    suspectées, à tort — 12 vignettes d'une photo 6000×4000 prennent 158 ms
+    et +25 Mo. Ce n'est pas un problème.
 
 ## Points encore ouverts
 
@@ -1781,6 +1897,35 @@ Le client a explicitement délégué ces choix :
 - **Rendu mobile des nouvelles pages portfolio en galeries (2026-08-16)** :
   non vérifié, seul le rendu desktop a été observé en navigateur pour cette
   passe. À confirmer à la première consultation depuis un téléphone.
+- **Livrables volumineux (>50 Mo) — régression assumée du 2026-08-23.** Le
+  plafond est redescendu de 500 Mo à 50 Mo par fichier parce que la machine
+  ne peut pas faire autrement (voir "Deuxième passe de performance"), ce qui
+  annule de fait la demande du 2026-07-14 ("retirer la limite de taille des
+  livrables"). Deux façons de récupérer les gros fichiers vidéo, à
+  arbitrer avec le client : (1) **envoi direct au stockage S3** depuis le
+  navigateur, les octets ne transitant plus par la mémoire du serveur —
+  c'est la vraie solution, elle demande une route d'upload dédiée et une
+  configuration CORS côté OVH que seul le client peut faire ; (2)
+  **augmenter le conteneur** Scalingo (512 Mo → 1 Go ou plus), solution
+  immédiate mais payante et qui ne fait que déplacer le plafond.
+- **Aucune pagination sur les listes admin.** Tâches, Clients, Documents,
+  Prospection et Notes chargent l'intégralité de leurs enregistrements à
+  chaque affichage (seul l'Audit a un `take`). Sans conséquence visible au
+  volume actuel, mais la lenteur croîtra mécaniquement avec la base. Repéré
+  le 2026-08-23, non traité (ajouter une pagination touche l'interface de
+  cinq pages, chantier à part entière).
+- **Cache d'images perdu à chaque redémarrage.** Next optimise les photos du
+  portfolio avec sharp et met le résultat dans `.next/cache`, or le disque
+  Scalingo est éphémère : le cache est vidé à chaque déploiement et à chaque
+  redémarrage, et les originaux pleine résolution sont alors re-décodés.
+  Repéré le 2026-08-23, non traité — la correction passe par un CDN devant
+  le site ou par la livraison des médias directement depuis le stockage,
+  décision d'infrastructure qui appartient au client.
+- **Sessions expirées jamais purgées.** Une session n'est supprimée que si
+  quelqu'un la présente après expiration ; les sessions abandonnées restent
+  en base indéfiniment. Sans effet sur la vitesse (la recherche se fait sur
+  un index unique), mais la table grossit sans limite. Repéré le
+  2026-08-23, non traité.
 
 ## Journal des modifications demandées
 
@@ -1956,3 +2101,8 @@ Le client a explicitement délégué ces choix :
 | 2026-08-16 | "Chaque item de chaque pilier doit être des galeries, avec du texte avant/après façon Adobe Portfolio, et la réorganisation des photos doit être possible" | Restructuration `Pilier → Galeries → Médias` (nouveau modèle `PortfolioGallery`), avec trois points confirmés avant de coder (garde-fou de statut hors sujet ici, mais même logique de confirmation préalable que pour la purge le même jour) : titre + texte avant/après indépendants et facultatifs par galerie, réordonnancement des galeries et des médias (boutons monter/descendre), page pilier listant les galeries en cartes, page dédiée par galerie. Médias existants migrés automatiquement dans une galerie "Galerie" par pilier (aucune perte, 24 médias vérifiés), à réorganiser ensuite à la main — choix explicite du client. Testé en navigateur de bout en bout (création, édition, texte, affichage public), voir "Portfolio public" |
 | 2026-08-17 | "La vue Liste de la prospection doit être plus comme un tableur éditable (en gardant les pastilles de statut), inspirée du champ déjà éditable en place ailleurs sur le site" | Livré : vue Liste de `/admin/prospection` transformée en tableau où nom, entreprise, téléphone, email, Instagram et date de relance s'éditent directement dans la cellule, même pattern que `PaymentRecordDateField` (Finances/Documents) plutôt qu'un nouveau composant générique — voir section "Backend interne" pour le détail |
 | 2026-08-17 | Fichier réel de repérage (~90 lieux) fourni ("MIKKO_VISUEL_PROSPECTION_v11.xlsx") : "peux-tu mettre ces colonnes là ? C'est un fichier que je peux importer directement ?" | Colonnes du fichier confrontées au modèle existant : Ville/Activité/Lien Instagram/Lien WhatsApp n'avaient pas d'équivalent — choix confirmé avant de coder (nouveaux champs dédiés plutôt que tout regrouper en Notes). Livré : 4 nouveaux champs `Prospect` (colonnes dans le tableau et la fiche), import CSV élargi (nouveaux synonymes d'en-têtes + repli de découpage automatique d'une colonne "Contact" téléphone+email combinés) — voir section "Backend interne". Le fichier n'était pas importable tel quel (.xlsx, pas de colonne "Nom" reconnue, "Contact" mélangé) ; converti en CSV et rejoué de bout en bout contre une base réelle avant livraison, les 87 lignes s'importent proprement avec les nouveaux en-têtes du fichier — voir `VALIDATION.md` |
+| 2026-08-21 | "Fonction activable par client, par livrable, qui demanderait un paiement avant l'accès aux fichiers finaux par évènement ou activable par client en entier — as-tu bien compris, ou des suggestions/précisions ?" | Quatre points de conception soumis et confirmés avant de coder (granularité à l'évènement, réglage client en défaut+exceptions, confirmation manuelle indépendante de la facturation, message + bouton "Payer" côté client) — voir section "Backend interne" pour le détail complet et le raisonnement. Livré : case à cocher sur la fiche client, contrôle tri-état + bouton "Marquer comme payé" sur la fiche tâche, blocage appliqué à l'affichage **et** au téléchargement des livrables. Testé de bout en bout en navigateur (les 6 combinaisons client/évènement/paiement rejouées contre une base réelle, plus capture d'écran des 4 états) — voir `VALIDATION.md` |
+| 2026-08-21 | "Penses-tu que c'est possible de faire quelque chose avec PayPal ou Revolut ?" (en discutant du signal de paiement ci-dessus) | PayPal ajouté en plus de Stripe (bouton "Payer avec PayPal" sur `/espace-client/administratif`) — Revolut écarté pour l'instant (compte Business + accès API requis, non vérifiable sans compte réel). Voir section "Backend interne" pour le détail technique. **Non testé en conditions réelles** : nécessite un compte PayPal Developer (sandbox) que seul le client peut fournir — voir `VALIDATION.md` |
+| 2026-08-22 | "Pour le moment il ne s'agit pas de factures mais bien de paiement, on fera les liens aux factures beaucoup plus tard ! Peux-tu renommer en conséquence ? Peux-tu également me donner la possibilité de faire le paiement avant de travailler ? Au début de la tâche ?" | Renommage : le message client bloqué ne renvoie plus vers les factures (bouton "Voir mes factures et payer" supprimé, celui-ci les liait prématurément à un système de facturation volontairement pas encore branché). Deux points confirmés avant de coder pour le nouveau verrou "avant de travailler" : interrupteur manuel (pas de vrai bouton de paiement Stripe/PayPal pour ce lot) et blocage réel du statut (pas un simple rappel) — voir section "Backend interne". Livré : même mécanique que le verrou livrables (réglage client par défaut + exception par évènement + confirmation manuelle), appliquée cette fois à l'entrée de la tâche plutôt qu'à la sortie — `setTaskStatus` refuse toute sortie du statut "Nouveau" tant que non payé. Testé de bout en bout (logique + navigateur, tentative de changement de statut réellement bloquée puis débloquée après confirmation) — voir `VALIDATION.md` |
+| 2026-08-22 | "Est-il possible de faire en sorte que les galeries dans les piliers affichent 2 colonnes en visuel sur le site internet (vision clients) ?" | Livré : page galerie publique (`/portfolio/[slug]/[galleryId]`) passée en 2 colonnes à partir de `sm`, 1 colonne en dessous, via colonnes CSS plutôt qu'une grille (voir section "Portfolio public" pour le raisonnement — une grille aurait laissé des trous dès que deux médias voisins n'ont pas la même hauteur, les galeries mélangeant librement du 3:4 et du 9:16). Testé en navigateur, desktop et mobile, avec des médias de hauteurs volontairement différentes pour vérifier l'absence de trous — voir `VALIDATION.md` |
+| 2026-08-23 | "Peux-tu regarder pourquoi mon site et l'app sont lentes, et regarder pourquoi ça crash souvent ?" (capture Scalingo fournie : conteneur web M — 512 Mo) | **Cause des crashs trouvée et corrigée** : la limite d'envoi des livrables (500 Mo/fichier, corps de requête autorisé à 2 Go) dépassait la mémoire totale de la machine, un fichier coûtant ~2,5× sa taille en RAM — mesuré, pas supposé. Plafonds ramenés à 50 Mo/fichier et 80 Mo/envoi, vérification faite avant toute lecture en mémoire. Mémoire réduite en plus sur les téléchargements (documents, documents Société, pièces jointes passés en streaming au lieu de 2 copies en RAM) et sur les avatars clients (`ETag` → `304` au lieu d'un retéléchargement complet à chaque liste). Deux fausses pistes écartées **par la mesure** et consignées : les vignettes (158 ms pour 12, non coupables) et le traitement des fichiers un par un (sans effet, le `File` retient la copie). Régression assumée à arbitrer : les livrables >50 Mo ne passent plus — voir "Points encore ouverts" pour les deux façons de les récupérer (envoi direct S3, ou conteneur plus grand). Trois causes de lenteur restantes identifiées mais non traitées (pagination absente, cache d'images sur disque éphémère, sessions jamais purgées) |

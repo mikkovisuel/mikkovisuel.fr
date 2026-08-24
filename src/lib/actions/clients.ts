@@ -38,6 +38,8 @@ export async function createClient(
     billingEmail: formData.get("billingEmail"),
     driveUrl: formData.get("driveUrl"),
     categoryId: formData.get("categoryId"),
+    requirePaymentForDeliverables: formData.get("requirePaymentForDeliverables") === "on",
+    requirePaymentBeforeWork: formData.get("requirePaymentBeforeWork") === "on",
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Formulaire invalide." };
@@ -65,6 +67,8 @@ export async function updateClient(
     billingEmail: formData.get("billingEmail"),
     driveUrl: formData.get("driveUrl"),
     categoryId: formData.get("categoryId"),
+    requirePaymentForDeliverables: formData.get("requirePaymentForDeliverables") === "on",
+    requirePaymentBeforeWork: formData.get("requirePaymentBeforeWork") === "on",
   });
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? "Formulaire invalide." };

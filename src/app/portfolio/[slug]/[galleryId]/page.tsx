@@ -32,8 +32,15 @@ export async function generateMetadata({
 }
 
 // Page galerie (2026-08-16, façon Adobe Portfolio) : texte de présentation
-// avant les médias, puis les photos/vidéos empilées à leur propre format,
-// puis un texte de conclusion — chacun facultatif et indépendant.
+// avant les médias, puis les photos/vidéos, puis un texte de conclusion —
+// chacun facultatif et indépendant. Médias en 2 colonnes à partir de `sm`
+// (demande du 2026-08-22) : `columns-2` (CSS multi-colonnes) plutôt qu'une
+// grille — chaque média garde son propre format (`aspectRatio`, 3:4 ou
+// 9:16), une grille classique aurait laissé des trous béants dès que deux
+// médias voisins n'ont pas la même hauteur ; les colonnes CSS empilent
+// chaque média à la suite dans sa colonne, sans les forcer à s'aligner en
+// lignes. Conteneur élargi (`max-w-3xl` → `max-w-5xl`) pour donner de la
+// place aux deux colonnes ; le texte reste lisible via `max-w-[65ch]`.
 export default async function GalleryPage({
   params,
 }: {
@@ -49,7 +56,7 @@ export default async function GalleryPage({
       <SiteHeader />
       <main className="flex-1">
         <section className="py-16 sm:py-20">
-          <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
+          <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
             <Link
               href={`/portfolio/${slug}`}
               className="inline-flex items-center gap-2 text-sm text-ink-muted transition-colors hover:text-ink"
@@ -63,13 +70,13 @@ export default async function GalleryPage({
             </h1>
 
             {gallery.textBefore && (
-              <p className="mt-6 whitespace-pre-line text-base leading-relaxed text-ink-muted">
+              <p className="mt-6 max-w-[65ch] whitespace-pre-line text-base leading-relaxed text-ink-muted">
                 {gallery.textBefore}
               </p>
             )}
 
             {gallery.items.length > 0 && (
-              <div className="mt-10 flex flex-col gap-6">
+              <div className="mt-10 columns-1 gap-6 sm:columns-2">
                 {gallery.items.map((item) => {
                   const isUploadedVideo =
                     item.mediaType === "video" && item.mimeType?.startsWith("video/");
@@ -77,7 +84,7 @@ export default async function GalleryPage({
                   return (
                     <div
                       key={item.id}
-                      className={`relative ${aspectClass} overflow-hidden rounded-2xl border border-line`}
+                      className={`relative mb-6 break-inside-avoid ${aspectClass} overflow-hidden rounded-2xl border border-line`}
                     >
                       {isUploadedVideo ? (
                         <PortfolioVideo
@@ -89,7 +96,7 @@ export default async function GalleryPage({
                           src={resolveItemSrc(item)}
                           alt={item.title}
                           fill
-                          sizes="(min-width: 768px) 768px, 100vw"
+                          sizes="(min-width: 640px) 50vw, 100vw"
                           className="object-cover"
                         />
                       )}
@@ -100,7 +107,7 @@ export default async function GalleryPage({
             )}
 
             {gallery.textAfter && (
-              <p className="mt-10 whitespace-pre-line text-base leading-relaxed text-ink-muted">
+              <p className="mt-10 max-w-[65ch] whitespace-pre-line text-base leading-relaxed text-ink-muted">
                 {gallery.textAfter}
               </p>
             )}
