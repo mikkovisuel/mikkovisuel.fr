@@ -509,6 +509,18 @@ Suite au signalement client sur `/admin/taches` : la pagination initiale (voir s
 | Comportement inchangé avec un statut précis filtré | `/admin/taches?status=termine` | ✅ Relu en code : bascule `paginateDoneOnly = isListe && !status` — avec un statut sélectionné, retombe sur l'ancien comportement (pagination de l'ensemble filtré, 40/page) | Filtre sur un statut actif (ex. "En cours") avec 0 résultat | ✅ Relu en code : `Math.max(1, Math.ceil(0/40))` → 1 page, pas de lien "Suivant" | 2026-08-24 |
 | Absence de régression sur les autres vues | `/admin/taches?vue=kanban`, `?vue=calendrier`, `?vue=archivees` | ✅ Non ré-exercées en navigateur pour cet ajustement (aucune modification de leur chemin de code — `paginateDoneOnly` est toujours `false` hors vue Liste) | — | — | 2026-08-24 |
 
+## Triage des vulnérabilités npm (2026-08-24)
+
+`tsc --noEmit`, lint et `npm run build` propres après chaque étape. Détail du raisonnement dans `CAHIER_DES_CHARGES.md`.
+
+| Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |
+|---|---|---|---|---|---|
+| `npm audit fix` (sans `--force`) | 8 paquets corrigés, tous dans l'outillage Prisma CLI | ✅ `npm ls` confirme aucune dépendance de `dependencies` (runtime) touchée, seulement des transitives de `prisma`/`@prisma/*` | — | — | 2026-08-24 |
+| Pipeline d'images Next après bump `next` 16.2.12 → 16.3.2 | Requête réelle sur `/_next/image?url=...` (page d'accueil, image Hero) | ✅ Testé en navigateur : HTTP 200, `content-type: image/jpeg`, 54 Ko — le `sharp` embarqué corrigé traite bien une image réelle | — | — | 2026-08-24 |
+| Compatibilité des options de checksum S3 après bump `@aws-sdk/client-s3` 3.726.1 → 3.1117.0 | `src/lib/storage/s3.ts` (`requestChecksumCalculation`/`responseChecksumValidation: "WHEN_REQUIRED"`) | ✅ `tsc --noEmit` propre : les deux options existent toujours et type-checkent sur la nouvelle version du SDK | — | — | 2026-08-24 |
+| Statut du blocage OVH ayant motivé le figeage à 3.726.1 | `gh issue view 781 --repo ovh/public-cloud-roadmap` | ✅ Ticket **fermé** (`closedAt: 2025-06-04`), OVH a mis à jour son Object Storage pour supporter les nouveaux en-têtes de checksum AWS SDK v3 | — | — | 2026-08-24 |
+| Absence de régression générale (`tsc`/lint/build) | Après chaque étape du triage (fix simple, puis bump next+aws-sdk) | ✅ Propres à chaque étape | — | — | 2026-08-24 |
+
 ## Points restant ouverts pour une prochaine passe de validation
 
 - Glisser-déposer et `<select>` natif du Kanban Prospection (limite outil, voir ci-dessus).
@@ -579,3 +591,4 @@ Suite au signalement client sur `/admin/taches` : la pagination initiale (voir s
 - **Téléchargement en streaming depuis un stockage S3 réel** : vérifié uniquement contre le stockage local (`storage/`), les deux implémentations partageant la même interface `readStream` déjà utilisée en production pour les livrables. À confirmer au premier téléchargement réel de document en ligne.
 - **Pagination : cas limite "page au-delà du total"** (ex. `?page=999` sur une liste qui n'a que 18 pages) : non exercé — `skip`/`take` de Prisma renvoie simplement une liste vide dans ce cas, la page afficherait "Aucun document/aucune tâche" sans lien "Précédent" cassé (le composant `Pagination` recalcule ses liens à partir de `currentPage` et `totalPages`, pas de code spécifique à ce cas), à confirmer en usage réel.
 - **Rendu mobile de la pagination** (2026-08-24) : seul le rendu desktop a été observé en navigateur.
+- **Bump `@aws-sdk/client-s3` 3.726.1 → 3.1117.0 contre le vrai bucket OVH (2026-08-24)** : non testable depuis cet environnement local (`STORAGE_S3_*` non renseignées en dev, stockage disque local utilisé à la place). La confiance repose sur la fermeture officielle du ticket OVH ayant motivé le figeage (voir ci-dessus), pas sur un envoi réel. **À vérifier en priorité juste après le déploiement** : un envoi + téléchargement + suppression réels d'un document ou livrable en production, en surveillant les logs Scalingo pour toute erreur `SignatureDoesNotMatch` (403) — le signal exact de la régression déjà rencontrée une fois sur cette dépendance.
