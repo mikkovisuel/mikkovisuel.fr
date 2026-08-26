@@ -3,11 +3,12 @@
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { verifyPassword } from "@/lib/password";
-import { createSession } from "@/lib/session";
+import { createSession, destroySession } from "@/lib/session";
 import { isRateLimited, recordLoginAttempt } from "@/lib/rate-limit";
 import { getClientIp } from "@/lib/request-ip";
 import { setThemeCookie } from "@/lib/actions/theme";
 import { canLogIn } from "@/lib/clients";
+import { verifyClientSession } from "@/lib/dal";
 import { LoginSchema, type LoginFormState } from "@/lib/validation/auth";
 import type { ClientContact } from "@/generated/prisma/client";
 
@@ -76,5 +77,39 @@ export async function clientLogin(
 
   await createSession("CLIENT_USER", matched.id);
   await setThemeCookie(matched.themePreference === "dark" ? "dark" : "light");
+  redirect("/espace-client");
+}
+
+// Sélecteur de club (2026-08-25, "peut-on faire en sorte de tout voir ?") :
+// un contact partagé entre plusieurs clients peut basculer d'un accès à
+// l'autre sans ressaisir de mot de passe, plutôt qu'une vue fusionnée qui
+// aurait cassé le cloisonnement des données voulu par le split
+// Contact/ClientContact. Reste malgré tout un changement de compte, pas une
+// simple préférence d'affichage : on revérifie ici, côté serveur, que la
+// cible appartient bien au même `Contact` que la session en cours et que son
+// accès est toujours ouvert — sans ça, passer n'importe quel id de
+// ClientContact suffirait à usurper l'espace d'un autre client.
+export async function switchClientSpace(targetClientContactId: string) {
+  const current = await verifyClientSession();
+
+  const target = await db.clientContact.findUnique({
+    where: { id: targetClientContactId },
+    include: { contact: true },
+  });
+
+  if (
+    !target ||
+    target.contactId !== current.contactId ||
+    !canLogIn({ ...target, email: target.contact.email })
+  ) {
+    throw new Error("Accès non autorisé.");
+  }
+
+  await destroySession();
+  await createSession("CLIENT_USER", target.id);
+  await setThemeCookie(target.themePreference === "dark" ? "dark" : "light");
+  await db.clientContact.update({ where: { id: target.id }, data: { lastLoginAt: new Date() } });
+  await db.clientLoginEvent.create({ data: { clientContactId: target.id } });
+
   redirect("/espace-client");
 }

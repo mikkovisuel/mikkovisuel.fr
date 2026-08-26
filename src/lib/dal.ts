@@ -37,7 +37,15 @@ export const verifyAdminSession = cache(async () => {
 // vraiment besoin de l'identité partagée plutôt que du compte.
 function flattenClientContact<
   T extends {
-    contact: { id: string; name: string; email: string | null; phone: string | null; role: string | null };
+    id: string;
+    contact: {
+      id: string;
+      name: string;
+      email: string | null;
+      phone: string | null;
+      role: string | null;
+      clientLinks: { id: string; client: { id: string; name: string } }[];
+    };
   },
 >(clientContact: T) {
   const { contact, ...rest } = clientContact;
@@ -48,6 +56,16 @@ function flattenClientContact<
     email: contact.email,
     phone: contact.phone,
     role: contact.role,
+    // Sélecteur de club (2026-08-25, "peut-on faire en sorte de tout
+    // voir ?" — un contact partagé entre deux clients bascule maintenant
+    // sans se reconnecter, plutôt qu'une vue fusionnée qui aurait cassé
+    // le cloisonnement voulu par le split Contact/ClientContact). Ne liste
+    // que les autres accès réellement utilisables (`canLogIn`, filtré côté
+    // requête) — un accès fermé ou une invitation encore en attente
+    // n'apparaît pas dans le sélecteur.
+    otherClients: contact.clientLinks
+      .filter((link) => link.id !== clientContact.id)
+      .map((link) => ({ clientContactId: link.id, clientId: link.client.id, clientName: link.client.name })),
   };
 }
 
@@ -56,7 +74,17 @@ export const getClientSession = cache(async () => {
   if (!session || session.subjectType !== "CLIENT_USER") return null;
   const clientContact = await db.clientContact.findUnique({
     where: { id: session.subjectId },
-    include: { client: true, contact: true },
+    include: {
+      client: true,
+      contact: {
+        include: {
+          clientLinks: {
+            where: { portalAccessEnabled: true, passwordHash: { not: null } },
+            include: { client: { select: { id: true, name: true } } },
+          },
+        },
+      },
+    },
   });
   if (!clientContact) return null;
   return flattenClientContact(clientContact);

@@ -521,6 +521,19 @@ Suite au signalement client sur `/admin/taches` : la pagination initiale (voir s
 | Statut du blocage OVH ayant motivé le figeage à 3.726.1 | `gh issue view 781 --repo ovh/public-cloud-roadmap` | ✅ Ticket **fermé** (`closedAt: 2025-06-04`), OVH a mis à jour son Object Storage pour supporter les nouveaux en-têtes de checksum AWS SDK v3 | — | — | 2026-08-24 |
 | Absence de régression générale (`tsc`/lint/build) | Après chaque étape du triage (fix simple, puis bump next+aws-sdk) | ✅ Propres à chaque étape | — | — | 2026-08-24 |
 
+## Sélecteur de club — contact partagé entre plusieurs clients (2026-08-25)
+
+`tsc --noEmit`, lint et `npm run build` propres. Testé en base locale avec deux vrais clients ("Client de démo" et un second créé pour l'occasion), un `Contact` partagé et deux mots de passe distincts sur les deux `ClientContact`, retirés après test.
+
+| Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |
+|---|---|---|---|---|---|
+| Bascule vers l'autre club | Connexion avec le mot de passe du club A, clic sur le sélecteur puis sur le nom du club B | ✅ Testé en navigateur : page d'accueil affiche "Bonjour Club Test B", données propres au club B (0 tâche, 0 € impayé) | — | — | 2026-08-25 |
+| Étanchéité des données après bascule | Comparaison des deux vues (club A : 6 tâches / 800 € impayés ; club B : 0 / 0 €) | ✅ Aucune donnée du club A visible après bascule vers le club B, et inversement | — | — | 2026-08-25 |
+| Bascule inverse (retour au club A) | Depuis le club B, sélecteur → nom du club A | ✅ Testé en navigateur : retour à "Bonjour Client de démo" avec les 6 tâches et les 800 € impayés d'origine | — | — | 2026-08-25 |
+| Sélecteur invisible pour un contact non partagé | Tout contact n'ayant qu'un seul accès (cas normal, très large majorité) | ✅ Relu en code : `otherClients.length === 0` retombe sur un simple libellé texte, pas de `<details>` — vérifié que ça correspond au rendu d'avant cette fonctionnalité | — | — | 2026-08-25 |
+| Garde-fou anti-usurpation (`switchClientSpace`) | — | — | Cible appartenant à un autre `Contact` que la session en cours | ✅ Relu en code (non exercé par une vraie requête forgée) : `target.contactId !== current.contactId` lève une erreur avant tout changement de session — la liste des options elle-même ne peut de toute façon afficher que les accès du même `Contact` (requête `contact.clientLinks`) | 2026-08-25 |
+| Garde-fou : accès fermé ou invitation en attente | — | — | Cible avec `portalAccessEnabled=false` ou `passwordHash=null` | ✅ Relu en code : exclue à la fois de la liste affichée (filtre `where` de la requête) et de `switchClientSpace` (`canLogIn` revérifié côté serveur) — double filtrage, pas un simple masquage côté UI | 2026-08-25 |
+
 ## Points restant ouverts pour une prochaine passe de validation
 
 - Glisser-déposer et `<select>` natif du Kanban Prospection (limite outil, voir ci-dessus).
@@ -592,3 +605,4 @@ Suite au signalement client sur `/admin/taches` : la pagination initiale (voir s
 - **Pagination : cas limite "page au-delà du total"** (ex. `?page=999` sur une liste qui n'a que 18 pages) : non exercé — `skip`/`take` de Prisma renvoie simplement une liste vide dans ce cas, la page afficherait "Aucun document/aucune tâche" sans lien "Précédent" cassé (le composant `Pagination` recalcule ses liens à partir de `currentPage` et `totalPages`, pas de code spécifique à ce cas), à confirmer en usage réel.
 - **Rendu mobile de la pagination** (2026-08-24) : seul le rendu desktop a été observé en navigateur.
 - **Bump `@aws-sdk/client-s3` 3.726.1 → 3.1117.0 contre le vrai bucket OVH (2026-08-24)** : non testable depuis cet environnement local (`STORAGE_S3_*` non renseignées en dev, stockage disque local utilisé à la place). La confiance repose sur la fermeture officielle du ticket OVH ayant motivé le figeage (voir ci-dessus), pas sur un envoi réel. **À vérifier en priorité juste après le déploiement** : un envoi + téléchargement + suppression réels d'un document ou livrable en production, en surveillant les logs Scalingo pour toute erreur `SignatureDoesNotMatch` (403) — le signal exact de la régression déjà rencontrée une fois sur cette dépendance.
+- **Sélecteur de club, requête forgée réelle (2026-08-25)** : le garde-fou anti-usurpation de `switchClientSpace` (id d'un `ClientContact` appartenant à un autre `Contact`) a été relu en code, pas exercé par une vraie requête HTTP forgée contournant l'UI — à confirmer si l'occasion se présente (outil d'intercession HTTP, ou test automatisé futur).

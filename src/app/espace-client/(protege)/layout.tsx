@@ -8,6 +8,7 @@ import { BrandLogo } from "@/components/brand-logo";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { ClientNavTabs } from "@/components/client/client-nav-tabs";
+import { ClientSpaceSwitcher } from "@/components/client/client-space-switcher";
 import { ImpersonationBanner } from "@/components/client/impersonation-banner";
 import { DemoModeBanner } from "@/components/client/demo-mode-banner";
 import { AnnouncementPopup } from "@/components/client/announcement-popup";
@@ -70,9 +71,12 @@ export default async function ClientProtectedLayout({
             <BrandLogo className="h-7" />
           </Link>
           <div className="flex items-center gap-4">
-            <span className="hidden text-sm text-ink-muted sm:inline">
-              {clientUser.client.name}
-            </span>
+            <div className="hidden sm:block">
+              <ClientSpaceSwitcher
+                currentClientName={clientUser.client.name}
+                otherClients={clientUser.otherClients}
+              />
+            </div>
             <Link
               href="/espace-client/compte"
               aria-label="Mon compte"
