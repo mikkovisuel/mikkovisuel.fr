@@ -26,6 +26,7 @@ import {
 } from "@/lib/tasks";
 import { ACTIVE_CLIENTS } from "@/lib/clients";
 import { Pagination } from "@/components/admin/pagination";
+import { Scratchpad } from "@/components/admin/scratchpad";
 
 export const metadata: Metadata = {
   title: "Tâches — Admin Mikko Visuel",
@@ -98,7 +99,7 @@ export default async function AdminTasksPage({
   } as const;
   const taskOrderBy = buildTaskOrderBy(sortField, sortDir);
 
-  const [tasks, doneTasksPaginated, pageCount, statusList, typeList, formatList, clients] =
+  const [tasks, doneTasksPaginated, pageCount, statusList, typeList, formatList, clients, scratchpadItems] =
     await Promise.all([
       db.task.findMany({
         where: paginateDoneOnly
@@ -138,6 +139,7 @@ export default async function AdminTasksPage({
         include: { items: { orderBy: { sortOrder: "asc" } } },
       }),
       db.client.findMany({ where: ACTIVE_CLIENTS, orderBy: { name: "asc" } }),
+      db.scratchpadItem.findMany({ orderBy: { sortOrder: "asc" }, select: { id: true, label: true } }),
     ]);
 
   const totalPages = isListe ? Math.max(1, Math.ceil(pageCount / PAGE_SIZE)) : 1;
@@ -171,6 +173,10 @@ export default async function AdminTasksPage({
           Nouvelle tâche
         </Link>
       </div>
+
+      {/* Au-dessus des 4 vues (liste/kanban/calendrier/archivées) : un
+          pense-bête reste utile quelle que soit la vue affichée. */}
+      <Scratchpad initialItems={scratchpadItems} />
 
       {/* Le sélecteur de vue (liste/kanban/calendrier...) reste dehors : ce
           n'est pas un filtre mais un changement d'affichage, et le replier

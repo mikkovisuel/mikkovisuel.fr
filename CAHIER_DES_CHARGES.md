@@ -237,6 +237,19 @@ appliquée à l'ensemble du site :
   2026-07-13, ni d'ajouter un champ "Personne assignée" (un seul compte admin
   existe). Toujours sans pont API vers Notion — base de données native
   inchangée, seules les vues s'en inspirent.
+- **Pense-bête** (2026-08-27, "une petite liste de tâches qui ne sont
+  reliées à rien, à la Google Tasks") : bloc affiché en haut de
+  `/admin/taches`, au-dessus des 4 vues (Liste/Kanban/Calendrier/
+  Archivées) donc toujours visible quelle que soit la vue active. Sans
+  rapport avec le modèle `Task` — nouveau modèle dédié `ScratchpadItem`.
+  Quatre points confirmés avant de coder : **une seule liste partagée**
+  entre tous les comptes admin (pas de liste privée par compte, même si
+  les rôles multi-admin existent depuis le 2026-07-29) ; **une seule liste**
+  (pas de listes multiples nommées comme dans Google Tasks) ; **cocher un
+  item le supprime immédiatement** (pas de section "Terminé" repliable
+  comme sur les tâches — volontairement jetable) ; ajout en tête de liste
+  (le plus récent en premier, comme Google Tasks). Voir section "Backend
+  interne" pour le détail technique.
 - Vue `Liste` en tableau compact (2026-07-14) : les cartes empilées ont été
   remplacées par un vrai tableau à colonnes (Évènement / Échéance / Client /
   Tâche / Type / Formats / Statut / Modifier — Type et Formats séparés, dates
@@ -1353,6 +1366,20 @@ appliquée à l'ensemble du site :
     nouvelle demande, juste reconfirmé) — chaque carte est `draggable`,
     dépose sur une colonne = `setTaskStatus`, avec repli clavier/tactile via
     le menu déroulant de statut sur la carte.
+- **Pense-bête sur `/admin/taches`** (2026-08-27) : nouveau modèle
+  `ScratchpadItem` (`id`, `label`, `sortOrder`, `createdAt` — pas de champ
+  `adminId`, la liste est partagée entre tous les comptes admin, ni de
+  champ `done`, puisqu'un item coché est supprimé directement plutôt que
+  marqué terminé). Nouveau composant client `src/components/admin/
+  scratchpad.tsx` (état local optimiste, même schéma que
+  `TaskChecklist` — ajout/coche avec mise à jour immédiate côté client
+  puis Server Action en arrière-plan) et `src/lib/actions/scratchpad.ts`
+  (`addScratchpadItem`/`removeScratchpadItem`, `verifyAdminSession` sur
+  les deux). Rendu dans `src/app/admin/(protege)/taches/page.tsx`, juste
+  au-dessus du sélecteur de vue — donc avant le `if (view === ...)` qui
+  choisit entre Liste/Kanban/Calendrier/Archivées, pour rester visible sur
+  les 4. `sortOrder` décrémenté à chaque ajout pour que le plus récent
+  remonte en tête (`ORDER BY sortOrder ASC`), comme Google Tasks.
 - Signalement : page blanche en envoyant un JPG et un MP4 ensemble en
   livrable (2026-07-24). Le code de validation par type/taille était
   correct (les deux types sont autorisés), mais rien n'attrapait une
@@ -2157,3 +2184,4 @@ Le client a explicitement délégué ces choix :
 | 2026-08-24 | "Pourquoi j'ai maintenant des pages dans la vue des tâches ?" puis "Option 3 comme avant" (choix parmi 3 options proposées : garder tel quel, augmenter la taille de page, ou toujours afficher les tâches actives en entier et ne paginer que les terminées) | Ajusté sur `/admin/taches` (vue Liste, sans filtre de statut explicite) : les tâches actives sont de nouveau récupérées et affichées en entier, sans pagination ; seule la section "Terminées" (repliée par défaut) pagine désormais (40/page, contrôles dans le repli). Avec un statut précis filtré, le comportement du 2026-08-24 précédent (pagination de l'ensemble filtré) est inchangé. Testé en base (90 tâches "Terminée" ajoutées temporairement) : page 1/3 puis 2/3 de la section "Terminées" corrects, les 6 tâches actives restant affichées en entier sur les deux — voir `VALIDATION.md` |
 | 2026-08-24 | "Peut-on regarder ça : 32 vulnérabilités npm (22 modérées, 10 critiques) vues dans le dernier build, à trier avant d'ignorer ?" puis "oui" (feu vert pour traiter les 2 groupes nécessitant `--force`) | Triage complet des 32 (voir section "Backend interne" pour le détail) : 8 corrigées sans risque (`npm audit fix`, outillage Prisma CLI uniquement, aucune dépendance de runtime touchée), 3 sans correctif amont possible à ce jour (`prisma`/`@prisma/config`/`deepmerge-ts`, dev/build-time uniquement, exposition nulle, à surveiller), 21 corrigées avec vérification dédiée : **`next` 16.2.12 → 16.3.2** (corrige les CVE `postcss`/`sharp` embarqués — `sharp` est réellement exposé, `next/image` l'utilise sur les pages publiques du portfolio et l'admin ; testé en navigateur, une requête `_next/image` réelle confirmée 200/image·jpeg) et **`@aws-sdk/client-s3` 3.726.1 → 3.1117.0** (corrige `fast-xml-parser`, l'`override` associé retiré — devenu inutile). Ce dernier était figé depuis le 2026 sur confirmation d'un ticket OVH officiel (`ovh/public-cloud-roadmap#781`, incompatibilité de checksum causant des 403 `SignatureDoesNotMatch` sur tout envoi) : **vérifié que ce ticket est refermé côté OVH depuis le 04/06/2025**, avant de lever le figeage — non testable contre le vrai bucket OVH depuis cet environnement local (pas d'identifiants), à confirmer par un envoi/téléchargement réel juste après le déploiement (voir `VALIDATION.md`) |
 | 2026-08-25 | "Lorsqu'un contact est affecté à deux clubs, voit-il tout ?" puis "Penses-tu qu'on peut faire en sorte de tout voir ?" — deux options proposées (sélecteur de club sans refusion des données, ou vue fusionnée), **le sélecteur retenu** | Confirmé par lecture de code que non, l'accès restait cloisonné à un seul client par session (mot de passe = clé du club, un par un). Livré : sélecteur de club dans l'en-tête de l'espace client (`ClientSpaceSwitcher`), visible seulement pour un contact ayant un accès utilisable sur au moins un autre client — bascule sans ressaisir de mot de passe, mais chaque cible est revérifiée côté serveur (même `Contact`, accès toujours ouvert) avant de rouvrir une session, pour ne pas permettre de basculer vers un client par un id deviné. La vue fusionnée écartée : aurait cassé le cloisonnement voulu par le split Contact/ClientContact du 2026-07-31 pour un gain resté hypothétique. Testé en base (deux clients réels, un contact partagé, deux mots de passe distincts) : bascule dans les deux sens, données strictement isolées à chaque fois (tâches/montant impayé du club A absents une fois basculé sur le club B) — voir `VALIDATION.md` |
+| 2026-08-27 | "Dans l'onglet tâches, est-il possible de créer une nouvelle fonction de 'petites liste de tâches' qui ne sont reliés à rien (prendre exemple sur liste google task) et qui me servent de pense bête ? Cette petite liste arriverait en haut de page" | 4 points de conception soumis et confirmés avant de coder (liste unique partagée entre comptes admin plutôt que privée, une seule liste plutôt que plusieurs listes nommées façon Google Tasks, item coché supprimé immédiatement plutôt que rangé dans une section "Terminé", affichage au-dessus des 4 vues plutôt que la seule vue Liste). Livré : nouveau modèle `ScratchpadItem`, composant `Scratchpad` en haut de `/admin/taches` — voir section "Backend interne" pour le détail technique et `VALIDATION.md` pour les résultats de test réels |

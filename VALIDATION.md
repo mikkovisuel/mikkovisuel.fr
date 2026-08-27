@@ -534,6 +534,20 @@ Suite au signalement client sur `/admin/taches` : la pagination initiale (voir s
 | Garde-fou anti-usurpation (`switchClientSpace`) | — | — | Cible appartenant à un autre `Contact` que la session en cours | ✅ Relu en code (non exercé par une vraie requête forgée) : `target.contactId !== current.contactId` lève une erreur avant tout changement de session — la liste des options elle-même ne peut de toute façon afficher que les accès du même `Contact` (requête `contact.clientLinks`) | 2026-08-25 |
 | Garde-fou : accès fermé ou invitation en attente | — | — | Cible avec `portalAccessEnabled=false` ou `passwordHash=null` | ✅ Relu en code : exclue à la fois de la liste affichée (filtre `where` de la requête) et de `switchClientSpace` (`canLogIn` revérifié côté serveur) — double filtrage, pas un simple masquage côté UI | 2026-08-25 |
 
+## Pense-bête sur l'onglet Tâches (2026-08-27)
+
+`tsc --noEmit` et lint propres. Testé en navigateur (Playwright, session admin réelle) contre une base Postgres locale, en mode production (`npm run build && npm start`).
+
+| Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |
+|---|---|---|---|---|---|
+| Ajout d'un item | Saisie + clic "Ajouter", puis saisie + touche Entrée | ✅ Testé en navigateur : les deux méthodes ajoutent l'item, visible immédiatement sans rechargement (état local optimiste) | Libellé vide (bouton "Ajouter" ou Entrée sans texte) | ✅ Vérifié par lecture de code : `label.trim()` vide fait sortir la Server Action sans rien créer (`if (!label) return` côté client, en plus du contrôle serveur) |
+| Ordre d'affichage | Deux items ajoutés à la suite | ✅ Testé en navigateur : le plus récent apparaît en tête, conforme au choix confirmé (`sortOrder` décroissant) | — | — | 2026-08-27 |
+| Persistance | Rechargement de la page après ajout | ✅ Testé en navigateur : l'item ajouté est toujours là après un `reload()` complet — bien écrit en base, pas seulement en état local | — | — | 2026-08-27 |
+| Cocher un item | Clic sur la case à cocher | ✅ Testé en navigateur : l'item disparaît immédiatement de la liste (conforme au choix confirmé — pas de section "Terminé") | Item déjà supprimé entre-temps (ex. deux onglets ouverts) | ✅ Vérifié par lecture de code : `deleteMany` plutôt que `delete`, ne lève pas d'erreur si l'id n'existe déjà plus |
+| Suppression bien effective côté serveur | Rechargement de la page après avoir coché un item | ✅ Testé en navigateur : l'item ne réapparaît pas après `reload()` — confirme que la Server Action a bien supprimé la ligne en base, pas juste masqué côté client | — | — | 2026-08-27 |
+| Visible sur les 4 vues | `/admin/taches?vue=kanban`, `?vue=calendrier`, `?vue=archivees`, vue Liste par défaut | ✅ Testé en navigateur sur les 4 : le bloc "Pense-bête" est affiché à l'identique au-dessus du sélecteur de vue | — | — | 2026-08-27 |
+| Absence de régression générale | Parcours des 4 vues + ajout/suppression pendant les tests | ✅ Aucune erreur 5xx ni erreur JavaScript relevée | — | — | 2026-08-27 |
+
 ## Points restant ouverts pour une prochaine passe de validation
 
 - Glisser-déposer et `<select>` natif du Kanban Prospection (limite outil, voir ci-dessus).
@@ -606,3 +620,5 @@ Suite au signalement client sur `/admin/taches` : la pagination initiale (voir s
 - **Rendu mobile de la pagination** (2026-08-24) : seul le rendu desktop a été observé en navigateur.
 - **Bump `@aws-sdk/client-s3` 3.726.1 → 3.1117.0 contre le vrai bucket OVH (2026-08-24)** : non testable depuis cet environnement local (`STORAGE_S3_*` non renseignées en dev, stockage disque local utilisé à la place). La confiance repose sur la fermeture officielle du ticket OVH ayant motivé le figeage (voir ci-dessus), pas sur un envoi réel. **À vérifier en priorité juste après le déploiement** : un envoi + téléchargement + suppression réels d'un document ou livrable en production, en surveillant les logs Scalingo pour toute erreur `SignatureDoesNotMatch` (403) — le signal exact de la régression déjà rencontrée une fois sur cette dépendance.
 - **Sélecteur de club, requête forgée réelle (2026-08-25)** : le garde-fou anti-usurpation de `switchClientSpace` (id d'un `ClientContact` appartenant à un autre `Contact`) a été relu en code, pas exercé par une vraie requête HTTP forgée contournant l'UI — à confirmer si l'occasion se présente (outil d'intercession HTTP, ou test automatisé futur).
+- **Pense-bête avec un second compte admin réellement actif** (2026-08-27) : non exercé, un seul compte admin de test disponible dans cet environnement. La liste est partagée par construction (pas de champ `adminId`), à confirmer visuellement le jour où un second compte admin est utilisé en parallèle.
+- **Rendu mobile du pense-bête** (2026-08-27) : seul le rendu desktop a été observé en navigateur.

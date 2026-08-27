@@ -870,6 +870,22 @@ model HomepageContent {
   updatedAt         DateTime @updatedAt
 }
 
+// Pense-bête de l'onglet Tâches (2026-08-24, "une petite liste qui ne sont
+// reliées à rien, à la Google Tasks", affichée en haut des 4 vues) : une
+// seule liste, partagée entre tous les comptes admin (pas de champ
+// adminId), sans rapport avec `Task`. Cocher un item le supprime aussitôt
+// (choix confirmé — pas de section "Terminé" comme sur les tâches, un
+// pense-bête reste jetable). `sortOrder` décroît à chaque ajout pour que le
+// plus récent remonte en tête, comme Google Tasks.
+model ScratchpadItem {
+  id        String   @id @default(cuid())
+  label     String
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([sortOrder])
+}
+
 // Module de notes internes ("Notes" dans le nav admin), pensé pour se
 // comporter comme Apple Notes : dossiers + épinglage, pas de lien avec
 // l'espace client (aucune vue client n'expose ces modèles).
