@@ -122,15 +122,21 @@ export function FileLightbox({
         </div>
       </div>
 
-      <div
-        className="flex flex-1 items-center justify-center overflow-hidden pt-4"
-        onClick={(event) => event.stopPropagation()}
-      >
+      {/* Pas de stopPropagation ici, contrairement à avant (2026-08-28,
+          signalement client "on ne peut pas cliquer en dehors de l'image") :
+          ce conteneur remplit tout l'espace disponible (flex-1), alors que
+          l'image en `object-contain` ne le remplit pas forcément — un clic
+          sur la zone vide autour de l'image (visuellement le fond noir)
+          tombait quand même dessus et bloquait la fermeture. Le
+          stopPropagation vit maintenant sur chaque élément média
+          lui-même. */}
+      <div className="flex flex-1 items-center justify-center overflow-hidden pt-4">
         {isImage && (
           // eslint-disable-next-line @next/next/no-img-element
           <img
             src={href}
             alt={file.fileName}
+            onClick={(event) => event.stopPropagation()}
             className="max-h-full max-w-full rounded-lg object-contain"
           />
         )}
@@ -139,6 +145,7 @@ export function FileLightbox({
             src={href}
             controls
             autoPlay
+            onClick={(event) => event.stopPropagation()}
             className="max-h-full max-w-full rounded-lg"
           />
         )}
@@ -146,6 +153,7 @@ export function FileLightbox({
           <iframe
             src={href}
             title={file.fileName}
+            onClick={(event) => event.stopPropagation()}
             className="h-full w-full max-w-4xl rounded-lg bg-white"
           />
         )}

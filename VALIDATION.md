@@ -548,6 +548,17 @@ Suite au signalement client sur `/admin/taches` : la pagination initiale (voir s
 | Visible sur les 4 vues | `/admin/taches?vue=kanban`, `?vue=calendrier`, `?vue=archivees`, vue Liste par défaut | ✅ Testé en navigateur sur les 4 : le bloc "Pense-bête" est affiché à l'identique au-dessus du sélecteur de vue | — | — | 2026-08-27 |
 | Absence de régression générale | Parcours des 4 vues + ajout/suppression pendant les tests | ✅ Aucune erreur 5xx ni erreur JavaScript relevée | — | — | 2026-08-27 |
 
+## Lightbox livrable — fermeture au clic en dehors de l'image (2026-08-28)
+
+`tsc --noEmit`, lint et `npm run build` propres. Testé en navigateur (admin, fiche tâche, livrable BAT réel) avec des vérifications d'état faites dans un appel séparé du clic (les deux dans le même appel donnaient parfois une lecture obsolète de l'état React, un artefact de méthode de test à ne pas reproduire — pas un défaut applicatif).
+
+| Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |
+|---|---|---|---|---|---|
+| Clic en dehors de l'image ferme l'aperçu | Clic sur le fond noir, en dehors de la zone de l'image | ✅ Testé en navigateur : l'aperçu se ferme | — | — | 2026-08-28 |
+| Clic sur l'image elle-même ne ferme pas | Clic au centre exact de l'image affichée | — | Clic direct sur le média | ✅ Testé en navigateur : l'aperçu reste ouvert (`stopPropagation` déplacé sur l'élément média lui-même, plus sur son conteneur) | 2026-08-28 |
+| Bouton "×" toujours fonctionnel | Clic sur la croix de fermeture | ✅ Testé en navigateur : ferme toujours l'aperçu (comportement inchangé) | — | — | 2026-08-28 |
+| Bouton télécharger — comportement PC/mobile déjà différencié | Relecture de `DownloadButton` (livré le 2026-08-17) | ✅ Confirmé par lecture de code + échange avec le client : `navigator.share` détecté → feuille de partage (mobile) ; sinon `<a download>` classique (PC) — déjà exactement le comportement demandé, aucun changement nécessaire | — | — | 2026-08-28 |
+
 ## Points restant ouverts pour une prochaine passe de validation
 
 - Glisser-déposer et `<select>` natif du Kanban Prospection (limite outil, voir ci-dessus).
