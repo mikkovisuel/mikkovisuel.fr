@@ -587,6 +587,15 @@ Suite au signalement client sur `/admin/taches` : la pagination initiale (voir s
 | Colonne Type, plusieurs types | Tâche avec deux types (Flyer + Motion) | ✅ Relu visuellement : "Flyer, Motion" affiché dans la colonne Type | — | — | 2026-09-06 |
 | Colonne Type, aucun type | Tâche sans type assigné | ✅ Relu visuellement : "—" affiché plutôt qu'une cellule vide | — | — | 2026-09-06 |
 
+## Raccourci récapitulatif mensuel sur la fiche client (2026-09-06)
+
+`tsc --noEmit`, lint et `npm run build` propres. Testé en navigateur sur `/admin/clients/[clientId]`.
+
+| Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |
+|---|---|---|---|---|---|
+| Bouton visible, `clientId` pré-rempli | Ouverture de la fiche client, dépliage du menu "Récapitulatif mensuel (PDF)" | ✅ Testé en navigateur : champ caché `clientId` déjà rempli avec l'id de la fiche affichée, action pointant vers `/api/exports/facturation` | — | — | 2026-09-06 |
+| Soumission avec le bon client | Choix d'un mois puis "Générer le PDF" | ✅ Requête réseau confirmée : `clientId`/`annee`/`mois` corrects transmis, réponse 200 | — | — | 2026-09-06 |
+
 ## Points restant ouverts pour une prochaine passe de validation
 
 - Glisser-déposer et `<select>` natif du Kanban Prospection (limite outil, voir ci-dessus).

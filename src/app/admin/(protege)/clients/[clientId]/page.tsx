@@ -16,6 +16,7 @@ import { ResetPasswordButton } from "@/components/admin/reset-password-button";
 import { ImpersonateButton } from "@/components/admin/impersonate-button";
 import { TaskTable } from "@/components/admin/task-table";
 import { CollapsibleSection } from "@/components/admin/collapsible-section";
+import { MonthlyRecapButton } from "@/components/admin/monthly-recap-button";
 import { DocumentRow } from "@/components/admin/document-row";
 import { FileGrid } from "@/components/file-grid";
 import { deleteDocument } from "@/lib/actions/files";
@@ -283,6 +284,7 @@ export default async function ClientDetailPage({
             >
               Télécharger le rapport (PDF)
             </a>
+            <MonthlyRecapButton clientId={client.id} />
             <Link
               href={
                 pinnedOnly
