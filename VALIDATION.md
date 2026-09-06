@@ -577,6 +577,16 @@ Suite au signalement client sur `/admin/taches` : la pagination initiale (voir s
 
 **Bug trouvé et corrigé pendant cette passe** : la première version du composant PDF (`MonthlyTasksInvoiceDocument`) n'affichait aucune ligne de tâche ni le pied de page, malgré un sous-titre correct ("2 tâches réalisées") — un style react-pdf conditionnel sous forme de tableau (`style={index === 0 ? [styles.row, styles.rowFirst] : styles.row}`) faisait échouer silencieusement le calcul de mise en page de toute la section suivante, sans erreur HTTP (PDF 200 bien formé mais tronqué visuellement). Corrigé en supprimant ce style conditionnel (toutes les lignes partagent maintenant le même style, l'espacement du premier élément vient du conteneur englobant) — confirmé par relecture visuelle du PDF avant/après, pas seulement par le code HTTP.
 
+### Ajustement : liste sans encadrés + colonne Type (2026-09-06)
+
+`tsc --noEmit`, lint et `npm run build` propres. Vérifié via une session admin créée directement en base (jeton + hash SHA-256 insérés dans `Session`, retirée après test) puis `curl` — plus fiable que le passage par le navigateur pour récupérer un fichier binaire complet (une tentative de copier le PDF en base64 depuis la sortie du navigateur avait été tronquée par erreur lors d'un essai précédent dans cette même passe, détecté par une taille de fichier décodé trop petite — pas un défaut applicatif, une leçon de méthode).
+
+| Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |
+|---|---|---|---|---|---|
+| Rendu en liste, sans encadré | Génération avec 2 tâches | ✅ Relu visuellement : ligne d'en-tête (Tâche/Type/Évènement) + simples séparateurs horizontaux, aucun fond ni bordure arrondie par tâche | — | — | 2026-09-06 |
+| Colonne Type, plusieurs types | Tâche avec deux types (Flyer + Motion) | ✅ Relu visuellement : "Flyer, Motion" affiché dans la colonne Type | — | — | 2026-09-06 |
+| Colonne Type, aucun type | Tâche sans type assigné | ✅ Relu visuellement : "—" affiché plutôt qu'une cellule vide | — | — | 2026-09-06 |
+
 ## Points restant ouverts pour une prochaine passe de validation
 
 - Glisser-déposer et `<select>` natif du Kanban Prospection (limite outil, voir ci-dessus).

@@ -51,7 +51,7 @@ export async function GET(request: Request) {
       eventDate: { gte: since, lt: until },
     },
     orderBy: { eventDate: "asc" },
-    select: { id: true, title: true, eventDate: true },
+    select: { id: true, title: true, eventDate: true, types: { select: { label: true } } },
   });
 
   const monthLabel = `${MONTH_NAMES[mois - 1]} ${annee}`;
@@ -61,7 +61,12 @@ export async function GET(request: Request) {
   const documentElement = createElement(MonthlyTasksInvoiceDocument, {
     clientName: client.name,
     monthLabel,
-    tasks: tasks.map((task) => ({ id: task.id, title: task.title, eventDate: task.eventDate as Date })),
+    tasks: tasks.map((task) => ({
+      id: task.id,
+      title: task.title,
+      eventDate: task.eventDate as Date,
+      types: task.types.map((type) => type.label),
+    })),
     generatedAt: new Date(),
   }) as Parameters<typeof renderToBuffer>[0];
   const buffer = await renderToBuffer(documentElement);

@@ -28,21 +28,33 @@ const styles = StyleSheet.create({
   title: { fontFamily: "ClashDisplay", fontWeight: 700, fontSize: 20, marginTop: 14 },
   subtitle: { fontSize: 10, color: COLORS.inkMuted, marginTop: 4 },
   meta: { fontSize: 9, color: COLORS.inkMuted, marginTop: 2 },
-  list: { marginTop: 16 },
+  list: { marginTop: 20, borderTopWidth: 1, borderTopColor: COLORS.line },
+  headerRow: {
+    flexDirection: "row",
+    paddingVertical: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.line,
+  },
   row: {
-    marginTop: 12,
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "space-between",
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderWidth: 1,
-    borderColor: COLORS.line,
-    borderRadius: 8,
-    backgroundColor: COLORS.surfaceElevated,
+    paddingVertical: 9,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.line,
   },
-  taskTitle: { fontFamily: "ClashDisplay", fontWeight: 700, fontSize: 12, color: COLORS.ink },
-  taskDate: { fontSize: 10, color: COLORS.inkMuted },
+  colTitle: { flexGrow: 1, flexBasis: 0 },
+  colType: { width: 110 },
+  colDate: { width: 110, textAlign: "right" },
+  headerLabel: {
+    fontSize: 8,
+    fontWeight: 700,
+    color: COLORS.inkMuted,
+    textTransform: "uppercase",
+    letterSpacing: 0.5,
+  },
+  taskTitle: { fontFamily: "ClashDisplay", fontWeight: 700, fontSize: 11, color: COLORS.ink },
+  taskType: { fontSize: 9, color: COLORS.inkMuted },
+  taskDate: { fontSize: 9, color: COLORS.inkMuted, textAlign: "right" },
   emptyState: { marginTop: 24, color: COLORS.inkMuted },
   footer: {
     position: "absolute",
@@ -62,6 +74,7 @@ interface InvoiceTask {
   id: string;
   title: string;
   eventDate: Date;
+  types: string[];
 }
 
 // Récapitulatif mensuel des tâches terminées pour un client, pensé comme
@@ -98,10 +111,20 @@ export function MonthlyTasksInvoiceDocument({
           <Text style={styles.emptyState}>Aucune tâche terminée pour ce client sur cette période.</Text>
         ) : (
           <View style={styles.list}>
+            <View style={styles.headerRow}>
+              <Text style={[styles.colTitle, styles.headerLabel]}>Tâche</Text>
+              <Text style={[styles.colType, styles.headerLabel]}>Type</Text>
+              <Text style={[styles.colDate, styles.headerLabel]}>Évènement</Text>
+            </View>
             {tasks.map((task) => (
               <View key={task.id} style={styles.row} wrap={false}>
-                <Text style={styles.taskTitle}>{task.title}</Text>
-                <Text style={styles.taskDate}>{DATE_FORMATTER.format(task.eventDate)}</Text>
+                <Text style={[styles.colTitle, styles.taskTitle]}>{task.title}</Text>
+                <Text style={[styles.colType, styles.taskType]}>
+                  {task.types.length > 0 ? task.types.join(", ") : "—"}
+                </Text>
+                <Text style={[styles.colDate, styles.taskDate]}>
+                  {DATE_FORMATTER.format(task.eventDate)}
+                </Text>
               </View>
             ))}
           </View>
