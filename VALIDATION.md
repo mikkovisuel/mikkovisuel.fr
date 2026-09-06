@@ -559,6 +559,24 @@ Suite au signalement client sur `/admin/taches` : la pagination initiale (voir s
 | Bouton "×" toujours fonctionnel | Clic sur la croix de fermeture | ✅ Testé en navigateur : ferme toujours l'aperçu (comportement inchangé) | — | — | 2026-08-28 |
 | Bouton télécharger — comportement PC/mobile déjà différencié | Relecture de `DownloadButton` (livré le 2026-08-17) | ✅ Confirmé par lecture de code + échange avec le client : `navigator.share` détecté → feuille de partage (mobile) ; sinon `<a download>` classique (PC) — déjà exactement le comportement demandé, aucun changement nécessaire | — | — | 2026-08-28 |
 
+## Onglet Facturation — récapitulatif PDF mensuel (2026-09-06)
+
+`tsc --noEmit`, lint et `npm run build` propres. Testé en navigateur/base locale (deux tâches "Terminé" réelles insérées temporairement dans le mois testé, plus des cas hors périmètre, retirées après test) — PDF récupéré via `fetch` et relu visuellement (outil PDF) à chaque étape, pas seulement le code HTTP.
+
+| Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |
+|---|---|---|---|---|---|
+| Génération du PDF, tâches du mois choisi | Client + mois avec 2 tâches "Terminé" (dates d'évènement dans le mois) | ✅ PDF 200, `Content-Disposition: attachment`, les 2 tâches listées avec leur date, triées | — | — | 2026-09-06 |
+| Exclusion d'une tâche hors statut | Même client/mois, 1 tâche supplémentaire au statut "En cours" | ✅ Sortie PDF strictement identique (même taille en octets) — la tâche non terminée n'apparaît pas | — | — | 2026-09-06 |
+| Exclusion d'une tâche hors mois | Même client, 1 tâche "Terminé" avec date d'évènement le mois suivant | ✅ Sortie PDF identique — la tâche du mois suivant n'apparaît pas | — | — | 2026-09-06 |
+| Onglet visible dans la nav admin | Barre de navigation `/admin/*` | ✅ Testé en navigateur : "Facturation" apparaît entre "Finances" et "Planning" | — | — | 2026-09-06 |
+| Mois/client sans aucune tâche | Client réel, mois sans tâche "Terminé" | ✅ PDF 200, texte "Aucune tâche terminée pour ce client sur cette période.", "0 tâche réalisée" (singulier correct) | — | — | 2026-09-06 |
+| Paramètres manquants | — | — | Requête sans `clientId`/`annee`/`mois` | ✅ 400, message texte explicite | 2026-09-06 |
+| Client inexistant | — | — | `clientId` ne correspondant à aucun client | ✅ 404 | 2026-09-06 |
+| Accès non-admin | — | — | Relecture de code : `getAdminSession()` en tête de route | ✅ 403 si aucune session admin — non réexercé par une requête non authentifiée réelle pour cette passe | 2026-09-06 |
+| Export journalisé | Une génération réussie | ✅ Vérifié en base : ligne `AuditLogEntry` (`data_export`, nom de fichier en `targetLabel`) créée à chaque génération | — | — | 2026-09-06 |
+
+**Bug trouvé et corrigé pendant cette passe** : la première version du composant PDF (`MonthlyTasksInvoiceDocument`) n'affichait aucune ligne de tâche ni le pied de page, malgré un sous-titre correct ("2 tâches réalisées") — un style react-pdf conditionnel sous forme de tableau (`style={index === 0 ? [styles.row, styles.rowFirst] : styles.row}`) faisait échouer silencieusement le calcul de mise en page de toute la section suivante, sans erreur HTTP (PDF 200 bien formé mais tronqué visuellement). Corrigé en supprimant ce style conditionnel (toutes les lignes partagent maintenant le même style, l'espacement du premier élément vient du conteneur englobant) — confirmé par relecture visuelle du PDF avant/après, pas seulement par le code HTTP.
+
 ## Points restant ouverts pour une prochaine passe de validation
 
 - Glisser-déposer et `<select>` natif du Kanban Prospection (limite outil, voir ci-dessus).
