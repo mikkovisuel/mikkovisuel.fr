@@ -42,6 +42,17 @@ export async function updateSettings(
     return { error: "Le délai de relance prospection doit être un entier positif." };
   }
 
+  // Emails de facturation (2026-09-07) : champ vide = pas de personnalisation,
+  // repli sur le texte fixe par défaut (voir src/lib/invoice-email-templates.ts)
+  // — même coercition vide-vers-null que `popupMessage` ci-dessus.
+  const blankToNull = (value: FormDataEntryValue | null) =>
+    typeof value === "string" && value.trim().length > 0 ? value.trim() : null;
+  const documentSentEmailSubject = blankToNull(formData.get("documentSentEmailSubject"));
+  const documentSentEmailBody = blankToNull(formData.get("documentSentEmailBody"));
+  const paymentReminderEmailSubject = blankToNull(formData.get("paymentReminderEmailSubject"));
+  const paymentReminderEmailBody = blankToNull(formData.get("paymentReminderEmailBody"));
+  const invoiceEmailCc = blankToNull(formData.get("invoiceEmailCc"));
+
   const data = {
     deliverableRetentionAfterEventDays,
     deliverableRetentionNoDateDays,
@@ -49,6 +60,11 @@ export async function updateSettings(
     popupEnabled: formData.get("popupEnabled") === "on",
     popupMessage,
     prospectReminderDefaultDays,
+    documentSentEmailSubject,
+    documentSentEmailBody,
+    paymentReminderEmailSubject,
+    paymentReminderEmailBody,
+    invoiceEmailCc,
   };
 
   await db.appSettings.upsert({

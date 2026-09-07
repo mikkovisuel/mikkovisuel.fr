@@ -11,6 +11,11 @@ interface SettingsDefaults {
   popupEnabled: boolean;
   popupMessage: string;
   prospectReminderDefaultDays: number;
+  documentSentEmailSubject: string;
+  documentSentEmailBody: string;
+  paymentReminderEmailSubject: string;
+  paymentReminderEmailBody: string;
+  invoiceEmailCc: string;
 }
 
 export function SettingsForm({ defaultValues }: { defaultValues: SettingsDefaults }) {
@@ -92,6 +97,91 @@ export function SettingsForm({ defaultValues }: { defaultValues: SettingsDefault
             placeholder="Ex. : Nouvelle fonctionnalité disponible dans l'onglet Livrables !"
             className="resize-none rounded-xl border border-line bg-surface-elevated px-4 py-2.5 text-sm text-ink placeholder:text-ink-muted/70 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
           />
+        </section>
+
+        <section className="grid gap-3">
+          <h2 className="text-sm font-medium text-ink">Emails de facturation</h2>
+          <p className="text-xs text-ink-muted">
+            Sujet et corps des deux emails réels envoyés autour d&apos;un document (bouton
+            &laquo; Envoyer le document &raquo; et &laquo; Envoyer une relance &raquo; dans
+            Administratif). Laisser un champ vide revient au texte par défaut. Placeholders
+            disponibles : <code>{"{fichier}"}</code> (nom du document){" "}
+            <code>{"{montant}"}</code> (relance uniquement, déjà formaté).
+          </p>
+
+          <div className="flex flex-col gap-2">
+            <label htmlFor="invoiceEmailCc" className="text-sm text-ink-muted">
+              Toujours mettre en copie (CC)
+            </label>
+            <input
+              id="invoiceEmailCc"
+              name="invoiceEmailCc"
+              type="email"
+              defaultValue={defaultValues.invoiceEmailCc}
+              placeholder="Vide = pas de copie"
+              className="rounded-xl border border-line bg-surface-elevated px-4 py-2.5 text-sm text-ink placeholder:text-ink-muted/70 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
+            />
+          </div>
+
+          <div className="grid gap-3 rounded-xl border border-line p-4">
+            <p className="text-xs font-medium uppercase tracking-wide text-ink-muted">
+              Envoi d&apos;un document
+            </p>
+            <div className="flex flex-col gap-2">
+              <label htmlFor="documentSentEmailSubject" className="text-sm text-ink-muted">
+                Sujet
+              </label>
+              <input
+                id="documentSentEmailSubject"
+                name="documentSentEmailSubject"
+                type="text"
+                defaultValue={defaultValues.documentSentEmailSubject}
+                className="rounded-xl border border-line bg-surface-elevated px-4 py-2.5 text-sm text-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <label htmlFor="documentSentEmailBody" className="text-sm text-ink-muted">
+                Corps
+              </label>
+              <textarea
+                id="documentSentEmailBody"
+                name="documentSentEmailBody"
+                rows={5}
+                defaultValue={defaultValues.documentSentEmailBody}
+                className="resize-none rounded-xl border border-line bg-surface-elevated px-4 py-2.5 text-sm text-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
+              />
+            </div>
+          </div>
+
+          <div className="grid gap-3 rounded-xl border border-line p-4">
+            <p className="text-xs font-medium uppercase tracking-wide text-ink-muted">
+              Relance de paiement
+            </p>
+            <div className="flex flex-col gap-2">
+              <label htmlFor="paymentReminderEmailSubject" className="text-sm text-ink-muted">
+                Sujet
+              </label>
+              <input
+                id="paymentReminderEmailSubject"
+                name="paymentReminderEmailSubject"
+                type="text"
+                defaultValue={defaultValues.paymentReminderEmailSubject}
+                className="rounded-xl border border-line bg-surface-elevated px-4 py-2.5 text-sm text-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <label htmlFor="paymentReminderEmailBody" className="text-sm text-ink-muted">
+                Corps
+              </label>
+              <textarea
+                id="paymentReminderEmailBody"
+                name="paymentReminderEmailBody"
+                rows={3}
+                defaultValue={defaultValues.paymentReminderEmailBody}
+                className="resize-none rounded-xl border border-line bg-surface-elevated px-4 py-2.5 text-sm text-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
+              />
+            </div>
+          </div>
         </section>
 
         <section className="grid gap-3">

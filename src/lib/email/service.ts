@@ -31,6 +31,11 @@ export interface EmailAttachmentInput {
 export interface SendEmailInput {
   trigger: EmailTrigger;
   to: string;
+  // Copie systématique optionnelle (2026-09-07, réglable dans
+  // AppSettings.invoiceEmailCc pour les emails de facturation) — laissé
+  // générique ici plutôt que spécifique à un déclencheur, au cas où un
+  // autre appelant en ait besoin plus tard.
+  cc?: string;
   subject: string;
   html: string;
   attachments?: EmailAttachmentInput[];

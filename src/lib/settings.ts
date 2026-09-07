@@ -9,6 +9,11 @@ const DEFAULT_SETTINGS = {
   popupEnabled: false,
   popupMessage: null as string | null,
   prospectReminderDefaultDays: 14,
+  documentSentEmailSubject: null as string | null,
+  documentSentEmailBody: null as string | null,
+  paymentReminderEmailSubject: null as string | null,
+  paymentReminderEmailBody: null as string | null,
+  invoiceEmailCc: "mikko.visuel@gmail.com" as string | null,
 };
 
 // Lecture du singleton AppSettings, avec des valeurs par défaut tant que la

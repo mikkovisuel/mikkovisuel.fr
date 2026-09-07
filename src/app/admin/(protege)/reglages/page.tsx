@@ -17,6 +17,12 @@ import { GmailConnectionCard } from "@/components/admin/gmail-connection-card";
 import { ClientUserEmailToggle } from "@/components/admin/client-user-email-toggle";
 import { AdminAccountsPanel } from "@/components/admin/admin-accounts-panel";
 import { CollapsibleSection } from "@/components/admin/collapsible-section";
+import {
+  DEFAULT_DOCUMENT_SENT_SUBJECT,
+  DEFAULT_DOCUMENT_SENT_BODY,
+  DEFAULT_PAYMENT_REMINDER_SUBJECT,
+  DEFAULT_PAYMENT_REMINDER_BODY,
+} from "@/lib/invoice-email-templates";
 
 export const metadata: Metadata = {
   title: "Réglages — Admin Mikko Visuel",
@@ -201,6 +207,12 @@ export default async function AdminSettingsPage({
                 popupEnabled: settings.popupEnabled,
                 popupMessage: settings.popupMessage ?? "",
                 prospectReminderDefaultDays: settings.prospectReminderDefaultDays,
+                documentSentEmailSubject: settings.documentSentEmailSubject ?? DEFAULT_DOCUMENT_SENT_SUBJECT,
+                documentSentEmailBody: settings.documentSentEmailBody ?? DEFAULT_DOCUMENT_SENT_BODY,
+                paymentReminderEmailSubject:
+                  settings.paymentReminderEmailSubject ?? DEFAULT_PAYMENT_REMINDER_SUBJECT,
+                paymentReminderEmailBody: settings.paymentReminderEmailBody ?? DEFAULT_PAYMENT_REMINDER_BODY,
+                invoiceEmailCc: settings.invoiceEmailCc ?? "",
               }}
             />
           </SettingsCard>

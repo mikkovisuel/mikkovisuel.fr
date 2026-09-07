@@ -9,6 +9,7 @@ export async function sendWithResend(input: SendEmailInput) {
   await resend.emails.send({
     from: FROM_ADDRESS,
     to: input.to,
+    ...(input.cc ? { cc: input.cc } : {}),
     subject: input.subject,
     html: input.html,
     attachments: input.attachments?.map((attachment) => ({

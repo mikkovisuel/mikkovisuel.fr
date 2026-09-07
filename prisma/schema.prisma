@@ -747,6 +747,23 @@ model AppSettings {
   // suggérée à la création d'un prospect (/admin/prospection/nouveau) — pas
   // une automatisation cachée, le champ reste éditable ou vidable.
   prospectReminderDefaultDays        Int      @default(14)
+  // Emails de facturation (2026-09-07, "ajouter les options d'édition des
+  // mails envoyés pour les factures") — sujet/corps éditables des deux
+  // emails réels envoyés depuis un Document (voir sendDocumentByEmail/
+  // sendPaymentReminder dans src/lib/actions/payments.ts), pas le brouillon
+  // `mailto:` "Préparer le mail", déjà librement modifiable dans le client
+  // mail avant envoi. `null` = repli sur le texte fixe déjà en place —
+  // textes par défaut dans src/lib/invoice-email-templates.ts. Placeholders
+  // disponibles : {fichier} (nom du document), {montant} (relance
+  // uniquement, déjà formaté avec sa virgule).
+  documentSentEmailSubject           String?
+  documentSentEmailBody              String?
+  paymentReminderEmailSubject        String?
+  paymentReminderEmailBody           String?
+  // Toujours mise en copie sur ces deux emails (2026-09-07, "toujours
+  // mettre en copie l'adresse mail mikko.visuel@gmail.com") — vide = pas de
+  // copie.
+  invoiceEmailCc                     String?  @default("mikko.visuel@gmail.com")
   updatedAt                          DateTime @updatedAt
 }
 

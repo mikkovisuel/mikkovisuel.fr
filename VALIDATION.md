@@ -625,6 +625,20 @@ Suite au signalement client sur `/admin/taches` : la pagination initiale (voir s
 | Section masquée si aucun paiement | Client sans `PaymentRecord` | ✅ Testé en navigateur : section absente (même comportement que "Documents Commercial / Société") | — | — | 2026-09-07 |
 | Anciennes URL/actions | — | — | `GET /admin/documents` | ✅ 404 standard Next.js | 2026-09-07 |
 
+## Emails de facturation personnalisables + copie systématique (2026-09-07)
+
+`tsc --noEmit`, lint et `npm run build` propres. Testé en base locale et en navigateur, envois réels déclenchés depuis `/admin/administratif` (transport console en local, pas de vrai Resend) — logs serveur relus pour confirmer le contenu exact envoyé, pas seulement le code retour.
+
+| Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |
+|---|---|---|---|---|---|
+| Réglages pré-remplis avec le texte actuel | `/admin/reglages`, section "Emails de facturation" | ✅ Les 4 champs sujet/corps affichent le texte fixe par défaut, CC pré-rempli `mikko.visuel@gmail.com` (backfillé par la migration sur la ligne `AppSettings` déjà existante) | — | — | 2026-09-07 |
+| Personnalisation appliquée à un envoi réel | Sujet/corps "Envoi d'un document" modifiés, sauvegardés, puis "Envoyer le document" sur un vrai document | ✅ Log serveur : sujet et corps exacts du modèle personnalisé, placeholder `{fichier}` bien substitué | — | — | 2026-09-07 |
+| CC systématique appliqué | Même envoi | ✅ Log serveur : `(copie : mikko.visuel@gmail.com)` sur l'email "Envoyer le document" et sur "Envoyer une relance" | — | — | 2026-09-07 |
+| Relance non personnalisée reste inchangée | "Envoyer une relance" sur un document impayé, aucun réglage touché pour ce modèle | ✅ Log serveur : texte identique à l'ancien texte fixe, `{montant}` substitué (", 800,00 €") | — | — | 2026-09-07 |
+| Champ vidé revient au texte par défaut | Réglage sauvegardé avec un champ modèle vidé | ✅ Relu en base : colonne repassée à `NULL`, l'email suivant utilise de nouveau le texte fixe (`?? DEFAULT_...`) | — | — | 2026-09-07 |
+| Échappement HTML du corps personnalisé | Corps contenant `<script>alert(1)</script>` | — | Texte admin avec des caractères `<`/`>` | ✅ Log serveur : `&lt;script&gt;alert(1)&lt;/script&gt;` — neutralisé, ne casse pas le HTML de l'email (faille latente non couverte par la passe de sécurité du 2026-07-28, corrigée à cette occasion) | 2026-09-07 |
+| CC désactivable | — | — | Champ CC vidé et sauvegardé | ✅ Relu en code : `settings.invoiceEmailCc \|\| undefined` — `cc` absent de l'appel `sendEmail` si la valeur est vide, non ré-exercé par un envoi réel pour cette passe | 2026-09-07 |
+
 ## Points restant ouverts pour une prochaine passe de validation
 
 - Glisser-déposer et `<select>` natif du Kanban Prospection (limite outil, voir ci-dessus).

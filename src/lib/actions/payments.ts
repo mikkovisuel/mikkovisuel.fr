@@ -10,6 +10,31 @@ import { sendEmail } from "@/lib/email/service";
 import { formatAmount } from "@/lib/documents";
 import { getStorageAdapter } from "@/lib/storage";
 import { notifiableEmailsFromContacts } from "@/lib/clients";
+import { getAppSettings } from "@/lib/settings";
+import { escapeHtml } from "@/lib/html-escape";
+import {
+  DEFAULT_DOCUMENT_SENT_SUBJECT,
+  DEFAULT_DOCUMENT_SENT_BODY,
+  DEFAULT_PAYMENT_REMINDER_SUBJECT,
+  DEFAULT_PAYMENT_REMINDER_BODY,
+  fillEmailTemplate,
+} from "@/lib/invoice-email-templates";
+
+// Corps HTML d'un email de facturation à partir de son modèle (personnalisé
+// depuis /admin/reglages, ou texte fixe par défaut) : le modèle lui-même
+// est échappé avant de recevoir les placeholders (un admin qui tape "<" par
+// erreur ne doit pas casser le HTML de l'email), puis les sauts de ligne
+// deviennent des <br> — un `<textarea>` reste la façon la plus simple de
+// rédiger plusieurs paragraphes.
+function renderInvoiceEmailBody(template: string, vars: Record<string, string>): string {
+  // `\r\n` : un `<textarea>` soumet des fins de ligne CRLF, pas `\n` seul —
+  // normalisé avant de convertir en `<br>`, sinon un `\r` isolé traîne juste
+  // avant chaque `<br>` (inoffensif à l'affichage, mais un HTML plus propre
+  // ne coûte rien).
+  const normalized = template.replace(/\r\n/g, "\n");
+  const filled = fillEmailTemplate(escapeHtml(normalized), vars);
+  return `<p>${filled.replace(/\n/g, "<br>")}</p>`;
+}
 
 export async function createCheckoutSession(documentId: string) {
   const clientUser = await verifyClientSession();
@@ -119,16 +144,26 @@ export async function sendPaymentReminder(documentId: string) {
   });
   if (!document || document.paymentStatus !== "unpaid") return;
 
+  const settings = await getAppSettings();
   const amount = formatAmount(document.amountCents, document.currency);
+  const montantFragment = amount ? `, ${amount}` : "";
+
+  const subject = fillEmailTemplate(
+    settings.paymentReminderEmailSubject ?? DEFAULT_PAYMENT_REMINDER_SUBJECT,
+    { fichier: document.fileName },
+  );
+  const html = renderInvoiceEmailBody(
+    settings.paymentReminderEmailBody ?? DEFAULT_PAYMENT_REMINDER_BODY,
+    { fichier: escapeHtml(document.fileName), montant: escapeHtml(montantFragment) },
+  );
 
   for (const to of notifiableEmailsFromContacts(document.client.contacts)) {
     await sendEmail({
       trigger: "payment_reminder",
       to,
-      subject: `Rappel de paiement — ${document.fileName}`,
-      html: `<p>Un document (${document.fileName}${
-        amount ? `, ${amount}` : ""
-      }) est toujours en attente de paiement dans votre espace client.</p>`,
+      cc: settings.invoiceEmailCc || undefined,
+      subject,
+      html,
     });
   }
 
@@ -153,13 +188,22 @@ export async function sendDocumentByEmail(documentId: string) {
   });
   if (!document || !document.client.billingEmail) return;
 
+  const settings = await getAppSettings();
   const buffer = await getStorageAdapter().read(document.storageKey);
+
+  const subject = fillEmailTemplate(settings.documentSentEmailSubject ?? DEFAULT_DOCUMENT_SENT_SUBJECT, {
+    fichier: document.fileName,
+  });
+  const html = renderInvoiceEmailBody(settings.documentSentEmailBody ?? DEFAULT_DOCUMENT_SENT_BODY, {
+    fichier: escapeHtml(document.fileName),
+  });
 
   await sendEmail({
     trigger: "document_sent",
     to: document.client.billingEmail,
-    subject: document.fileName,
-    html: `<p>Bonjour,</p><p>Ci-joint un nouveau document : "${document.fileName}".</p><p>Je reste à disposition pour tout renseignement complémentaire.</p><p>Par avance, merci.</p>`,
+    cc: settings.invoiceEmailCc || undefined,
+    subject,
+    html,
     attachments: [{ filename: document.fileName, content: buffer }],
   });
 
