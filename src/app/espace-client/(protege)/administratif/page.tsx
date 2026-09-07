@@ -31,7 +31,7 @@ export default async function ClientAdministrativePage() {
 
   // Paiements sans facture (2026-08-17, signalement client : "les impayés
   // non facturés ne remontent pas") — jusqu'ici PaymentRecord n'était visible
-  // que côté admin (/admin/documents, Finances). Un acompte ou règlement
+  // que côté admin (/admin/administratif, Finances). Un acompte ou règlement
   // suivi sans document associé doit quand même apparaître au client comme
   // un encours, sinon il n'a aucune visibilité sur ce qu'il doit.
   const [documents, paymentRecords] = await Promise.all([

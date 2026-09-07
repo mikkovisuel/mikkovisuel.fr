@@ -62,7 +62,7 @@ export async function uploadCompanyDocument(
     },
   });
 
-  revalidatePath("/admin/documents");
+  revalidatePath("/admin/administratif");
   return undefined;
 }
 
@@ -75,5 +75,5 @@ export async function deleteCompanyDocument(documentId: string) {
   await getStorageAdapter().delete(document.storageKey);
   await db.companyDocument.delete({ where: { id: documentId } });
 
-  revalidatePath("/admin/documents");
+  revalidatePath("/admin/administratif");
 }

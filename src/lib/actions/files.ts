@@ -444,7 +444,7 @@ export async function uploadDocument(
   }
 
   revalidatePath(`/admin/clients/${clientId}`);
-  revalidatePath("/admin/documents");
+  revalidatePath("/admin/administratif");
   revalidatePath("/espace-client");
   revalidatePath("/espace-client/administratif");
   return undefined;
@@ -462,7 +462,7 @@ export async function deleteDocument(documentId: string) {
   await db.document.delete({ where: { id: documentId } });
 
   revalidatePath(`/admin/clients/${document.clientId}`);
-  revalidatePath("/admin/documents");
+  revalidatePath("/admin/administratif");
   revalidatePath("/espace-client");
   revalidatePath("/espace-client/administratif");
 }

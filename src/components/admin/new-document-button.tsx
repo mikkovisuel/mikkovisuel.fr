@@ -6,7 +6,7 @@ import { Modal } from "@/components/admin/modal";
 import { DocumentUploadForm } from "@/components/admin/document-upload-form";
 
 // Même parti pris que `NewTaskButton` : le formulaire d'ajout passe en
-// modale plutôt qu'en bloc toujours déplié en haut de /admin/documents, où
+// modale plutôt qu'en bloc toujours déplié en haut de /admin/administratif, où
 // il repoussait la liste des documents sous la ligne de flottaison.
 export function NewDocumentButton({
   clients,

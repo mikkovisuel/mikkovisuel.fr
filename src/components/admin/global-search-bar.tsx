@@ -10,7 +10,7 @@ const GROUPS: { key: keyof SearchResults; label: string }[] = [
   { key: "contacts", label: "Contacts" },
   { key: "tasks", label: "Tâches" },
   { key: "prospects", label: "Prospects" },
-  { key: "documents", label: "Documents" },
+  { key: "documents", label: "Administratif" },
 ];
 
 export function GlobalSearchBar() {

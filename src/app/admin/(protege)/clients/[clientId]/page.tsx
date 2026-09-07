@@ -18,6 +18,7 @@ import { TaskTable } from "@/components/admin/task-table";
 import { CollapsibleSection } from "@/components/admin/collapsible-section";
 import { MonthlyRecapButton } from "@/components/admin/monthly-recap-button";
 import { DocumentRow } from "@/components/admin/document-row";
+import { PaymentRecordRow } from "@/components/admin/payment-record-row";
 import { FileGrid } from "@/components/file-grid";
 import { deleteDocument } from "@/lib/actions/files";
 import {
@@ -96,6 +97,11 @@ export default async function ClientDetailPage({
           include: { type: true },
           orderBy: { uploadedAt: "desc" },
         },
+        // Paiements sans facture de ce client (2026-09-07, "il faudrait
+        // également voir les paiements sans facture de visible") — jusqu'ici
+        // uniquement consultables globalement dans la section Finances de
+        // /admin/administratif, pas sur la fiche d'un client précis.
+        paymentRecords: { orderBy: { date: "desc" } },
       },
     }),
     db.dropdownList.findUnique({
@@ -393,13 +399,42 @@ export default async function ClientDetailPage({
         ) : (
           <p className="mt-1 text-sm text-ink-muted">
             Aucun document pour ce client. Ajoutez-en un depuis{" "}
-            <Link href="/admin/documents" className="text-ink underline underline-offset-2">
-              la page Documents
+            <Link href="/admin/administratif" className="text-ink underline underline-offset-2">
+              la page Administratif
             </Link>
             .
           </p>
         )}
       </section>
+
+      {/* Section ajoutée le 2026-09-07 ("il faudrait également voir les
+          paiements sans facture de visible") — jusqu'ici uniquement
+          consultables globalement dans la section Finances de
+          /admin/administratif, pas depuis la fiche d'un client précis. */}
+      {client.paymentRecords.length > 0 && (
+        <section className="mt-12">
+          <h2 className="text-sm font-medium text-ink-muted">
+            Paiements sans facture ({client.paymentRecords.length})
+          </h2>
+          <div className="mt-4 divide-y divide-line rounded-2xl border border-line">
+            {client.paymentRecords.map((record) => (
+              <PaymentRecordRow
+                key={record.id}
+                record={{
+                  id: record.id,
+                  clientId: record.clientId,
+                  clientName: client.name,
+                  label: record.label,
+                  amountCents: record.amountCents,
+                  currency: record.currency,
+                  paymentStatus: record.paymentStatus,
+                  date: record.date.toISOString().slice(0, 10),
+                }}
+              />
+            ))}
+          </div>
+        </section>
+      )}
 
       <section className="mt-12 flex flex-wrap items-center gap-4 border-t border-line pt-8">
         <ClientArchiveButton clientId={client.id} archived={Boolean(client.archivedAt)} />

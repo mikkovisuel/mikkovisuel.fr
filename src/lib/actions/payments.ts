@@ -101,7 +101,7 @@ export async function setDocumentPaymentStatus(documentId: string, status: "paid
     },
   });
 
-  revalidatePath("/admin/documents");
+  revalidatePath("/admin/administratif");
   revalidatePath(`/admin/clients/${document.clientId}`);
   revalidatePath("/espace-client");
   revalidatePath("/espace-client/administratif");
@@ -137,7 +137,7 @@ export async function sendPaymentReminder(documentId: string) {
     data: { lastReminderAt: new Date() },
   });
 
-  revalidatePath("/admin/documents");
+  revalidatePath("/admin/administratif");
   revalidatePath(`/admin/clients/${document.clientId}`);
 }
 
@@ -168,6 +168,6 @@ export async function sendDocumentByEmail(documentId: string) {
     data: { sentAt: new Date() },
   });
 
-  revalidatePath("/admin/documents");
+  revalidatePath("/admin/administratif");
   revalidatePath(`/admin/clients/${document.clientId}`);
 }

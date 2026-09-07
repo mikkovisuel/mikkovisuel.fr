@@ -16,13 +16,17 @@ import { ACTIVE_TASKS } from "@/lib/tasks";
 // le travail quotidien. 13 onglets -> 10. "Facturation" ajouté le
 // 2026-09-02 (10 -> 11), puis "Facturation" et "Finances" retirés le
 // 2026-09-06 (demande explicite) et fusionnés dans "Documents" : 11 -> 9.
+// "Documents" renommé "Administratif" le même jour (demande explicite,
+// cohérent avec l'onglet "Administratif" déjà côté espace client) — le
+// contenu couvre désormais bien plus que des documents (finances,
+// récapitulatif mensuel, paiements sans facture).
 const navLinks = [
   { href: "/admin", label: "Tableau de bord" },
   { href: "/admin/clients", label: "Clients" },
   { href: "/admin/contacts", label: "Contacts" },
   { href: "/admin/prospection", label: "Prospection" },
   { href: "/admin/taches", label: "Tâches" },
-  { href: "/admin/documents", label: "Documents" },
+  { href: "/admin/administratif", label: "Administratif" },
   { href: "/admin/notes", label: "Notes" },
   { href: "/admin/portfolio", label: "Portfolio" },
   { href: "/admin/planning", label: "Planning" },

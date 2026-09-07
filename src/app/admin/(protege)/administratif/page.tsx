@@ -27,7 +27,7 @@ import { Pagination } from "@/components/admin/pagination";
 import { buildClientTimeRows } from "@/lib/time-report";
 
 export const metadata: Metadata = {
-  title: "Documents — Admin Mikko Visuel",
+  title: "Administratif — Admin Mikko Visuel",
 };
 
 const STATUS_OPTIONS = [
@@ -68,7 +68,7 @@ function dateRange(annee?: string, mois?: string): { since: Date | null; until: 
   return { since: new Date(year, 0, 1), until: new Date(year + 1, 0, 1) };
 }
 
-export default async function AdminDocumentsPage({
+export default async function AdminAdministratifPage({
   searchParams,
 }: {
   searchParams: Promise<{
@@ -408,8 +408,8 @@ export default async function AdminDocumentsPage({
                 <Link
                   href={
                     finActiveFilterCount > 0
-                      ? `/admin/documents?${new URLSearchParams({ ...(finClientId ? { finClientId } : {}), ...(finAnnee ? { finAnnee } : {}), ...(finMois ? { finMois } : {}) }).toString()}`
-                      : "/admin/documents"
+                      ? `/admin/administratif?${new URLSearchParams({ ...(finClientId ? { finClientId } : {}), ...(finAnnee ? { finAnnee } : {}), ...(finMois ? { finMois } : {}) }).toString()}`
+                      : "/admin/administratif"
                   }
                   className="text-sm text-ink-muted transition-colors hover:text-ink"
                 >
@@ -443,7 +443,7 @@ export default async function AdminDocumentsPage({
           return (
             <Link
               key={option.label}
-              href={query ? `/admin/documents?${query}` : "/admin/documents"}
+              href={query ? `/admin/administratif?${query}` : "/admin/administratif"}
               className={`rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
                 isActive
                   ? "border-accent bg-accent text-accent-ink"
@@ -474,7 +474,7 @@ export default async function AdminDocumentsPage({
             ))}
           </div>
           <Pagination
-            basePath="/admin/documents"
+            basePath="/admin/administratif"
             currentPage={currentPage}
             totalPages={totalPages}
             searchParams={allParams}
@@ -700,8 +700,8 @@ export default async function AdminDocumentsPage({
                   <Link
                     href={
                       activeFilterCount > 0 || vue
-                        ? `/admin/documents?${new URLSearchParams({ ...(clientId ? { clientId } : {}), ...(typeId ? { typeId } : {}), ...(status ? { status } : {}), ...(vue ? { vue } : {}) }).toString()}`
-                        : "/admin/documents"
+                        ? `/admin/administratif?${new URLSearchParams({ ...(clientId ? { clientId } : {}), ...(typeId ? { typeId } : {}), ...(status ? { status } : {}), ...(vue ? { vue } : {}) }).toString()}`
+                        : "/admin/administratif"
                     }
                     className="text-sm text-ink-muted transition-colors hover:text-ink"
                   >

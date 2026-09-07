@@ -107,7 +107,7 @@ export function DocumentUploadForm({
       {/* Rattachement d'une facture au mois convenu plutôt qu'à sa date de
           chargement (demande du 2026-07-31) — pour les clients facturés au
           forfait mensuel, utilisé par le rapprochement Temps &
-          rentabilité de la section Finances (/admin/documents). Les
+          rentabilité de la section Finances (/admin/administratif). Les
           clients facturés à la tâche laissent la case décochée. */}
       <div className="flex flex-col gap-2 sm:col-span-2">
         <label className="flex items-center gap-2 text-sm text-ink">

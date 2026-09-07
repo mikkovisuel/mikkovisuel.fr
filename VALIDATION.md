@@ -612,6 +612,19 @@ Suite au signalement client sur `/admin/taches` : la pagination initiale (voir s
 | Anciennes URLs | — | — | `GET /admin/finances`, `GET /admin/facturation` | ✅ 404 standard Next.js dans les deux cas, rien de cassé | 2026-09-06 |
 | Actions "Paiements sans facture" ne revalident plus une route morte | Relecture de code (`src/lib/actions/payment-records.ts`) | ✅ `revalidatePath("/admin/finances")` retiré des 4 fonctions, `revalidatePath("/admin/documents")` conservé (couvre déjà la section Finances fusionnée) | — | — | 2026-09-06 |
 
+## Renommage Documents → Administratif + paiements sans facture sur la fiche client (2026-09-07)
+
+`tsc --noEmit` (cache `.next` vidé), lint et `npm run build` propres. Testé en navigateur.
+
+| Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |
+|---|---|---|---|---|---|
+| Nav renommée | Toute page `/admin/*` | ✅ Onglet "Administratif" (plus "Documents") | — | — | 2026-09-07 |
+| Nouvelle URL accessible | `/admin/administratif` | ✅ Titre de page "Administratif — Admin Mikko Visuel", contenu identique à l'ancienne page | — | — | 2026-09-07 |
+| Paiement sans facture visible sur la fiche client | Enregistrement réel ajouté en base pour un client, puis fiche rechargée | ✅ Section "Paiements sans facture (1)" avec libellé/montant/statut affichés | — | — | 2026-09-07 |
+| Action "Marquer comme payé" depuis la fiche client | Clic sur l'icône depuis cette nouvelle section | ✅ Vérifié en base : `paymentStatus` passé à `paid` | — | — | 2026-09-07 |
+| Section masquée si aucun paiement | Client sans `PaymentRecord` | ✅ Testé en navigateur : section absente (même comportement que "Documents Commercial / Société") | — | — | 2026-09-07 |
+| Anciennes URL/actions | — | — | `GET /admin/documents` | ✅ 404 standard Next.js | 2026-09-07 |
+
 ## Points restant ouverts pour une prochaine passe de validation
 
 - Glisser-déposer et `<select>` natif du Kanban Prospection (limite outil, voir ci-dessus).

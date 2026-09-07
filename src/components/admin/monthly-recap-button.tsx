@@ -7,7 +7,7 @@ const MONTH_NAMES = [
 
 // Raccourci depuis la fiche client (2026-09-06, "ajoute cette fonctionnalité
 // dans la page client") vers le récapitulatif PDF mensuel, en section basse
-// de /admin/documents depuis la fusion de l'onglet Facturation dans
+// de /admin/administratif depuis la fusion de l'onglet Facturation dans
 // Documents (même jour) : le client est déjà connu ici, inutile de le
 // ressaisir — seuls année/mois restent à choisir. Même `<details>` sans
 // JavaScript que `ClientSpaceSwitcher`/`FilterMenu`.
