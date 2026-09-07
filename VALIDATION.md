@@ -654,6 +654,18 @@ Suite au signalement client sur `/admin/taches` : la pagination initiale (voir s
 | Ajout d'un PDF depuis l'ordinateur | — | — | Sélection d'un fichier via le bouton "Ajouter un PDF" | ⚠️ Non exercé en conditions réelles : outil de session sans sélecteur de fichier natif (même limite que la validation par signature binaire ci-dessous). Vérifié par lecture de code : aperçu créé/révoqué correctement (`URL.createObjectURL`/`revokeObjectURL`, un seul objet par fichier), filtrage côté serveur des entrées `File` fantômes (`size > 0`), lecture identique au document de base (`Buffer.from(await file.arrayBuffer())`) | 2026-09-08 |
 | Portée "Envoyer une relance" inchangée | Clic sur "Envoyer une relance" | ✅ Reste un envoi direct en un clic, sans fenêtre de validation ni pièce jointe (comportement volontairement non modifié, confirmé par le client avant de coder) | — | — | 2026-09-08 |
 
+## Branchement de la recherche de prospects par IA (2026-09-08)
+
+Aucun changement de code — fonctionnalité déjà livrée et masquée proprement en l'absence de `ANTHROPIC_API_KEY`. Testé en conditions réelles (local, vraie clé, vraie requête facturée par Anthropic) plutôt que par lecture de code seule, la clé n'ayant pas d'équivalent "mode console" gratuit.
+
+| Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |
+|---|---|---|---|---|---|
+| Variable posée en local | `ANTHROPIC_API_KEY` ajoutée à `.env` | ✅ Bouton "Rechercher des prospects (IA)" apparaît sur `/admin/prospection` (masqué avant) | — | — | 2026-09-08 |
+| Recherche réelle bout en bout | Requête "graphistes freelance indépendants à Lyon, actifs sur Instagram", limite 2 | ✅ "2 prospects ajoutés." — noms, sociétés, ville et Instagram réels trouvés (un site web identifié), `source: "recherche_ia"`, note horodatée avec la requête d'origine, vérifié directement en base | — | — | 2026-09-08 |
+| Champs non trouvés jamais inventés | Même recherche | ✅ Téléphone/email laissés `null` en base pour les deux prospects plutôt qu'une valeur devinée — conforme à la consigne stricte du prompt système | — | — | 2026-09-08 |
+| Variable posée en production | `scalingo env-set ANTHROPIC_API_KEY=...` puis redémarrage | ✅ `scalingo ps` : conteneur `web-1` `running`, logs de démarrage propres (seul avertissement pré-existant et non lié : dépréciation SSL `pg`) | — | — | 2026-09-08 |
+| Recherche IA en production | — | — | Non ré-exercée en production pour cette passe (même code que le test local, déjà validé avec la même clé réelle ; éviter une seconde requête facturée redondante) | ⚠️ À confirmer à la première recherche réelle depuis l'admin en production | 2026-09-08 |
+
 ## Points restant ouverts pour une prochaine passe de validation
 
 - Glisser-déposer et `<select>` natif du Kanban Prospection (limite outil, voir ci-dessus).
