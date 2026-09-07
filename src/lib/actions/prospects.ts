@@ -21,6 +21,7 @@ import {
   type ImportProspectsState,
 } from "@/lib/validation/prospect";
 import { findProspectsWithAI } from "@/lib/prospect-search";
+import { buildExistingDedupIndex, buildDedupKeys, isDuplicate, addToIndex } from "@/lib/prospect-dedup";
 import { logProspectActivity } from "@/lib/prospect-activity";
 import { parseCsv } from "@/lib/csv";
 
@@ -464,14 +465,33 @@ export async function searchProspectsWithAI(
     return { message: "Aucun prospect trouvé pour cette recherche." };
   }
 
-  const existing = await db.prospect.findMany({ select: { email: true, instagram: true } });
-  const existingEmails = new Set(existing.map((p) => p.email?.toLowerCase()).filter(Boolean));
-  const existingInstagrams = new Set(existing.map((p) => p.instagram?.toLowerCase()).filter(Boolean));
+  // Doublons comparés sur email/Instagram/site/téléphone normalisés + repli
+  // nom-ou-société + ville (voir prospect-dedup.ts) — pas seulement email/
+  // Instagram en minuscules tels quels : deux recherches successives ne
+  // renseignent pas forcément les mêmes champs pour la même entité (ex. une
+  // fois avec le site trouvé, une fois avec le téléphone), et le format
+  // d'un même identifiant peut varier ("@handle" contre URL de profil,
+  // "+33 6 ..." contre "06 ..."). L'index couvre aussi les doublons entre
+  // résultats d'un même appel IA (jamais dédupliqués avant cette révision).
+  const existing = await db.prospect.findMany({
+    select: {
+      email: true,
+      instagram: true,
+      instagramUrl: true,
+      website: true,
+      phone: true,
+      name: true,
+      company: true,
+      city: true,
+    },
+  });
+  const index = buildExistingDedupIndex(existing);
 
   const newProspects = found.filter((prospect) => {
-    const emailTaken = prospect.email && existingEmails.has(prospect.email.toLowerCase());
-    const instagramTaken = prospect.instagram && existingInstagrams.has(prospect.instagram.toLowerCase());
-    return !emailTaken && !instagramTaken;
+    const keys = buildDedupKeys(prospect);
+    if (isDuplicate(keys, index)) return false;
+    addToIndex(keys, index);
+    return true;
   });
   const duplicateCount = found.length - newProspects.length;
 
@@ -766,21 +786,26 @@ async function insertProspectsFromCsvText(
     return { error: "Aucune ligne exploitable (nom manquant sur toutes les lignes)." };
   }
 
-  const existing = await db.prospect.findMany({ select: { email: true, instagram: true } });
-  const existingEmails = new Set(existing.map((p) => p.email?.toLowerCase()).filter(Boolean));
-  const existingInstagrams = new Set(existing.map((p) => p.instagram?.toLowerCase()).filter(Boolean));
-  const seenEmails = new Set<string>();
-  const seenInstagrams = new Set<string>();
+  // Même index normalisé que la recherche IA (voir prospect-dedup.ts) —
+  // auparavant email/Instagram en minuscules tels quels uniquement.
+  const existing = await db.prospect.findMany({
+    select: {
+      email: true,
+      instagram: true,
+      instagramUrl: true,
+      website: true,
+      phone: true,
+      name: true,
+      company: true,
+      city: true,
+    },
+  });
+  const index = buildExistingDedupIndex(existing);
 
   const toInsert = candidates.filter((candidate) => {
-    const emailKey = candidate.email ?? undefined;
-    const instaKey = candidate.instagram?.toLowerCase();
-    const isDuplicate =
-      (emailKey && (existingEmails.has(emailKey) || seenEmails.has(emailKey))) ||
-      (instaKey && (existingInstagrams.has(instaKey) || seenInstagrams.has(instaKey)));
-    if (isDuplicate) return false;
-    if (emailKey) seenEmails.add(emailKey);
-    if (instaKey) seenInstagrams.add(instaKey);
+    const keys = buildDedupKeys(candidate);
+    if (isDuplicate(keys, index)) return false;
+    addToIndex(keys, index);
     return true;
   });
   const duplicateCount = candidates.length - toInsert.length;

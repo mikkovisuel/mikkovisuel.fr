@@ -679,6 +679,23 @@ Aucun changement de code — fonctionnalité déjà livrée et masquée propreme
 | Règle "jamais deviné" toujours respectée | Même recherche | ✅ `whatsappUrl` resté `null` pour les deux (aucun lien affiché publiquement trouvé) plutôt que construit depuis le téléphone trouvé par ailleurs — comportement voulu, vérifié en base | — | — | 2026-09-08 |
 | Coût/latence de la recherche enrichie | — | — | Plus de champs à documenter + plus d'appels de recherche web autorisés (8 → 14) | ⚠️ Latence similaire à l'ancien prompt sur ce test (~26 s pour 2 résultats, contre ~26,6 s avant) — non mesuré sur une limite plus haute (8-15 résultats), où le coût/temps pourrait augmenter davantage ; à surveiller à l'usage réel | 2026-09-08 |
 
+## Déduplication renforcée des prospects — recherche IA + import (2026-09-08)
+
+`tsc --noEmit`, lint et `npm run build` propres. Testé par 13 cas unitaires directs (`buildDedupKeys`/`isDuplicate`/`addToIndex`, retirés après vérification — pas de suite de tests permanente dans ce projet), puis en conditions réelles (base locale, vraie clé, une recherche facturée).
+
+| Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |
+|---|---|---|---|---|---|
+| Normalisation Instagram | `@Handle`, URL de profil complète | ✅ Les deux formats donnent le même handle normalisé | — | — | 2026-09-08 |
+| Normalisation site | `https://www.Exemple.fr/`, `exemple.fr` | ✅ Même nom d'hôte dans les deux cas | — | — | 2026-09-08 |
+| Normalisation téléphone | `+33 6 12 34 56 78`, `06 12 34 56 78` | ✅ Même suite de chiffres dans les deux cas | — | — | 2026-09-08 |
+| Doublon détecté via un champ différent de celui déjà en base | Prospect en base avec `instagram` seul ; candidat avec seulement `instagramUrl` (même compte) | ✅ Détecté comme doublon (non détecté par l'ancienne comparaison stricte) | — | — | 2026-09-08 |
+| Doublon détecté via le site (format différent) | Site en base sans "www.", candidat avec "www." + majuscules | ✅ Détecté comme doublon | — | — | 2026-09-08 |
+| Doublon détecté via le téléphone (format différent) | Téléphone en base au format local, candidat au format international | ✅ Détecté comme doublon | — | — | 2026-09-08 |
+| Repli nom+ville sans aucun identifiant commun | Même nom et même ville, aucun email/Instagram/site/téléphone en commun | ✅ Détecté comme doublon | — | — | 2026-09-08 |
+| Entité réellement différente | Nom, ville, tous identifiants différents | — | — | ✅ Non marquée comme doublon (pas de faux positif) | 2026-09-08 |
+| Doublon intra-lot (même appel IA) | Deux résultats du même appel citant la même entité sous deux formats | ✅ Détecté (jamais géré avant cette révision pour la recherche IA) | — | — | 2026-09-08 |
+| Bout en bout, recherche IA réelle | Relance de la requête "boutiques de vêtements indépendantes à Bordeaux" (même que la veille) | ✅ "1 prospect ajouté, 1 doublon ignoré" — le prospect déjà en base (Boutique Addict) non réinséré, vérifié en base (toujours 1 seule ligne), la nouvelle entité trouvée (Kalika Studio) bien ajoutée | — | — | 2026-09-08 |
+
 ## Points restant ouverts pour une prochaine passe de validation
 
 - Glisser-déposer et `<select>` natif du Kanban Prospection (limite outil, voir ci-dessus).
