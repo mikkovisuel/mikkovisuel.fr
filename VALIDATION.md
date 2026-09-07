@@ -666,6 +666,19 @@ Aucun changement de code — fonctionnalité déjà livrée et masquée propreme
 | Variable posée en production | `scalingo env-set ANTHROPIC_API_KEY=...` puis redémarrage | ✅ `scalingo ps` : conteneur `web-1` `running`, logs de démarrage propres (seul avertissement pré-existant et non lié : dépréciation SSL `pg`) | — | — | 2026-09-08 |
 | Recherche IA en production | — | — | Non ré-exercée en production pour cette passe (même code que le test local, déjà validé avec la même clé réelle ; éviter une seconde requête facturée redondante) | ⚠️ À confirmer à la première recherche réelle depuis l'admin en production | 2026-09-08 |
 
+## Qualification enrichie de la recherche de prospects par IA (2026-09-08)
+
+`tsc --noEmit`, lint et `npm run build` propres. Testé en conditions réelles (base locale, vraie clé, deux recherches facturées avec des requêtes différentes pour éviter tout effet de déduplication avec les tests précédents).
+
+| Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |
+|---|---|---|---|---|---|
+| Colonnes auparavant vides désormais renseignées | Requête "boutiques de vêtements indépendantes à Bordeaux, actives sur Instagram", limite 2 | ✅ Les 2 prospects trouvés ont `city`, `instagramUrl` et `activityLevel` renseignés en base — vérifié directement (`Le Bouscat`/`Bordeaux`, URLs de profil complètes, `"Actif"`) et à l'écran (colonnes "Ville"/"Activité" du tableau) | — | — | 2026-09-08 |
+| Régression sur les prospects trouvés avant la correction | Comparaison avec les 2 prospects de la recherche précédente (2026-09-07, même code de test) | ✅ Toujours `—` pour ces champs (non retouchés rétroactivement, comme attendu — seules les nouvelles recherches bénéficient du prompt enrichi) | — | — | 2026-09-08 |
+| Carte de prospection alimentée | Même recherche | ✅ Badge "1" apparu sur la région Nouvelle-Aquitaine (jusque-là aucun prospect IA n'apparaissait sur la carte, `city` étant toujours vide) | — | — | 2026-09-08 |
+| Qualification concrète en note | Même recherche | ✅ `matchReason` fondé sur des indices réels observés (ex. "communauté Instagram établie (6 046 abonnés, 52 publications)... site e-commerce au design très générique") plutôt qu'une justification générique, ajouté à la note du prospect | — | — | 2026-09-08 |
+| Règle "jamais deviné" toujours respectée | Même recherche | ✅ `whatsappUrl` resté `null` pour les deux (aucun lien affiché publiquement trouvé) plutôt que construit depuis le téléphone trouvé par ailleurs — comportement voulu, vérifié en base | — | — | 2026-09-08 |
+| Coût/latence de la recherche enrichie | — | — | Plus de champs à documenter + plus d'appels de recherche web autorisés (8 → 14) | ⚠️ Latence similaire à l'ancien prompt sur ce test (~26 s pour 2 résultats, contre ~26,6 s avant) — non mesuré sur une limite plus haute (8-15 résultats), où le coût/temps pourrait augmenter davantage ; à surveiller à l'usage réel | 2026-09-08 |
+
 ## Points restant ouverts pour une prochaine passe de validation
 
 - Glisser-déposer et `<select>` natif du Kanban Prospection (limite outil, voir ci-dessus).
