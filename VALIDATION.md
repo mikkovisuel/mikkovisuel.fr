@@ -596,6 +596,22 @@ Suite au signalement client sur `/admin/taches` : la pagination initiale (voir s
 | Bouton visible, `clientId` pré-rempli | Ouverture de la fiche client, dépliage du menu "Récapitulatif mensuel (PDF)" | ✅ Testé en navigateur : champ caché `clientId` déjà rempli avec l'id de la fiche affichée, action pointant vers `/api/exports/facturation` | — | — | 2026-09-06 |
 | Soumission avec le bon client | Choix d'un mois puis "Générer le PDF" | ✅ Requête réseau confirmée : `clientId`/`annee`/`mois` corrects transmis, réponse 200 | — | — | 2026-09-06 |
 
+## Fusion des onglets Facturation et Finances dans Documents (2026-09-06)
+
+`tsc --noEmit` (cache `.next` vidé, sinon des types obsolètes référençaient encore les pages supprimées), lint et `npm run build` propres. Testé en navigateur avec des factures réelles (payée, impayée, client de démo à exclure).
+
+| Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |
+|---|---|---|---|---|---|
+| Barre de navigation | Toute page `/admin/*` | ✅ 9 onglets, ni "Facturation" ni "Finances" | — | — | 2026-09-06 |
+| 5 sections rendues avec données réelles | `/admin/documents` | ✅ Factures/Devis/Contrats, Documents Commercial/Société, Paiements sans facture, Récapitulatif mensuel (PDF), Finances — toutes affichées, Finances calculée juste (client de démo exclu du total malgré une facture de 9 999 € à son nom) | — | — | 2026-09-06 |
+| Filtre Documents n'efface pas un filtre Finances actif | `?finAnnee=2026&finMois=7` puis application du filtre Statut "Payée" | ✅ URL résultante : `finAnnee=2026&finMois=7&status=paid` — les deux coexistent, vérifié via les champs cachés du formulaire avant soumission | — | — | 2026-09-06 |
+| Filtre Finances n'efface pas un filtre Documents actif | Depuis l'état ci-dessus, lien "Réinitialiser" de la section Finances | ✅ `href="/admin/documents?status=paid"` — le filtre Documents survit, seul `finAnnee`/`finMois` est retiré (et inversement pour le "Réinitialiser" de Documents) | — | — | 2026-09-06 |
+| Bascule Détaillé/Bacs préserve les deux jeux de filtres | Avec `status=paid` et `finAnnee/finMois` actifs | ✅ Liens "Détaillé"/"Bacs" contiennent les 5 paramètres | — | — | 2026-09-06 |
+| Formulaire Facturation toujours fonctionnel | Génération PDF depuis la nouvelle section | ✅ 200, `content-type: application/pdf` | — | — | 2026-09-06 |
+| Raccourci fiche client (`MonthlyRecapButton`) toujours fonctionnel | `/admin/clients/[clientId]` | ✅ Menu "Récapitulatif mensuel (PDF)" toujours présent et fonctionnel (pointe vers la même route API, non affectée par le déplacement de page) | — | — | 2026-09-06 |
+| Anciennes URLs | — | — | `GET /admin/finances`, `GET /admin/facturation` | ✅ 404 standard Next.js dans les deux cas, rien de cassé | 2026-09-06 |
+| Actions "Paiements sans facture" ne revalident plus une route morte | Relecture de code (`src/lib/actions/payment-records.ts`) | ✅ `revalidatePath("/admin/finances")` retiré des 4 fonctions, `revalidatePath("/admin/documents")` conservé (couvre déjà la section Finances fusionnée) | — | — | 2026-09-06 |
+
 ## Points restant ouverts pour une prochaine passe de validation
 
 - Glisser-déposer et `<select>` natif du Kanban Prospection (limite outil, voir ci-dessus).

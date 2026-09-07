@@ -49,7 +49,6 @@ export async function createPaymentRecord(
   });
 
   revalidatePath("/admin/documents");
-  revalidatePath("/admin/finances");
   return undefined;
 }
 
@@ -64,7 +63,6 @@ export async function updatePaymentRecordDate(recordId: string, dateValue: strin
   await db.paymentRecord.update({ where: { id: recordId }, data: { date } });
 
   revalidatePath("/admin/documents");
-  revalidatePath("/admin/finances");
 }
 
 export async function setPaymentRecordStatus(recordId: string, status: "paid" | "unpaid") {
@@ -76,7 +74,6 @@ export async function setPaymentRecordStatus(recordId: string, status: "paid" | 
   });
 
   revalidatePath("/admin/documents");
-  revalidatePath("/admin/finances");
 }
 
 export async function deletePaymentRecord(recordId: string) {
@@ -85,5 +82,4 @@ export async function deletePaymentRecord(recordId: string) {
   await db.paymentRecord.delete({ where: { id: recordId } });
 
   revalidatePath("/admin/documents");
-  revalidatePath("/admin/finances");
 }

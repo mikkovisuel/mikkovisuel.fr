@@ -14,8 +14,8 @@ import { ACTIVE_TASKS } from "@/lib/tasks";
 // déplacés sous la roue crantée (voir `SettingsMenu`) : ce sont des écrans
 // de paramétrage ou de consultation ponctuelle, alors que cette barre est
 // le travail quotidien. 13 onglets -> 10. "Facturation" ajouté le
-// 2026-09-02 (demande explicite d'un nouvel onglet, pas un écran de
-// paramétrage) : 10 -> 11.
+// 2026-09-02 (10 -> 11), puis "Facturation" et "Finances" retirés le
+// 2026-09-06 (demande explicite) et fusionnés dans "Documents" : 11 -> 9.
 const navLinks = [
   { href: "/admin", label: "Tableau de bord" },
   { href: "/admin/clients", label: "Clients" },
@@ -25,8 +25,6 @@ const navLinks = [
   { href: "/admin/documents", label: "Documents" },
   { href: "/admin/notes", label: "Notes" },
   { href: "/admin/portfolio", label: "Portfolio" },
-  { href: "/admin/finances", label: "Finances" },
-  { href: "/admin/facturation", label: "Facturation" },
   { href: "/admin/planning", label: "Planning" },
 ];
 

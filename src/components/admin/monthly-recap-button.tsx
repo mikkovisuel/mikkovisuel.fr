@@ -6,10 +6,11 @@ const MONTH_NAMES = [
 ];
 
 // Raccourci depuis la fiche client (2026-09-06, "ajoute cette fonctionnalité
-// dans la page client") vers le récapitulatif PDF mensuel de l'onglet
-// Facturation (voir /admin/facturation) : le client est déjà connu ici,
-// inutile de le ressaisir — seuls année/mois restent à choisir. Même
-// `<details>` sans JavaScript que `ClientSpaceSwitcher`/`FilterMenu`.
+// dans la page client") vers le récapitulatif PDF mensuel, en section basse
+// de /admin/documents depuis la fusion de l'onglet Facturation dans
+// Documents (même jour) : le client est déjà connu ici, inutile de le
+// ressaisir — seuls année/mois restent à choisir. Même `<details>` sans
+// JavaScript que `ClientSpaceSwitcher`/`FilterMenu`.
 export function MonthlyRecapButton({ clientId }: { clientId: string }) {
   const now = new Date();
   const currentYear = now.getFullYear();
