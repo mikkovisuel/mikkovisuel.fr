@@ -25,6 +25,11 @@ import { formatAmount } from "@/lib/documents";
 import { ACTIVE_CLIENTS, EXCLUDE_DEMO_CLIENT } from "@/lib/clients";
 import { Pagination } from "@/components/admin/pagination";
 import { buildClientTimeRows } from "@/lib/time-report";
+import { getAppSettings } from "@/lib/settings";
+import {
+  DEFAULT_DOCUMENT_SENT_SUBJECT,
+  DEFAULT_DOCUMENT_SENT_BODY,
+} from "@/lib/invoice-email-templates";
 
 export const metadata: Metadata = {
   title: "Administratif — Admin Mikko Visuel",
@@ -143,6 +148,7 @@ export default async function AdminAdministratifPage({
     finInvoices,
     finPaymentRecords,
     finTimeEntries,
+    settings,
   ] = await Promise.all([
     db.document.findMany({
       where: documentWhere,
@@ -204,6 +210,7 @@ export default async function AdminAdministratifPage({
         task: { select: { clientId: true, client: { select: { name: true, archivedAt: true } } } },
       },
     }),
+    getAppSettings(),
   ]);
 
   const totalPages = isBinView ? 1 : Math.max(1, Math.ceil(documentCount / PAGE_SIZE));
@@ -470,6 +477,9 @@ export default async function AdminAdministratifPage({
                 showClient
                 billingEmail={doc.client.billingEmail}
                 deleteAction={deleteDocument}
+                companyDocuments={companyDocuments.map((d) => ({ id: d.id, fileName: d.fileName }))}
+                emailSubjectTemplate={settings.documentSentEmailSubject ?? DEFAULT_DOCUMENT_SENT_SUBJECT}
+                emailBodyTemplate={settings.documentSentEmailBody ?? DEFAULT_DOCUMENT_SENT_BODY}
               />
             ))}
           </div>

@@ -6,16 +6,17 @@ import {
   BellSimple,
   Trash,
 } from "@phosphor-icons/react/dist/ssr";
-import {
-  setDocumentPaymentStatus,
-  sendPaymentReminder,
-  sendDocumentByEmail,
-} from "@/lib/actions/payments";
+import { setDocumentPaymentStatus, sendPaymentReminder } from "@/lib/actions/payments";
 import { DeleteButton } from "@/components/admin/delete-button";
+import { SendDocumentDialog } from "@/components/admin/send-document-dialog";
 import { PaymentStatusBadge } from "@/components/payment-status-badge";
 import { formatAmount, isOverdue, dueDateFormatter } from "@/lib/documents";
 import { DOCUMENT_TYPE } from "@/lib/dropdown-lists";
 import { buildDocumentMailDraft } from "@/lib/mail-draft";
+import {
+  DEFAULT_DOCUMENT_SENT_SUBJECT,
+  DEFAULT_DOCUMENT_SENT_BODY,
+} from "@/lib/invoice-email-templates";
 
 const SENT_AT_FORMATTER = new Intl.DateTimeFormat("fr-FR", {
   day: "2-digit",
@@ -29,6 +30,7 @@ const ICON_BUTTON =
 interface DocumentRowProps {
   document: {
     id: string;
+    clientId: string;
     fileName: string;
     amountCents: number | null;
     currency: string;
@@ -51,6 +53,13 @@ interface DocumentRowProps {
   // données en entrée.
   billingEmail?: string | null;
   deleteAction?: (id: string) => Promise<void>;
+  // Aperçu + pièces jointes avant envoi (2026-09-08) — voir
+  // `SendDocumentDialog`. Modèles déjà résolus (personnalisé ou texte fixe
+  // par défaut, voir invoice-email-templates.ts) plutôt que les réglages
+  // bruts : ce composant n'a pas à connaître la logique de repli.
+  companyDocuments?: { id: string; fileName: string }[];
+  emailSubjectTemplate?: string;
+  emailBodyTemplate?: string;
 }
 
 // Toutes les actions sont passées en icônes (demande du 2026-07-31) — la
@@ -62,6 +71,9 @@ export function DocumentRow({
   showClient = false,
   billingEmail,
   deleteAction,
+  companyDocuments = [],
+  emailSubjectTemplate = DEFAULT_DOCUMENT_SENT_SUBJECT,
+  emailBodyTemplate = DEFAULT_DOCUMENT_SENT_BODY,
 }: DocumentRowProps) {
   const overdue = isOverdue(document);
 
@@ -133,11 +145,15 @@ export function DocumentRow({
         )}
         {billingEmail ? (
           <>
-            <form action={sendDocumentByEmail.bind(null, document.id)}>
-              <button type="submit" title="Envoyer le document" aria-label="Envoyer le document" className={ICON_BUTTON}>
-                <PaperPlaneTilt size={16} weight="regular" />
-              </button>
-            </form>
+            <SendDocumentDialog
+              documentId={document.id}
+              fileName={document.fileName}
+              billingEmail={billingEmail}
+              clientId={document.clientId}
+              emailSubjectTemplate={emailSubjectTemplate}
+              emailBodyTemplate={emailBodyTemplate}
+              companyDocuments={companyDocuments}
+            />
             {/* Ouvre la messagerie de l'admin avec un brouillon prérempli —
                 sans pièce jointe, impossible en `mailto:` (voir
                 src/lib/mail-draft.ts). Ne marque donc pas `sentAt`. */}

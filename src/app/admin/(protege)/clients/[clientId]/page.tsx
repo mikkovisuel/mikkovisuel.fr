@@ -45,6 +45,11 @@ import {
   type TaskSortDir,
 } from "@/lib/tasks";
 import { contactAccessState } from "@/lib/clients";
+import { getAppSettings } from "@/lib/settings";
+import {
+  DEFAULT_DOCUMENT_SENT_SUBJECT,
+  DEFAULT_DOCUMENT_SENT_BODY,
+} from "@/lib/invoice-email-templates";
 
 export const metadata: Metadata = {
   title: "Client — Admin Mikko Visuel",
@@ -64,7 +69,8 @@ export default async function ClientDetailPage({
   const sortDir: TaskSortDir = dir === "desc" ? "desc" : "asc";
   const pinnedOnly = epingle === "1";
 
-  const [client, statusList, typeList, formatList, categoryList, assignableContacts] = await Promise.all([
+  const [client, statusList, typeList, formatList, categoryList, assignableContacts, companyDocuments, settings] =
+    await Promise.all([
     db.client.findUnique({
       where: { id: clientId },
       include: {
@@ -127,6 +133,11 @@ export default async function ClientDetailPage({
       where: { clientLinks: { none: { clientId } } },
       orderBy: { name: "asc" },
     }),
+    // Documents Commercial/Société (ex. RIB) proposables en pièce jointe à
+    // l'envoi d'une facture — voir `SendDocumentDialog`, même liste que sur
+    // /admin/administratif.
+    db.companyDocument.findMany({ orderBy: { uploadedAt: "desc" } }),
+    getAppSettings(),
   ]);
 
   if (!client) notFound();
@@ -393,6 +404,9 @@ export default async function ClientDetailPage({
                 document={doc}
                 billingEmail={client.billingEmail}
                 deleteAction={deleteDocument}
+                companyDocuments={companyDocuments.map((d) => ({ id: d.id, fileName: d.fileName }))}
+                emailSubjectTemplate={settings.documentSentEmailSubject ?? DEFAULT_DOCUMENT_SENT_SUBJECT}
+                emailBodyTemplate={settings.documentSentEmailBody ?? DEFAULT_DOCUMENT_SENT_BODY}
               />
             ))}
           </div>

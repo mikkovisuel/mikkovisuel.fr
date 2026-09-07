@@ -639,6 +639,21 @@ Suite au signalement client sur `/admin/taches` : la pagination initiale (voir s
 | Échappement HTML du corps personnalisé | Corps contenant `<script>alert(1)</script>` | — | Texte admin avec des caractères `<`/`>` | ✅ Log serveur : `&lt;script&gt;alert(1)&lt;/script&gt;` — neutralisé, ne casse pas le HTML de l'email (faille latente non couverte par la passe de sécurité du 2026-07-28, corrigée à cette occasion) | 2026-09-07 |
 | CC désactivable | — | — | Champ CC vidé et sauvegardé | ✅ Relu en code : `settings.invoiceEmailCc \|\| undefined` — `cc` absent de l'appel `sendEmail` si la valeur est vide, non ré-exercé par un envoi réel pour cette passe | 2026-09-07 |
 
+## Pièces jointes + aperçu avant envoi d'un document (2026-09-08)
+
+`tsc --noEmit`, lint et `npm run build` propres. Testé en base locale et en navigateur (session admin réelle, transport email console) via `/admin/administratif`.
+
+| Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |
+|---|---|---|---|---|---|
+| Fenêtre de validation à l'ouverture | Clic sur "Envoyer le document" | ✅ Aperçu du sujet et du corps du mail affichés, identiques au texte réellement envoyé (mêmes fonctions de rendu que l'envoi), document de base listé "toujours incluse" | — | — | 2026-09-08 |
+| Aperçu du récapitulatif mensuel | Case "Joindre le récapitulatif mensuel" cochée, année/mois choisis, "Aperçu" | ✅ Requête `GET /api/exports/facturation?...&preview=1` → 200, `content-disposition: inline`, PDF valide (1 page, contenu conforme au client/mois choisis) — vérifié par téléchargement direct (`curl` + session), le rendu inline en navigateur dépendant du visualiseur PDF du poste | — | — | 2026-09-08 |
+| Envoi réel avec le document en pièce jointe | "Confirmer l'envoi" sur un document ayant un email de facturation | ✅ Log serveur : destinataire, CC (`mikko.visuel@gmail.com`), sujet/corps issus des modèles personnalisables, `[pièces jointes: <nom du fichier>]` ; `Document.sentAt` mis à jour et affiché ("Envoyé le ...") après revalidation | — | — | 2026-09-08 |
+| Fichier introuvable en stockage | — | — | Document dont la clé de stockage ne correspond à aucun fichier réel (données de test antérieures à cette fonctionnalité) | ✅ Page d'erreur générique de l'admin (`ENOENT` journalisé côté serveur), pas de fuite de la trace ; corrigé pour le test en reconstituant le fichier manquant, hors périmètre de cette fonctionnalité | 2026-09-08 |
+| Bouton absent sans email de facturation | Client sans `billingEmail` | ✅ "Pas d'email de facturation" affiché à la place du bouton (comportement déjà existant, non régressé) | — | — | 2026-09-08 |
+| Documents Commercial/Société proposables | — | — | Aucun `CompanyDocument` en base au moment du test | ⚠️ Section "Documents Commercial / Société" de la fenêtre correctement absente (rendu conditionnel vérifié en code et en navigateur), mais la case à cocher + son aperçu (`?preview=1` sur `/api/fichiers/documents-societe/[id]`) n'ont pas pu être exercés avec un vrai fichier faute de `CompanyDocument` existant dans les données locales — à confirmer à la première ouverture avec un RIB réellement présent | 2026-09-08 |
+| Ajout d'un PDF depuis l'ordinateur | — | — | Sélection d'un fichier via le bouton "Ajouter un PDF" | ⚠️ Non exercé en conditions réelles : outil de session sans sélecteur de fichier natif (même limite que la validation par signature binaire ci-dessous). Vérifié par lecture de code : aperçu créé/révoqué correctement (`URL.createObjectURL`/`revokeObjectURL`, un seul objet par fichier), filtrage côté serveur des entrées `File` fantômes (`size > 0`), lecture identique au document de base (`Buffer.from(await file.arrayBuffer())`) | 2026-09-08 |
+| Portée "Envoyer une relance" inchangée | Clic sur "Envoyer une relance" | ✅ Reste un envoi direct en un clic, sans fenêtre de validation ni pièce jointe (comportement volontairement non modifié, confirmé par le client avant de coder) | — | — | 2026-09-08 |
+
 ## Points restant ouverts pour une prochaine passe de validation
 
 - Glisser-déposer et `<select>` natif du Kanban Prospection (limite outil, voir ci-dessus).

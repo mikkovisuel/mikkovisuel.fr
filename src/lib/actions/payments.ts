@@ -18,23 +18,10 @@ import {
   DEFAULT_PAYMENT_REMINDER_SUBJECT,
   DEFAULT_PAYMENT_REMINDER_BODY,
   fillEmailTemplate,
+  renderInvoiceEmailBody,
 } from "@/lib/invoice-email-templates";
-
-// Corps HTML d'un email de facturation à partir de son modèle (personnalisé
-// depuis /admin/reglages, ou texte fixe par défaut) : le modèle lui-même
-// est échappé avant de recevoir les placeholders (un admin qui tape "<" par
-// erreur ne doit pas casser le HTML de l'email), puis les sauts de ligne
-// deviennent des <br> — un `<textarea>` reste la façon la plus simple de
-// rédiger plusieurs paragraphes.
-function renderInvoiceEmailBody(template: string, vars: Record<string, string>): string {
-  // `\r\n` : un `<textarea>` soumet des fins de ligne CRLF, pas `\n` seul —
-  // normalisé avant de convertir en `<br>`, sinon un `\r` isolé traîne juste
-  // avant chaque `<br>` (inoffensif à l'affichage, mais un HTML plus propre
-  // ne coûte rien).
-  const normalized = template.replace(/\r\n/g, "\n");
-  const filled = fillEmailTemplate(escapeHtml(normalized), vars);
-  return `<p>${filled.replace(/\n/g, "<br>")}</p>`;
-}
+import { generateMonthlyRecapPdf } from "@/lib/monthly-recap";
+import type { EmailAttachmentInput } from "@/lib/email/service";
 
 export async function createCheckoutSession(documentId: string) {
   const clientUser = await verifyClientSession();
@@ -176,20 +163,79 @@ export async function sendPaymentReminder(documentId: string) {
   revalidatePath(`/admin/clients/${document.clientId}`);
 }
 
+export type SendDocumentState = { error?: string; success?: boolean } | undefined;
+
 // Envoi manuel d'un document à l'email de facturation du client (distinct
 // des comptes de connexion — voir `Client.billingEmail`), en pièce jointe.
-// Objet = nom du fichier, corps = message fixe demandé par le client.
-export async function sendDocumentByEmail(documentId: string) {
+// Depuis le 2026-09-08 ("possibilité d'ajouter des pièces jointes... avant
+// chaque envoi, il faut une validation"), passe par `SendDocumentDialog`
+// (aperçu + choix des pièces jointes) plutôt qu'un clic direct — trois
+// sources possibles, toutes facultatives en plus du document lui-même :
+//  - `companyDocumentIds` : documents Commercial/Société existants
+//    (ex. RIB), lus depuis le stockage comme le document principal ;
+//  - `uploadedFiles` : PDF ajoutés depuis l'ordinateur pour cet envoi
+//    précis, jamais enregistrés ailleurs dans l'app (choix confirmé) ;
+//  - `includeMonthlyRecap` + `recapAnnee`/`recapMois` : récapitulatif
+//    mensuel régénéré à la volée (même fonction que le téléchargement
+//    manuel, src/lib/monthly-recap.ts) plutôt que de faire voyager le
+//    fichier prévisualisé côté client jusqu'ici.
+export async function sendDocumentByEmail(
+  documentId: string,
+  _prev: SendDocumentState,
+  formData: FormData,
+): Promise<SendDocumentState> {
   await verifyAdminSession();
 
   const document = await db.document.findUnique({
     where: { id: documentId },
     include: { client: true },
   });
-  if (!document || !document.client.billingEmail) return;
+  if (!document || !document.client.billingEmail) {
+    return { error: "Aucun email de facturation pour ce client." };
+  }
 
   const settings = await getAppSettings();
   const buffer = await getStorageAdapter().read(document.storageKey);
+  const attachments: EmailAttachmentInput[] = [{ filename: document.fileName, content: buffer }];
+
+  const companyDocumentIds = formData
+    .getAll("companyDocumentIds")
+    .filter((value): value is string => typeof value === "string" && value.length > 0);
+  if (companyDocumentIds.length > 0) {
+    const companyDocuments = await db.companyDocument.findMany({
+      where: { id: { in: companyDocumentIds } },
+    });
+    for (const companyDocument of companyDocuments) {
+      const content = await getStorageAdapter().read(companyDocument.storageKey);
+      attachments.push({ filename: companyDocument.fileName, content });
+    }
+  }
+
+  // `size > 0` : un `<input type="file">` laissé vide soumet quand même une
+  // entrée `File` fantôme (nom vide, taille 0) dans `FormData` — filtrée ici
+  // plutôt que jointe telle quelle.
+  const uploadedFiles = formData
+    .getAll("uploadedFiles")
+    .filter((value): value is File => value instanceof File && value.size > 0);
+  for (const file of uploadedFiles) {
+    const content = Buffer.from(await file.arrayBuffer());
+    attachments.push({ filename: file.name, content });
+  }
+
+  if (formData.get("includeMonthlyRecap") === "on") {
+    const recapAnnee = Number.parseInt(String(formData.get("recapAnnee") ?? ""), 10);
+    const recapMois = Number.parseInt(String(formData.get("recapMois") ?? ""), 10);
+    if (Number.isInteger(recapAnnee) && Number.isInteger(recapMois) && recapMois >= 1 && recapMois <= 12) {
+      const recap = await generateMonthlyRecapPdf({
+        clientId: document.clientId,
+        annee: recapAnnee,
+        mois: recapMois,
+      });
+      if (recap) {
+        attachments.push({ filename: recap.fileName, content: recap.buffer });
+      }
+    }
+  }
 
   const subject = fillEmailTemplate(settings.documentSentEmailSubject ?? DEFAULT_DOCUMENT_SENT_SUBJECT, {
     fichier: document.fileName,
@@ -204,7 +250,7 @@ export async function sendDocumentByEmail(documentId: string) {
     cc: settings.invoiceEmailCc || undefined,
     subject,
     html,
-    attachments: [{ filename: document.fileName, content: buffer }],
+    attachments,
   });
 
   await db.document.update({
@@ -214,4 +260,5 @@ export async function sendDocumentByEmail(documentId: string) {
 
   revalidatePath("/admin/administratif");
   revalidatePath(`/admin/clients/${document.clientId}`);
+  return { success: true };
 }
