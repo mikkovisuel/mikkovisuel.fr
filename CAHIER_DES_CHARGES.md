@@ -1793,6 +1793,46 @@ Le client a explicitement délégué ces choix :
   - Clients, Prospection et Notes restent non paginés — volumes mesurés
     trop faibles à ce jour pour justifier le chantier (voir "Points encore
     ouverts" si la base grossit).
+- **Quatrième passe de performance — mémoire du conteneur** (2026-09-08,
+  "je trouve parfois des ralentissements sur mon site") : conteneur
+  constaté à **100 % de sa mémoire** (512/512 Mo, mesuré deux fois à
+  quelques minutes d'écart) avec seulement 2 % de CPU — signature d'une
+  pression mémoire qui s'accumule avec le temps (conteneur actif depuis
+  ~7h) plutôt qu'un pic de trafic. Logs de production sur la même fenêtre :
+  erreurs répétées de connexion à la base (`ECONNRESET`, "Connection
+  terminated unexpectedly", TLS jamais établi) sur des pages **publiques**
+  (portfolio, page d'accueil) — cohérent avec un processus Node trop
+  chargé mémoire pour traiter les I/O réseau à temps, plutôt qu'une panne
+  de la base elle-même. Reprend les deux causes de lenteur identifiées le
+  2026-08-23 mais jamais traitées :
+  - **Cache natif de `sharp`** : l'optimiseur d'images intégré de Next
+    (très sollicité par un portfolio public riche en photos) s'appuie en
+    interne sur `sharp`, qui garde par défaut jusqu'à 50 Mo/20 fichiers/
+    100 opérations en mémoire native, jamais libérés tant que le processus
+    tourne. Coût quasiment pur : le cache disque de Next
+    (`.next/cache/images`) sert déjà les requêtes identiques répétées sans
+    repasser par `sharp`. Désactivé (`sharp.cache(false)`) et concurrence
+    native plafonnée à 1 (`sharp.concurrency(1)`, contre le nombre de
+    cœurs par défaut — évite qu'un pic de redimensionnements simultanés
+    n'allonge d'autant les tampons décodés/encodés en mémoire) dans
+    `src/instrumentation.ts` (hook `register()`, déjà utilisé pour les
+    vérifications de démarrage en production).
+  - **Sessions jamais purgées** : une session expirée n'était supprimée
+    qu'à la prochaine tentative d'utilisation de son cookie — une session
+    simplement abandonnée restait en base indéfiniment. Nouveau
+    `src/lib/session-purge.ts` + route `/api/cron/purge-sessions`, même
+    garde `CRON_SECRET` que les crons existants, planifiée chaque jour à
+    4h dans `cron.json` (juste après la purge des livrables à 3h).
+  - **Mitigation immédiate** : conteneur redémarré manuellement pendant
+    l'investigation (mémoire retombée à 63 % juste après redémarrage) —
+    geste ponctuel, pas un correctif ; le correctif est le point ci-dessus.
+  - **Honnêteté sur la preuve** : les deux causes sont mesurées comme
+    plausibles et corrigées à l'état de l'art (pratique documentée pour
+    Next.js + `sharp` sur conteneur contraint), mais la vraie preuve
+    — que la mémoire reste stable sur plusieurs heures/jours au lieu de
+    remonter à 100 % — ne peut être observée que sur la durée, pas dans
+    cette session. À surveiller (`scalingo stats`) dans les jours qui
+    suivent le déploiement.
 
 ## Points encore ouverts
 
@@ -2245,3 +2285,4 @@ Le client a explicitement délégué ces choix :
 | 2026-09-08 | "J'aimerais brancher la prospection c'est parti" (branchement de la recherche automatique de prospects par IA, jusqu'ici scaffoldée mais masquée faute de `ANTHROPIC_API_KEY` — voir plus haut) | Aucun code à écrire, la fonctionnalité était déjà livrée et dégradait proprement. Compte, facturation et clé créés par le client lui-même sur console.anthropic.com (Claude Code ne peut ni créer de compte ni saisir de moyen de paiement à sa place), clé transmise en chat puis posée en variable d'environnement locale (`.env`, non versionné) et sur Scalingo (`env-set` + redémarrage). Testé en conditions réelles (vraie clé, vraie recherche web facturée) : requête "graphistes freelance indépendants à Lyon, actifs sur Instagram" (limite 2, pour minimiser le coût du test) → 2 prospects réels ajoutés (nom, société, ville, Instagram, un site web trouvé), champs non trouvés laissés vides plutôt qu'inventés, comme prévu. Conteneur Scalingo redémarré sans erreur après pose de la variable |
 | 2026-09-08 | "Possible de dire à la recherche IA de bien remplir toute les colonnes ? Bien qualifier les prospects etc..." | **Vrai manque trouvé** : la recherche IA ne renseignait que 7 des 11 champs du modèle `Prospect` — `city`, `instagramUrl`, `whatsappUrl` et `activityLevel` (colonnes Ville/Activité affichées dans le tableau, alimentées seulement par l'import CSV jusqu'ici) restaient systématiquement vides, y compris "Ville" qui alimente la carte de prospection. Prompt système réécrit pour documenter chaque prospect plus en profondeur avant de répondre (site + réseaux, plus d'appels de recherche web autorisés) et remplir tous les champs disponibles publiquement, avec la même règle stricte de ne jamais deviner. Nouveau champ `matchReason` (une phrase de qualification fondée sur des indices réels observés) ajouté à la note du prospect. Testé en conditions réelles (nouvelle recherche facturée, requête différente pour éviter la déduplication) : les deux prospects trouvés ont désormais ville, URL Instagram et niveau d'activité renseignés (vérifié en base et à l'écran, y compris le badge région qui apparaît maintenant sur la carte), avec une note de qualification concrète (nombre d'abonnés, ton de la communication, potentiel identifié) — contre aucun de ces champs pour les prospects trouvés avant la correction — voir `VALIDATION.md` |
 | 2026-09-08 | "Il faut également ne pas créer de doublons dans la liste déjà entrée sur le site internet" | **Vrai manque trouvé** : la déduplication de la recherche IA ne comparait que l'email et l'identifiant Instagram, tels quels en minuscules — ratait un doublon dès que le format différait ("@handle" contre URL de profil, "+33 6 ..." contre "06 ...") ou qu'aucun des deux champs n'était rempli deux fois pour la même entité ; les doublons **au sein d'un même appel IA** n'étaient pas non plus détectés. Logique de déduplication réécrite et **partagée** avec l'import CSV/Sheets (nouveau module `src/lib/prospect-dedup.ts`, qui reprenait jusqu'ici une version moins complète du même principe) : comparaison sur email/Instagram (identifiant ou URL)/site (nom d'hôte)/téléphone normalisés, avec repli nom-ou-société + ville si aucun identifiant ne concorde. Testé par 13 cas unitaires (normalisation + doublon détecté/non détecté sur chaque champ + repli nom+ville + doublon intra-lot) tous vérifiés passants, puis en conditions réelles : relancer exactement la même recherche IA que la veille ("boutiques de vêtements indépendantes à Bordeaux") a bien ignoré le prospect déjà en base ("1 prospect ajouté, 1 doublon ignoré") tout en ajoutant la nouvelle entité trouvée — voir `VALIDATION.md` |
+| 2026-09-08 | "Je trouve parfois des ralentissements sur mon site..." | **Vrai problème trouvé et corrigé** (voir "Quatrième passe de performance" ci-dessus pour le détail) : conteneur mesuré à 100 % de sa mémoire (512/512 Mo, CPU à 2 % seulement) — reprend les deux causes de lenteur identifiées le 2026-08-23 mais jamais traitées : cache natif de `sharp` (désactivé, concurrence plafonnée à 1) et sessions jamais purgées (nouveau cron quotidien). Mitigation immédiate : conteneur redémarré manuellement (mémoire retombée à 63 % juste après). Testé : `sharp.cache(false)`/`sharp.concurrency(1)` vérifiés appliqués, purge de sessions testée en base locale (24 sessions expirées accumulées par les tests de cette même session, toutes purgées, aucune valide touchée) ; la preuve définitive (mémoire stable sur plusieurs heures/jours) reste à observer dans les jours suivant le déploiement, pas mesurable dans cette session — voir `VALIDATION.md` |

@@ -27,6 +27,29 @@ export async function onRequestError(
 
 export async function register() {
   if (process.env.NEXT_RUNTIME !== "nodejs") return;
+
+  // Constat du 2026-09-08 ("je trouve parfois des ralentissements") :
+  // conteneur à 100% de sa mémoire (512/512 Mo) avec 2% de CPU seulement —
+  // signature d'une pression mémoire qui s'accumule dans le temps, pas d'un
+  // pic de trafic. `sharp` (utilisé en interne par l'optimiseur d'images de
+  // Next, très sollicité par un portfolio public riche en photos) garde par
+  // défaut un cache natif jusqu'à 50 Mo/20 fichiers/100 opérations, jamais
+  // libéré tant que le processus tourne — un plancher fixe qui ne sert à
+  // rien ici : le cache disque de Next (`.next/cache/images`) sert déjà les
+  // requêtes identiques répétées sans repasser par `sharp`, donc ce second
+  // cache en mémoire n'apporte quasiment aucun gain, seulement un coût.
+  // Import dynamique comme `error-alert` ci-dessus : un `import` statique de
+  // `sharp` (module natif Node) serait entraîné dans le bundle Edge, qui ne
+  // le supporte pas.
+  const sharp = (await import("sharp")).default;
+  sharp.cache(false);
+  // Une seule opération native à la fois plutôt que la valeur par défaut
+  // (nombre de cœurs) : plusieurs redimensionnements simultanés sous fort
+  // trafic peuvent chacun allouer plusieurs Mo de tampons décodés/encodés en
+  // parallèle — un pic de mémoire ponctuel bien plus dangereux sur 512 Mo
+  // qu'une latence légèrement plus élevée en cas de forte concurrence.
+  sharp.concurrency(1);
+
   if (process.env.NODE_ENV !== "production") return;
 
   // Scalingo (and most PaaS container hosts) have EPHEMERAL disk — anything

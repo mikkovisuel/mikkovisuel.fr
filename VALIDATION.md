@@ -696,6 +696,23 @@ Aucun changement de code — fonctionnalité déjà livrée et masquée propreme
 | Doublon intra-lot (même appel IA) | Deux résultats du même appel citant la même entité sous deux formats | ✅ Détecté (jamais géré avant cette révision pour la recherche IA) | — | — | 2026-09-08 |
 | Bout en bout, recherche IA réelle | Relance de la requête "boutiques de vêtements indépendantes à Bordeaux" (même que la veille) | ✅ "1 prospect ajouté, 1 doublon ignoré" — le prospect déjà en base (Boutique Addict) non réinséré, vérifié en base (toujours 1 seule ligne), la nouvelle entité trouvée (Kalika Studio) bien ajoutée | — | — | 2026-09-08 |
 
+## Quatrième passe de performance — mémoire du conteneur (2026-09-08)
+
+`tsc --noEmit`, lint et `npm run build` propres. Diagnostic mené sur la production réelle (`scalingo stats`/`logs`), pas seulement en local — la fuite en question ne se manifeste que sous charge/temps d'exécution réels, invisible sur un poste de dev.
+
+| Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |
+|---|---|---|---|---|---|
+| Constat initial | `scalingo stats` (conteneur actif depuis ~7h) | ✅ 100 % mémoire (512/512 Mo), CPU 2 % — mesuré deux fois à quelques minutes d'écart, résultat stable | — | — | 2026-09-08 |
+| Cause corrélée dans les logs | `scalingo logs` sur la même fenêtre | ✅ Erreurs de connexion base répétées (`ECONNRESET`, "Connection terminated unexpectedly", TLS jamais établi) sur des pages publiques (portfolio, accueil) | — | — | 2026-09-08 |
+| Mitigation immédiate | `scalingo restart` | ✅ Mémoire retombée à 63 % (328/512 Mo) juste après redémarrage | — | — | 2026-09-08 |
+| `sharp.cache(false)` appliqué | `node -e` local avec les mêmes appels que `instrumentation.ts` | ✅ `sharp.cache()` renvoie `max: 0` sur les trois compteurs (mémoire/fichiers/items) après l'appel | — | — | 2026-09-08 |
+| `sharp.concurrency(1)` appliqué | Même test | ✅ `sharp.concurrency()` renvoie `1` après l'appel | — | — | 2026-09-08 |
+| Purge des sessions expirées | 24 sessions expirées accumulées en base locale (tokens de test créés pendant cette session) | ✅ `deleteMany` en a supprimé exactement 24, `count` des expirées repasse à 0 | — | — | 2026-09-08 |
+| Sessions valides non touchées | Même purge | — | — | ✅ Aucune session non expirée supprimée (vérifié par le compte après/avant sur les seules lignes `expiresAt < now`) | 2026-09-08 |
+| Nouvelle route cron protégée | `GET /api/cron/purge-sessions` sans en-tête | — | Requête sans `Authorization` | ✅ 401 (même garde que les crons existants, code identique à `purge-deliverables`) | 2026-09-08 |
+| Build de production | `npm run build` | ✅ Nouvelle route `/api/cron/purge-sessions` listée, aucun avertissement de bundling Edge sur `instrumentation.ts` (import dynamique de `sharp`, même pattern que `error-alert`) | — | — | 2026-09-08 |
+| Preuve définitive (mémoire stable dans la durée) | — | — | Non observable dans le temps d'une session | ⚠️ **Pas encore confirmé** : les deux corrections sont posées et mesurées individuellement, mais la vraie preuve de la fuite corrigée (mémoire qui reste stable sur plusieurs heures/jours au lieu de remonter à 100 %) demande une observation dans la durée après déploiement, via `scalingo stats`. À surveiller par le client ou lors d'une prochaine session. | 2026-09-08 |
+
 ## Points restant ouverts pour une prochaine passe de validation
 
 - Glisser-déposer et `<select>` natif du Kanban Prospection (limite outil, voir ci-dessus).
