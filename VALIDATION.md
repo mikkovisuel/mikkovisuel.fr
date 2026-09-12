@@ -713,6 +713,17 @@ Aucun changement de code — fonctionnalité déjà livrée et masquée propreme
 | Build de production | `npm run build` | ✅ Nouvelle route `/api/cron/purge-sessions` listée, aucun avertissement de bundling Edge sur `instrumentation.ts` (import dynamique de `sharp`, même pattern que `error-alert`) | — | — | 2026-09-08 |
 | Preuve définitive (mémoire stable dans la durée) | — | — | Non observable dans le temps d'une session | ⚠️ **Pas encore confirmé** : les deux corrections sont posées et mesurées individuellement, mais la vraie preuve de la fuite corrigée (mémoire qui reste stable sur plusieurs heures/jours au lieu de remonter à 100 %) demande une observation dans la durée après déploiement, via `scalingo stats`. À surveiller par le client ou lors d'une prochaine session. | 2026-09-08 |
 
+## Pré-remplissage des formulaires depuis Mikko Hub (2026-09-12)
+
+Code développé par une autre session Claude Code (branche `claude/hub-bridge`, sans PR), relu en détail puis fusionné dans `main` après confirmation du client. `tsc --noEmit`, lint et `npm run build` propres après fusion. Testé en navigateur (base locale, session admin réelle).
+
+| Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |
+|---|---|---|---|---|---|
+| Pré-remplissage "Nouveau prospect" | `/admin/prospection/nouveau?nom=...&email=...&societe=...&telephone=...&notes=...` | ✅ Nom, Entreprise, Téléphone, Email et Notes affichés pré-remplis dans le formulaire, vérifié à l'écran (capture) | — | — | 2026-09-12 |
+| Pré-remplissage "Nouveau client" | `/admin/clients/nouveau?nom=...&email=...&notes=...` | ✅ Nom, Email de facturation et Notes internes affichés pré-remplis, vérifié à l'écran (capture) | — | — | 2026-09-12 |
+| Comportement inchangé sans paramètre | — | — | `/admin/prospection/nouveau` sans query string | ✅ Formulaire entièrement vide (placeholders uniquement), identique au comportement d'avant cette fusion | 2026-09-12 |
+| Champs non couverts par le pré-remplissage | Même requête prospect | ✅ Adresse, Ville, Activité, Instagram, Site web, Lien Instagram, Lien WhatsApp, Statut (défaut "À faire") et Date de relance (défaut habituel) tous inchangés — seuls les 5 champs prévus sont affectés | — | — | 2026-09-12 |
+
 ## Points restant ouverts pour une prochaine passe de validation
 
 - Glisser-déposer et `<select>` natif du Kanban Prospection (limite outil, voir ci-dessus).
