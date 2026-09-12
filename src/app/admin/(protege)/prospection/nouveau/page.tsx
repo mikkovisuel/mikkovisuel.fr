@@ -13,8 +13,24 @@ export const metadata: Metadata = {
   title: "Nouveau prospect — Admin Mikko Visuel",
 };
 
-export default async function NewProspectPage() {
+/** Champs pré-remplissables depuis l'extérieur — Mikko Hub passe le nom et
+ * l'adresse d'un expéditeur de mail pour éviter la ressaisie. Purement
+ * additif : sans paramètre, la page se comporte comme avant. */
+type Prefill = {
+  nom?: string;
+  email?: string;
+  societe?: string;
+  telephone?: string;
+  notes?: string;
+};
+
+export default async function NewProspectPage({
+  searchParams,
+}: {
+  searchParams: Promise<Prefill>;
+}) {
   await verifyAdminSession();
+  const prefill = await searchParams;
 
   const [statusList, settings] = await Promise.all([
     db.dropdownList.findUnique({
@@ -47,18 +63,18 @@ export default async function NewProspectPage() {
           action={createProspect}
           statusOptions={statusList?.items.map((item) => ({ slug: item.slug, label: item.label })) ?? []}
           defaultValues={{
-            name: "",
-            company: null,
+            name: prefill.nom ?? "",
+            company: prefill.societe ?? null,
             address: null,
             city: null,
-            phone: null,
-            email: null,
+            phone: prefill.telephone ?? null,
+            email: prefill.email ?? null,
             instagram: null,
             instagramUrl: null,
             website: null,
             whatsappUrl: null,
             activityLevel: null,
-            notes: null,
+            notes: prefill.notes ?? null,
             statusSlug: PROSPECT_STATUS.A_FAIRE,
             nextReminderAt: suggestedReminder,
           }}
