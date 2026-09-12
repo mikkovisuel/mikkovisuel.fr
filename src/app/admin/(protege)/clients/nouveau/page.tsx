@@ -9,8 +9,21 @@ export const metadata: Metadata = {
   title: "Nouveau client — Admin Mikko Visuel",
 };
 
-export default async function NewClientPage() {
+/** Voir la page « nouveau prospect » : mêmes paramètres, même intention —
+ * ne pas retaper ce qu'une autre application connaît déjà. */
+type Prefill = {
+  nom?: string;
+  email?: string;
+  notes?: string;
+};
+
+export default async function NewClientPage({
+  searchParams,
+}: {
+  searchParams: Promise<Prefill>;
+}) {
   await verifyAdminSession();
+  const prefill = await searchParams;
 
   const categoryList = await db.dropdownList.findUnique({
     where: { key: CLIENT_CATEGORY_LIST_KEY },
@@ -28,6 +41,17 @@ export default async function NewClientPage() {
         <ClientForm
           action={createClient}
           categoryOptions={categoryOptions}
+          defaultValues={{
+            name: prefill.nom ?? "",
+            raisonSociale: null,
+            notes: prefill.notes ?? null,
+            address: null,
+            siret: null,
+            vatNumber: null,
+            billingEmail: prefill.email ?? null,
+            driveUrl: null,
+            categoryId: null,
+          }}
           submitLabel="Créer le client"
         />
       </div>
