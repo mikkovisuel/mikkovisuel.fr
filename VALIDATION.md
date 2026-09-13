@@ -724,6 +724,22 @@ Code développé par une autre session Claude Code (branche `claude/hub-bridge`,
 | Comportement inchangé sans paramètre | — | — | `/admin/prospection/nouveau` sans query string | ✅ Formulaire entièrement vide (placeholders uniquement), identique au comportement d'avant cette fusion | 2026-09-12 |
 | Champs non couverts par le pré-remplissage | Même requête prospect | ✅ Adresse, Ville, Activité, Instagram, Site web, Lien Instagram, Lien WhatsApp, Statut (défaut "À faire") et Date de relance (défaut habituel) tous inchangés — seuls les 5 champs prévus sont affectés | — | — | 2026-09-12 |
 
+## Cinquième passe de performance — mémoire native (2026-09-13)
+
+`tsc --noEmit`, lint et `npm run build` propres. Diagnostic mené sur la production réelle (`scalingo stats`/`logs`/`run`), et mesures faites **avant** d'agir : la première hypothèse a été écartée par la mesure, pas retenue par confort.
+
+| Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |
+|---|---|---|---|---|---|
+| Constat de reprise du problème | `scalingo stats`, conteneur actif depuis ~19 h | ✅ 95 % (489/512 Mo), CPU 0 % — le correctif du 2026-09-08 n'a pas suffi | — | — | 2026-09-13 |
+| Le site n'est pas en panne pour autant | `curl` sur accueil, page pilier, connexion espace client | ✅ 3 × HTTP 200, première réponse en 60 / 261 / 60 ms — dégradation par à-coups, pas indisponibilité | — | — | 2026-09-13 |
+| Absence de crash mémoire | Journaux des derniers jours | ✅ Aucun kill (code 137) ; seuls arrêts = déploiements (code 143 / SIGTERM) | — | — | 2026-09-13 |
+| Hypothèse "Node ignore la limite du conteneur" | `scalingo run` sur conteneur de même taille | — | Hypothèse à vérifier avant d'agir | ✅ **Infirmée** : `heap_size_limit` = 259 Mo alors que `os.totalmem()` = 56 234 Mo — Node est déjà contraint. Un `NODE_OPTIONS=--max-old-space-size` aurait été inutile | 2026-09-13 |
+| Localisation de la mémoire manquante | Déduction depuis les deux mesures précédentes | ✅ Tas JS plafonné à 259 Mo contre 489 Mo de RSS → ~230 Mo **hors tas** (natif), donc pas une fuite d'objets JavaScript | — | — | 2026-09-13 |
+| Conditions de fragmentation glibc | `scalingo run` (cœurs + variables) | ✅ 8 cœurs, `MALLOC_ARENA_MAX` non défini → jusqu'à 64 arènes possibles ; cause classique avec libvips (`sharp`) | — | — | 2026-09-13 |
+| Plafond d'arènes appliqué | `scalingo env` après pose | ✅ `MALLOC_ARENA_MAX=2` présent, conteneur redémarré par le déploiement | — | — | 2026-09-13 |
+| Sonde mémoire accessible à l'admin | `GET /api/admin/memoire` en production | ✅ Route déployée et listée au build | Requête sans session admin | ✅ HTTP 403 (même garde que `/api/admin/search`) — ces chiffres d'infrastructure ne sont pas publics | 2026-09-13 |
+| Preuve que le plafond d'arènes règle le problème | — | — | Non observable dans le temps d'une session | ⚠️ **Pas encore confirmé.** Au redéploiement le conteneur repart à 297 Mo, ce qui ne prouve rien (un conteneur frais est toujours bas). Seule preuve valable : la courbe sur plusieurs heures/jours. Si la mémoire replafonne nettement sous 489 Mo → correctif validé ; sinon, `/api/admin/memoire` dira quelle part (tas / tampons / natif) grossit | 2026-09-13 |
+
 ## Points restant ouverts pour une prochaine passe de validation
 
 - Glisser-déposer et `<select>` natif du Kanban Prospection (limite outil, voir ci-dessus).

@@ -1844,6 +1844,55 @@ Le client a explicitement délégué ces choix :
     remonter à 100 % — ne peut être observée que sur la durée, pas dans
     cette session. À surveiller (`scalingo stats`) dans les jours qui
     suivent le déploiement.
+- **Cinquième passe de performance — mémoire native, pas mémoire JS**
+  (2026-09-13, "le site est encore buggé", précisé ensuite en "lenteur /
+  pages qui rament") : la surveillance annoncée ci-dessus a bien eu lieu et
+  **le verdict est tombé — la quatrième passe n'avait traité qu'une moitié
+  du problème**. Mémoire de nouveau à **95 % (489/512 Mo)** après ~19 h,
+  CPU à 0 %. Différence notable avec le 2026-09-08 : cette fois **aucun
+  crash ni redémarrage** (les seuls arrêts de conteneur sont les
+  déploiements, code 143 = SIGTERM), et les pages publiques répondent en
+  **60 à 260 ms** depuis l'extérieur — la saturation dégrade par à-coups
+  (pression du ramasse-miettes) sans mettre le site à terre.
+  - **Ce que la mesure a corrigé dans le raisonnement** : première
+    hypothèse — "Node ignore la limite du conteneur et se croit sur la
+    machine hôte" — **fausse**, vérifiée avant d'agir sur un conteneur
+    de production de même taille (`scalingo run`) : V8 plafonne déjà le
+    tas JS à **259 Mo** alors que l'hôte expose 56 Go. Poser un
+    `NODE_OPTIONS=--max-old-space-size` n'aurait donc rien changé.
+  - **Conséquence logique** : si le tas JS ne peut pas dépasser 259 Mo et
+    que le RSS atteint 489 Mo, alors **~230 Mo sont hors tas** — mémoire
+    native, pas des objets JavaScript. Toute chasse à la "fuite JS" est
+    hors sujet.
+  - **Cause retenue** : le conteneur voit **8 cœurs** et
+    `MALLOC_ARENA_MAX` n'était pas défini — glibc s'autorise alors
+    jusqu'à 64 arènes (8 × nproc), qui conservent la mémoire libérée au
+    lieu de la rendre au système. Scénario classique avec un allocateur
+    natif multi-thread comme libvips (le moteur de `sharp`, très
+    sollicité par l'optimiseur d'images sur un portfolio riche en
+    photos). **`MALLOC_ARENA_MAX=2` posé côté Scalingo** (variable
+    d'environnement, hors dépôt).
+  - **Nouvelle sonde `/api/admin/memoire`** (réservée à l'admin, même
+    garde que la recherche globale) : renvoie la répartition RSS / tas JS
+    / tampons externes / natif, plus le temps de fonctionnement. Ajoutée
+    parce que `scalingo stats` ne donne que le RSS global : sans cette
+    répartition, une éventuelle sixième passe repartirait encore à
+    l'aveugle. Sert à la fois à vérifier l'effet du plafond d'arènes et,
+    s'il ne suffit pas, à dire enfin **quoi** grossit.
+  - Corrigé au passage : la table d'anti-répétition des alertes email
+    (`src/lib/error-alert.ts`) n'était jamais purgée, alors que
+    l'empreinte inclut le message d'erreur — et certains messages varient
+    à chaque occurrence (ex. `Server Reference ID ... Received "x"`,
+    sondes de robot). Marginal en volume (plafonné à 10 alertes/heure),
+    **explicitement pas la cause des 489 Mo**, mais une table qui ne se
+    vide jamais n'a pas sa place dans un processus au long cours.
+  - **Honnêteté sur la preuve, à nouveau** : au redéploiement le
+    conteneur repart à 297 Mo. Ce chiffre ne prouve rien en soi (un
+    conteneur frais est toujours bas). La seule preuve valable est la
+    courbe sur plusieurs heures/jours : si la mémoire plafonne nettement
+    sous les 489 Mo précédents, le plafond d'arènes est la bonne réponse ;
+    si elle remonte, la sonde dira quelle part (tas, tampons ou natif)
+    grossit, et c'est là qu'il faudra reprendre.
 
 ## Points encore ouverts
 
@@ -2298,3 +2347,4 @@ Le client a explicitement délégué ces choix :
 | 2026-09-08 | "Il faut également ne pas créer de doublons dans la liste déjà entrée sur le site internet" | **Vrai manque trouvé** : la déduplication de la recherche IA ne comparait que l'email et l'identifiant Instagram, tels quels en minuscules — ratait un doublon dès que le format différait ("@handle" contre URL de profil, "+33 6 ..." contre "06 ...") ou qu'aucun des deux champs n'était rempli deux fois pour la même entité ; les doublons **au sein d'un même appel IA** n'étaient pas non plus détectés. Logique de déduplication réécrite et **partagée** avec l'import CSV/Sheets (nouveau module `src/lib/prospect-dedup.ts`, qui reprenait jusqu'ici une version moins complète du même principe) : comparaison sur email/Instagram (identifiant ou URL)/site (nom d'hôte)/téléphone normalisés, avec repli nom-ou-société + ville si aucun identifiant ne concorde. Testé par 13 cas unitaires (normalisation + doublon détecté/non détecté sur chaque champ + repli nom+ville + doublon intra-lot) tous vérifiés passants, puis en conditions réelles : relancer exactement la même recherche IA que la veille ("boutiques de vêtements indépendantes à Bordeaux") a bien ignoré le prospect déjà en base ("1 prospect ajouté, 1 doublon ignoré") tout en ajoutant la nouvelle entité trouvée — voir `VALIDATION.md` |
 | 2026-09-08 | "Je trouve parfois des ralentissements sur mon site..." | **Vrai problème trouvé et corrigé** (voir "Quatrième passe de performance" ci-dessus pour le détail) : conteneur mesuré à 100 % de sa mémoire (512/512 Mo, CPU à 2 % seulement) — reprend les deux causes de lenteur identifiées le 2026-08-23 mais jamais traitées : cache natif de `sharp` (désactivé, concurrence plafonnée à 1) et sessions jamais purgées (nouveau cron quotidien). Mitigation immédiate : conteneur redémarré manuellement (mémoire retombée à 63 % juste après). Testé : `sharp.cache(false)`/`sharp.concurrency(1)` vérifiés appliqués, purge de sessions testée en base locale (24 sessions expirées accumulées par les tests de cette même session, toutes purgées, aucune valide touchée) ; la preuve définitive (mémoire stable sur plusieurs heures/jours) reste à observer dans les jours suivant le déploiement, pas mesurable dans cette session — voir `VALIDATION.md` |
 | 2026-09-12 | "regarde claude/hub-bridge" — branche GitHub trouvée poussée par une autre session Claude Code (pas cette conversation), sans PR ouverte, ajoutant un pré-remplissage des formulaires "Nouveau client"/"Nouveau prospect" depuis un outil externe du client (Mikko Hub) | Relue en détail (diff complet, cohérence avec les champs réels des formulaires) et vérifiée (`tsc --noEmit`, lint, `npm run build` propres) avant d'agir — 3 options soumises au client (fusionner / relire seulement / ignorer), **fusionner** confirmé. Changement purement additif : `/admin/prospection/nouveau` et `/admin/clients/nouveau` acceptent désormais des paramètres d'URL facultatifs qui pré-remplissent le formulaire, comportement inchangé sans paramètre. Fusionné dans `main` (commit de merge dédié, historique de la branche conservé), poussé sur GitHub et Scalingo — voir `VALIDATION.md` |
+| 2026-09-13 | "Le site est encore buggé", précisé en "lenteur / pages qui rament" | Suite directe de la quatrième passe du 2026-09-08, qui n'avait traité que la moitié du problème (voir "Cinquième passe de performance" ci-dessus). Mémoire de nouveau à 95 % (489/512 Mo) après ~19 h, mais **sans crash cette fois** et avec des pages publiques à 60-260 ms — dégradation par à-coups, pas panne. **Hypothèse initiale infirmée par la mesure** avant toute action (`scalingo run` sur un conteneur de même taille) : V8 plafonne déjà le tas JS à 259 Mo, Node connaît bien la limite du conteneur — un `NODE_OPTIONS` n'aurait rien changé. Donc ~230 Mo sont **hors tas** : mémoire native, pas une fuite JavaScript. Cause retenue : 8 cœurs visibles et `MALLOC_ARENA_MAX` non défini, soit jusqu'à 64 arènes glibc retenant la mémoire libérée, cas d'école avec libvips (`sharp`). Livré : `MALLOC_ARENA_MAX=2` côté Scalingo + nouvelle sonde admin `/api/admin/memoire` (répartition RSS/tas/tampons/natif) pour vérifier dans la durée et savoir quoi grossit si ça remonte ; purge au passage d'une table d'anti-répétition d'alertes jamais vidée (marginale, explicitement pas la cause). Preuve définitive à observer sur plusieurs heures/jours — voir `VALIDATION.md` |
