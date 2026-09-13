@@ -43,6 +43,19 @@ function shouldSend(fingerprint: string, now: number): boolean {
   }
   if (sentInWindow >= MAX_ALERTS_PER_WINDOW) return false;
 
+  // Purge des empreintes périmées (2026-09-13). Elles n'étaient jamais
+  // retirées : une empreinte inclut le message d'erreur, et certains
+  // messages varient à chaque occurrence (ex. « Server Reference ID ...
+  // Received "x" », un identifiant différent à chaque sonde de robot), donc
+  // la table grossissait indéfiniment. Le plafond de 10 alertes/heure la
+  // gardait petite en pratique — quelques milliers d'entrées par an, pas la
+  // cause des 489 Mo observés — mais une table qui ne se vide jamais dans un
+  // processus qui tourne des semaines n'a pas de raison d'être. Au-delà de la
+  // fenêtre d'anti-répétition, une entrée ne sert plus à rien de toute façon.
+  for (const [key, sentAt] of lastSentByFingerprint) {
+    if (now - sentAt >= DEDUPE_WINDOW_MS) lastSentByFingerprint.delete(key);
+  }
+
   const last = lastSentByFingerprint.get(fingerprint);
   if (last !== undefined && now - last < DEDUPE_WINDOW_MS) return false;
 
