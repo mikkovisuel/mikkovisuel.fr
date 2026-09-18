@@ -1789,6 +1789,14 @@ lien depuis une tâche, bibliothèque par client, rapport mensuel PDF).
   aux publications **validées** — une publication non validée n'est pas
   publiable, elle apparaît "En retard" plutôt que de déclencher un email
   par heure. Rappel remis à zéro si la date change.
+  **Limite Scalingo découverte au déploiement** : 5 tâches planifiées
+  maximum par application — le premier déploiement de cette livraison a
+  échoué pour cette raison (6ᵉ tâche). Les tâches de même nature sont
+  désormais regroupées dans une seule tâche qui enchaîne les appels
+  (purges livrables + sessions à 3 h UTC, rappels notes + prospects à 7 h
+  UTC) : 4 tâches au lieu de 6, avec de la marge pour la suite. Chaque
+  appel garde son `|| true`, un échec du premier n'empêche pas le second
+  (vérifié). Aucune route n'a changé.
 - **Heure de Paris explicite** : le serveur de production tourne en UTC
   (vérifié). Saisie, affichage et regroupement par jour passent tous par
   le fuseau Europe/Paris, sinon une publication prévue "jeudi 18 h"

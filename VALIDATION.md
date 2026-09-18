@@ -763,6 +763,7 @@ Code développé par une autre session Claude Code (branche `claude/hub-bridge`,
 | Revenir en rédaction | Publication marquée publiée par erreur | ✅ Statut "Rédaction", validation et lien effacés | — | — | 2026-09-18 |
 | Calendrier admin | Vue Calendrier filtrée sur Instagram | ✅ Publication au bon jour ; mois précédent/suivant **conservent la vue et le filtre** | Non-régression du calendrier des tâches (composant modifié) | ✅ Lien "Suivant" identique à avant (`?vue=calendrier&mois=…`) | 2026-09-18 |
 | Suppression | "Supprimer la publication" | ✅ Retour à la liste, 0 publication et 0 média en base, **fichiers effacés du stockage** | — | — | 2026-09-18 |
+| Tâches planifiées regroupées | Simulation bash des 4 commandes de `cron.json`, `curl` remplacé par un appel qui échoue | ✅ Chaque tâche regroupée exécute bien ses deux appels, même si le premier échoue | Premier déploiement avec 6 tâches | ❌ puis ✅ Refusé par Scalingo ("max is 5") — corrigé en regroupant à 4 tâches | 2026-09-18 |
 | Espace de démonstration | — | — | Validation / refus depuis le compte de démo public | ⚠️ Vérifié par lecture de code uniquement (`assertNotDemo` en tête des deux actions, boutons remplacés par un message) ; le client de démo est de plus exclu du sélecteur de création | 2026-09-18 |
 | Publication d'un autre client | — | — | Valider/refuser une publication d'un autre client | ⚠️ Vérifié par lecture de code uniquement (comparaison `clientId` avant toute écriture) — une seule base de test avec un seul client actif | 2026-09-18 |
 
