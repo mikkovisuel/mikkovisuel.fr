@@ -1680,6 +1680,76 @@ appliquée à l'ensemble du site :
   `VALIDATION.md`. `PAYPAL_CLIENT_ID`/`PAYPAL_CLIENT_SECRET` absents =
   bouton masqué proprement, même dégradation que Stripe.
 
+## 4. Module Community management — spécification (2026-09-18, pas encore construit)
+
+Demande du client : "créer un module community management … réaliser un
+mini cahier des charges … regarder les bonnes pratiques et fonctionnement
+du métier avant". Étude du métier menée d'abord (sources : guides métier
+CM freelance, outils de référence du marché Planable/Agorapulse/Sked,
+documentation des API Meta et TikTok — voir le journal), puis 3 arbitrages
+soumis et tranchés par le client :
+
+- **Pour qui** : pour **ses clients**, en prestation (pas pour ses propres
+  réseaux). Calendrier par client, validation dans l'espace client.
+- **Périmètre V1** : **phase 1 seule** — aucune connexion aux réseaux
+  sociaux, aucune publication automatique.
+- **Réseaux gérés** : Instagram, Facebook, TikTok, LinkedIn. Sans
+  publication automatique en V1, aucun des quatre ne pose de contrainte
+  d'API — ce sont des réseaux cibles dans le calendrier.
+
+**Cycle métier retenu** (standard de la profession, reproduit tel quel) :
+stratégie → création → relecture interne → **validation client** →
+programmation/publication → animation et **reporting mensuel**.
+
+### 4.1 Fonctionnalités de la V1
+
+- **Publication** (nouvelle entité) : client, réseau(x) ciblé(s), format
+  (post, carrousel, story, reel/vidéo), texte, visuels/vidéos, hashtags,
+  date et heure prévues, lien du post une fois publié.
+- **Statuts** : Idée → Rédaction → À valider → Validé → Publié, plus
+  "À modifier" en cas de refus client (même logique que le cycle BAT).
+- **Calendrier éditorial par client** côté admin (réutilise la vue
+  Calendrier existante), filtrable par réseau et par statut.
+- **Onglet "Réseaux sociaux" dans l'espace client** : le client voit son
+  planning et **valide ou refuse chaque publication avec motif** —
+  réutilise le workflow de validation des BAT, emails de notification
+  compris.
+- **Aperçu façon réseau** : rendu du post tel qu'il apparaîtra, et
+  prévisualisation de la grille du profil Instagram.
+- **Créneaux récurrents** : ex. "chaque jeudi, flyer de la soirée du
+  samedi" — génère les publications à préparer à l'avance.
+- **Lien avec les tâches** : une tâche de création (ex. flyer) terminée
+  peut devenir une publication sans ressaisie des visuels.
+- **Rappel de publication** à l'heure prévue (email à l'admin) ; l'admin
+  publie lui-même depuis l'application native du réseau, puis colle le lien
+  du post, qui passe la publication en "Publié".
+- **Bibliothèque par client** : piliers de contenu (ligne éditoriale),
+  banques de hashtags, modèles de textes réutilisables.
+- **Rapport mensuel PDF** par client, à la DA du site (même générateur
+  que le récapitulatif mensuel) : publications du mois + indicateurs
+  saisis à la main (abonnés, portée, taux d'engagement).
+
+### 4.2 Hors V1, explicitement
+
+- **Publication et statistiques automatiques Instagram/Facebook** (API
+  Meta) — phase 2 éventuelle. Contraintes relevées : comptes clients
+  obligatoirement professionnels et reliés à une page Facebook, validation
+  de l'application par Meta (2 à 4 semaines) dès lors qu'on connecte les
+  comptes de tiers.
+- **Publication automatique TikTok** — déconseillée : tant que
+  l'application n'a pas passé l'audit TikTok, toute publication via l'API
+  reste privée, et le reste même après l'audit.
+- **Boîte de réception unifiée** (commentaires/messages) — chantier très
+  lourd, les applications natives font mieux.
+
+### 4.3 Réutilisation de l'existant
+
+Workflow de validation BAT, vue Calendrier partagée admin/client,
+stockage S3 et vignettes, notifications email par contact, générateur PDF
+du récapitulatif mensuel, clé Anthropic (rédaction de texte assistée
+possible), chronomètre et rapport Temps & rentabilité (temps passé par
+client en CM).
+
 ## Décisions techniques déléguées à Claude Code
 
 Le client a explicitement délégué ces choix :
@@ -2348,3 +2418,4 @@ Le client a explicitement délégué ces choix :
 | 2026-09-08 | "Je trouve parfois des ralentissements sur mon site..." | **Vrai problème trouvé et corrigé** (voir "Quatrième passe de performance" ci-dessus pour le détail) : conteneur mesuré à 100 % de sa mémoire (512/512 Mo, CPU à 2 % seulement) — reprend les deux causes de lenteur identifiées le 2026-08-23 mais jamais traitées : cache natif de `sharp` (désactivé, concurrence plafonnée à 1) et sessions jamais purgées (nouveau cron quotidien). Mitigation immédiate : conteneur redémarré manuellement (mémoire retombée à 63 % juste après). Testé : `sharp.cache(false)`/`sharp.concurrency(1)` vérifiés appliqués, purge de sessions testée en base locale (24 sessions expirées accumulées par les tests de cette même session, toutes purgées, aucune valide touchée) ; la preuve définitive (mémoire stable sur plusieurs heures/jours) reste à observer dans les jours suivant le déploiement, pas mesurable dans cette session — voir `VALIDATION.md` |
 | 2026-09-12 | "regarde claude/hub-bridge" — branche GitHub trouvée poussée par une autre session Claude Code (pas cette conversation), sans PR ouverte, ajoutant un pré-remplissage des formulaires "Nouveau client"/"Nouveau prospect" depuis un outil externe du client (Mikko Hub) | Relue en détail (diff complet, cohérence avec les champs réels des formulaires) et vérifiée (`tsc --noEmit`, lint, `npm run build` propres) avant d'agir — 3 options soumises au client (fusionner / relire seulement / ignorer), **fusionner** confirmé. Changement purement additif : `/admin/prospection/nouveau` et `/admin/clients/nouveau` acceptent désormais des paramètres d'URL facultatifs qui pré-remplissent le formulaire, comportement inchangé sans paramètre. Fusionné dans `main` (commit de merge dédié, historique de la branche conservé), poussé sur GitHub et Scalingo — voir `VALIDATION.md` |
 | 2026-09-13 | "Le site est encore buggé", précisé en "lenteur / pages qui rament" | Suite directe de la quatrième passe du 2026-09-08, qui n'avait traité que la moitié du problème (voir "Cinquième passe de performance" ci-dessus). Mémoire de nouveau à 95 % (489/512 Mo) après ~19 h, mais **sans crash cette fois** et avec des pages publiques à 60-260 ms — dégradation par à-coups, pas panne. **Hypothèse initiale infirmée par la mesure** avant toute action (`scalingo run` sur un conteneur de même taille) : V8 plafonne déjà le tas JS à 259 Mo, Node connaît bien la limite du conteneur — un `NODE_OPTIONS` n'aurait rien changé. Donc ~230 Mo sont **hors tas** : mémoire native, pas une fuite JavaScript. Cause retenue : 8 cœurs visibles et `MALLOC_ARENA_MAX` non défini, soit jusqu'à 64 arènes glibc retenant la mémoire libérée, cas d'école avec libvips (`sharp`). Livré : `MALLOC_ARENA_MAX=2` côté Scalingo + nouvelle sonde admin `/api/admin/memoire` (répartition RSS/tas/tampons/natif) pour vérifier dans la durée et savoir quoi grossit si ça remonte ; purge au passage d'une table d'anti-répétition d'alertes jamais vidée (marginale, explicitement pas la cause). Preuve définitive à observer sur plusieurs heures/jours — voir `VALIDATION.md` |
+| 2026-09-18 | "J'aimerais créer un module community management … il faudrait réaliser un mini cahier des charges : peux-tu regarder les bonnes pratiques et fonctionnement du métier avant et me faire une proposition de fonctionnalité" | **Spécification seulement, rien de construit.** Étude du métier menée avant toute proposition : cycle en 6 étapes de la profession (stratégie, création, relecture, validation client, publication, reporting), fonctionnalités des outils de référence (Planable, Agorapulse, Sked), indicateurs de reporting (portée, engagement, croissance), et contraintes réelles des API (Meta : comptes professionnels + validation de l'app en 2 à 4 semaines ; TikTok : publications privées tant que l'app n'est pas auditée). Proposition en 3 phases, puis 3 arbitrages tranchés par le client : **pour ses clients** (prestation), **phase 1 seule** (sans connexion aux réseaux), réseaux **Instagram, Facebook, TikTok, LinkedIn**. Spécification complète : nouvelle section "4. Module Community management" |
