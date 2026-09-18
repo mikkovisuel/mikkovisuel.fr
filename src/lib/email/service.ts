@@ -21,7 +21,11 @@ export type EmailTrigger =
   | "admin_invite"
   | "weekly_digest"
   | "devis_accepted"
-  | "server_error";
+  | "server_error"
+  | "social_post_to_validate"
+  | "social_post_validated"
+  | "social_post_refused"
+  | "social_post_reminder";
 
 export interface EmailAttachmentInput {
   filename: string;

@@ -44,65 +44,65 @@ model Admin {
 }
 
 model Client {
-  id                   String        @id @default(cuid())
-  name                 String
+  id                            String        @id @default(cuid())
+  name                          String
   // Raison sociale — le nom légal de l'entité (ex. "SASU SAJJ"), distinct
   // du nom commercial/de scène utilisé partout ailleurs dans l'app (ex.
   // "QG Club"). Ajouté le 2026-07-31, nullable : la catégorie "Particulier"
   // n'a pas de raison sociale, et les clients existants n'en ont pas.
-  raisonSociale        String?
-  notes                String?
-  address              String?
-  siret                String?
-  vatNumber            String?
+  raisonSociale                 String?
+  notes                         String?
+  address                       String?
+  siret                         String?
+  vatNumber                     String?
   // Adresse utilisée pour l'envoi manuel des documents (factures/devis...)
   // depuis la fiche client — distincte des emails des comptes de connexion.
-  billingEmail         String?
+  billingEmail                  String?
   // Lien vers le dossier Google Drive du client, affiché dans le bandeau de
   // l'espace client. Un seul lien par client (pas par compte).
-  driveUrl             String?
+  driveUrl                      String?
   // Espace client public accessible sans connexion (bouton "Voir l'espace
   // client de démo" côté site vitrine) — voir src/lib/actions/demo.ts. Un
   // seul client devrait porter ce flag ; les Server Actions d'écriture
   // côté client le vérifient (assertNotDemo dans src/lib/dal.ts) pour
   // rester en lecture seule malgré l'accès public.
-  isDemo               Boolean       @default(false)
+  isDemo                        Boolean       @default(false)
   // Catégorie du client (Club, Marque, Artiste...) — liste ouverte gérée
   // depuis /admin/listes comme les autres (`client_category`), donc un
   // `DropdownItem` plutôt qu'une colonne texte : on récupère gratuitement le
   // badge coloré, l'ordre d'affichage et l'édition sans migration. Nullable :
   // un client peut rester non catégorisé, et `onDelete: SetNull` évite qu'une
   // suppression de catégorie emporte des clients avec elle.
-  categoryId           String?
-  category             DropdownItem? @relation("ClientCategory", fields: [categoryId], references: [id], onDelete: SetNull)
+  categoryId                    String?
+  category                      DropdownItem? @relation("ClientCategory", fields: [categoryId], references: [id], onDelete: SetNull)
   // Avatar du client (logo ou photo), affiché en rond dans la liste
   // `/admin/clients` et sur sa fiche. Même trio de colonnes que
   // `HomepageHero`/`PortfolioPillar` : la clé de stockage, le type MIME (pour
   // servir le fichier) et le backend d'origine, servi par
   // `/api/clients/[clientId]/avatar`.
-  avatarStorageKey     String?
-  avatarMimeType       String?
-  avatarStorageBackend String?
+  avatarStorageKey              String?
+  avatarMimeType                String?
+  avatarStorageBackend          String?
   // Client archivé (ancien client) : sorti des listes et sélecteurs de
   // travail, mais **rien n'est détruit** — c'est l'alternative réversible à
   // `deleteClient`, qui supprime en cascade tâches, documents et livrables.
   // Reste volontairement compté dans les Finances et les exports : archiver
   // un client ne doit pas réécrire l'historique comptable ni amputer une
   // sauvegarde. Voir `ACTIVE_CLIENTS` (src/lib/clients.ts).
-  archivedAt           DateTime?
+  archivedAt                    DateTime?
   // Réglage par défaut pour tous les évènements de ce client : verrouille
   // l'accès aux livrables finaux tant que le paiement n'est pas confirmé
   // (voir `Task.deliverablesLockOverride`/`deliverablesPaymentConfirmedAt`
   // pour l'exception ponctuelle par évènement, et `src/lib/payment-locks.ts`
   // pour le calcul de l'état effectif).
-  requirePaymentForDeliverables Boolean @default(false)
+  requirePaymentForDeliverables Boolean       @default(false)
   // Même principe que ci-dessus, mais en amont : bloque le démarrage du
   // travail (sortie du statut "Nouveau") tant que le paiement n'est pas
   // confirmé — deux verrous indépendants, à deux moments différents du
   // cycle de la tâche. Voir `Task.workLockOverride`/`workPaymentConfirmedAt`.
   requirePaymentBeforeWork      Boolean       @default(false)
-  createdAt            DateTime      @default(now())
-  updatedAt            DateTime      @updatedAt
+  createdAt                     DateTime      @default(now())
+  updatedAt                     DateTime      @updatedAt
 
   // Renommé "users" -> "contacts" le 2026-07-31 (split Contact/ClientContact,
   // voir plus bas) — ce sont les rattachements de contacts à ce client, pas
@@ -114,6 +114,7 @@ model Client {
   // Nommé différemment du champ `notes` (texte libre juste au-dessus) —
   // celui-ci est la relation vers le module de notes internes (Note[]).
   linkedNotes    Note[]
+  socialPosts    SocialPost[]
   // Renseigné uniquement quand ce client vient de la conversion d'un
   // prospect (bouton "Convertir en client" sur /admin/prospection) — voir
   // Prospect.convertedClient ci-dessous.
@@ -311,43 +312,43 @@ model DropdownItem {
 }
 
 model Task {
-  id                 String       @id @default(cuid())
-  clientId           String
-  client             Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  title              String
-  description        String?
-  statusId           String
-  status             DropdownItem @relation(fields: [statusId], references: [id])
-  eventDate          DateTime?
-  dueDate            DateTime?
-  createdByType      String
-  createdById        String
-  refusalReason      String?
-  refusedAt          DateTime?
-  batValidatedAt     DateTime?
-  archivedAt         DateTime?
-  lastReminderAt     DateTime?
+  id                             String       @id @default(cuid())
+  clientId                       String
+  client                         Client       @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  title                          String
+  description                    String?
+  statusId                       String
+  status                         DropdownItem @relation(fields: [statusId], references: [id])
+  eventDate                      DateTime?
+  dueDate                        DateTime?
+  createdByType                  String
+  createdById                    String
+  refusalReason                  String?
+  refusedAt                      DateTime?
+  batValidatedAt                 DateTime?
+  archivedAt                     DateTime?
+  lastReminderAt                 DateTime?
   // Épinglage admin (bouton une pastille, `toggleTaskPin`) — non null =
   // épinglée, la date sert aussi à trier la liste des tâches épinglées du
   // tableau de bord (plus récemment épinglée en premier). Remis à `null`
   // automatiquement quand la tâche passe au statut "Terminé"
   // (`setTaskStatus`), même pattern que `archivedAt`/`refusedAt`.
-  pinnedAt           DateTime?
+  pinnedAt                       DateTime?
   // Date du dernier envoi groupé des livrables finaux par email (bouton
   // "Envoyer les livrables finaux" — voir `sendDeliverablesByEmail`), même
   // logique que `Document.sentAt` : un indicateur envoyé/non envoyé, pas un
   // accusé de réception.
-  deliverablesSentAt DateTime?
+  deliverablesSentAt             DateTime?
   // Temps estimé pour la tâche, en minutes — saisi par l'admin, comparé au
   // temps réellement passé (`TaskTimeEntry`) pour la jauge colorée de
   // `/admin/taches`. Jamais exposé côté espace client (suivi interne
   // uniquement).
-  estimatedMinutes   Int?
+  estimatedMinutes               Int?
   // Exception ponctuelle au réglage `Client.requirePaymentForDeliverables`
   // pour CET évènement précis : `null` = suit le réglage du client (défaut),
   // "locked"/"unlocked" = force explicitement l'état pour cet évènement,
   // quel que soit le réglage client. Voir `src/lib/payment-locks.ts`.
-  deliverablesLockOverride String?
+  deliverablesLockOverride       String?
   // Confirmation manuelle de paiement pour cet évènement — volontairement
   // indépendante du système de facturation (`Document`/`PaymentRecord`) :
   // l'admin la pose à la main une fois le règlement constaté, quel que soit
@@ -358,10 +359,10 @@ model Task {
   // `setTaskStatus` tant que `workPaymentConfirmedAt` est `null` et que le
   // verrou s'applique — impossible de faire sortir la tâche de son statut
   // initial ("Nouveau") tant que ce n'est pas confirmé.
-  workLockOverride String?
-  workPaymentConfirmedAt DateTime?
-  createdAt          DateTime     @default(now())
-  updatedAt          DateTime     @updatedAt
+  workLockOverride               String?
+  workPaymentConfirmedAt         DateTime?
+  createdAt                      DateTime     @default(now())
+  updatedAt                      DateTime     @updatedAt
 
   types   DropdownItem[] @relation("TaskTypes")
   formats DropdownItem[] @relation("TaskFormats")
@@ -971,4 +972,74 @@ model AuditLogEntry {
 
   @@index([createdAt])
   @@index([actorId, createdAt])
+}
+
+// Module Community management (2026-09-18, spécification : section 4 de
+// CAHIER_DES_CHARGES.md). Une publication que Mikko prépare pour un client
+// sur ses réseaux sociaux — il ne publie rien automatiquement en V1 (aucune
+// connexion aux API des réseaux, choix du client) : l'app sert à préparer,
+// faire valider par le client, rappeler l'heure de publication, puis garder
+// la trace du post publié.
+//
+// `status` est une chaîne à valeurs fixes (voir SOCIAL_POST_STATUS dans
+// src/lib/social-posts.ts) plutôt qu'une liste `DropdownList` comme les
+// statuts de tâche : le cycle pilote des règles (visibilité client,
+// notifications, rappels) et ne doit pas être modifiable depuis
+// /admin/listes.
+model SocialPost {
+  id              String    @id @default(cuid())
+  clientId        String
+  client          Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  // Libellé court, vu par l'admin et le client (ex. "Soirée techno du
+  // 21/09") — une légende de post n'est pas lisible dans une liste.
+  title           String
+  // Réseaux ciblés : "instagram" | "facebook" | "tiktok" | "linkedin".
+  networks        String[]
+  // "post" | "carrousel" | "story" | "reel".
+  format          String
+  caption         String?   @db.Text
+  hashtags        String?   @db.Text
+  // Instant exact (UTC) de publication prévue. La saisie et l'affichage se
+  // font en heure de Paris, explicitement : le serveur de production tourne
+  // en UTC (vérifié), une conversion implicite décalerait d'1 à 2 h.
+  scheduledAt     DateTime?
+  status          String    @default("idee")
+  refusalReason   String?
+  refusedAt       DateTime?
+  validatedAt     DateTime?
+  // Nom dénormalisé (même raisonnement que TaskComment.authorName) : reste
+  // lisible si le contact est supprimé plus tard.
+  validatedByName String?
+  publishedAt     DateTime?
+  publishedUrl    String?
+  // Rappel "à publier maintenant" déjà envoyé à l'admin — remis à null si
+  // la date prévue change, pour ne jamais rater ni doubler un rappel (même
+  // pattern que Note.reminderSentAt).
+  reminderSentAt  DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  media SocialPostMedia[]
+
+  @@index([clientId])
+  @@index([status])
+  @@index([scheduledAt])
+}
+
+// Visuels/vidéos d'une publication — même trio de colonnes de stockage que
+// Deliverable/Attachment, plus un ordre (l'ordre des images d'un carrousel
+// compte).
+model SocialPostMedia {
+  id             String     @id @default(cuid())
+  postId         String
+  post           SocialPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  fileName       String
+  storageKey     String
+  mimeType       String
+  sizeBytes      Int
+  storageBackend String
+  sortOrder      Int        @default(0)
+  uploadedAt     DateTime   @default(now())
+
+  @@index([postId])
 }

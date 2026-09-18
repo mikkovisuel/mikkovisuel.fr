@@ -14,6 +14,7 @@ import { DemoModeBanner } from "@/components/client/demo-mode-banner";
 import { AnnouncementPopup } from "@/components/client/announcement-popup";
 import { FirstLoginTour } from "@/components/client/first-login-tour";
 import { getAppSettings } from "@/lib/settings";
+import { CLIENT_VISIBLE_STATUSES, SOCIAL_POST_STATUS } from "@/lib/social-posts";
 
 export default async function ClientProtectedLayout({
   children,
@@ -24,7 +25,14 @@ export default async function ClientProtectedLayout({
   const cookieStore = await cookies();
   const isImpersonating = cookieStore.has("admin_return_token");
 
-  const [toValidateCount, unpaidDocumentCount, unpaidPaymentRecordCount, settings] = await Promise.all([
+  const [
+    toValidateCount,
+    unpaidDocumentCount,
+    unpaidPaymentRecordCount,
+    settings,
+    visibleSocialPostCount,
+    socialPostsToValidateCount,
+  ] = await Promise.all([
     db.task.count({
       where: { clientId: clientUser.clientId, archivedAt: null, status: { slug: TASK_STATUS.A_VALIDER } },
     }),
@@ -35,6 +43,16 @@ export default async function ClientProtectedLayout({
     // impayés.
     db.paymentRecord.count({ where: { clientId: clientUser.clientId, paymentStatus: "unpaid" } }),
     getAppSettings(),
+    // Onglet "Réseaux sociaux" (module Community management, 2026-09-18) :
+    // affiché seulement si ce client a au moins une publication visible —
+    // un client qui ne prend pas cette prestation n'a pas à voir un onglet
+    // vide.
+    db.socialPost.count({
+      where: { clientId: clientUser.clientId, status: { in: CLIENT_VISIBLE_STATUSES } },
+    }),
+    db.socialPost.count({
+      where: { clientId: clientUser.clientId, status: SOCIAL_POST_STATUS.A_VALIDER },
+    }),
   ]);
   const unpaidCount = unpaidDocumentCount + unpaidPaymentRecordCount;
 
@@ -50,6 +68,9 @@ export default async function ClientProtectedLayout({
       count: unpaidCount,
       tourId: "administratif",
     },
+    ...(visibleSocialPostCount > 0
+      ? [{ href: "/espace-client/reseaux", label: "Réseaux sociaux", count: socialPostsToValidateCount }]
+      : []),
     { href: "/espace-client/suggestion", label: "Suggestion", tourId: "suggestion" },
     ...(clientUser.client.driveUrl
       ? [{ href: clientUser.client.driveUrl, label: "Google Drive", external: true }]

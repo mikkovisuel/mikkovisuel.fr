@@ -35,8 +35,9 @@ function monthHref(
   month: number,
   clientId?: string,
   status?: string,
+  extraParams?: Record<string, string>,
 ) {
-  const params = new URLSearchParams();
+  const params = new URLSearchParams(extraParams);
   if (basePath === "/admin/taches") params.set("vue", "calendrier");
   if (clientId) params.set("clientId", clientId);
   if (status) params.set("status", status);
@@ -52,6 +53,8 @@ export function TaskCalendarView({
   status,
   basePath = "/admin/taches",
   taskBasePath = "/admin/taches",
+  extraParams,
+  undatedLabel = "Sans date d'événement",
 }: {
   tasks: CalendarTask[];
   /** Mois affiché, `month` indexé à partir de 0 (comme Date). */
@@ -63,6 +66,11 @@ export function TaskCalendarView({
   basePath?: string;
   /** URL de base des liens vers une tâche (admin ou espace client). */
   taskBasePath?: string;
+  /** Paramètres d'URL à conserver en changeant de mois (ex. la vue et les
+   * filtres de /admin/reseaux, 2026-09-18). */
+  extraParams?: Record<string, string>;
+  /** Titre de la section des éléments sans date. */
+  undatedLabel?: string;
 }) {
   const weeks = buildMonthGrid(year, month);
   const { byDay, undated } = groupTasksByEventDate(tasks);
@@ -78,13 +86,13 @@ export function TaskCalendarView({
         </h2>
         <div className="flex gap-2">
           <Link
-            href={monthHref(basePath, prevMonth.year, prevMonth.month, clientId, status)}
+            href={monthHref(basePath, prevMonth.year, prevMonth.month, clientId, status, extraParams)}
             className="rounded-full border border-line px-3 py-1.5 text-sm text-ink-muted transition-colors hover:text-ink"
           >
             ← Précédent
           </Link>
           <Link
-            href={monthHref(basePath, nextMonth.year, nextMonth.month, clientId, status)}
+            href={monthHref(basePath, nextMonth.year, nextMonth.month, clientId, status, extraParams)}
             className="rounded-full border border-line px-3 py-1.5 text-sm text-ink-muted transition-colors hover:text-ink"
           >
             Suivant →
@@ -165,7 +173,7 @@ export function TaskCalendarView({
 
       {undated.length > 0 && (
         <div className="mt-6">
-          <h3 className="text-sm font-medium text-ink">Sans date d&apos;événement</h3>
+          <h3 className="text-sm font-medium text-ink">{undatedLabel}</h3>
           <ul className="mt-2 flex flex-wrap gap-2">
             {undated.map((task) => (
               <li key={task.id}>

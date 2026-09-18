@@ -740,6 +740,32 @@ Code développé par une autre session Claude Code (branche `claude/hub-bridge`,
 | Sonde mémoire accessible à l'admin | `GET /api/admin/memoire` en production | ✅ Route déployée et listée au build | Requête sans session admin | ✅ HTTP 403 (même garde que `/api/admin/search`) — ces chiffres d'infrastructure ne sont pas publics | 2026-09-13 |
 | Preuve que le plafond d'arènes règle le problème | — | — | Non observable dans le temps d'une session | ⚠️ **Pas encore confirmé.** Au redéploiement le conteneur repart à 297 Mo, ce qui ne prouve rien (un conteneur frais est toujours bas). Seule preuve valable : la courbe sur plusieurs heures/jours. Si la mémoire replafonne nettement sous 489 Mo → correctif validé ; sinon, `/api/admin/memoire` dira quelle part (tas / tampons / natif) grossit | 2026-09-13 |
 
+## Module Community management — livraison 1 (2026-09-18)
+
+`tsc --noEmit`, lint et `npm run build` propres. Parcours complet testé en navigateur (dev local, vraies sessions admin et client), en base et par `curl` — y compris les fichiers réellement envoyés par le sélecteur du formulaire. Conversions horaires testées sous `TZ=UTC` (comme la production) et sous un fuseau volontairement hostile (`America/New_York`).
+
+| Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |
+|---|---|---|---|---|---|
+| Heure de Paris | "2026-09-24T18:00" (été), "2026-12-24T18:00" (hiver), veille/lendemain du changement d'heure, 00 h 30 | ✅ 12/12 vérifications (instant exact, aller-retour saisie, jour du calendrier) sous UTC et sous New York | Saisie vide ou au mauvais format | ✅ `null`, pas de date inventée | 2026-09-18 |
+| Création d'une publication | Carrousel Instagram + Facebook, samedi 26/09 18 h | ✅ Stockée à `16:00Z` (= 18 h Paris), affichée "sam. 26 sept., 18:00", redirection vers la fiche | Aucun réseau coché ; client absent (garde du navigateur retirée) | ✅ "Choisissez au moins un réseau." / "Choisissez un client." renvoyés par le serveur | 2026-09-18 |
+| Saisie conservée après une erreur | Même formulaire, erreur serveur provoquée | ✅ Titre, réseaux cochés, format (liste déroulante), date, texte et hashtags tous conservés | Version initiale du formulaire (`<form action>`) | ❌ puis ✅ **Défaut React 19 trouvé et corrigé** : saisie effacée après l'erreur, et liste déroulante affichant "Post" alors que l'état interne gardait "Carrousel" — envoi manuel désormais | 2026-09-18 |
+| Visuels | 2 JPEG envoyés par le sélecteur du formulaire | ✅ Ajoutés dans l'ordre, vignette WebP (200), fichier complet avec `Accept-Ranges` | Faux JPEG (texte) ; PDF | ✅ "le contenu du fichier ne correspond pas à son type déclaré" / "format non autorisé", rien ajouté | 2026-09-18 |
+| Ordre du carrousel | Flèche "reculer" sur le 1er visuel | ✅ Ordre inversé, visible aussi côté client ; flèches désactivées aux extrémités | — | — | 2026-09-18 |
+| Cloisonnement des fichiers | Admin sur un visuel | ✅ 200 | Anonyme ; client alors que la publication est un brouillon | ✅ 403 / 403 — et 200 pour ce client une fois la publication soumise | 2026-09-18 |
+| Brouillons invisibles côté client | — | — | Publication au statut "Idée" | ✅ Page client vide, **onglet "Réseaux sociaux" absent** | 2026-09-18 |
+| Envoi en validation | "Envoyer au client pour validation" | ✅ Statut "À valider", email au contact du client (titre, heure de Paris, lien), onglet client visible avec pastille "1" | — | — | 2026-09-18 |
+| Demande de modification (client) | Motif saisi | ✅ Section "En cours de modification" avec le motif, pastille retirée, email à l'admin avec le motif (apostrophes échappées) et le lien | Motif vide (garde du navigateur retirée) | ✅ "Le motif est requis." (serveur) | 2026-09-18 |
+| Renvoi en validation | Depuis "À modifier" | ✅ Bandeau du motif affiché avant, effacé après | — | — | 2026-09-18 |
+| Validation (client) | "Valider la publication" | ✅ Section "Validées, à venir", email à l'admin, "Validée par Compte de démo le ven. 18 sept., 06:45" | — | — | 2026-09-18 |
+| Validation au nom du client | Accord obtenu hors de l'app | ✅ "Validée par Mikko (au nom du client)" | — | — | 2026-09-18 |
+| Rappel "à publier" | Date repassée dans le passé via le formulaire | ✅ `{"sentCount":1}` puis `{"sentCount":0}` (pas de doublon), email à l'admin, pastille "Réseaux 1", section "À publier maintenant (1)" | Sans secret / mauvais secret ; date encore future | ✅ 401 / 401 ; `{"sentCount":0}` | 2026-09-18 |
+| Marquer comme publiée | Lien Instagram | ✅ Statut "Publié", lien affiché, pastille retirée | Lien sans `https://` (garde du navigateur retirée) | ✅ "Lien invalide…", statut inchangé, **lien tapé conservé dans le champ** | 2026-09-18 |
+| Revenir en rédaction | Publication marquée publiée par erreur | ✅ Statut "Rédaction", validation et lien effacés | — | — | 2026-09-18 |
+| Calendrier admin | Vue Calendrier filtrée sur Instagram | ✅ Publication au bon jour ; mois précédent/suivant **conservent la vue et le filtre** | Non-régression du calendrier des tâches (composant modifié) | ✅ Lien "Suivant" identique à avant (`?vue=calendrier&mois=…`) | 2026-09-18 |
+| Suppression | "Supprimer la publication" | ✅ Retour à la liste, 0 publication et 0 média en base, **fichiers effacés du stockage** | — | — | 2026-09-18 |
+| Espace de démonstration | — | — | Validation / refus depuis le compte de démo public | ⚠️ Vérifié par lecture de code uniquement (`assertNotDemo` en tête des deux actions, boutons remplacés par un message) ; le client de démo est de plus exclu du sélecteur de création | 2026-09-18 |
+| Publication d'un autre client | — | — | Valider/refuser une publication d'un autre client | ⚠️ Vérifié par lecture de code uniquement (comparaison `clientId` avant toute écriture) — une seule base de test avec un seul client actif | 2026-09-18 |
+
 ## Points restant ouverts pour une prochaine passe de validation
 
 - Glisser-déposer et `<select>` natif du Kanban Prospection (limite outil, voir ci-dessus).

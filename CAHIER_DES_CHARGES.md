@@ -1680,7 +1680,7 @@ appliquée à l'ensemble du site :
   `VALIDATION.md`. `PAYPAL_CLIENT_ID`/`PAYPAL_CLIENT_SECRET` absents =
   bouton masqué proprement, même dégradation que Stripe.
 
-## 4. Module Community management — spécification (2026-09-18, pas encore construit)
+## 4. Module Community management (spécifié le 2026-09-18, livraison 1 livrée le même jour)
 
 Demande du client : "créer un module community management … réaliser un
 mini cahier des charges … regarder les bonnes pratiques et fonctionnement
@@ -1749,6 +1749,65 @@ stockage S3 et vignettes, notifications email par contact, générateur PDF
 du récapitulatif mensuel, clé Anthropic (rédaction de texte assistée
 possible), chronomètre et rapport Temps & rentabilité (temps passé par
 client en CM).
+
+### 4.4 Livraison 1 — le cœur (livrée le 2026-09-18)
+
+Découpage proposé au client et accepté : **livraison 1 = cœur** (fiche
+publication, calendrier, validation client, rappels), **livraison 2 =
+confort** (aperçu façon réseau et grille Instagram, créneaux récurrents,
+lien depuis une tâche, bibliothèque par client, rapport mensuel PDF).
+
+- **Données** : nouveaux modèles `SocialPost` (client, titre, réseaux,
+  format, texte, hashtags, date prévue, statut, motif de refus, dates de
+  validation/publication, lien du post publié, rappel envoyé) et
+  `SocialPostMedia` (visuels ordonnés). Migration purement additive
+  (`20260918043028_add_social_posts`, deux nouvelles tables).
+- **Admin — onglet "Réseaux"** (`/admin/reseaux`, 9 → 10 onglets, placé
+  après "Tâches") avec pastille = publications validées dont l'heure est
+  arrivée. Vue **Liste** en trois sections ("À publier maintenant", "En
+  préparation et à venir" avec mention "En retard" si la date est passée
+  sans validation, "Publiées") et vue **Calendrier** (réutilise le
+  calendrier des tâches), filtres client / réseau / statut.
+- **Fiche publication** (`/admin/reseaux/[id]`) : bloc "Suivi" qui
+  n'affiche que les actions pertinentes à chaque étape (brouillon →
+  envoyer au client ; à valider → valider au nom du client ; validée →
+  coller le lien et marquer publiée ; publiée → revenir en rédaction si
+  erreur), visuels dans l'ordre du carrousel (numérotés, réordonnables par
+  flèches, ajout par glisser-déposer), formulaire de contenu, suppression (fichiers compris).
+- **Espace client — onglet "Réseaux sociaux"**, affiché **uniquement si
+  le client a au moins une publication visible** (un client sans cette
+  prestation ne voit pas d'onglet vide), avec pastille = publications à
+  valider. Sections "À valider", "En cours de modification", "Validées, à
+  venir", "Publiées". Le client **ne voit jamais les brouillons** ("Idée",
+  "Rédaction") — règle appliquée aussi à la route des fichiers, pour
+  qu'un lien direct ne la contourne pas.
+- **Emails** : au client quand une publication lui est soumise ; à
+  l'admin quand le client valide ou demande une modification (motif
+  inclus) ; rappel "à publier maintenant" à l'admin.
+- **Rappel horaire** : nouvelle tâche planifiée toutes les heures
+  (`/api/cron/social-post-reminders`, même garde `CRON_SECRET`), limitée
+  aux publications **validées** — une publication non validée n'est pas
+  publiable, elle apparaît "En retard" plutôt que de déclencher un email
+  par heure. Rappel remis à zéro si la date change.
+- **Heure de Paris explicite** : le serveur de production tourne en UTC
+  (vérifié). Saisie, affichage et regroupement par jour passent tous par
+  le fuseau Europe/Paris, sinon une publication prévue "jeudi 18 h"
+  serait décalée d'une à deux heures, et une publication à 0 h 30
+  tomberait la veille dans le calendrier.
+- **Fichiers** : JPG, PNG, WEBP, MP4, mêmes plafonds que les livrables
+  (50 Mo par fichier, 80 Mo par envoi — contrainte mémoire du conteneur),
+  contenu vérifié contre le type déclaré, vidéos servies avec prise en
+  charge `Range` (lecture sur Safari iOS).
+- **Défaut React 19 trouvé en test et corrigé** : un formulaire envoyé via
+  `<form action>` est réinitialisé après chaque action, erreur de
+  validation comprise — toute la saisie était perdue, et une liste
+  déroulante revenait visuellement à sa valeur initiale pendant que
+  l'état interne gardait l'ancienne (un second envoi aurait enregistré la
+  mauvaise valeur sans rien signaler). Les formulaires du module envoient
+  désormais à la main, ce qui supprime la réinitialisation. **Le même
+  motif est présent dans une vingtaine de formulaires existants de
+  l'app**, non corrigés dans cette livraison — voir "Points encore
+  ouverts".
 
 ## Décisions techniques déléguées à Claude Code
 
@@ -1965,6 +2024,14 @@ Le client a explicitement délégué ces choix :
     grossit, et c'est là qu'il faudra reprendre.
 
 ## Points encore ouverts
+
+- **Formulaires qui perdent la saisie après une erreur (constaté le
+  2026-09-18)** : une vingtaine de formulaires existants utilisent
+  `<form action={formAction}>` avec des champs non contrôlés. React 19
+  les réinitialise après chaque action, erreur comprise : une erreur de
+  validation côté serveur (ex. email invalide sur un prospect) efface ce
+  que l'utilisateur venait de taper. Corrigé dans le module Community
+  management (envoi manuel), à généraliser aux autres formulaires.
 
 - **Renforcement de la sécurité — livré le 2026-07-28.** Audit complet mené
   en lecture seule le 2026-07-28 ("renforcer la sécurité au max"), 3 volets :
@@ -2419,3 +2486,4 @@ Le client a explicitement délégué ces choix :
 | 2026-09-12 | "regarde claude/hub-bridge" — branche GitHub trouvée poussée par une autre session Claude Code (pas cette conversation), sans PR ouverte, ajoutant un pré-remplissage des formulaires "Nouveau client"/"Nouveau prospect" depuis un outil externe du client (Mikko Hub) | Relue en détail (diff complet, cohérence avec les champs réels des formulaires) et vérifiée (`tsc --noEmit`, lint, `npm run build` propres) avant d'agir — 3 options soumises au client (fusionner / relire seulement / ignorer), **fusionner** confirmé. Changement purement additif : `/admin/prospection/nouveau` et `/admin/clients/nouveau` acceptent désormais des paramètres d'URL facultatifs qui pré-remplissent le formulaire, comportement inchangé sans paramètre. Fusionné dans `main` (commit de merge dédié, historique de la branche conservé), poussé sur GitHub et Scalingo — voir `VALIDATION.md` |
 | 2026-09-13 | "Le site est encore buggé", précisé en "lenteur / pages qui rament" | Suite directe de la quatrième passe du 2026-09-08, qui n'avait traité que la moitié du problème (voir "Cinquième passe de performance" ci-dessus). Mémoire de nouveau à 95 % (489/512 Mo) après ~19 h, mais **sans crash cette fois** et avec des pages publiques à 60-260 ms — dégradation par à-coups, pas panne. **Hypothèse initiale infirmée par la mesure** avant toute action (`scalingo run` sur un conteneur de même taille) : V8 plafonne déjà le tas JS à 259 Mo, Node connaît bien la limite du conteneur — un `NODE_OPTIONS` n'aurait rien changé. Donc ~230 Mo sont **hors tas** : mémoire native, pas une fuite JavaScript. Cause retenue : 8 cœurs visibles et `MALLOC_ARENA_MAX` non défini, soit jusqu'à 64 arènes glibc retenant la mémoire libérée, cas d'école avec libvips (`sharp`). Livré : `MALLOC_ARENA_MAX=2` côté Scalingo + nouvelle sonde admin `/api/admin/memoire` (répartition RSS/tas/tampons/natif) pour vérifier dans la durée et savoir quoi grossit si ça remonte ; purge au passage d'une table d'anti-répétition d'alertes jamais vidée (marginale, explicitement pas la cause). Preuve définitive à observer sur plusieurs heures/jours — voir `VALIDATION.md` |
 | 2026-09-18 | "J'aimerais créer un module community management … il faudrait réaliser un mini cahier des charges : peux-tu regarder les bonnes pratiques et fonctionnement du métier avant et me faire une proposition de fonctionnalité" | **Spécification seulement, rien de construit.** Étude du métier menée avant toute proposition : cycle en 6 étapes de la profession (stratégie, création, relecture, validation client, publication, reporting), fonctionnalités des outils de référence (Planable, Agorapulse, Sked), indicateurs de reporting (portée, engagement, croissance), et contraintes réelles des API (Meta : comptes professionnels + validation de l'app en 2 à 4 semaines ; TikTok : publications privées tant que l'app n'est pas auditée). Proposition en 3 phases, puis 3 arbitrages tranchés par le client : **pour ses clients** (prestation), **phase 1 seule** (sans connexion aux réseaux), réseaux **Instagram, Facebook, TikTok, LinkedIn**. Spécification complète : nouvelle section "4. Module Community management" |
+| 2026-09-18 | "Oui vas-y" (lancement de la livraison 1 du module Community management) | **Livré** : onglet admin "Réseaux" (liste + calendrier, filtres, pastille "à publier"), fiche publication (cycle Idée → Rédaction → À valider → Validé → Publié + À modifier, visuels ordonnés pour les carrousels), onglet client "Réseaux sociaux" affiché seulement s'il y a du contenu (validation / demande de modification avec motif, brouillons jamais visibles), emails client et admin, rappel horaire "à publier maintenant". Heure de Paris gérée explicitement (production en UTC). **Défaut React 19 trouvé en test** : les formulaires perdaient la saisie après une erreur de validation, et une liste déroulante pouvait enregistrer une autre valeur que celle affichée — corrigé dans le module, présent ailleurs dans l'app (noté dans "Points encore ouverts"). Parcours complet testé en navigateur et en base — voir section 4.4 et `VALIDATION.md` |

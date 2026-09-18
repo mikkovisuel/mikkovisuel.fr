@@ -9,6 +9,7 @@ import { GlobalSearchBar } from "@/components/admin/global-search-bar";
 import { SettingsMenu } from "@/components/admin/settings-menu";
 import { TASK_STATUS } from "@/lib/dropdown-lists";
 import { ACTIVE_TASKS } from "@/lib/tasks";
+import { SOCIAL_POST_STATUS } from "@/lib/social-posts";
 
 // "Listes", "Exports" et "Audit" ont été retirés d'ici le 2026-07-31 et
 // déplacés sous la roue crantée (voir `SettingsMenu`) : ce sont des écrans
@@ -26,6 +27,9 @@ const navLinks = [
   { href: "/admin/contacts", label: "Contacts" },
   { href: "/admin/prospection", label: "Prospection" },
   { href: "/admin/taches", label: "Tâches" },
+  // Module Community management (2026-09-18, 9 -> 10 onglets) : placé juste
+  // après "Tâches" — c'est de la production pour les clients, au même titre.
+  { href: "/admin/reseaux", label: "Réseaux" },
   { href: "/admin/administratif", label: "Administratif" },
   { href: "/admin/notes", label: "Notes" },
   { href: "/admin/portfolio", label: "Portfolio" },
@@ -42,7 +46,7 @@ export default async function AdminProtectedLayout({
   // Chronomètre visible dans tout l'admin (pas seulement la fiche tâche) —
   // au plus une ligne `endedAt: null` à la fois PAR ADMIN, voir
   // `startTaskTimer` (chaque admin a son propre chrono, indépendant).
-  const [runningEntry, openTaskCount, prospectReminderCount] = await Promise.all([
+  const [runningEntry, openTaskCount, prospectReminderCount, socialPostsDueCount] = await Promise.all([
     db.taskTimeEntry.findFirst({
       where: { endedAt: null, startedByAdminId: admin.id },
       include: { task: true },
@@ -60,6 +64,11 @@ export default async function AdminProtectedLayout({
     // encore envoyées.
     db.prospect.count({
       where: { nextReminderAt: { lte: new Date() }, reminderSentAt: null },
+    }),
+    // Pastille "Réseaux" — publications validées par le client dont l'heure
+    // est arrivée : c'est ce qui attend une action immédiate (les publier).
+    db.socialPost.count({
+      where: { status: SOCIAL_POST_STATUS.VALIDE, scheduledAt: { lte: new Date() } },
     }),
   ]);
 
@@ -99,7 +108,9 @@ export default async function AdminProtectedLayout({
                 ? openTaskCount
                 : link.href === "/admin/prospection"
                   ? prospectReminderCount
-                  : 0;
+                  : link.href === "/admin/reseaux"
+                    ? socialPostsDueCount
+                    : 0;
             return (
               <Link
                 key={link.href}
