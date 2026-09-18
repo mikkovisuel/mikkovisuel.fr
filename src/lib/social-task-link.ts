@@ -94,6 +94,7 @@ export async function createInternalTaskForPost(input: {
   title: string;
   typeSlug: string;
   dueDate: Date | null;
+  eventDate: Date | null;
   description: string | null;
 }): Promise<{ taskId: string } | { error: string }> {
   const [statusList, type] = await Promise.all([
@@ -111,6 +112,7 @@ export async function createInternalTaskForPost(input: {
       title: input.title,
       description: input.description,
       dueDate: input.dueDate,
+      eventDate: input.eventDate,
       statusId: status.id,
       types: { connect: [{ id: type.id }] },
       createdByType: "ADMIN",

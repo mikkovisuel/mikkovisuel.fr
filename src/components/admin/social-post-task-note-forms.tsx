@@ -61,6 +61,10 @@ export function SocialTaskRequestForm({
           Échéance
           <input name="dueDate" type="date" defaultValue={defaultDueDate} className={INPUT} />
         </label>
+        <label className="grid gap-1 text-xs text-ink-muted">
+          Date de l&apos;évènement (facultatif)
+          <input name="eventDate" type="date" className={INPUT} />
+        </label>
       </div>
       <textarea
         name="description"

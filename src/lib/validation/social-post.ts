@@ -49,16 +49,30 @@ export const SocialPostPublishSchema = z.object({
 
 export type SocialPostPublishState = { error?: string } | undefined;
 
+// Date "AAAA-MM-JJ" facultative (champ `<input type="date">`) : vide ou
+// une vraie date. Vérifiée par aller-retour : `new Date("2026-02-30")`
+// donne silencieusement le 2 mars (défaut trouvé en test), une date
+// impossible doit être refusée.
+function isRealIsoDate(value: string) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+  const date = new Date(value);
+  return !Number.isNaN(date.getTime()) && date.toISOString().slice(0, 10) === value;
+}
+
+export const optionalIsoDate = (message: string) =>
+  z
+    .string()
+    .trim()
+    .refine((value) => value === "" || isRealIsoDate(value), { message });
+
 // Demande de création depuis une publication (tâche interne, 2026-09-18).
 export const SocialTaskRequestSchema = z.object({
   title: z.string().trim().min(1, { message: "Donnez un titre à la tâche." }).max(160),
   taskType: z.string().min(1, { message: "Choisissez le type de création." }),
-  dueDate: z
-    .string()
-    .trim()
-    .refine((value) => value === "" || (/^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(new Date(value).getTime())), {
-      message: "Échéance invalide.",
-    }),
+  dueDate: optionalIsoDate("Échéance invalide."),
+  // Date de l'évènement promu par la publication (ajout du 2026-09-18),
+  // reprise telle quelle dans `Task.eventDate`.
+  eventDate: optionalIsoDate("Date de l'évènement invalide."),
   description: z.string().trim().max(4000, { message: "Brief trop long (4 000 caractères maximum)." }),
 });
 

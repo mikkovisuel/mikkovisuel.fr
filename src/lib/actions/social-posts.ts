@@ -25,6 +25,7 @@ import {
   SocialPostPublishSchema,
   SocialTaskRequestSchema,
   SocialPostNoteSchema,
+  optionalIsoDate,
   type SocialPostFormState,
   type SocialPostRefusalState,
   type SocialPostPublishState,
@@ -121,6 +122,10 @@ export async function createSocialPost(
   const requestTask = formData.get("requestTask") === "on";
   const taskType = String(formData.get("taskType") ?? "");
   if (requestTask && !taskType) return { error: "Choisissez le type de création à demander." };
+  const taskEventDate = optionalIsoDate("Date de l'évènement invalide.").safeParse(
+    String(formData.get("taskEventDate") ?? ""),
+  );
+  if (requestTask && !taskEventDate.success) return { error: "Date de l'évènement invalide." };
 
   const post = await db.socialPost.create({
     data: {
@@ -143,6 +148,7 @@ export async function createSocialPost(
       title: `Réseaux — ${post.title}`,
       typeSlug: taskType,
       dueDate: defaultTaskDueDate(post.scheduledAt),
+      eventDate: taskEventDate.success && taskEventDate.data ? new Date(taskEventDate.data) : null,
       description: null,
     });
     // Type devenu invalide entre-temps : la publication existe, la demande
@@ -590,6 +596,7 @@ export async function requestSocialPostTask(
     title: formData.get("title"),
     taskType: formData.get("taskType"),
     dueDate: formData.get("dueDate") ?? "",
+    eventDate: formData.get("eventDate") ?? "",
     description: formData.get("description") ?? "",
   });
   if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Formulaire invalide." };
@@ -601,6 +608,7 @@ export async function requestSocialPostTask(
     title: parsed.data.title,
     typeSlug: parsed.data.taskType,
     dueDate: parsed.data.dueDate ? new Date(parsed.data.dueDate) : null,
+    eventDate: parsed.data.eventDate ? new Date(parsed.data.eventDate) : null,
     description: parsed.data.description || null,
   });
   if ("error" in result) return { error: result.error };

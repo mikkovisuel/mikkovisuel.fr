@@ -343,16 +343,22 @@ export function SocialPostForm({
           </label>
           {requestTask && (
             <>
-              <select name="taskType" defaultValue="" required className={INPUT}>
-                <option value="" disabled>
-                  Type de création
-                </option>
-                {taskTypes.map((type) => (
-                  <option key={type.slug} value={type.slug}>
-                    {type.label}
+              <div className="grid gap-3 sm:grid-cols-2">
+                <select name="taskType" defaultValue="" required className={INPUT} aria-label="Type de création">
+                  <option value="" disabled>
+                    Type de création
                   </option>
-                ))}
-              </select>
+                  {taskTypes.map((type) => (
+                    <option key={type.slug} value={type.slug}>
+                      {type.label}
+                    </option>
+                  ))}
+                </select>
+                <label className="grid gap-1 text-xs text-ink-muted">
+                  Date de l&apos;évènement (facultatif)
+                  <input name="taskEventDate" type="date" className={INPUT} />
+                </label>
+              </div>
               <p className="text-xs text-ink-muted">
                 Crée une tâche interne dans Tâches (invisible du client), échéance 3 jours avant la publication.
                 Une fois la tâche terminée, ses fichiers finaux s&apos;ajoutent tout seuls aux visuels.

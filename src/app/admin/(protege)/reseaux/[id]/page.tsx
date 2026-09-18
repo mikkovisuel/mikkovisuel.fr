@@ -49,6 +49,7 @@ export default async function SocialPostDetailPage({ params }: { params: Promise
           title: true,
           internal: true,
           dueDate: true,
+          eventDate: true,
           status: { select: { slug: true, label: true, color: true } },
           _count: { select: { deliverables: { where: { kind: "final" } } } },
         },
@@ -154,6 +155,8 @@ export default async function SocialPostDetailPage({ params }: { params: Promise
                 Tâche interne (invisible du client)
                 {requestedTask.dueDate &&
                   ` · échéance ${new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", timeZone: "UTC" }).format(requestedTask.dueDate)}`}
+                {requestedTask.eventDate &&
+                  ` · évènement le ${new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", timeZone: "UTC" }).format(requestedTask.eventDate)}`}
                 {" · "}
                 {requestedTask.status.slug === TASK_STATUS.TERMINE
                   ? post.taskMediaImportedAt
