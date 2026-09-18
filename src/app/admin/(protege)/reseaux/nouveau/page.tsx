@@ -36,7 +36,7 @@ export default async function NewSocialPostPage({
   const { categories, taskTypes } = await loadSocialFormLists();
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-7xl 2xl:max-w-[100rem] px-4 py-10 sm:px-6 lg:px-8">
       <Link
         href="/admin/reseaux"
         className="inline-flex items-center gap-2 text-sm text-ink-muted transition-colors hover:text-ink"

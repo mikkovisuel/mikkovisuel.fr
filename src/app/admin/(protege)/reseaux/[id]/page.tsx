@@ -76,7 +76,7 @@ export default async function SocialPostDetailPage({ params }: { params: Promise
   const hasContactsToNotify = notifiableEmailsFromContacts(post.client.contacts).length > 0;
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6 lg:px-8">
+    <div className="mx-auto max-w-7xl 2xl:max-w-[100rem] px-4 py-10 sm:px-6 lg:px-8">
       <Link
         href="/admin/reseaux"
         className="inline-flex items-center gap-2 text-sm text-ink-muted transition-colors hover:text-ink"
@@ -128,139 +128,143 @@ export default async function SocialPostDetailPage({ params }: { params: Promise
         </p>
       )}
 
-      <section className={`mt-6 ${SECTION}`}>
-        <h2 className={SECTION_TITLE}>Suivi</h2>
-        <div className="mt-4">
-          <SocialPostWorkflow
-            postId={post.id}
-            status={post.status}
-            hasContactsToNotify={hasContactsToNotify}
-            publishedUrl={post.publishedUrl}
-          />
-        </div>
-      </section>
-
-      <section className={`mt-6 ${SECTION}`}>
-        <h2 className={SECTION_TITLE}>Création</h2>
-        {requestedTask ? (
-          <div className="mt-4 flex flex-wrap items-start justify-between gap-3">
-            <div className="min-w-0">
-              <Link
-                href={`/admin/taches/${requestedTask.id}`}
-                className="font-medium text-ink underline-offset-2 hover:underline"
-              >
-                {requestedTask.title}
-              </Link>
-              <p className="mt-1 text-xs text-ink-muted">
-                Tâche interne (invisible du client)
-                {requestedTask.dueDate &&
-                  ` · échéance ${new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", timeZone: "UTC" }).format(requestedTask.dueDate)}`}
-                {requestedTask.eventDate &&
-                  ` · évènement le ${new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", timeZone: "UTC" }).format(requestedTask.eventDate)}`}
-                {" · "}
-                {requestedTask.status.slug === TASK_STATUS.TERMINE
-                  ? post.taskMediaImportedAt
-                    ? `fichiers finaux ajoutés aux visuels le ${formatSchedule(post.taskMediaImportedAt)}`
-                    : "terminée"
-                  : "ses fichiers finaux s'ajouteront aux visuels quand elle sera terminée"}
-              </p>
+      {/* Deux colonnes sur grand écran, comme la fiche tâche : le travail
+          (suivi, contenu, visuels) à gauche, le contexte (aperçu, création
+          demandée, notes) à droite. Une seule colonne en dessous. */}
+      <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_26rem] xl:items-start">
+        <div className="grid min-w-0 grid-cols-1 gap-6">
+          <section className={SECTION}>
+            <h2 className={SECTION_TITLE}>Suivi</h2>
+            <div className="mt-4">
+              <SocialPostWorkflow
+                postId={post.id}
+                status={post.status}
+                hasContactsToNotify={hasContactsToNotify}
+                publishedUrl={post.publishedUrl}
+              />
             </div>
-            <StatusBadge label={requestedTask.status.label} color={requestedTask.status.color} />
-          </div>
-        ) : (
-          <p className="mt-2 text-xs text-ink-muted">
-            Besoin d&apos;une infographie, d&apos;un contenu ? Créez une tâche interne : elle apparaît dans Tâches, son
-            avancement s&apos;affiche ici et sur la carte, et ses fichiers finaux rejoignent les visuels une fois terminée.
-          </p>
-        )}
-        {!taskInProgress && taskTypes.length > 0 && (
-          <div className="mt-4">
-            <SocialTaskRequestForm
-              action={requestSocialPostTask.bind(null, post.id)}
-              taskTypes={taskTypes}
-              defaultTitle={`Réseaux — ${post.title}`}
-              defaultDueDate={defaultDue}
-            />
-          </div>
-        )}
-      </section>
-
-      <section className={`mt-6 ${SECTION}`}>
-        <h2 className={SECTION_TITLE}>Notes internes ({post.notes.length})</h2>
-        {post.notes.length > 0 && (
-          <ul className="mt-4 grid gap-2">
-            {post.notes.map((note) => (
-              <li key={note.id} className="flex items-start gap-3 rounded-xl border border-line p-3">
-                <div className="min-w-0 flex-1">
-                  <p className="whitespace-pre-wrap break-words text-sm text-ink">{note.body}</p>
-                  <p className="mt-1 text-xs text-ink-muted">{formatSchedule(note.createdAt)}</p>
+          </section>
+          <section className={SECTION}>
+            <h2 className={SECTION_TITLE}>Contenu</h2>
+            {(post.status === "a_valider" || post.status === "valide") && (
+              <p className="mt-2 text-xs text-ink-muted">
+                Le client a déjà vu ou validé cette version : une modification importante mérite un nouvel envoi en
+                validation.
+              </p>
+            )}
+            <div className="mt-4">
+              <SocialPostForm
+                action={updateSocialPost.bind(null, post.id)}
+                clientId={post.clientId}
+                libraries={await loadSocialLibraries([post.clientId])}
+                categories={categories}
+                defaultValues={{
+                  categoryId: post.categoryId ?? undefined,
+                  title: post.title,
+                  networks: post.networks,
+                  format: post.format,
+                  caption: post.caption ?? "",
+                  hashtags: post.hashtags ?? "",
+                  scheduledAt: toParisDateTimeLocal(post.scheduledAt),
+                }}
+                submitLabel="Enregistrer"
+              />
+            </div>
+          </section>
+          <section className={SECTION}>
+            <h2 className={SECTION_TITLE}>Visuels ({post.media.length})</h2>
+            <div className="mt-4">
+              <SocialPostMediaManager
+                postId={post.id}
+                media={post.media.map((item) => ({ id: item.id, fileName: item.fileName, mimeType: item.mimeType }))}
+              />
+            </div>
+          </section>
+        </div>
+        <div className="grid min-w-0 grid-cols-1 gap-6">
+          <section className={SECTION}>
+            <h2 className={SECTION_TITLE}>Aperçu</h2>
+            <p className="mt-1 text-xs text-ink-muted">Rendu approximatif dans un fil Instagram — c&apos;est aussi ce que voit le client.</p>
+            <div className="mt-4 flex justify-center">
+              <SocialPostPreview
+                clientName={post.client.name}
+                caption={post.caption}
+                hashtags={post.hashtags}
+                media={post.media.map((item) => ({ id: item.id, mimeType: item.mimeType }))}
+              />
+            </div>
+          </section>
+          <section className={SECTION}>
+            <h2 className={SECTION_TITLE}>Création</h2>
+            {requestedTask ? (
+              <div className="mt-4 flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <Link
+                    href={`/admin/taches/${requestedTask.id}`}
+                    className="font-medium text-ink underline-offset-2 hover:underline"
+                  >
+                    {requestedTask.title}
+                  </Link>
+                  <p className="mt-1 text-xs text-ink-muted">
+                    Tâche interne (invisible du client)
+                    {requestedTask.dueDate &&
+                      ` · échéance ${new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", timeZone: "UTC" }).format(requestedTask.dueDate)}`}
+                    {requestedTask.eventDate &&
+                      ` · évènement le ${new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", timeZone: "UTC" }).format(requestedTask.eventDate)}`}
+                    {" · "}
+                    {requestedTask.status.slug === TASK_STATUS.TERMINE
+                      ? post.taskMediaImportedAt
+                        ? `fichiers finaux ajoutés aux visuels le ${formatSchedule(post.taskMediaImportedAt)}`
+                        : "terminée"
+                      : "ses fichiers finaux s'ajouteront aux visuels quand elle sera terminée"}
+                  </p>
                 </div>
-                <DeleteButton
-                  action={deleteSocialPostNote.bind(null, note.id)}
-                  confirmMessage="Supprimer cette note ?"
-                  label="Supprimer la note"
-                  icon={<Trash size={14} weight="regular" />}
-                  className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-line text-ink-muted transition-colors hover:border-danger hover:bg-danger hover:text-white"
+                <StatusBadge label={requestedTask.status.label} color={requestedTask.status.color} />
+              </div>
+            ) : (
+              <p className="mt-2 text-xs text-ink-muted">
+                Besoin d&apos;une infographie, d&apos;un contenu ? Créez une tâche interne : elle apparaît dans Tâches, son
+                avancement s&apos;affiche ici et sur la carte, et ses fichiers finaux rejoignent les visuels une fois terminée.
+              </p>
+            )}
+            {!taskInProgress && taskTypes.length > 0 && (
+              <div className="mt-4">
+                <SocialTaskRequestForm
+                  action={requestSocialPostTask.bind(null, post.id)}
+                  taskTypes={taskTypes}
+                  defaultTitle={`Réseaux — ${post.title}`}
+                  defaultDueDate={defaultDue}
                 />
-              </li>
-            ))}
-          </ul>
-        )}
-        <div className="mt-4">
-          <SocialPostNoteForm action={addSocialPostNote.bind(null, post.id)} />
+              </div>
+            )}
+          </section>
+          <section className={SECTION}>
+            <h2 className={SECTION_TITLE}>Notes internes ({post.notes.length})</h2>
+            {post.notes.length > 0 && (
+              <ul className="mt-4 grid gap-2">
+                {post.notes.map((note) => (
+                  <li key={note.id} className="flex items-start gap-3 rounded-xl border border-line p-3">
+                    <div className="min-w-0 flex-1">
+                      <p className="whitespace-pre-wrap break-words text-sm text-ink">{note.body}</p>
+                      <p className="mt-1 text-xs text-ink-muted">{formatSchedule(note.createdAt)}</p>
+                    </div>
+                    <DeleteButton
+                      action={deleteSocialPostNote.bind(null, note.id)}
+                      confirmMessage="Supprimer cette note ?"
+                      label="Supprimer la note"
+                      icon={<Trash size={14} weight="regular" />}
+                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-line text-ink-muted transition-colors hover:border-danger hover:bg-danger hover:text-white"
+                    />
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="mt-4">
+              <SocialPostNoteForm action={addSocialPostNote.bind(null, post.id)} />
+            </div>
+          </section>
         </div>
-      </section>
-
-      <section className={`mt-6 ${SECTION}`}>
-        <h2 className={SECTION_TITLE}>Aperçu</h2>
-        <p className="mt-1 text-xs text-ink-muted">Rendu approximatif dans un fil Instagram — c&apos;est aussi ce que voit le client.</p>
-        <div className="mt-4 flex justify-center">
-          <SocialPostPreview
-            clientName={post.client.name}
-            caption={post.caption}
-            hashtags={post.hashtags}
-            media={post.media.map((item) => ({ id: item.id, mimeType: item.mimeType }))}
-          />
-        </div>
-      </section>
-
-      <section className={`mt-6 ${SECTION}`}>
-        <h2 className={SECTION_TITLE}>Visuels ({post.media.length})</h2>
-        <div className="mt-4">
-          <SocialPostMediaManager
-            postId={post.id}
-            media={post.media.map((item) => ({ id: item.id, fileName: item.fileName, mimeType: item.mimeType }))}
-          />
-        </div>
-      </section>
-
-      <section className={`mt-6 ${SECTION}`}>
-        <h2 className={SECTION_TITLE}>Contenu</h2>
-        {(post.status === "a_valider" || post.status === "valide") && (
-          <p className="mt-2 text-xs text-ink-muted">
-            Le client a déjà vu ou validé cette version : une modification importante mérite un nouvel envoi en
-            validation.
-          </p>
-        )}
-        <div className="mt-4">
-          <SocialPostForm
-            action={updateSocialPost.bind(null, post.id)}
-            clientId={post.clientId}
-            libraries={await loadSocialLibraries([post.clientId])}
-            categories={categories}
-            defaultValues={{
-              categoryId: post.categoryId ?? undefined,
-              title: post.title,
-              networks: post.networks,
-              format: post.format,
-              caption: post.caption ?? "",
-              hashtags: post.hashtags ?? "",
-              scheduledAt: toParisDateTimeLocal(post.scheduledAt),
-            }}
-            submitLabel="Enregistrer"
-          />
-        </div>
-      </section>
+      </div>
 
       <div className="mt-8 flex justify-end">
         <DeleteButton
