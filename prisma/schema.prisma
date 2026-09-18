@@ -115,6 +115,10 @@ model Client {
   // celui-ci est la relation vers le module de notes internes (Note[]).
   linkedNotes    Note[]
   socialPosts    SocialPost[]
+  socialProfile  SocialClientProfile?
+  socialLibrary  SocialLibraryItem[]
+  socialSlots    SocialRecurringSlot[]
+  socialStats    SocialMonthlyStats[]
   // Renseigné uniquement quand ce client vient de la conversion d'un
   // prospect (bouton "Convertir en client" sur /admin/prospection) — voir
   // Prospect.convertedClient ci-dessous.
@@ -374,6 +378,7 @@ model Task {
   statusHistory  TaskStatusHistory[]
   timeEntries    TaskTimeEntry[]
   checklistItems TaskChecklistItem[]
+  socialPosts    SocialPost[]
 
   @@index([clientId])
   @@index([statusId])
@@ -1016,6 +1021,13 @@ model SocialPost {
   // la date prévue change, pour ne jamais rater ni doubler un rappel (même
   // pattern que Note.reminderSentAt).
   reminderSentAt  DateTime?
+  // Tâche d'origine quand la publication a été créée depuis un livrable
+  // (livraison 2, "flyer terminé → publication"). `SetNull` : supprimer la
+  // tâche ne doit pas emporter la publication, dont les visuels sont des
+  // copies indépendantes (les livrables finaux sont purgés après
+  // l'évènement, une simple référence les aurait perdus).
+  sourceTaskId    String?
+  sourceTask      Task?     @relation(fields: [sourceTaskId], references: [id], onDelete: SetNull)
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
@@ -1024,6 +1036,7 @@ model SocialPost {
   @@index([clientId])
   @@index([status])
   @@index([scheduledAt])
+  @@index([sourceTaskId])
 }
 
 // Visuels/vidéos d'une publication — même trio de colonnes de stockage que
@@ -1042,4 +1055,77 @@ model SocialPostMedia {
   uploadedAt     DateTime   @default(now())
 
   @@index([postId])
+}
+
+// --- Module Community management, livraison 2 (2026-09-18) ---------------
+
+// Réglages éditoriaux d'un client pour ses réseaux : la ligne éditoriale
+// (rappel affiché en préparant une publication) et le ton de la marque
+// (repris par la rédaction assistée par IA). Un seul par client.
+model SocialClientProfile {
+  id            String   @id @default(cuid())
+  clientId      String   @unique
+  client        Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  editorialLine String?  @db.Text
+  brandTone     String?  @db.Text
+  updatedAt     DateTime @updatedAt
+}
+
+// Bibliothèque réutilisable d'un client : groupes de hashtags
+// ("hashtags") et modèles de texte ("template"), insérables dans une
+// publication en un clic.
+model SocialLibraryItem {
+  id        String   @id @default(cuid())
+  clientId  String
+  client    Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  kind      String // "hashtags" | "template"
+  name      String
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+
+  @@index([clientId])
+}
+
+// Créneau récurrent (ex. "chaque jeudi 18 h, flyer de la soirée du
+// samedi"). Choix du client : **simple rappel**, rien n'est créé
+// automatiquement — un email part `remindDaysBefore` jours avant chaque
+// occurrence, avec un lien qui pré-remplit la publication.
+// `lastRemindedFor` = occurrence (instant exact) déjà rappelée, pour ne
+// jamais doubler un rappel.
+model SocialRecurringSlot {
+  id               String    @id @default(cuid())
+  clientId         String
+  client           Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  title            String
+  // Jour de la semaine en heure de Paris : 1 = lundi ... 7 = dimanche (ISO).
+  weekday          Int
+  // "HH:mm", heure de Paris.
+  time             String
+  networks         String[]
+  format           String
+  remindDaysBefore Int       @default(3)
+  active           Boolean   @default(true)
+  lastRemindedFor  DateTime?
+  createdAt        DateTime  @default(now())
+
+  @@index([clientId])
+}
+
+// Chiffres du mois saisis à la main pour le rapport mensuel (choix du
+// client : **globaux par client**, pas par réseau). Le taux d'engagement
+// n'est pas stocké : il se calcule (interactions ÷ portée), pour ne jamais
+// être incohérent avec les deux chiffres dont il dépend.
+model SocialMonthlyStats {
+  id           String   @id @default(cuid())
+  clientId     String
+  client       Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  year         Int
+  month        Int
+  followers    Int?
+  reach        Int?
+  interactions Int?
+  notes        String?  @db.Text
+  updatedAt    DateTime @updatedAt
+
+  @@unique([clientId, year, month])
 }

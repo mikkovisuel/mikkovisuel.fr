@@ -1,10 +1,29 @@
 "use client";
 
-import { useActionState, useState } from "react";
-import { WarningCircle, CheckCircle } from "@phosphor-icons/react/dist/ssr";
+import { useActionState, useRef, useState, useTransition } from "react";
+import { WarningCircle, CheckCircle, Sparkle } from "@phosphor-icons/react/dist/ssr";
 import { SOCIAL_FORMATS, SOCIAL_NETWORKS } from "@/lib/social-posts";
 import type { SocialPostFormState, SocialPostFormValues } from "@/lib/validation/social-post";
 import { useFormSubmit } from "@/lib/use-form-submit";
+import { suggestSocialCaption } from "@/lib/actions/social-library";
+
+/** Réglages réseaux d'un client (livraison 2) repris dans le formulaire. */
+export interface SocialClientLibrary {
+  editorialLine: string | null;
+  brandTone: string | null;
+  hashtagSets: { id: string; name: string; content: string }[];
+  templates: { id: string; name: string; content: string }[];
+}
+
+const CHIP =
+  "rounded-full border border-line px-3 py-1 text-xs text-ink transition-colors hover:border-accent hover:bg-accent hover:text-accent-ink";
+
+// Ajoute des hashtags sans doublon (comparaison insensible à la casse).
+function mergeHashtags(current: string, added: string) {
+  const seen = new Set(current.split(/\s+/).filter(Boolean).map((tag) => tag.toLowerCase()));
+  const extra = added.split(/\s+/).filter((tag) => tag && !seen.has(tag.toLowerCase()) && seen.add(tag.toLowerCase()));
+  return [current.trim(), ...extra].filter(Boolean).join(" ");
+}
 
 const INPUT =
   "rounded-xl border border-line bg-surface-elevated px-3 py-2.5 text-sm text-ink placeholder:text-ink-muted/70 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30";
@@ -20,6 +39,8 @@ export function SocialPostForm({
   clients,
   defaultValues,
   submitLabel,
+  libraries = {},
+  clientId: fixedClientId,
 }: {
   action: (state: SocialPostFormState, formData: FormData) => Promise<SocialPostFormState>;
   /** Sélecteur de client, à la création uniquement. */
@@ -27,15 +48,61 @@ export function SocialPostForm({
   /** `scheduledAt` : valeur `datetime-local` déjà convertie en heure de Paris. */
   defaultValues?: SocialPostFormValues;
   submitLabel: string;
+  /** Réglages réseaux par client (bibliothèque, ligne éditoriale). */
+  libraries?: Record<string, SocialClientLibrary>;
+  /** Client de la publication, en modification (pas de sélecteur). */
+  clientId?: string;
 }) {
   const [state, formAction, pending] = useActionState(action, undefined);
   // Évite que React 19 vide le formulaire après une erreur — voir
   // src/lib/use-form-submit.ts (défaut constaté en testant ce formulaire).
   const { onSubmit: formSubmit } = useFormSubmit(formAction, { pending, state });
   const [captionLength, setCaptionLength] = useState(defaultValues?.caption.length ?? 0);
+  const [selectedClientId, setSelectedClientId] = useState(fixedClientId ?? defaultValues?.clientId ?? "");
+  const library = libraries[selectedClientId];
+  const formRef = useRef<HTMLFormElement>(null);
+  const captionRef = useRef<HTMLTextAreaElement>(null);
+  const hashtagsRef = useRef<HTMLTextAreaElement>(null);
+  const [suggestion, setSuggestion] = useState<{ caption: string; hashtags: string } | null>(null);
+  const [suggestionError, setSuggestionError] = useState<string | null>(null);
+  const [suggesting, startSuggesting] = useTransition();
+
+  function setCaption(value: string) {
+    if (!captionRef.current) return;
+    captionRef.current.value = value;
+    setCaptionLength(value.length);
+  }
+
+  function insertTemplate(content: string) {
+    const current = captionRef.current?.value.trim() ?? "";
+    setCaption(current ? `${current}\n\n${content}` : content);
+    captionRef.current?.focus();
+  }
+
+  function insertHashtags(content: string) {
+    if (hashtagsRef.current) hashtagsRef.current.value = mergeHashtags(hashtagsRef.current.value, content);
+  }
+
+  function requestSuggestion() {
+    const form = formRef.current;
+    if (!form) return;
+    const data = new FormData(form);
+    setSuggestionError(null);
+    startSuggesting(async () => {
+      const result = await suggestSocialCaption({
+        clientId: selectedClientId,
+        title: String(data.get("title") ?? ""),
+        format: String(data.get("format") ?? "post"),
+        networks: data.getAll("networks").map(String),
+        draft: String(data.get("caption") ?? ""),
+      });
+      if (result.error) setSuggestionError(result.error);
+      setSuggestion(result.suggestion ?? null);
+    });
+  }
 
   return (
-    <form action={formAction} onSubmit={formSubmit} className="grid gap-5">
+    <form ref={formRef} action={formAction} onSubmit={formSubmit} className="grid gap-5">
       {clients && (
         <div className="flex flex-col gap-2">
           <label htmlFor="clientId" className={LABEL}>
@@ -46,6 +113,7 @@ export function SocialPostForm({
             name="clientId"
             required
             defaultValue={defaultValues?.clientId ?? ""}
+            onChange={(event) => setSelectedClientId(event.target.value)}
             className={INPUT}
           >
             <option value="" disabled>
@@ -135,7 +203,27 @@ export function SocialPostForm({
         <label htmlFor="caption" className={LABEL}>
           Texte de la publication
         </label>
+        {library?.editorialLine && (
+          <details className="rounded-xl border border-line px-3 py-2 text-sm">
+            <summary className="cursor-pointer text-ink-muted">Ligne éditoriale du client</summary>
+            <p className="mt-2 whitespace-pre-wrap text-ink">{library.editorialLine}</p>
+            {library.brandTone && (
+              <p className="mt-2 whitespace-pre-wrap text-ink-muted">Ton : {library.brandTone}</p>
+            )}
+          </details>
+        )}
+        {library && library.templates.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs text-ink-muted">Insérer un modèle :</span>
+            {library.templates.map((template) => (
+              <button key={template.id} type="button" onClick={() => insertTemplate(template.content)} className={CHIP}>
+                {template.name}
+              </button>
+            ))}
+          </div>
+        )}
         <textarea
+          ref={captionRef}
           id="caption"
           name="caption"
           rows={7}
@@ -147,13 +235,67 @@ export function SocialPostForm({
         <p className={`text-xs ${captionLength > CAPTION_SOFT_LIMIT ? "text-danger" : "text-ink-muted"}`}>
           {captionLength} / {CAPTION_SOFT_LIMIT} caractères (limite Instagram)
         </p>
+        {selectedClientId && (
+          <div className="grid gap-2">
+            <div className="flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={requestSuggestion}
+                disabled={suggesting}
+                className="inline-flex items-center gap-1.5 rounded-full border border-line px-4 py-2 text-sm text-ink transition-colors hover:border-accent disabled:opacity-60"
+              >
+                <Sparkle size={16} weight="regular" />
+                {suggesting ? "Rédaction en cours..." : "Proposer avec l'IA"}
+              </button>
+              <span className="text-xs text-ink-muted">
+                À partir du titre, du texte déjà saisi et du ton du client. Rien n&apos;est remplacé sans votre accord.
+              </span>
+            </div>
+            {suggestionError && (
+              <p className="flex items-center gap-1 text-sm text-danger">
+                <WarningCircle size={16} weight="fill" />
+                {suggestionError}
+              </p>
+            )}
+            {suggestion && (
+              <div className="grid gap-3 rounded-xl border border-accent/40 bg-surface-elevated p-4">
+                <p className="whitespace-pre-wrap text-sm text-ink">{suggestion.caption}</p>
+                {suggestion.hashtags && <p className="text-sm text-ink-muted">{suggestion.hashtags}</p>}
+                <div className="flex flex-wrap gap-2">
+                  <button type="button" onClick={() => setCaption(suggestion.caption)} className={CHIP}>
+                    Utiliser ce texte
+                  </button>
+                  {suggestion.hashtags && (
+                    <button type="button" onClick={() => insertHashtags(suggestion.hashtags)} className={CHIP}>
+                      Ajouter ces hashtags
+                    </button>
+                  )}
+                  <button type="button" onClick={() => setSuggestion(null)} className={CHIP}>
+                    Ignorer
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="flex flex-col gap-2">
         <label htmlFor="hashtags" className={LABEL}>
           Hashtags
         </label>
+        {library && library.hashtagSets.length > 0 && (
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs text-ink-muted">Ajouter un groupe :</span>
+            {library.hashtagSets.map((set) => (
+              <button key={set.id} type="button" onClick={() => insertHashtags(set.content)} title={set.content} className={CHIP}>
+                {set.name}
+              </button>
+            ))}
+          </div>
+        )}
         <textarea
+          ref={hashtagsRef}
           id="hashtags"
           name="hashtags"
           rows={2}

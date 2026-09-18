@@ -10,7 +10,9 @@ import { DeleteButton } from "@/components/admin/delete-button";
 import { SocialPostForm } from "@/components/admin/social-post-form";
 import { SocialPostWorkflow } from "@/components/admin/social-post-workflow";
 import { SocialPostMediaManager } from "@/components/admin/social-post-media-manager";
+import { SocialPostPreview } from "@/components/social-post-preview";
 import { updateSocialPost, deleteSocialPost } from "@/lib/actions/social-posts";
+import { loadSocialLibraries } from "@/lib/social-library";
 import {
   SOCIAL_POST_STATUS_META,
   formatSchedule,
@@ -34,6 +36,7 @@ export default async function SocialPostDetailPage({ params }: { params: Promise
     include: {
       client: { include: { contacts: { include: { contact: true } } } },
       media: { orderBy: { sortOrder: "asc" } },
+      sourceTask: { select: { id: true, title: true } },
     },
   });
   if (!post || !isSocialPostStatus(post.status)) notFound();
@@ -58,8 +61,19 @@ export default async function SocialPostDetailPage({ params }: { params: Promise
             <Link href={`/admin/clients/${post.clientId}`} className="hover:text-ink hover:underline">
               {post.client.name}
             </Link>{" "}
-            · {formatSchedule(post.scheduledAt)}
+            · {formatSchedule(post.scheduledAt)} ·{" "}
+            <Link href={`/admin/reseaux/clients/${post.clientId}`} className="hover:text-ink hover:underline">
+              Réglages réseaux
+            </Link>
           </p>
+          {post.sourceTask && (
+            <p className="mt-1 text-xs text-ink-muted">
+              Créée depuis la tâche{" "}
+              <Link href={`/admin/taches/${post.sourceTask.id}`} className="text-ink underline underline-offset-2 hover:text-accent">
+                {post.sourceTask.title}
+              </Link>
+            </p>
+          )}
         </div>
         <StatusBadge label={statusMeta.label} color={statusMeta.color} />
       </div>
@@ -93,6 +107,19 @@ export default async function SocialPostDetailPage({ params }: { params: Promise
       </section>
 
       <section className={`mt-6 ${SECTION}`}>
+        <h2 className={SECTION_TITLE}>Aperçu</h2>
+        <p className="mt-1 text-xs text-ink-muted">Rendu approximatif dans un fil Instagram — c&apos;est aussi ce que voit le client.</p>
+        <div className="mt-4 flex justify-center">
+          <SocialPostPreview
+            clientName={post.client.name}
+            caption={post.caption}
+            hashtags={post.hashtags}
+            media={post.media.map((item) => ({ id: item.id, mimeType: item.mimeType }))}
+          />
+        </div>
+      </section>
+
+      <section className={`mt-6 ${SECTION}`}>
         <h2 className={SECTION_TITLE}>Visuels ({post.media.length})</h2>
         <div className="mt-4">
           <SocialPostMediaManager
@@ -113,6 +140,8 @@ export default async function SocialPostDetailPage({ params }: { params: Promise
         <div className="mt-4">
           <SocialPostForm
             action={updateSocialPost.bind(null, post.id)}
+            clientId={post.clientId}
+            libraries={await loadSocialLibraries([post.clientId])}
             defaultValues={{
               title: post.title,
               networks: post.networks,

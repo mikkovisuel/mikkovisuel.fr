@@ -463,3 +463,67 @@ export async function moveSocialPostMedia(mediaId: string, direction: "up" | "do
   ]);
   revalidateSocialPaths(media.postId);
 }
+
+// Nombre maximum de visuels repris d'une tâche : la limite d'un carrousel
+// Instagram la plus répandue. Au-delà, l'admin ajoute le reste à la main.
+const MAX_MEDIA_FROM_TASK = 10;
+
+// "Flyer terminé → publication" (livraison 2) : crée un brouillon pour le
+// client de la tâche, avec ses livrables **finaux** images/vidéos copiés.
+// Copiés et non référencés : les livrables finaux sont purgés quelques
+// jours après l'évènement (src/lib/deliverable-purge.ts), une publication
+// qui pointerait dessus perdrait ses visuels. Copie un fichier à la fois
+// pour ne jamais avoir plusieurs gros fichiers en mémoire en même temps
+// (conteneur de 512 Mo).
+export async function createSocialPostFromTask(taskId: string) {
+  await verifyAdminSession();
+
+  const task = await db.task.findUnique({
+    where: { id: taskId },
+    include: { deliverables: { where: { kind: "final" }, orderBy: { uploadedAt: "asc" } } },
+  });
+  if (!task) return;
+
+  const usable = task.deliverables.filter((item) => ALLOWED_MEDIA_TYPES.has(item.mimeType)).slice(0, MAX_MEDIA_FROM_TASK);
+  const images = usable.filter((item) => item.mimeType.startsWith("image/"));
+  const format = usable.length > 1 ? "carrousel" : images.length === 0 && usable.length === 1 ? "reel" : "post";
+
+  const post = await db.socialPost.create({
+    data: {
+      clientId: task.clientId,
+      title: task.title,
+      networks: ["instagram"],
+      format,
+      sourceTaskId: task.id,
+    },
+  });
+
+  const storage = getStorageAdapter();
+  for (const [index, deliverable] of usable.entries()) {
+    try {
+      const buffer = await storage.read(deliverable.storageKey);
+      const storageKey = `social-posts/${randomUUID()}`;
+      await storage.save(storageKey, buffer);
+      await db.socialPostMedia.create({
+        data: {
+          postId: post.id,
+          fileName: deliverable.fileName,
+          storageKey,
+          mimeType: deliverable.mimeType,
+          sizeBytes: deliverable.sizeBytes,
+          storageBackend: storage.backend,
+          sortOrder: index,
+        },
+      });
+    } catch (error) {
+      // Un livrable illisible (déjà purgé, stockage indisponible) ne doit pas
+      // empêcher de créer la publication : les autres visuels sont repris, le
+      // manquant s'ajoute à la main.
+      console.error("createSocialPostFromTask: copie impossible", deliverable.id, error);
+    }
+  }
+
+  revalidateSocialPaths();
+  revalidatePath(`/admin/taches/${task.id}`);
+  redirect(`/admin/reseaux/${post.id}`);
+}

@@ -779,6 +779,30 @@ Code développé par une autre session Claude Code (branche `claude/hub-bridge`,
 | Envoi avant que la page soit interactive | HTML rendu par le serveur (fiche prospect, page de connexion admin) | ✅ Toutes les balises `<form>` en `method="POST"` vers l'action serveur — jamais en GET avec les champs (mot de passe compris) dans l'URL | — | — | 2026-09-18 |
 | Données de test | — | ✅ Session de 45 min et élément de liste supprimés après le test | — | — | 2026-09-18 |
 
+## Module Community management — livraison 2 (2026-09-18)
+
+`tsc --noEmit`, lint complet et `npm run build` propres. Testé en navigateur (dev local, vraies sessions admin et client), en base, par `curl` et par la route cron réelle, sur un client de test dédié ("ZZ Test CM L2") **supprimé après les tests avec ses fichiers**. Calculs de dates testés sous `TZ=UTC` (comme la production), `America/New_York` et `Asia/Tokyo`. Un vrai appel à l'API Anthropic a été fait pour la rédaction assistée.
+
+| Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |
+|---|---|---|---|---|---|
+| Saisie de date stricte | Dates valides, été/hiver, changement d'heure | ✅ 23/23 sous les 3 fuseaux | "25:00", "30 février" | ✅ Refusées (`null`) — avant ce lot, reportées silencieusement au lendemain / au 2 mars | 2026-09-18 |
+| Occurrence et heure de rappel d'un créneau | Jeudi 18 h vu du vendredi ; rappel 3 j avant ; créneau le soir même ; lundi après le passage à l'heure d'hiver | ✅ 9/9 sous les 3 fuseaux (jeu. 24 à 18 h, rappel lun. 21 à 8 h, 17:00Z en hiver, rappel sam. 24/10 à 06:00Z) | Créneau à 7 h rappelé le jour même | ✅ Rappel avancé à 6 h (8 h tomberait après le créneau) | 2026-09-18 |
+| Rappel des créneaux (tâche horaire) | 4 créneaux : samedi (dû), dimanche (déjà couvert), jeudi (trop tôt), un en pause | ✅ `{"slotReminderCount":1,"coveredSlotCount":1}` — email pour le samedi seul, lien pré-rempli correct (`&amp;` échappé) | 2ᵉ passage immédiat ; sans secret | ✅ `{"slotReminderCount":0,"coveredSlotCount":0}` (pas de doublon) ; 401 | 2026-09-18 |
+| Pré-remplissage depuis le lien du rappel | Client, titre, format "reel", réseaux instagram+tiktok, date | ✅ Tous les champs remplis, date 19/09 18:00 | Réseau inconnu "bidon" dans l'URL | ✅ Ignoré, les deux autres cochés | 2026-09-18 |
+| Bibliothèque dans le formulaire | Modèle inséré, groupe de hashtags ajouté deux fois sur "#Techno #fete" | ✅ Modèle dans le texte, compteur à jour (41), hashtags "#Techno #fete #lyon #clubbing" (**ni doublon ni casse différente**) ; rappel de la ligne éditoriale affiché | — | — | 2026-09-18 |
+| Rédaction assistée par IA | Titre "Flyer du samedi", brouillon = modèle, ton "festif, tutoiement" | ✅ Légende au tutoiement avec emojis, **repères [date] / [lieu] conservés sans rien inventer**, 10 hashtags dont ceux du client ; "Utiliser ce texte" remplace le texte | Titre vide | ✅ "Donnez d'abord un titre (le sujet de la publication)." ; texte déjà saisi conservé | 2026-09-18 |
+| Rédaction IA sans clé | — | — | `ANTHROPIC_API_KEY` absente | ⚠️ Vérifié par lecture de code uniquement (même garde que la recherche de prospects, message explicite, aucun appel) | 2026-09-18 |
+| Création puis modification | Publication créée depuis le formulaire pré-rempli + texte IA | ✅ Redirection vers la fiche, tous les champs enregistrés ; bibliothèque et lien "Réglages réseaux" présents en modification | — | — | 2026-09-18 |
+| Page Réglages réseaux | Affichage d'un client complet | ✅ 4 créneaux avec prochaine occurrence ("En pause" pour l'inactif), septembre "1 350 +150", engagement 650 ÷ 10 000 = "6,5 %" | Accès avec une session client | ✅ 307 vers `/admin/connexion` | 2026-09-18 |
+| Formulaires de la page Réglages | Créneau ajouté (formulaire vidé) ; ligne éditoriale et ton enregistrés ; septembre ressaisi | ✅ "Créneau ajouté" ; "Enregistré" ; **septembre remplacé, pas dupliqué** (toujours 2 mois) — portée laissée vide affichée "—" et engagement "—" | Créneau sans réseau ; abonnés à −5 | ✅ "Choisissez au moins un réseau." et "Un chiffre ne peut pas être négatif." — **saisie conservée** dans les deux cas | 2026-09-18 |
+| Pause et suppression | Créneau mis en pause ; modèle de texte supprimé | ✅ "En pause" affiché ; modèle retiré, compteur à 0 | — | — | 2026-09-18 |
+| Rapport mensuel PDF | Septembre : 3 publications publiées dont 2 avec visuel | ✅ PDF 200, nom `rapport-reseaux-<client>-2026-09.pdf`, KPI + évolution "+200", vignettes JPEG, extraits de légende tronqués, liens ; publication du **1er oct. 0 h 30 Paris (30/09 22:30 UTC) absente de septembre et présente en octobre** | Sans session ; session client ; `mois=13` ; client inconnu | ✅ 403 ; 403 ; 400 avec message ; 404 | 2026-09-18 |
+| Séparateur de milliers du PDF | "1 400" | ❌ puis ✅ **Défaut trouvé à l'œil sur le premier PDF** : "1/400" (espace fine U+202F absente de Clash Display) — remplacée par une espace normale | Mois sans chiffres saisis | ✅ "—" partout, pas de 0 inventé | 2026-09-18 |
+| Création depuis une tâche | Tâche avec 2 JPEG finaux + 1 BAT + 1 PDF final | ✅ Bouton "(2 visuels)", publication "carrousel" avec les 2 visuels dans l'ordre, "Créée depuis la tâche…" ; **clés de stockage distinctes des livrables** (copies) | BAT et PDF | ✅ Ignorés | 2026-09-18 |
+| Grille Instagram | Client choisi | ✅ Plus récente d'abord (1/10, 20/09, 19/09, 3/09…), dates prévues affichées sur les non publiées, **publication sans date exclue** | Aucun client choisi | ✅ Message "Choisissez un client…" | 2026-09-18 |
+| Aperçu côté client | Session d'un contact du client | ✅ Aperçu Instagram, compteur "1/2", "plus", texte complet dépliable ; publications "à valider" et "publiées" visibles | Brouillons ("Idée", "Rédaction") ; données internes | ✅ Absents ; ni ligne éditoriale ni hashtags du client affichés | 2026-09-18 |
+| Données de test | — | ✅ Client de test, publications, médias (base + 4 fichiers de stockage), tâche, contact et sessions supprimés ; scripts temporaires effacés | — | — | 2026-09-18 |
+
 ## Points restant ouverts pour une prochaine passe de validation
 
 - Glisser-déposer et `<select>` natif du Kanban Prospection (limite outil, voir ci-dessus).

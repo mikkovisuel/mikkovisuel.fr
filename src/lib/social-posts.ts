@@ -128,6 +128,19 @@ export function parseParisDateTimeLocal(value: string | null | undefined): Date 
   if (!match) return null;
   const [, y, mo, d, h, mi] = match.map(Number);
   const wallClockAsUtc = Date.UTC(y, mo - 1, d, h, mi);
+  // `Date.UTC` reporte silencieusement les valeurs hors limites ("30 février"
+  // → 2 mars, "25:00" → 1 h le lendemain) : une saisie impossible doit être
+  // refusée, pas transformée en une autre date (défaut trouvé en test).
+  const check = new Date(wallClockAsUtc);
+  if (
+    h > 23 ||
+    mi > 59 ||
+    check.getUTCFullYear() !== y ||
+    check.getUTCMonth() !== mo - 1 ||
+    check.getUTCDate() !== d
+  ) {
+    return null;
+  }
   // Décalage de Paris à cet instant, puis correction : deux passes suffisent
   // à retomber juste au changement d'heure.
   let instant = wallClockAsUtc;
@@ -161,4 +174,71 @@ const SCHEDULE_FORMATTER = new Intl.DateTimeFormat("fr-FR", {
 /** Ex. "jeu. 24 sept., 18:00" — toujours en heure de Paris. */
 export function formatSchedule(date: Date | null | undefined): string {
   return date ? SCHEDULE_FORMATTER.format(date) : "Date à définir";
+}
+
+// --- Livraison 2 : créneaux récurrents et chiffres mensuels ---------------
+
+/** Index 0 = lundi (ISO 1) ... 6 = dimanche (ISO 7). */
+export const WEEKDAY_LABELS = ["Lundi", "Mardi", "Mercredi", "Jeudi", "Vendredi", "Samedi", "Dimanche"];
+
+/**
+ * Prochaine occurrence d'un créneau récurrent (jour ISO 1-7 + "HH:mm",
+ * **heure de Paris**) à partir de `from` inclus. Construite jour par jour
+ * sur le calendrier de Paris puis convertie en instant exact : un créneau
+ * "jeudi 18 h" reste à 18 h de part et d'autre d'un changement d'heure.
+ */
+export function nextSlotOccurrence(weekday: number, time: string, from: Date): Date | null {
+  const match = /^(\d{2}):(\d{2})$/.exec(time);
+  if (!match || weekday < 1 || weekday > 7) return null;
+  const start = parisParts(from);
+  for (let offset = 0; offset <= 7; offset++) {
+    const day = new Date(Date.UTC(start.year, start.month - 1, start.day + offset));
+    const isoWeekday = day.getUTCDay() === 0 ? 7 : day.getUTCDay();
+    if (isoWeekday !== weekday) continue;
+    const candidate = parseParisDateTimeLocal(
+      `${day.getUTCFullYear()}-${pad(day.getUTCMonth() + 1)}-${pad(day.getUTCDate())}T${match[1]}:${match[2]}`,
+    );
+    if (candidate && candidate.getTime() >= from.getTime()) return candidate;
+  }
+  return null;
+}
+
+/** Même jour calendaire à Paris (pour ne pas rappeler un créneau déjà couvert). */
+export function isSameParisDay(a: Date, b: Date): boolean {
+  const pa = parisParts(a);
+  const pb = parisParts(b);
+  return pa.year === pb.year && pa.month === pb.month && pa.day === pb.day;
+}
+
+/** Taux d'engagement en % (interactions ÷ portée), `null` s'il n'est pas calculable. */
+export function engagementRate(reach: number | null, interactions: number | null): number | null {
+  if (reach === null || interactions === null || reach <= 0) return null;
+  return (interactions / reach) * 100;
+}
+
+const INTEGER_FORMATTER = new Intl.NumberFormat("fr-FR");
+const RATE_FORMATTER = new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 1, minimumFractionDigits: 1 });
+
+export function formatCount(value: number | null | undefined): string {
+  return value === null || value === undefined ? "—" : INTEGER_FORMATTER.format(value);
+}
+
+export function formatRate(value: number | null): string {
+  return value === null ? "—" : `${RATE_FORMATTER.format(value)} %`;
+}
+
+/**
+ * Moment du rappel d'un créneau récurrent : 8 h (Paris) le jour situé
+ * `daysBefore` jours avant l'occurrence. Pour un créneau matinal rappelé le
+ * jour même (ex. 7 h, 0 jour), le rappel est avancé à 1 h avant le créneau —
+ * sinon il tomberait après.
+ */
+export function slotReminderTime(occurrence: Date, daysBefore: number): Date {
+  const p = parisParts(occurrence);
+  const day = new Date(Date.UTC(p.year, p.month - 1, p.day - daysBefore));
+  const morning = parseParisDateTimeLocal(
+    `${day.getUTCFullYear()}-${pad(day.getUTCMonth() + 1)}-${pad(day.getUTCDate())}T08:00`,
+  );
+  const latest = new Date(occurrence.getTime() - 60 * 60 * 1000);
+  return morning && morning < latest ? morning : latest;
 }

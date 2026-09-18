@@ -17,6 +17,8 @@ import { DeleteButton } from "@/components/admin/delete-button";
 import { DeliverableUploadForm } from "@/components/admin/deliverable-upload-form";
 import { AttachmentUploadForm } from "@/components/admin/attachment-upload-form";
 import { SendDeliverablesButton } from "@/components/admin/send-deliverables-button";
+import { CreatePostFromTaskButton } from "@/components/admin/create-post-from-task-button";
+import { createSocialPostFromTask } from "@/lib/actions/social-posts";
 import { FileGrid } from "@/components/file-grid";
 import { TaskCommentThread } from "@/components/task-comment-thread";
 import { CollapsibleSection } from "@/components/admin/collapsible-section";
@@ -71,6 +73,7 @@ export default async function TaskDetailPage({
         types: true,
         formats: true,
         deliverables: true,
+        socialPosts: { select: { id: true, title: true }, orderBy: { createdAt: "desc" } },
         attachments: true,
         comments: { orderBy: { createdAt: "asc" } },
         refusalHistory: { orderBy: { refusedAt: "desc" } },
@@ -101,6 +104,12 @@ export default async function TaskDetailPage({
 
   const batDeliverables = task.deliverables.filter((d) => d.kind === "bat");
   const finalDeliverables = task.deliverables.filter((d) => d.kind === "final");
+  // Visuels reprenables par le module Réseaux sociaux (images et MP4 — pas
+  // les PDF ni les ZIP), plafonnés comme dans createSocialPostFromTask.
+  const socialReadyCount = Math.min(
+    finalDeliverables.filter((d) => ["image/png", "image/jpeg", "image/webp", "video/mp4"].includes(d.mimeType)).length,
+    10,
+  );
 
   return (
     // Passé de `max-w-2xl` (une seule colonne étroite) à la largeur
@@ -340,6 +349,28 @@ export default async function TaskDetailPage({
                 }
               />
             </div>
+
+            {socialReadyCount > 0 && (
+              <div className="mt-4 flex flex-wrap items-center gap-3">
+                <CreatePostFromTaskButton
+                  action={createSocialPostFromTask.bind(null, task.id)}
+                  mediaCount={socialReadyCount}
+                />
+                {task.socialPosts.length > 0 && (
+                  <span className="text-xs text-ink-muted">
+                    Déjà utilisée pour{" "}
+                    {task.socialPosts.map((post, index) => (
+                      <span key={post.id}>
+                        {index > 0 && ", "}
+                        <Link href={`/admin/reseaux/${post.id}`} className="text-ink underline underline-offset-2 hover:text-accent">
+                          {post.title}
+                        </Link>
+                      </span>
+                    ))}
+                  </span>
+                )}
+              </div>
+            )}
 
             <div className="mt-4">
               <DeliverableUploadForm action={uploadDeliverable.bind(null, task.id)} />

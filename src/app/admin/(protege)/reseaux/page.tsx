@@ -87,6 +87,76 @@ function PostList({ posts, now }: { posts: PostRow[]; now: Date }) {
   );
 }
 
+// Grille du profil Instagram d'un client, publications prévues comprises :
+// c'est l'outil du graphiste pour juger l'harmonie visuelle d'ensemble avant
+// de publier (alternance de couleurs, de formats...). Plus récent en haut à
+// gauche comme sur Instagram, date de référence = date de publication
+// réelle, sinon date prévue. Les stories n'apparaissent pas sur une grille,
+// ni les publications sans date (impossible de les placer).
+function InstagramGrid({ posts, clientChosen }: { posts: PostRow[]; clientChosen: boolean }) {
+  if (!clientChosen) {
+    return (
+      <div className="mt-8 rounded-2xl border border-dashed border-line p-10 text-center">
+        <p className="text-sm text-ink-muted">Choisissez un client dans les filtres pour afficher sa grille Instagram.</p>
+      </div>
+    );
+  }
+  const referenceDate = (post: PostRow) => post.publishedAt ?? post.scheduledAt;
+  const gridPosts = posts
+    .filter((post) => post.networks.includes("instagram") && post.format !== "story" && referenceDate(post))
+    .sort((a, b) => referenceDate(b)!.getTime() - referenceDate(a)!.getTime());
+
+  if (gridPosts.length === 0) {
+    return (
+      <div className="mt-8 rounded-2xl border border-dashed border-line p-10 text-center">
+        <p className="text-sm text-ink-muted">Aucune publication Instagram datée pour ce client.</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mx-auto mt-8 max-w-xl">
+      <p className="mb-3 text-xs text-ink-muted">
+        Plus récent en haut à gauche. Les publications pas encore en ligne sont signalées par leur date prévue.
+      </p>
+      <ul className="grid grid-cols-3 gap-1">
+        {gridPosts.map((post) => {
+          const cover = post.media[0];
+          const planned = post.status !== SOCIAL_POST_STATUS.PUBLIE;
+          return (
+            <li key={post.id}>
+              <Link
+                href={`/admin/reseaux/${post.id}`}
+                title={post.title}
+                className="group relative block aspect-[4/5] overflow-hidden bg-surface-elevated"
+              >
+                {cover?.mimeType.startsWith("image/") ? (
+                  // eslint-disable-next-line @next/next/no-img-element -- vignette servie par une route authentifiée
+                  <img
+                    src={`/api/fichiers/reseaux/${cover.id}?thumb=1`}
+                    alt={post.title}
+                    loading="lazy"
+                    className={`h-full w-full object-cover ${planned ? "opacity-80" : ""}`}
+                  />
+                ) : (
+                  <span className="flex h-full w-full items-center justify-center text-ink-muted">
+                    {cover ? <FileVideo size={24} weight="regular" /> : <Images size={24} weight="regular" />}
+                  </span>
+                )}
+                {planned && (
+                  <span className="absolute inset-x-1 bottom-1 truncate rounded-md bg-black/65 px-1.5 py-0.5 text-center text-[10px] font-medium text-white">
+                    {formatSchedule(post.scheduledAt)}
+                  </span>
+                )}
+              </Link>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
 export default async function SocialPostsPage({
   searchParams,
 }: {
@@ -94,7 +164,7 @@ export default async function SocialPostsPage({
 }) {
   await verifyAdminSession();
   const { clientId, reseau, statut, vue, mois } = await searchParams;
-  const view = vue === "calendrier" ? "calendrier" : "liste";
+  const view = vue === "calendrier" ? "calendrier" : vue === "grille" ? "grille" : "liste";
   const status = isSocialPostStatus(statut) ? statut : undefined;
   const network = SOCIAL_NETWORKS.some((item) => item.slug === reseau) ? reseau : undefined;
 
@@ -153,18 +223,28 @@ export default async function SocialPostsPage({
             Calendrier éditorial de vos clients : préparation, validation, publication.
           </p>
         </div>
-        <Link
-          href={clientId ? `/admin/reseaux/nouveau?clientId=${clientId}` : "/admin/reseaux/nouveau"}
-          className="rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-accent-ink transition-transform active:scale-[0.98]"
-        >
-          Nouvelle publication
-        </Link>
+        <div className="flex flex-wrap items-center gap-2">
+          {clientId && (
+            <Link
+              href={`/admin/reseaux/clients/${clientId}`}
+              className="rounded-full border border-line px-5 py-2.5 text-sm text-ink transition-colors hover:border-accent"
+            >
+              Réglages du client
+            </Link>
+          )}
+          <Link
+            href={clientId ? `/admin/reseaux/nouveau?clientId=${clientId}` : "/admin/reseaux/nouveau"}
+            className="rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-accent-ink transition-transform active:scale-[0.98]"
+          >
+            Nouvelle publication
+          </Link>
+        </div>
       </div>
 
       <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
         <FilterMenu activeCount={activeFilterCount} label="Filtres">
           <form className="grid gap-3">
-            {view === "calendrier" && <input type="hidden" name="vue" value="calendrier" />}
+            {view !== "liste" && <input type="hidden" name="vue" value={view} />}
             <label className="flex flex-col gap-2 text-sm font-medium text-ink">
               Client
               <select name="clientId" defaultValue={clientId ?? ""} className={SELECT}>
@@ -207,7 +287,7 @@ export default async function SocialPostsPage({
               </button>
               {activeFilterCount > 0 && (
                 <Link
-                  href={view === "calendrier" ? "/admin/reseaux?vue=calendrier" : "/admin/reseaux"}
+                  href={view === "liste" ? "/admin/reseaux" : `/admin/reseaux?vue=${view}`}
                   className="text-sm text-ink-muted transition-colors hover:text-ink"
                 >
                   Réinitialiser
@@ -218,9 +298,9 @@ export default async function SocialPostsPage({
         </FilterMenu>
 
         <nav className="flex gap-2">
-          {(["liste", "calendrier"] as const).map((option) => {
+          {(["liste", "calendrier", "grille"] as const).map((option) => {
             const params = new URLSearchParams(filterParams);
-            if (option === "calendrier") params.set("vue", "calendrier");
+            if (option !== "liste") params.set("vue", option);
             const query = params.toString();
             return (
               <Link
@@ -232,14 +312,16 @@ export default async function SocialPostsPage({
                     : "border-line text-ink-muted hover:text-ink"
                 }`}
               >
-                {option === "liste" ? "Liste" : "Calendrier"}
+                {option === "liste" ? "Liste" : option === "calendrier" ? "Calendrier" : "Grille Instagram"}
               </Link>
             );
           })}
         </nav>
       </div>
 
-      {view === "calendrier" ? (
+      {view === "grille" ? (
+        <InstagramGrid posts={posts} clientChosen={Boolean(clientId)} />
+      ) : view === "calendrier" ? (
         <TaskCalendarView
           tasks={posts.map((post) => {
             const meta = isSocialPostStatus(post.status) ? SOCIAL_POST_STATUS_META[post.status] : null;

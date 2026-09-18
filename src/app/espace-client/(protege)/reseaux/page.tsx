@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { FileGrid } from "@/components/file-grid";
 import { StatusBadge } from "@/components/status-badge";
 import { SocialPostValidateButtons } from "@/components/client/social-post-validate-buttons";
+import { SocialPostPreview } from "@/components/social-post-preview";
 import {
   CLIENT_VISIBLE_STATUSES,
   SOCIAL_POST_STATUS,
@@ -22,7 +23,7 @@ export const metadata: Metadata = {
 
 type Post = Prisma.SocialPostGetPayload<{ include: { media: true } }>;
 
-function PostCard({ post, readOnly }: { post: Post; readOnly: boolean }) {
+function PostCard({ post, readOnly, clientName }: { post: Post; readOnly: boolean; clientName: string }) {
   const meta = isSocialPostStatus(post.status) ? SOCIAL_POST_STATUS_META[post.status] : null;
   return (
     <article className="rounded-2xl border border-line p-6">
@@ -39,14 +40,31 @@ function PostCard({ post, readOnly }: { post: Post; readOnly: boolean }) {
         {meta && <StatusBadge label={meta.label} color={meta.color} />}
       </div>
 
-      {post.media.length > 0 && (
+      <div className="mt-4">
+        <SocialPostPreview
+          clientName={clientName}
+          caption={post.caption}
+          hashtags={post.hashtags}
+          media={post.media.map((item) => ({ id: item.id, mimeType: item.mimeType }))}
+        />
+      </div>
+
+      {/* Texte intégral : l'aperçu coupe la légende comme le fait
+          Instagram, le client doit pouvoir tout relire avant de valider. */}
+      {(post.caption || post.hashtags) && (
+        <details className="mt-3 text-sm">
+          <summary className="cursor-pointer text-ink-muted hover:text-ink">Lire le texte complet</summary>
+          {post.caption && <p className="mt-2 whitespace-pre-wrap text-ink">{post.caption}</p>}
+          {post.hashtags && <p className="mt-2 whitespace-pre-wrap text-ink-muted">{post.hashtags}</p>}
+        </details>
+      )}
+
+      {post.media.length > 1 && (
         <div className="mt-4">
+          <p className="mb-2 text-xs text-ink-muted">Tous les visuels, dans l&apos;ordre ({post.media.length})</p>
           <FileGrid files={post.media} downloadBasePath="/api/fichiers/reseaux" />
         </div>
       )}
-
-      {post.caption && <p className="mt-4 whitespace-pre-wrap text-sm text-ink">{post.caption}</p>}
-      {post.hashtags && <p className="mt-2 whitespace-pre-wrap text-sm text-ink-muted">{post.hashtags}</p>}
 
       {post.status === SOCIAL_POST_STATUS.A_MODIFIER && post.refusalReason && (
         <div className="mt-4 rounded-xl border border-line bg-surface-elevated p-3 text-sm">
@@ -77,7 +95,17 @@ function PostCard({ post, readOnly }: { post: Post; readOnly: boolean }) {
   );
 }
 
-function Section({ title, posts, readOnly }: { title: string; posts: Post[]; readOnly: boolean }) {
+function Section({
+  title,
+  posts,
+  readOnly,
+  clientName,
+}: {
+  title: string;
+  posts: Post[];
+  readOnly: boolean;
+  clientName: string;
+}) {
   if (posts.length === 0) return null;
   return (
     <section>
@@ -86,7 +114,7 @@ function Section({ title, posts, readOnly }: { title: string; posts: Post[]; rea
       </h2>
       <div className="mt-3 grid gap-4 lg:grid-cols-2">
         {posts.map((post) => (
-          <PostCard key={post.id} post={post} readOnly={readOnly} />
+          <PostCard key={post.id} post={post} readOnly={readOnly} clientName={clientName} />
         ))}
       </div>
     </section>
@@ -119,10 +147,10 @@ export default async function ClientSocialPostsPage() {
         <p className="mt-8 text-sm text-ink-muted">Aucune publication pour le moment.</p>
       ) : (
         <div className="mt-8 grid gap-10">
-          <Section title="À valider" posts={byStatus(SOCIAL_POST_STATUS.A_VALIDER)} readOnly={readOnly} />
-          <Section title="En cours de modification" posts={byStatus(SOCIAL_POST_STATUS.A_MODIFIER)} readOnly={readOnly} />
-          <Section title="Validées, à venir" posts={byStatus(SOCIAL_POST_STATUS.VALIDE)} readOnly={readOnly} />
-          <Section title="Publiées" posts={published} readOnly={readOnly} />
+          <Section title="À valider" posts={byStatus(SOCIAL_POST_STATUS.A_VALIDER)} readOnly={readOnly} clientName={clientUser.client.name} />
+          <Section title="En cours de modification" posts={byStatus(SOCIAL_POST_STATUS.A_MODIFIER)} readOnly={readOnly} clientName={clientUser.client.name} />
+          <Section title="Validées, à venir" posts={byStatus(SOCIAL_POST_STATUS.VALIDE)} readOnly={readOnly} clientName={clientUser.client.name} />
+          <Section title="Publiées" posts={published} readOnly={readOnly} clientName={clientUser.client.name} />
         </div>
       )}
     </div>

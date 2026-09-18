@@ -1680,7 +1680,7 @@ appliquée à l'ensemble du site :
   `VALIDATION.md`. `PAYPAL_CLIENT_ID`/`PAYPAL_CLIENT_SECRET` absents =
   bouton masqué proprement, même dégradation que Stripe.
 
-## 4. Module Community management (spécifié le 2026-09-18, livraison 1 livrée le même jour)
+## 4. Module Community management (spécifié le 2026-09-18, livraisons 1 et 2 livrées le même jour)
 
 Demande du client : "créer un module community management … réaliser un
 mini cahier des charges … regarder les bonnes pratiques et fonctionnement
@@ -1717,7 +1717,9 @@ programmation/publication → animation et **reporting mensuel**.
 - **Aperçu façon réseau** : rendu du post tel qu'il apparaîtra, et
   prévisualisation de la grille du profil Instagram.
 - **Créneaux récurrents** : ex. "chaque jeudi, flyer de la soirée du
-  samedi" — génère les publications à préparer à l'avance.
+  samedi". **Arbitrage du client (livraison 2) : "simple rappel"** —
+  aucune publication n'est créée automatiquement ; un email arrive avant
+  chaque créneau avec un lien qui pré-remplit la publication.
 - **Lien avec les tâches** : une tâche de création (ex. flyer) terminée
   peut devenir une publication sans ressaisie des visuels.
 - **Rappel de publication** à l'heure prévue (email à l'admin) ; l'admin
@@ -1727,7 +1729,11 @@ programmation/publication → animation et **reporting mensuel**.
   banques de hashtags, modèles de textes réutilisables.
 - **Rapport mensuel PDF** par client, à la DA du site (même générateur
   que le récapitulatif mensuel) : publications du mois + indicateurs
-  saisis à la main (abonnés, portée, taux d'engagement).
+  saisis à la main (abonnés, portée, taux d'engagement). **Arbitrage du
+  client (livraison 2) : "global par client"** — un jeu de chiffres par
+  client et par mois, pas par publication ni par réseau.
+- **Rédaction assistée par IA** (ajoutée en livraison 2) : proposition de
+  légende et de hashtags selon la ligne éditoriale et le ton du client.
 
 ### 4.2 Hors V1, explicitement
 
@@ -1815,6 +1821,76 @@ lien depuis une tâche, bibliothèque par client, rapport mensuel PDF).
   désormais à la main, ce qui supprime la réinitialisation. Le même
   défaut touchait tous les autres formulaires de l'app — corrigé le même
   jour, voir le journal.
+
+### 4.5 Livraison 2 — confort et IA (livrée le 2026-09-18)
+
+Choisie par le client parmi les suggestions ("Livraison 2 Réseaux + IA"),
+avec deux arbitrages : créneaux en **simple rappel**, rapport **global par
+client**.
+
+- **Données** : quatre nouveaux modèles, tous réservés à l'admin —
+  `SocialClientProfile` (ligne éditoriale, ton de la marque),
+  `SocialLibraryItem` (groupes de hashtags et modèles de texte),
+  `SocialRecurringSlot` (jour ISO, heure de Paris, réseaux, format, jours
+  de rappel, actif, dernière occurrence rappelée) et `SocialMonthlyStats`
+  (abonnés, portée, interactions, commentaire — un seul jeu par client et
+  par mois). Plus `SocialPost.sourceTaskId` (tâche d'origine, remis à vide
+  si la tâche est supprimée). Deux migrations purement additives.
+- **Page "Réglages réseaux" par client** (`/admin/reseaux/clients/[id]`),
+  accessible par "Réglages du client" sur `/admin/reseaux` (quand un
+  client est filtré) et depuis chaque fiche publication : ligne éditoriale
+  et ton, groupes de hashtags, modèles de texte, créneaux récurrents
+  (prochaine occurrence, pause/réactivation, suppression), chiffres
+  mensuels (évolution des abonnés par rapport au mois précédent **saisi
+  et consécutif**, taux d'engagement, lien vers le PDF). Rien de cette page
+  n'est visible du client.
+- **Formulaire de publication** : rappel repliable de la ligne éditoriale
+  et du ton, insertion d'un modèle de texte en un clic (ajouté à la suite
+  du texte existant), ajout d'un groupe de hashtags **sans doublon**
+  (comparaison insensible à la casse).
+- **Rédaction assistée par IA** (bouton "Proposer avec l'IA") : propose
+  une légende + des hashtags à partir du titre, du format, des réseaux, du
+  texte déjà saisi (brouillon ou notes), de la ligne éditoriale, du ton et
+  des groupes de hashtags du client. **Proposition seulement** : l'admin
+  choisit "Utiliser ce texte" / "Ajouter ces hashtags" / "Ignorer", rien
+  n'est remplacé sans action de sa part. Consigne donnée au modèle de ne
+  jamais inventer d'information absente du brief (il laisse des repères
+  `[date]`, `[lieu]`). Modèle `claude-opus-5` par défaut (même variable
+  `ANTHROPIC_MODEL` que la prospection pour le changer), sortie structurée
+  validée, repli automatique côté serveur si le modèle refuse une demande.
+  Sans `ANTHROPIC_API_KEY`, message clair et aucune erreur.
+- **Créneaux récurrents — simple rappel** : email à l'admin **à 8 h
+  (Paris) le jour du rappel** (N jours avant le créneau, réglable de 0 à
+  30), avec un lien vers une nouvelle publication pré-remplie (client,
+  titre, format, réseaux, date). Un créneau matinal rappelé le jour même
+  est rappelé 1 h avant (sinon 8 h tomberait après). Un seul email par
+  occurrence ; **aucun email si une publication existe déjà ce jour-là
+  (heure de Paris) pour ce client**. Traité par la tâche horaire existante
+  `/api/cron/social-post-reminders` — **pas de nouvelle tâche planifiée**
+  (limite Scalingo de 5, 4 utilisées).
+- **Création depuis une tâche** : bouton "Créer une publication réseaux
+  sociaux (N visuels)" sur la fiche tâche quand elle a des livrables
+  **finaux** image ou MP4 (les BAT et autres fichiers sont ignorés, 10
+  maximum). Les fichiers sont **copiés** (nouvelles clés de stockage) :
+  supprimer la tâche ou la publication n'affecte pas l'autre. Format
+  déduit (carrousel si plusieurs images, reel si vidéo, post sinon). La
+  tâche liste les publications déjà créées depuis elle ; la publication
+  affiche sa tâche d'origine.
+- **Aperçu façon Instagram** (fiche publication admin et cartes de
+  l'espace client) : avatar, visuel 4:5, compteur et points de carrousel,
+  légende tronquée à 125 caractères avec "plus" ; côté client, texte
+  complet dépliable et tous les visuels. **Vue "Grille Instagram"** sur
+  `/admin/reseaux` (un client doit être choisi) : publications Instagram
+  datées hors stories, de la plus récente à la plus ancienne, les
+  publications pas encore en ligne marquées de leur date prévue.
+- **Rapport mensuel PDF** (`/api/exports/reseaux?clientId&annee&mois`,
+  admin uniquement, journalisé comme les autres exports) : chiffres du
+  mois (abonnés + évolution, portée, interactions, taux d'engagement =
+  interactions ÷ portée, nombre de publications), commentaire du mois,
+  publications **marquées publiées dans le mois en heure de Paris**, avec
+  vignette JPEG du premier visuel, extrait de légende et lien. Un chiffre
+  non saisi s'affiche "—" (jamais 0). Vignettes générées une par une et
+  plafonnées à 40 (mémoire du conteneur).
 
 ## Décisions techniques déléguées à Claude Code
 
@@ -2491,3 +2567,4 @@ Le client a explicitement délégué ces choix :
 | 2026-09-18 | "J'aimerais créer un module community management … il faudrait réaliser un mini cahier des charges : peux-tu regarder les bonnes pratiques et fonctionnement du métier avant et me faire une proposition de fonctionnalité" | **Spécification seulement, rien de construit.** Étude du métier menée avant toute proposition : cycle en 6 étapes de la profession (stratégie, création, relecture, validation client, publication, reporting), fonctionnalités des outils de référence (Planable, Agorapulse, Sked), indicateurs de reporting (portée, engagement, croissance), et contraintes réelles des API (Meta : comptes professionnels + validation de l'app en 2 à 4 semaines ; TikTok : publications privées tant que l'app n'est pas auditée). Proposition en 3 phases, puis 3 arbitrages tranchés par le client : **pour ses clients** (prestation), **phase 1 seule** (sans connexion aux réseaux), réseaux **Instagram, Facebook, TikTok, LinkedIn**. Spécification complète : nouvelle section "4. Module Community management" |
 | 2026-09-18 | "Oui vas-y" (lancement de la livraison 1 du module Community management) | **Livré** : onglet admin "Réseaux" (liste + calendrier, filtres, pastille "à publier"), fiche publication (cycle Idée → Rédaction → À valider → Validé → Publié + À modifier, visuels ordonnés pour les carrousels), onglet client "Réseaux sociaux" affiché seulement s'il y a du contenu (validation / demande de modification avec motif, brouillons jamais visibles), emails client et admin, rappel horaire "à publier maintenant". Heure de Paris gérée explicitement (production en UTC). **Défaut React 19 trouvé en test** : les formulaires perdaient la saisie après une erreur de validation, et une liste déroulante pouvait enregistrer une autre valeur que celle affichée — corrigé dans le module, présent ailleurs dans l'app (noté dans "Points encore ouverts"). Parcours complet testé en navigateur et en base — voir section 4.4 et `VALIDATION.md` |
 | 2026-09-18 | "Corriger les formulaires" (choisi parmi les suggestions, en priorité) | **Livré** : les 44 formulaires de l'app branchés sur une action serveur ne perdent plus la saisie après une erreur (espace client, admin, pages de connexion). Nouvel outil partagé `useFormSubmit` (`src/lib/use-form-submit.ts`), fondé sur une lecture du code de React plutôt qu'une supposition : quand le gestionnaire d'envoi appelle `preventDefault()`, React n'exécute plus l'action lui-même, et c'est là qu'il déclenchait la réinitialisation. L'attribut `action` est **conservé** : avant que la page soit interactive, le navigateur envoie toujours en POST (vérifié sur le HTML rendu, page de connexion comprise), jamais en GET avec les champs dans l'URL. Classement fait formulaire par formulaire : 6 formulaires d'ajout ou d'envoi (temps passé, email, compte admin, 2 imports de prospects, avatar) se vident toujours après un succès, ceux qui se vidaient déjà eux-mêmes gardent leur comportement, les autres (édition, validation) conservent la saisie. Le formulaire de signature de devis contournait déjà le problème par un champ contrôlé — protection jugée non fiable (cf. la liste déroulante du module Réseaux), désormais couvert aussi. Testé en navigateur : fiche prospect (erreur → nom, ville, email et statut conservés), ajout de temps (erreur → saisie conservée ; succès → session ajoutée et formulaire vidé), ajout d'un élément de liste (vidé après succès) — données de test supprimées ensuite — voir `VALIDATION.md` |
+| 2026-09-18 | "Livraison 2 Réseaux + IA" (choisie parmi les suggestions), puis arbitrages : créneaux récurrents en **"Simple rappel"**, rapport mensuel **"Global par client"** | **Livré** : page "Réglages réseaux" par client (ligne éditoriale et ton, groupes de hashtags, modèles de texte, créneaux récurrents, chiffres mensuels), insertion des modèles et hashtags dans le formulaire de publication, **rédaction de légende assistée par IA** (proposition à accepter, jamais d'écrasement), rappel email des créneaux avec lien pré-rempli (dans la tâche horaire existante, pas de nouvelle tâche), création d'une publication depuis les livrables finaux d'une tâche, aperçu façon Instagram et vue "Grille Instagram", **rapport mensuel PDF**. Défaut trouvé en test et corrigé : les milliers s'affichaient "1/400" dans le PDF (espace fine absente de la police). Détails section 4.5, tests dans `VALIDATION.md` |
