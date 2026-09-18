@@ -32,6 +32,8 @@ export async function GET(
   const tasks = await db.task.findMany({
     where: {
       clientId,
+      // Rapport destiné au client : jamais de tâche interne (réseaux).
+      internal: false,
       archivedAt: null,
       status: { slug: { not: TASK_STATUS.TERMINE } },
     },

@@ -19,6 +19,7 @@ export const SocialPostSchema = z.object({
 
 export interface SocialPostFormValues {
   clientId?: string;
+  categoryId?: string;
   title: string;
   networks: string[];
   format: string;
@@ -47,3 +48,24 @@ export const SocialPostPublishSchema = z.object({
 });
 
 export type SocialPostPublishState = { error?: string } | undefined;
+
+// Demande de création depuis une publication (tâche interne, 2026-09-18).
+export const SocialTaskRequestSchema = z.object({
+  title: z.string().trim().min(1, { message: "Donnez un titre à la tâche." }).max(160),
+  taskType: z.string().min(1, { message: "Choisissez le type de création." }),
+  dueDate: z
+    .string()
+    .trim()
+    .refine((value) => value === "" || (/^\d{4}-\d{2}-\d{2}$/.test(value) && !Number.isNaN(new Date(value).getTime())), {
+      message: "Échéance invalide.",
+    }),
+  description: z.string().trim().max(4000, { message: "Brief trop long (4 000 caractères maximum)." }),
+});
+
+export const SocialPostNoteSchema = z.object({
+  body: z
+    .string()
+    .trim()
+    .min(1, { message: "La note est vide." })
+    .max(4000, { message: "Note trop longue (4 000 caractères maximum)." }),
+});

@@ -14,6 +14,8 @@ import { isTaskOverdue, isTaskDueToday, taskDateFormatterShort } from "@/lib/tas
 import { sumTaskTimeMs } from "@/lib/time-tracking";
 
 interface TaskTableTask {
+  /** Tâche interne (demandée depuis une publication réseaux). */
+  internal?: boolean;
   id: string;
   clientId: string;
   title: string;
@@ -116,6 +118,14 @@ export function TaskTableRow({
             <Link href={`/admin/taches/${task.id}`} className="font-medium text-ink hover:underline">
               {task.title}
             </Link>
+            {task.internal && (
+              <span
+                title="Tâche interne demandée depuis une publication réseaux — invisible du client"
+                className="rounded-full border border-line px-2 py-0.5 text-[11px] text-ink-muted"
+              >
+                Interne
+              </span>
+            )}
             <AttachmentBadge
               attachmentCount={task._count?.attachments}
               deliverableCount={task._count?.deliverables}

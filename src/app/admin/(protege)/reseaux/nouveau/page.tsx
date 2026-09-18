@@ -6,7 +6,7 @@ import { db } from "@/lib/db";
 import { ACTIVE_CLIENTS } from "@/lib/clients";
 import { SocialPostForm } from "@/components/admin/social-post-form";
 import { createSocialPost } from "@/lib/actions/social-posts";
-import { loadSocialLibraries } from "@/lib/social-library";
+import { loadSocialFormLists, loadSocialLibraries } from "@/lib/social-library";
 import { SOCIAL_FORMATS, SOCIAL_NETWORKS, parseParisDateTimeLocal } from "@/lib/social-posts";
 
 export const metadata: Metadata = {
@@ -33,6 +33,7 @@ export default async function NewSocialPostPage({
     orderBy: { name: "asc" },
   });
   const libraries = await loadSocialLibraries(clients.map((client) => client.id));
+  const { categories, taskTypes } = await loadSocialFormLists();
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6 lg:px-8">
@@ -61,6 +62,8 @@ export default async function NewSocialPostPage({
             scheduledAt: parseParisDateTimeLocal(date) ? date! : "",
           }}
           libraries={libraries}
+          categories={categories}
+          taskTypes={taskTypes}
           submitLabel="Créer la publication"
         />
       </div>

@@ -37,7 +37,7 @@ export default async function ClientDeliverablesPage({
 
   const [tasks, client] = await Promise.all([
     db.task.findMany({
-      where: { clientId: clientUser.clientId, status: { slug: TASK_STATUS.TERMINE }, archivedAt: null },
+      where: { clientId: clientUser.clientId, internal: false, status: { slug: TASK_STATUS.TERMINE }, archivedAt: null },
       include: { deliverables: true },
       orderBy:
         sortField === "evenement"

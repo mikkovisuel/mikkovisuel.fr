@@ -33,7 +33,7 @@ export default async function ClientTaskDetailPage({
     },
   });
 
-  if (!task || task.clientId !== clientUser.clientId || task.archivedAt) notFound();
+  if (!task || task.clientId !== clientUser.clientId || task.archivedAt || task.internal) notFound();
 
   return (
     <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6 lg:px-8">

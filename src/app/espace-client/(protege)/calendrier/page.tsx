@@ -21,7 +21,7 @@ export default async function ClientCalendarPage({
   const month = moisMonth ? Number(moisMonth) - 1 : now.getMonth();
 
   const tasks = await db.task.findMany({
-    where: { clientId: clientUser.clientId, archivedAt: null },
+    where: { clientId: clientUser.clientId, internal: false, archivedAt: null },
     include: { status: true },
     orderBy: { eventDate: "asc" },
   });

@@ -9,6 +9,7 @@ export const TASK_TYPE_LIST_KEY = "task_type";
 export const TASK_FORMAT_LIST_KEY = "task_format";
 export const PROSPECT_STATUS_LIST_KEY = "prospect_status";
 export const CLIENT_CATEGORY_LIST_KEY = "client_category";
+export const SOCIAL_CATEGORY_LIST_KEY = "social_category";
 
 export const TASK_STATUS = {
   NOUVEAU: "nouveau",
@@ -279,6 +280,14 @@ export const CLIENT_CATEGORY_SEED: SeedDropdownItem[] = [
   { slug: "agence", label: "Agence", color: "amber", locked: false, sortOrder: 3 },
   { slug: "evenementiel", label: "Événementiel", color: "orange", locked: false, sortOrder: 4 },
   { slug: "particulier", label: "Particulier", color: "slate", locked: false, sortOrder: 5 },
+];
+
+// Catégories de publication réseaux (2026-09-18) — exemples donnés par le
+// client, librement modifiables dans /admin/listes.
+export const SOCIAL_CATEGORY_SEED: SeedDropdownItem[] = [
+  { slug: "flyer-soiree", label: "Flyer soirée", color: "violet", locked: false, sortOrder: 0 },
+  { slug: "contenu-food", label: "Contenu food", color: "orange", locked: false, sortOrder: 1 },
+  { slug: "contenu-club", label: "Contenu club", color: "blue", locked: false, sortOrder: 2 },
 ];
 
 export const TASK_FORMAT_SEED: SeedDropdownItem[] = [

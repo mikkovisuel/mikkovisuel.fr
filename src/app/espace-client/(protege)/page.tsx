@@ -20,7 +20,7 @@ export default async function ClientHomePage() {
 
   const [toValidateCount, unpaidDocuments, unpaidPaymentRecords, activeTasks] = await Promise.all([
     db.task.count({
-      where: { clientId: clientUser.clientId, archivedAt: null, status: { slug: TASK_STATUS.A_VALIDER } },
+      where: { clientId: clientUser.clientId, internal: false, archivedAt: null, status: { slug: TASK_STATUS.A_VALIDER } },
     }),
     db.document.findMany({
       where: { clientId: clientUser.clientId, paymentStatus: "unpaid", amountCents: { not: null } },
@@ -34,6 +34,7 @@ export default async function ClientHomePage() {
     db.task.findMany({
       where: {
         clientId: clientUser.clientId,
+        internal: false,
         archivedAt: null,
         status: { slug: { not: TASK_STATUS.TERMINE } },
       },

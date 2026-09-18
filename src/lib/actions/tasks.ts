@@ -11,6 +11,7 @@ import { getStorageAdapter } from "@/lib/storage";
 import { isTaskOverdue, taskDateFormatter } from "@/lib/tasks";
 import { notifiableEmails, notifiableEmailsFromContacts } from "@/lib/clients";
 import { isWorkLocked } from "@/lib/payment-locks";
+import { importTaskDeliverablesIntoLinkedPosts } from "@/lib/social-task-link";
 
 const MAX_ATTACHMENT_SIZE = 20 * 1024 * 1024;
 const ALLOWED_ATTACHMENT_TYPES = new Set([
@@ -325,7 +326,9 @@ async function notifyClientUsersOfNewTaskToValidate(taskId: string) {
     where: { id: taskId },
     include: { client: { include: { contacts: { include: { contact: true } } } } },
   });
-  if (!task) return;
+  // Tâche interne (demandée depuis une publication réseaux) : le client
+  // n'en sait rien, aucun email.
+  if (!task || task.internal) return;
 
   for (const to of notifiableEmailsFromContacts(task.client.contacts)) {
     await sendEmail({
@@ -385,6 +388,11 @@ export async function setTaskStatus(taskId: string, statusSlug: TaskStatusSlug) 
   revalidateTaskPaths(task.clientId);
   if (statusSlug === TASK_STATUS.TERMINE) {
     revalidatePath("/admin");
+    // Création demandée depuis une publication réseaux : ses livrables
+    // finaux rejoignent automatiquement les visuels (une seule fois).
+    const postIds = await importTaskDeliverablesIntoLinkedPosts(taskId);
+    for (const postId of postIds) revalidatePath(`/admin/reseaux/${postId}`);
+    if (postIds.length > 0) revalidatePath("/admin/reseaux");
   }
 
   if (statusSlug === TASK_STATUS.A_VALIDER) {
@@ -490,7 +498,7 @@ export async function validateTask(taskId: string) {
   assertNotDemo(clientUser);
 
   const task = await db.task.findUnique({ where: { id: taskId }, include: { deliverables: true } });
-  if (!task || task.clientId !== clientUser.clientId) return;
+  if (!task || task.clientId !== clientUser.clientId || task.internal) return;
 
   const statusItem = await getStatusItem(TASK_STATUS.BAT_VALIDE);
   const validatedAt = new Date();
@@ -623,7 +631,7 @@ export async function refuseTask(
   }
 
   const task = await db.task.findUnique({ where: { id: taskId } });
-  if (!task || task.clientId !== clientUser.clientId) {
+  if (!task || task.clientId !== clientUser.clientId || task.internal) {
     return { error: "Tâche introuvable." };
   }
 
@@ -693,7 +701,8 @@ export async function refuseTaskByAdmin(
   });
   await logTaskStatusChange(taskId, statusItem, { type: "ADMIN", id: admin.id, name: "Mikko" });
 
-  for (const to of notifiableEmailsFromContacts(task.client.contacts)) {
+  // Pas d'email au client pour une tâche interne (publication réseaux).
+  for (const to of task.internal ? [] : notifiableEmailsFromContacts(task.client.contacts)) {
     await sendEmail({
       trigger: "refusal_confirmed",
       to,
@@ -760,7 +769,7 @@ export async function sendTaskReminder(taskId: string) {
     where: { id: taskId },
     include: { status: true, client: { include: { contacts: { include: { contact: true } } } } },
   });
-  if (!task || !isTaskOverdue(task)) return;
+  if (!task || task.internal || !isTaskOverdue(task)) return;
 
   for (const to of notifiableEmailsFromContacts(task.client.contacts)) {
     await sendEmail({

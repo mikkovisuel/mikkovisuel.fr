@@ -803,6 +803,25 @@ Code développé par une autre session Claude Code (branche `claude/hub-bridge`,
 | Aperçu côté client | Session d'un contact du client | ✅ Aperçu Instagram, compteur "1/2", "plus", texte complet dépliable ; publications "à valider" et "publiées" visibles | Brouillons ("Idée", "Rédaction") ; données internes | ✅ Absents ; ni ligne éditoriale ni hashtags du client affichés | 2026-09-18 |
 | Données de test | — | ✅ Client de test, publications, médias (base + 4 fichiers de stockage), tâche, contact et sessions supprimés ; scripts temporaires effacés | — | — | 2026-09-18 |
 
+## Réseaux — catégories, notes, créations demandées, calendrier (2026-09-18)
+
+`tsc --noEmit`, lint complet et `npm run build` propres. Testé en navigateur (dev local, vraies sessions admin et client), par `curl` et en base, sur un client de test ("ZZ Test CM L3") avec un contact client et une tâche normale témoin — **tout supprimé après les tests**, fichiers compris.
+
+| Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |
+|---|---|---|---|---|---|
+| Liste "Catégories de publication" | Migration + `/admin/listes` | ✅ Liste présente, 3 valeurs (Flyer soirée, Contenu food, Contenu club) | — | — | 2026-09-18 |
+| Catégorie d'une publication | "Flyer soirée" à la création, puis "Contenu food" en modification | ✅ Badge sur la fiche et la carte, ligne dans le calendrier ; filtre `categorie=contenu-food` montre la publication, `flyer-soiree` ne la montre plus | Identifiant de catégorie falsifié dans le formulaire | ✅ "Catégorie inconnue.", rien d'enregistré | 2026-09-18 |
+| Demande de création à la création | Case cochée + type "Graphisme", publication prévue le 26/09 | ✅ Publication + tâche interne "Réseaux — …", type Graphisme, statut Nouveau, **échéance 23/09** (3 jours avant) | Case cochée sans type (garde du navigateur retirée) | ✅ "Choisissez le type de création à demander." — **ni publication ni tâche créées**, catégorie/case/titre conservés | 2026-09-18 |
+| Demande depuis la fiche | Nouvelle demande "Vidéo" une fois la première terminée | ✅ 2ᵉ tâche interne créée, formulaire masqué tant qu'elle est en cours | Même demande envoyée depuis un 2ᵉ onglet ouvert avant | ✅ "Une création est déjà en cours pour cette publication." — toujours 2 tâches en base, pas 3 | 2026-09-18 |
+| Tâche invisible du client | Tâche normale témoin | ✅ Toujours visible dans Suivi et Calendrier du client | Tâche interne vue par le client : pages Suivi, Calendrier, Livrables, À valider, Accueil ; fiche directe ; fichier direct | ✅ Absente des 5 pages ; fiche **404** ; fichier **403** (200 pour l'admin) | 2026-09-18 |
+| Emails client | — | — | Tâche interne mise "À valider" puis "Terminé" | ✅ **0 email** au contact du client (`EmailLog` vide pour son adresse) | 2026-09-18 |
+| Visuels ajoutés au passage "Terminé" | Tâche avec 1 PNG final + 1 BAT | ✅ Le PNG final copié dans les visuels (BAT exclu), "fichiers finaux ajoutés aux visuels le …" sur la fiche | Tâche repassée "En cours" puis "Terminé" | ✅ **Pas de doublon** (toujours 1 visuel, date d'import inchangée) | 2026-09-18 |
+| Avancement sur les cartes | Liste et calendrier Réseaux | ✅ "Flyer soirée · Création : Nouveau · 1 note" sur la carte ; catégorie et "Création : …" dans la case du calendrier | — | — | 2026-09-18 |
+| Repères côté Tâches | Liste des tâches ; fiche de la tâche interne | ✅ Badge "Interne" ; bandeau "Tâche interne — le client ne la voit pas" avec lien vers la publication ; bouton "Créer une publication" masqué | — | — | 2026-09-18 |
+| Notes internes | Note ajoutée, 2ᵉ note ajoutée puis supprimée | ✅ Champ vidé après ajout, compteur à jour, la bonne note supprimée | Note composée d'espaces (garde du navigateur retirée) | ✅ "La note est vide." | 2026-09-18 |
+| Calendrier sans élargissement | Titre de 80 caractères dans une case | ✅ 7 colonnes à largeur égale (121 px chacune), aucun défilement horizontal, titre passé à la ligne | Mot long coupé au milieu ("volontaireme-nt") | ❌ puis ✅ césure française activée (`hyphens-auto`, page en `lang="fr"`) | 2026-09-18 |
+| Rapport d'état / récapitulatif client | — | — | Tâche interne dans les PDF remis au client | ⚠️ Vérifié par lecture de code uniquement (filtre `internal: false` ajouté aux deux requêtes) | 2026-09-18 |
+
 ## Points restant ouverts pour une prochaine passe de validation
 
 - Glisser-déposer et `<select>` natif du Kanban Prospection (limite outil, voir ci-dessus).

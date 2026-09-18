@@ -22,6 +22,7 @@ export default async function ClientFollowUpPage({
     db.task.findMany({
       where: {
         clientId: clientUser.clientId,
+        internal: false,
         archivedAt: null,
         ...(statut ? { status: { slug: statut } } : {}),
       },

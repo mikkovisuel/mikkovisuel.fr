@@ -143,6 +143,28 @@ export default async function TaskDetailPage({
         </Link>
       </div>
 
+      {task.internal && (
+        <div className="mt-4 rounded-2xl border border-accent/40 bg-accent/5 p-4 text-sm text-ink">
+          <p className="font-medium">Tâche interne — le client ne la voit pas</p>
+          <p className="mt-1 text-ink-muted">
+            Demandée depuis{" "}
+            {task.socialPosts.length > 0
+              ? task.socialPosts.map((post, index) => (
+                  <span key={post.id}>
+                    {index > 0 && ", "}
+                    la publication{" "}
+                    <Link href={`/admin/reseaux/${post.id}`} className="text-ink underline underline-offset-2 hover:text-accent">
+                      {post.title}
+                    </Link>
+                  </span>
+                ))
+              : "une publication réseaux (supprimée depuis)"}
+            . Aucun email ni fichier n&apos;est envoyé au client ; une fois « Terminé », les fichiers finaux image/MP4
+            s&apos;ajoutent aux visuels de la publication.
+          </p>
+        </div>
+      )}
+
       <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
         <div className="flex items-center gap-2">
           <TaskPinButton taskId={task.id} pinned={task.pinnedAt !== null} />
@@ -350,7 +372,7 @@ export default async function TaskDetailPage({
               />
             </div>
 
-            {socialReadyCount > 0 && (
+            {socialReadyCount > 0 && !task.internal && (
               <div className="mt-4 flex flex-wrap items-center gap-3">
                 <CreatePostFromTaskButton
                   action={createSocialPostFromTask.bind(null, task.id)}

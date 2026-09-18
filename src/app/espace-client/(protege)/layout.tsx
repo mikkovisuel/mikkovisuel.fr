@@ -34,7 +34,7 @@ export default async function ClientProtectedLayout({
     socialPostsToValidateCount,
   ] = await Promise.all([
     db.task.count({
-      where: { clientId: clientUser.clientId, archivedAt: null, status: { slug: TASK_STATUS.A_VALIDER } },
+      where: { clientId: clientUser.clientId, internal: false, archivedAt: null, status: { slug: TASK_STATUS.A_VALIDER } },
     }),
     db.document.count({ where: { clientId: clientUser.clientId, paymentStatus: "unpaid" } }),
     // Paiements sans facture (2026-08-17, même signalement que la page

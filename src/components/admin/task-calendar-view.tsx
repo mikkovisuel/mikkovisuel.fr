@@ -10,6 +10,9 @@ interface CalendarTask {
   title: string;
   eventDate: Date | null;
   status: { color: string; label: string };
+  /** Lignes secondaires facultatives (ex. catégorie et création demandée
+   * d'une publication réseaux), passées à la ligne comme le titre. */
+  details?: string[];
 }
 
 // Grille de semaines (lundi en premier), avec des cases vides en bordure de
@@ -102,14 +105,14 @@ export function TaskCalendarView({
 
       <div className="mt-4 overflow-x-auto">
         <div className="min-w-[640px]">
-          <div className="grid grid-cols-[3rem_repeat(7,1fr)] gap-2 text-center text-xs font-medium text-ink-muted">
+          <div className="grid grid-cols-[3rem_repeat(7,minmax(0,1fr))] gap-2 text-center text-xs font-medium text-ink-muted">
             <div />
             {WEEKDAY_LABELS.map((label) => (
               <div key={label}>{label}</div>
             ))}
           </div>
 
-          <div className="mt-2 grid grid-cols-[3rem_repeat(7,1fr)] gap-2">
+          <div className="mt-2 grid grid-cols-[3rem_repeat(7,minmax(0,1fr))] gap-2">
             {weeks.flatMap((week, weekIndex) => {
               const firstDay = week.find((day): day is Date => day !== null);
               return [
@@ -135,7 +138,7 @@ export function TaskCalendarView({
                   return (
                     <div
                       key={key}
-                      className={`flex min-h-28 flex-col gap-1.5 rounded-xl border p-2 ${
+                      className={`flex min-h-28 min-w-0 flex-col gap-1.5 rounded-xl border p-2 ${
                         isToday ? "border-accent" : "border-line"
                       }`}
                     >
@@ -149,15 +152,20 @@ export function TaskCalendarView({
                             <Link
                               key={task.id}
                               href={`${taskBasePath}/${task.id}`}
-                              className="flex flex-col gap-0.5 truncate rounded-lg bg-surface-elevated px-2 py-1 text-xs text-ink hover:underline"
+                              className="flex min-w-0 flex-col gap-0.5 rounded-lg bg-surface-elevated px-2 py-1 text-xs text-ink hover:underline"
                             >
-                              <span className="flex items-center gap-1.5 truncate">
-                                <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${dot}`} />
-                                <span className="truncate">{task.title}</span>
+                              <span className="flex items-start gap-1.5">
+                                <span className={`mt-1 h-1.5 w-1.5 shrink-0 rounded-full ${dot}`} />
+                                <span className="min-w-0 break-words hyphens-auto">{task.title}</span>
                               </span>
-                              <span className="truncate pl-3 text-[11px] text-ink-muted">
+                              <span className="break-words pl-3 text-[11px] text-ink-muted">
                                 {task.status.label}
                               </span>
+                              {task.details?.map((line) => (
+                                <span key={line} className="break-words pl-3 text-[11px] text-ink-muted">
+                                  {line}
+                                </span>
+                              ))}
                             </Link>
                           );
                         })}

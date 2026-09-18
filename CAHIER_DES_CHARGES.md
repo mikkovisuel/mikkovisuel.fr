@@ -1680,7 +1680,7 @@ appliquée à l'ensemble du site :
   `VALIDATION.md`. `PAYPAL_CLIENT_ID`/`PAYPAL_CLIENT_SECRET` absents =
   bouton masqué proprement, même dégradation que Stripe.
 
-## 4. Module Community management (spécifié le 2026-09-18, livraisons 1 et 2 livrées le même jour)
+## 4. Module Community management (spécifié le 2026-09-18, livraisons 1 et 2 et compléments livrés le même jour)
 
 Demande du client : "créer un module community management … réaliser un
 mini cahier des charges … regarder les bonnes pratiques et fonctionnement
@@ -1891,6 +1891,53 @@ client**.
   vignette JPEG du premier visuel, extrait de légende et lien. Un chiffre
   non saisi s'affiche "—" (jamais 0). Vignettes générées une par une et
   plafonnées à 40 (mémoire du conteneur).
+
+### 4.6 Catégories, notes, créations demandées, calendrier (2026-09-18)
+
+Demande du client : catégories paramétrables, calendrier qui ne s'élargit
+plus avec les textes, notes sur chaque publication, et "demander une
+infographie / un contenu" créant une tâche dont l'avancement se voit sur
+les cartes. Quatre arbitrages tranchés par le client (options
+recommandées retenues à chaque fois) :
+
+- **Catégories** : **une seule par publication, admin uniquement**.
+  Nouvelle liste paramétrable "Catégories de publication" dans
+  `/admin/listes` (valeurs de départ : Flyer soirée, Contenu food, Contenu
+  club — renommables, recolorables, supprimables ; supprimer une catégorie
+  laisse les publications sans catégorie). Sélecteur dans le formulaire,
+  badge sur la fiche et la liste, ligne dans le calendrier, nouveau filtre
+  "Catégorie" sur `/admin/reseaux`. Jamais affichée au client.
+- **Notes** : **notes internes** — fil daté sur chaque publication
+  (ajout, suppression), visible de l'admin seul ; nombre de notes rappelé
+  sur la carte de la liste.
+- **Demander une création** : **choix du type parmi les types de tâche**
+  (Graphisme, Vidéo, Photo, Flyer…). Deux points d'entrée : case "Demander
+  une création" à la création de la publication (échéance automatique 3
+  jours avant la date prévue), ou section "Création" de la fiche (titre,
+  type, échéance, brief). Une seule création en cours par publication ;
+  une nouvelle demande est possible une fois la précédente terminée.
+- **Tâche invisible + visuels automatiques** : la tâche créée est
+  **interne** (`Task.internal`) — elle apparaît dans Tâches (repère
+  "Interne", bandeau sur sa fiche avec lien vers la publication) mais
+  **jamais côté client** : absente de toutes les pages et compteurs de
+  l'espace client, fiche en 404, fichiers en 403, actions client refusées,
+  aucun email client (mise en validation, refus, relance, nouveau
+  livrable ; envoi des livrables par email refusé), exclue du rapport
+  d'état et du récapitulatif mensuel remis au client. Quand elle passe
+  **"Terminé"**, ses livrables **finaux** image/MP4 sont **copiés** dans
+  les visuels de la publication (10 au total maximum, BAT exclus), **une
+  seule fois** même si la tâche repasse "Terminé". L'avancement (statut
+  de la tâche) s'affiche sur la carte de la liste ("Création : En cours"),
+  dans le calendrier et sur la fiche.
+- **Calendrier** (Tâches, Réseaux et espace client, même composant) :
+  colonnes de largeur fixe et égale — un titre long ne les élargit plus —
+  et textes passés à la ligne (césure française) au lieu d'être tronqués.
+
+Données : `SocialPost.categoryId` (→ liste, remis à vide si la catégorie
+est supprimée), `SocialPost.taskMediaImportedAt`, `Task.internal` (faux
+par défaut pour toutes les tâches existantes), nouvelle table
+`SocialPostNote`. Migration purement additive, qui crée aussi la liste et
+ses 3 valeurs (idempotente, ne touche à aucune autre liste).
 
 ## Décisions techniques déléguées à Claude Code
 
@@ -2568,3 +2615,4 @@ Le client a explicitement délégué ces choix :
 | 2026-09-18 | "Oui vas-y" (lancement de la livraison 1 du module Community management) | **Livré** : onglet admin "Réseaux" (liste + calendrier, filtres, pastille "à publier"), fiche publication (cycle Idée → Rédaction → À valider → Validé → Publié + À modifier, visuels ordonnés pour les carrousels), onglet client "Réseaux sociaux" affiché seulement s'il y a du contenu (validation / demande de modification avec motif, brouillons jamais visibles), emails client et admin, rappel horaire "à publier maintenant". Heure de Paris gérée explicitement (production en UTC). **Défaut React 19 trouvé en test** : les formulaires perdaient la saisie après une erreur de validation, et une liste déroulante pouvait enregistrer une autre valeur que celle affichée — corrigé dans le module, présent ailleurs dans l'app (noté dans "Points encore ouverts"). Parcours complet testé en navigateur et en base — voir section 4.4 et `VALIDATION.md` |
 | 2026-09-18 | "Corriger les formulaires" (choisi parmi les suggestions, en priorité) | **Livré** : les 44 formulaires de l'app branchés sur une action serveur ne perdent plus la saisie après une erreur (espace client, admin, pages de connexion). Nouvel outil partagé `useFormSubmit` (`src/lib/use-form-submit.ts`), fondé sur une lecture du code de React plutôt qu'une supposition : quand le gestionnaire d'envoi appelle `preventDefault()`, React n'exécute plus l'action lui-même, et c'est là qu'il déclenchait la réinitialisation. L'attribut `action` est **conservé** : avant que la page soit interactive, le navigateur envoie toujours en POST (vérifié sur le HTML rendu, page de connexion comprise), jamais en GET avec les champs dans l'URL. Classement fait formulaire par formulaire : 6 formulaires d'ajout ou d'envoi (temps passé, email, compte admin, 2 imports de prospects, avatar) se vident toujours après un succès, ceux qui se vidaient déjà eux-mêmes gardent leur comportement, les autres (édition, validation) conservent la saisie. Le formulaire de signature de devis contournait déjà le problème par un champ contrôlé — protection jugée non fiable (cf. la liste déroulante du module Réseaux), désormais couvert aussi. Testé en navigateur : fiche prospect (erreur → nom, ville, email et statut conservés), ajout de temps (erreur → saisie conservée ; succès → session ajoutée et formulaire vidé), ajout d'un élément de liste (vidé après succès) — données de test supprimées ensuite — voir `VALIDATION.md` |
 | 2026-09-18 | "Livraison 2 Réseaux + IA" (choisie parmi les suggestions), puis arbitrages : créneaux récurrents en **"Simple rappel"**, rapport mensuel **"Global par client"** | **Livré** : page "Réglages réseaux" par client (ligne éditoriale et ton, groupes de hashtags, modèles de texte, créneaux récurrents, chiffres mensuels), insertion des modèles et hashtags dans le formulaire de publication, **rédaction de légende assistée par IA** (proposition à accepter, jamais d'écrasement), rappel email des créneaux avec lien pré-rempli (dans la tâche horaire existante, pas de nouvelle tâche), création d'une publication depuis les livrables finaux d'une tâche, aperçu façon Instagram et vue "Grille Instagram", **rapport mensuel PDF**. Défaut trouvé en test et corrigé : les milliers s'affichaient "1/400" dans le PDF (espace fine absente de la police). Détails section 4.5, tests dans `VALIDATION.md` |
+| 2026-09-18 | "Pour les posts, ajoute des catégorisation (paramétrables, exemple : flyer soirée, contenu food, contenu club...) et dans la vue calendrier ne pas scaler les cases en fonction des textes : retour à la ligne automatique. Peux tu ajouter des notes à chaque tâches dans réseaux. Ajouter également une case à cocher ou un système pour "demander une infographie" ou "contenu" qui fera la création d'une tâche dans les tâches et ou on peut voir l'avancement de la tâche dans les cartons de publications des réseaux" — arbitrages : catégorie **unique, admin uniquement** ; **notes internes** ; **choix du type de tâche** ; tâche **invisible du client + visuels ajoutés automatiquement** | **Livré** : liste paramétrable "Catégories de publication" (filtre, badges), notes internes par publication, "Demander une création" (case à la création + section sur la fiche) créant une **tâche interne** dans Tâches, avancement affiché sur les cartes/le calendrier/la fiche, fichiers finaux copiés dans les visuels au passage "Terminé" (une seule fois). Tâches internes masquées partout côté client (pages, compteurs, fichiers, actions, emails, PDF remis au client). Calendrier à colonnes fixes avec retour à la ligne (profite aussi aux calendriers Tâches et espace client). Détails section 4.6, tests dans `VALIDATION.md` |

@@ -1,5 +1,6 @@
 import "server-only";
 import { db } from "@/lib/db";
+import { SOCIAL_CATEGORY_LIST_KEY, TASK_TYPE_LIST_KEY } from "@/lib/dropdown-lists";
 import type { SocialClientLibrary } from "@/components/admin/social-post-form";
 
 // Réglages réseaux (ligne éditoriale, hashtags, modèles) des clients donnés,
@@ -22,4 +23,23 @@ export async function loadSocialLibraries(clientIds: string[]): Promise<Record<s
     else libraryOf(item.clientId).templates.push(entry);
   }
   return libraries;
+}
+
+// Listes paramétrables utilisées par le formulaire de publication
+// (2026-09-18) : catégories de publication et types de tâche (pour
+// "Demander une création").
+export async function loadSocialFormLists() {
+  const [categories, taskTypes] = await Promise.all([
+    db.dropdownItem.findMany({
+      where: { list: { key: SOCIAL_CATEGORY_LIST_KEY } },
+      select: { id: true, label: true },
+      orderBy: { sortOrder: "asc" },
+    }),
+    db.dropdownItem.findMany({
+      where: { list: { key: TASK_TYPE_LIST_KEY } },
+      select: { slug: true, label: true },
+      orderBy: { sortOrder: "asc" },
+    }),
+  ]);
+  return { categories, taskTypes };
 }

@@ -41,6 +41,8 @@ export function SocialPostForm({
   submitLabel,
   libraries = {},
   clientId: fixedClientId,
+  categories = [],
+  taskTypes,
 }: {
   action: (state: SocialPostFormState, formData: FormData) => Promise<SocialPostFormState>;
   /** Sélecteur de client, à la création uniquement. */
@@ -52,6 +54,10 @@ export function SocialPostForm({
   libraries?: Record<string, SocialClientLibrary>;
   /** Client de la publication, en modification (pas de sélecteur). */
   clientId?: string;
+  /** Liste "Catégories de publication" (/admin/listes). */
+  categories?: { id: string; label: string }[];
+  /** Types de tâche : affiche la case "Demander une création" (création seulement). */
+  taskTypes?: { slug: string; label: string }[];
 }) {
   const [state, formAction, pending] = useActionState(action, undefined);
   // Évite que React 19 vide le formulaire après une erreur — voir
@@ -66,6 +72,7 @@ export function SocialPostForm({
   const [suggestion, setSuggestion] = useState<{ caption: string; hashtags: string } | null>(null);
   const [suggestionError, setSuggestionError] = useState<string | null>(null);
   const [suggesting, startSuggesting] = useTransition();
+  const [requestTask, setRequestTask] = useState(false);
 
   function setCaption(value: string) {
     if (!captionRef.current) return;
@@ -143,6 +150,23 @@ export function SocialPostForm({
         />
         <p className="text-xs text-ink-muted">Repère interne, visible aussi par le client.</p>
       </div>
+
+      {categories.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <label htmlFor="categoryId" className={LABEL}>
+            Catégorie
+          </label>
+          <select id="categoryId" name="categoryId" defaultValue={defaultValues?.categoryId ?? ""} className={INPUT}>
+            <option value="">Aucune</option>
+            {categories.map((category) => (
+              <option key={category.id} value={category.id}>
+                {category.label}
+              </option>
+            ))}
+          </select>
+          <p className="text-xs text-ink-muted">Repère interne (liste modifiable dans Listes), jamais montré au client.</p>
+        </div>
+      )}
 
       <fieldset className="flex flex-col gap-2">
         <legend className={`${LABEL} mb-2`}>Réseaux</legend>
@@ -304,6 +328,39 @@ export function SocialPostForm({
           className={`${INPUT} resize-y`}
         />
       </div>
+
+      {taskTypes && taskTypes.length > 0 && (
+        <div className="grid gap-3 rounded-xl border border-line p-4">
+          <label className="flex cursor-pointer items-center gap-2 text-sm font-medium text-ink">
+            <input
+              type="checkbox"
+              name="requestTask"
+              checked={requestTask}
+              onChange={(event) => setRequestTask(event.target.checked)}
+              className="h-4 w-4 accent-[var(--color-accent)]"
+            />
+            Demander une création (infographie, contenu...)
+          </label>
+          {requestTask && (
+            <>
+              <select name="taskType" defaultValue="" required className={INPUT}>
+                <option value="" disabled>
+                  Type de création
+                </option>
+                {taskTypes.map((type) => (
+                  <option key={type.slug} value={type.slug}>
+                    {type.label}
+                  </option>
+                ))}
+              </select>
+              <p className="text-xs text-ink-muted">
+                Crée une tâche interne dans Tâches (invisible du client), échéance 3 jours avant la publication.
+                Une fois la tâche terminée, ses fichiers finaux s&apos;ajoutent tout seuls aux visuels.
+              </p>
+            </>
+          )}
+        </div>
+      )}
 
       <div className="flex flex-wrap items-center gap-3">
         <button

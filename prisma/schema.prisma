@@ -309,8 +309,9 @@ model DropdownItem {
   prospects Prospect[]
   clients   Client[]   @relation("ClientCategory")
 
-  taskTypeOf   Task[] @relation("TaskTypes")
-  taskFormatOf Task[] @relation("TaskFormats")
+  taskTypeOf   Task[]       @relation("TaskTypes")
+  taskFormatOf Task[]       @relation("TaskFormats")
+  socialPosts  SocialPost[] @relation("SocialPostCategory")
 
   @@unique([listId, slug])
 }
@@ -365,6 +366,10 @@ model Task {
   // initial ("Nouveau") tant que ce n'est pas confirmé.
   workLockOverride               String?
   workPaymentConfirmedAt         DateTime?
+  // Tâche interne (2026-09-18) : créée depuis une publication réseaux
+  // ("Demander une création") — jamais montrée au client (pages, compteurs,
+  // fichiers, emails), choix du client. `false` pour toutes les autres.
+  internal                       Boolean      @default(false)
   createdAt                      DateTime     @default(now())
   updatedAt                      DateTime     @updatedAt
 
@@ -992,51 +997,77 @@ model AuditLogEntry {
 // notifications, rappels) et ne doit pas être modifiable depuis
 // /admin/listes.
 model SocialPost {
-  id              String    @id @default(cuid())
-  clientId        String
-  client          Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  id                  String        @id @default(cuid())
+  clientId            String
+  client              Client        @relation(fields: [clientId], references: [id], onDelete: Cascade)
   // Libellé court, vu par l'admin et le client (ex. "Soirée techno du
   // 21/09") — une légende de post n'est pas lisible dans une liste.
-  title           String
+  title               String
   // Réseaux ciblés : "instagram" | "facebook" | "tiktok" | "linkedin".
-  networks        String[]
+  networks            String[]
   // "post" | "carrousel" | "story" | "reel".
-  format          String
-  caption         String?   @db.Text
-  hashtags        String?   @db.Text
+  format              String
+  caption             String?       @db.Text
+  hashtags            String?       @db.Text
   // Instant exact (UTC) de publication prévue. La saisie et l'affichage se
   // font en heure de Paris, explicitement : le serveur de production tourne
   // en UTC (vérifié), une conversion implicite décalerait d'1 à 2 h.
-  scheduledAt     DateTime?
-  status          String    @default("idee")
-  refusalReason   String?
-  refusedAt       DateTime?
-  validatedAt     DateTime?
+  scheduledAt         DateTime?
+  status              String        @default("idee")
+  refusalReason       String?
+  refusedAt           DateTime?
+  validatedAt         DateTime?
   // Nom dénormalisé (même raisonnement que TaskComment.authorName) : reste
   // lisible si le contact est supprimé plus tard.
-  validatedByName String?
-  publishedAt     DateTime?
-  publishedUrl    String?
+  validatedByName     String?
+  publishedAt         DateTime?
+  publishedUrl        String?
   // Rappel "à publier maintenant" déjà envoyé à l'admin — remis à null si
   // la date prévue change, pour ne jamais rater ni doubler un rappel (même
   // pattern que Note.reminderSentAt).
-  reminderSentAt  DateTime?
+  reminderSentAt      DateTime?
   // Tâche d'origine quand la publication a été créée depuis un livrable
   // (livraison 2, "flyer terminé → publication"). `SetNull` : supprimer la
   // tâche ne doit pas emporter la publication, dont les visuels sont des
   // copies indépendantes (les livrables finaux sont purgés après
   // l'évènement, une simple référence les aurait perdus).
-  sourceTaskId    String?
-  sourceTask      Task?     @relation(fields: [sourceTaskId], references: [id], onDelete: SetNull)
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  //
+  // Sert aussi à la tâche **demandée depuis la publication** ("Demander une
+  // création", 2026-09-18) : dans ce cas la tâche est interne
+  // (`Task.internal`) et ses livrables finaux sont copiés dans les visuels
+  // quand elle passe "Terminé" — une seule fois (`taskMediaImportedAt`,
+  // posé aussi à la création depuis une tâche, déjà copiée à ce moment-là).
+  sourceTaskId        String?
+  sourceTask          Task?         @relation(fields: [sourceTaskId], references: [id], onDelete: SetNull)
+  taskMediaImportedAt DateTime?
+  // Catégorie paramétrable (liste "social_category" de /admin/listes, ex.
+  // "Flyer soirée", "Contenu food") — une seule par publication, admin
+  // uniquement (choix du client, 2026-09-18).
+  categoryId          String?
+  category            DropdownItem? @relation("SocialPostCategory", fields: [categoryId], references: [id], onDelete: SetNull)
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
 
   media SocialPostMedia[]
+  notes SocialPostNote[]
 
   @@index([clientId])
   @@index([status])
   @@index([scheduledAt])
   @@index([sourceTaskId])
+  @@index([categoryId])
+}
+
+// Notes internes d'une publication (2026-09-18) — fil daté, visible de
+// l'admin seul, jamais du client.
+model SocialPostNote {
+  id        String     @id @default(cuid())
+  postId    String
+  post      SocialPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  body      String     @db.Text
+  createdAt DateTime   @default(now())
+
+  @@index([postId])
 }
 
 // Visuels/vidéos d'une publication — même trio de colonnes de stockage que

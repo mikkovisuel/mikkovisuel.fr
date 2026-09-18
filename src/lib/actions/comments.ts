@@ -50,7 +50,7 @@ export async function postClientComment(
   }
 
   const task = await db.task.findUnique({ where: { id: taskId } });
-  if (!task || task.clientId !== clientUser.clientId) {
+  if (!task || task.clientId !== clientUser.clientId || task.internal) {
     return { error: "Tâche introuvable." };
   }
 

@@ -1,10 +1,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { FileVideo, Images } from "@phosphor-icons/react/dist/ssr";
+import { FileVideo, Images, NotePencil } from "@phosphor-icons/react/dist/ssr";
 import type { Prisma } from "@/generated/prisma/client";
 import { verifyAdminSession } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { EXCLUDE_DEMO_CLIENT } from "@/lib/clients";
+import { PALETTE_SWATCH_CLASSES, SOCIAL_CATEGORY_LIST_KEY, type PaletteColor } from "@/lib/dropdown-lists";
 import { FilterMenu } from "@/components/admin/filter-menu";
 import { StatusBadge } from "@/components/status-badge";
 import { TaskCalendarView } from "@/components/admin/task-calendar-view";
@@ -28,9 +29,23 @@ const SELECT =
   "rounded-xl border border-line bg-surface-elevated px-3 py-2.5 text-sm text-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30";
 const PUBLISHED_LIMIT = 30;
 
-type PostRow = Prisma.SocialPostGetPayload<{
-  include: { client: { select: { name: true } }; media: { select: { id: true; mimeType: true } } };
-}>;
+const POST_ROW_INCLUDE = {
+  client: { select: { name: true } },
+  media: { select: { id: true, mimeType: true }, orderBy: { sortOrder: "asc" }, take: 1 },
+  category: { select: { label: true, color: true } },
+  sourceTask: { select: { id: true, internal: true, status: { select: { label: true, color: true } } } },
+  _count: { select: { notes: true } },
+} satisfies Prisma.SocialPostInclude;
+
+type PostRow = Prisma.SocialPostGetPayload<{ include: typeof POST_ROW_INCLUDE }>;
+
+// Avancement de la création demandée depuis la publication (tâche interne) :
+// affiché sur les cartes de la liste et du calendrier (demande du client,
+// 2026-09-18). Une tâche simplement à l'origine de la publication (créée
+// depuis ses livrables) n'est pas une "création demandée".
+function requestedTaskStatus(post: PostRow) {
+  return post.sourceTask?.internal ? post.sourceTask.status : null;
+}
 
 function PostList({ posts, now }: { posts: PostRow[]; now: Date }) {
   return (
@@ -71,6 +86,28 @@ function PostList({ posts, now }: { posts: PostRow[]; now: Date }) {
                 <span className="block truncate text-sm text-ink-muted">
                   {post.client.name} · {post.networks.map(networkLabel).join(", ")} · {formatLabel(post.format)}
                 </span>
+                {(post.category || requestedTaskStatus(post) || post._count.notes > 0) && (
+                  <span className="mt-1 flex flex-wrap items-center gap-2 text-xs">
+                    {post.category && <StatusBadge label={post.category.label} color={post.category.color} />}
+                    {requestedTaskStatus(post) && (
+                      <span className="inline-flex items-center gap-1.5 text-ink-muted">
+                        <span
+                          className={`h-1.5 w-1.5 rounded-full ${
+                            PALETTE_SWATCH_CLASSES[requestedTaskStatus(post)!.color as PaletteColor] ??
+                            PALETTE_SWATCH_CLASSES.slate
+                          }`}
+                        />
+                        Création : {requestedTaskStatus(post)!.label}
+                      </span>
+                    )}
+                    {post._count.notes > 0 && (
+                      <span className="inline-flex items-center gap-1 text-ink-muted">
+                        <NotePencil size={12} weight="regular" />
+                        {post._count.notes} note{post._count.notes > 1 ? "s" : ""}
+                      </span>
+                    )}
+                  </span>
+                )}
               </span>
               <span className="hidden shrink-0 text-right text-sm sm:block">
                 <span className={late ? "font-medium text-danger" : "text-ink-muted"}>
@@ -160,10 +197,23 @@ function InstagramGrid({ posts, clientChosen }: { posts: PostRow[]; clientChosen
 export default async function SocialPostsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ clientId?: string; reseau?: string; statut?: string; vue?: string; mois?: string }>;
+  searchParams: Promise<{
+    clientId?: string;
+    reseau?: string;
+    statut?: string;
+    categorie?: string;
+    vue?: string;
+    mois?: string;
+  }>;
 }) {
   await verifyAdminSession();
-  const { clientId, reseau, statut, vue, mois } = await searchParams;
+  const { clientId, reseau, statut, categorie, vue, mois } = await searchParams;
+  const categories = await db.dropdownItem.findMany({
+    where: { list: { key: SOCIAL_CATEGORY_LIST_KEY } },
+    select: { id: true, slug: true, label: true },
+    orderBy: { sortOrder: "asc" },
+  });
+  const category = categories.find((item) => item.slug === categorie);
   const view = vue === "calendrier" ? "calendrier" : vue === "grille" ? "grille" : "liste";
   const status = isSocialPostStatus(statut) ? statut : undefined;
   const network = SOCIAL_NETWORKS.some((item) => item.slug === reseau) ? reseau : undefined;
@@ -173,16 +223,14 @@ export default async function SocialPostsPage({
     ...(clientId ? { clientId } : {}),
     ...(network ? { networks: { has: network } } : {}),
     ...(status ? { status } : {}),
+    ...(category ? { categoryId: category.id } : {}),
   };
 
   const now = new Date();
   const [posts, clients] = await Promise.all([
     db.socialPost.findMany({
       where,
-      include: {
-        client: { select: { name: true } },
-        media: { select: { id: true, mimeType: true }, orderBy: { sortOrder: "asc" }, take: 1 },
-      },
+      include: POST_ROW_INCLUDE,
       orderBy: [{ scheduledAt: { sort: "asc", nulls: "last" } }, { createdAt: "asc" }],
     }),
     db.client.findMany({
@@ -192,11 +240,12 @@ export default async function SocialPostsPage({
     }),
   ]);
 
-  const activeFilterCount = [clientId, network, status].filter(Boolean).length;
+  const activeFilterCount = [clientId, network, status, category].filter(Boolean).length;
   const filterParams: Record<string, string> = {};
   if (clientId) filterParams.clientId = clientId;
   if (network) filterParams.reseau = network;
   if (status) filterParams.statut = status;
+  if (category) filterParams.categorie = category.slug;
 
   const toPublishNow = posts.filter(
     (post) => post.status === SOCIAL_POST_STATUS.VALIDE && post.scheduledAt !== null && post.scheduledAt <= now,
@@ -278,6 +327,17 @@ export default async function SocialPostsPage({
                 ))}
               </select>
             </label>
+            <label className="flex flex-col gap-2 text-sm font-medium text-ink">
+              Catégorie
+              <select name="categorie" defaultValue={category?.slug ?? ""} className={SELECT}>
+                <option value="">Toutes les catégories</option>
+                {categories.map((item) => (
+                  <option key={item.slug} value={item.slug}>
+                    {item.label}
+                  </option>
+                ))}
+              </select>
+            </label>
             <div className="flex items-center gap-3 pt-1">
               <button
                 type="submit"
@@ -333,6 +393,10 @@ export default async function SocialPostsPage({
               // Paris, sinon une publication à 00 h 30 tomberait la veille.
               eventDate: post.scheduledAt ? toParisWallClockDate(post.scheduledAt) : null,
               status: { color: meta?.color ?? "slate", label: meta?.label ?? post.status },
+              details: [
+                ...(post.category ? [post.category.label] : []),
+                ...(requestedTaskStatus(post) ? [`Création : ${requestedTaskStatus(post)!.label}`] : []),
+              ],
             };
           })}
           year={calendarYear}

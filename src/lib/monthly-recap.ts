@@ -36,6 +36,8 @@ export async function generateMonthlyRecapPdf({
   const tasks = await db.task.findMany({
     where: {
       clientId,
+      // Document remis au client : jamais de tâche interne (réseaux).
+      internal: false,
       status: { slug: TASK_STATUS.TERMINE },
       eventDate: { gte: since, lt: until },
     },

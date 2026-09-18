@@ -19,7 +19,8 @@ export async function GET(
   }
 
   const [admin, clientUser] = await Promise.all([getAdminSession(), getClientSession()]);
-  const isOwner = clientUser?.clientId === attachment.task.clientId;
+  // Tâche interne (demandée depuis une publication réseaux) : jamais au client.
+  const isOwner = clientUser?.clientId === attachment.task.clientId && !attachment.task.internal;
   if (!admin && !isOwner) {
     return new NextResponse(null, { status: 403 });
   }

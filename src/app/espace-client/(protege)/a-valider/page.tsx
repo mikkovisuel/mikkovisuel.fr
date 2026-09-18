@@ -15,7 +15,7 @@ export default async function ClientToValidatePage() {
   const clientUser = await verifyClientSession();
 
   const tasks = await db.task.findMany({
-    where: { clientId: clientUser.clientId, status: { slug: TASK_STATUS.A_VALIDER }, archivedAt: null },
+    where: { clientId: clientUser.clientId, internal: false, status: { slug: TASK_STATUS.A_VALIDER }, archivedAt: null },
     include: { deliverables: true },
     orderBy: { createdAt: "desc" },
   });

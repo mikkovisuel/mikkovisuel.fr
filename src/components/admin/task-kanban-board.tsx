@@ -11,6 +11,8 @@ import { isTaskOverdue, isTaskDueToday, taskDateFormatter } from "@/lib/tasks";
 import { PALETTE_BADGE_CLASSES, type PaletteColor, type TaskStatusSlug } from "@/lib/dropdown-lists";
 
 interface KanbanTask {
+  /** Tâche interne (demandée depuis une publication réseaux). */
+  internal?: boolean;
   id: string;
   clientId: string;
   title: string;
@@ -105,6 +107,14 @@ export function TaskKanbanBoard({
                       >
                         {task.title}
                       </Link>
+                      {task.internal && (
+                        <span
+                          title="Tâche interne demandée depuis une publication réseaux — invisible du client"
+                          className="rounded-full border border-line px-2 py-0.5 text-[11px] text-ink-muted"
+                        >
+                          Interne
+                        </span>
+                      )}
                       <AttachmentBadge
                         attachmentCount={task._count?.attachments}
                         deliverableCount={task._count?.deliverables}

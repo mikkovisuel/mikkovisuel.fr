@@ -166,7 +166,8 @@ export async function uploadDeliverable(
   }
 
   const tabLabel = kind === "bat" ? "À valider" : "Livrables";
-  for (const to of notifiableEmailsFromContacts(task.client.contacts)) {
+  // Pas d'email au client pour une tâche interne (publication réseaux).
+  for (const to of task.internal ? [] : notifiableEmailsFromContacts(task.client.contacts)) {
     await sendEmail({
       trigger: "new_deliverable",
       to,
@@ -224,6 +225,9 @@ export async function sendDeliverablesByEmail(
     include: { client: true, deliverables: true },
   });
   if (!task) return { error: "Tâche introuvable." };
+  if (task.internal) {
+    return { error: "Tâche interne (demandée depuis une publication réseaux) : rien n'est envoyé au client." };
+  }
   if (!task.client.billingEmail) {
     return { error: "Ajoutez un email de facturation sur la fiche client." };
   }

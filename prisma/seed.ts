@@ -11,6 +11,8 @@ import { PrismaPg } from "@prisma/adapter-pg";
 import {
   CLIENT_CATEGORY_LIST_KEY,
   CLIENT_CATEGORY_SEED,
+  SOCIAL_CATEGORY_LIST_KEY,
+  SOCIAL_CATEGORY_SEED,
   DOCUMENT_TYPE_LIST_KEY,
   DOCUMENT_TYPE_SEED,
   PORTFOLIO_CATEGORY_LIST_KEY,
@@ -537,6 +539,12 @@ async function main() {
     "Catégories de client",
     true,
     CLIENT_CATEGORY_SEED,
+  );
+  await seedDropdownList(
+    SOCIAL_CATEGORY_LIST_KEY,
+    "Catégories de publication",
+    true,
+    SOCIAL_CATEGORY_SEED,
   );
   await seedAdmin();
   await seedDemoClient();
