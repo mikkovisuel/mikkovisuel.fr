@@ -9,6 +9,7 @@ import {
   markSocialPostPublished,
 } from "@/lib/actions/social-posts";
 import { SOCIAL_POST_STATUS_META, type SocialPostStatus } from "@/lib/social-posts";
+import { useFormSubmit } from "@/lib/use-form-submit";
 
 const PRIMARY =
   "inline-flex items-center gap-2 rounded-full bg-accent px-4 py-2 text-sm font-medium text-accent-ink transition-transform active:scale-[0.98] disabled:opacity-60";
@@ -37,6 +38,10 @@ export function SocialPostWorkflow({
     markSocialPostPublished.bind(null, postId),
     undefined,
   );
+  const { onSubmit: publishSubmit } = useFormSubmit(publishAction, {
+    pending: publishPending,
+    state: publishState,
+  });
 
   const isDraft = status === "idee" || status === "redaction";
 
@@ -110,16 +115,7 @@ export function SocialPostWorkflow({
       )}
 
       {status === "valide" && (
-        // Envoi manuel plutôt que `<form action>` : même raison que
-        // SocialPostForm, React 19 viderait sinon le champ après une erreur.
-        <form
-          onSubmit={(event) => {
-            event.preventDefault();
-            const formData = new FormData(event.currentTarget);
-            startTransition(() => publishAction(formData));
-          }}
-          className="grid gap-2"
-        >
+        <form action={publishAction} onSubmit={publishSubmit} className="grid gap-2">
           <label htmlFor="publishedUrl" className="text-sm font-medium text-ink">
             Une fois publiée, collez le lien du post
           </label>

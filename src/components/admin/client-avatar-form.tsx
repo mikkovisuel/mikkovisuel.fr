@@ -5,6 +5,7 @@ import { WarningCircle } from "@phosphor-icons/react/dist/ssr";
 import { ClientAvatar } from "@/components/admin/client-avatar";
 import { removeClientAvatar } from "@/lib/actions/clients";
 import type { ClientFormState } from "@/lib/validation/client";
+import { useFormSubmit } from "@/lib/use-form-submit";
 
 // Formulaire distinct de celui des informations : un envoi de fichier n'a ni
 // les mêmes contraintes ni le même rythme qu'une modification de champs
@@ -22,12 +23,17 @@ export function ClientAvatarForm({
   action: (state: ClientFormState, formData: FormData) => Promise<ClientFormState>;
 }) {
   const [state, formAction, pending] = useActionState(action, undefined);
+  const { formRef, onSubmit: formSubmit } = useFormSubmit(formAction, {
+    pending,
+    state,
+    resetOnSuccess: true,
+  });
 
   return (
     <div className="flex items-center gap-4">
       <ClientAvatar clientId={clientId} name={clientName} hasAvatar={hasAvatar} size="lg" />
       <div className="flex flex-col gap-2">
-        <form action={formAction} className="flex flex-wrap items-center gap-2">
+        <form action={formAction} onSubmit={formSubmit} ref={formRef} className="flex flex-wrap items-center gap-2">
           <input
             type="file"
             name="avatar"

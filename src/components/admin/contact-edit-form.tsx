@@ -3,6 +3,7 @@
 import { useActionState, useId } from "react";
 import { Check, WarningCircle } from "@phosphor-icons/react/dist/ssr";
 import type { ContactEditFormState } from "@/lib/validation/client";
+import { useFormSubmit } from "@/lib/use-form-submit";
 
 // Édition d'un contact déjà créé. Volontairement limitée à l'identité (nom,
 // email, téléphone, fonction) : l'accès à l'espace client et le mot de passe
@@ -21,6 +22,7 @@ export function ContactEditForm({
   };
 }) {
   const [state, formAction, pending] = useActionState(action, undefined);
+  const { onSubmit: formSubmit } = useFormSubmit(formAction, { pending, state });
   const nameId = useId();
   const emailId = useId();
   const phoneId = useId();
@@ -30,7 +32,7 @@ export function ContactEditForm({
     "rounded-lg border border-line bg-surface-elevated px-3 py-2 text-sm text-ink placeholder:text-ink-muted/70 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30";
 
   return (
-    <form action={formAction} className="mt-3 flex flex-wrap items-end gap-3">
+    <form action={formAction} onSubmit={formSubmit} className="mt-3 flex flex-wrap items-end gap-3">
       <div className="flex flex-col gap-1">
         <label htmlFor={nameId} className="text-xs font-medium text-ink-muted">
           Nom

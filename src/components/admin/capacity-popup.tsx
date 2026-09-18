@@ -4,6 +4,7 @@ import { useActionState, useEffect, useRef, useState } from "react";
 import { ArrowCounterClockwise, CaretLeft, CaretRight, Check, Gauge, WarningCircle } from "@phosphor-icons/react/dist/ssr";
 import { Modal } from "@/components/admin/modal";
 import { setWeekCapacity } from "@/lib/actions/capacity";
+import { useFormSubmit } from "@/lib/use-form-submit";
 
 export interface CapacityWeek {
   /** Étiquette de la semaine, ex. "Semaine du 28 juillet". */
@@ -32,6 +33,7 @@ export function CapacityPopup({ weeks }: { weeks: CapacityWeek[] }) {
   const [open, setOpen] = useState(false);
   const [weekIndex, setWeekIndex] = useState(0);
   const [state, formAction, pending] = useActionState(setWeekCapacity, undefined);
+  const { onSubmit: formSubmit } = useFormSubmit(formAction, { pending, state });
   const formRef = useRef<HTMLFormElement>(null);
 
   const week = weeks[weekIndex];
@@ -118,7 +120,7 @@ export function CapacityPopup({ weeks }: { weeks: CapacityWeek[] }) {
           </button>
         )}
 
-        <form ref={formRef} action={formAction} className="mt-4 grid gap-1">
+        <form ref={formRef} action={formAction} onSubmit={formSubmit} className="mt-4 grid gap-1">
           {week.days.map((day, index) => {
             // Index 5 = samedi, 6 = dimanche (weekDays() part toujours du
             // lundi — voir src/lib/capacity.ts) : distinction visuelle

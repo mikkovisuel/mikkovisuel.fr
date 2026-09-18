@@ -4,6 +4,7 @@ import { useActionState, useRef, useEffect, useState } from "react";
 import { WarningCircle } from "@phosphor-icons/react/dist/ssr";
 import { FilePicker } from "@/components/file-picker";
 import { uploadDocument } from "@/lib/actions/files";
+import { useFormSubmit } from "@/lib/use-form-submit";
 
 const CURRENT_YEAR = new Date().getFullYear();
 const YEAR_OPTIONS = Array.from({ length: 3 }, (_, i) => CURRENT_YEAR - 1 + i);
@@ -24,6 +25,7 @@ export function DocumentUploadForm({
   onSuccess?: () => void;
 }) {
   const [state, formAction, pending] = useActionState(uploadDocument, undefined);
+  const { onSubmit: formSubmit } = useFormSubmit(formAction, { pending, state });
   const formRef = useRef<HTMLFormElement>(null);
   const wasPending = useRef(false);
   const [resetKey, setResetKey] = useState(0);
@@ -39,7 +41,7 @@ export function DocumentUploadForm({
   }, [pending, state, onSuccess]);
 
   return (
-    <form ref={formRef} action={formAction} className="grid gap-4 sm:grid-cols-2">
+    <form ref={formRef} action={formAction} onSubmit={formSubmit} className="grid gap-4 sm:grid-cols-2">
       <div className="flex flex-col gap-2">
         <label htmlFor="clientId" className="text-sm font-medium text-ink">
           Client

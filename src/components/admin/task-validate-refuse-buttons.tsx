@@ -3,6 +3,7 @@
 import { useActionState, useState, useTransition } from "react";
 import { WarningCircle } from "@phosphor-icons/react/dist/ssr";
 import { validateTaskByAdmin, refuseTaskByAdmin } from "@/lib/actions/tasks";
+import { useFormSubmit } from "@/lib/use-form-submit";
 
 // Miroir de `ValidateRefuseButtons` (espace client), pour valider/refuser un
 // BAT directement depuis l'admin — utile quand le client donne son accord
@@ -16,10 +17,11 @@ export function TaskValidateRefuseButtons({ taskId }: { taskId: string }) {
     refuseTaskByAdmin.bind(null, taskId),
     undefined,
   );
+  const { onSubmit: formSubmit } = useFormSubmit(formAction, { pending: refusePending, state });
 
   if (showRefuseForm) {
     return (
-      <form action={formAction} className="mt-3 flex w-full flex-col gap-2">
+      <form action={formAction} onSubmit={formSubmit} className="mt-3 flex w-full flex-col gap-2">
         <textarea
           name="reason"
           required

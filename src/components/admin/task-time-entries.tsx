@@ -5,6 +5,7 @@ import { WarningCircle } from "@phosphor-icons/react/dist/ssr";
 import { DeleteButton } from "@/components/admin/delete-button";
 import { addManualTimeEntry, deleteTimeEntry } from "@/lib/actions/time-tracking";
 import { formatDurationShort } from "@/lib/time-tracking";
+import { useFormSubmit } from "@/lib/use-form-submit";
 
 const DATE_FORMATTER = new Intl.DateTimeFormat("fr-FR", {
   day: "numeric",
@@ -25,6 +26,11 @@ interface TimeEntry {
 export function TaskTimeEntries({ taskId, entries }: { taskId: string; entries: TimeEntry[] }) {
   const addAction = addManualTimeEntry.bind(null, taskId);
   const [state, formAction, pending] = useActionState(addAction, undefined);
+  const { formRef, onSubmit: formSubmit } = useFormSubmit(formAction, {
+    pending,
+    state,
+    resetOnSuccess: true,
+  });
   const closedEntries = entries.filter((entry) => entry.endedAt !== null);
 
   return (
@@ -58,7 +64,7 @@ export function TaskTimeEntries({ taskId, entries }: { taskId: string; entries: 
         </ul>
       )}
 
-      <form action={formAction} className="flex flex-wrap items-end gap-3">
+      <form action={formAction} onSubmit={formSubmit} ref={formRef} className="flex flex-wrap items-end gap-3">
         <div className="flex flex-col gap-1">
           <label htmlFor="time-entry-date" className="text-xs font-medium text-ink-muted">
             Date

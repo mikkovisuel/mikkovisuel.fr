@@ -7,6 +7,7 @@ import type { TaskFormState } from "@/lib/validation/task";
 import { checkTaskDueDateCapacity } from "@/lib/actions/capacity";
 import type { DueDateCapacityCheck } from "@/lib/capacity";
 import { formatHoursFromMinutes } from "@/lib/time-tracking";
+import { useFormSubmit } from "@/lib/use-form-submit";
 
 interface DropdownOption {
   slug: string;
@@ -36,6 +37,7 @@ export function TaskEditForm({
   };
 }) {
   const [state, formAction, pending] = useActionState(action, undefined);
+  const { onSubmit: formSubmit } = useFormSubmit(formAction, { pending, state });
   const [dueDate, setDueDate] = useState(defaultValues.dueDate);
   const [capacityCheck, setCapacityCheck] = useState<DueDateCapacityCheck | null>(null);
 
@@ -63,7 +65,7 @@ export function TaskEditForm({
   const activeCapacityCheck = dueDate ? capacityCheck : null;
 
   return (
-    <form action={formAction} className="grid gap-4">
+    <form action={formAction} onSubmit={formSubmit} className="grid gap-4">
       <div className="flex flex-col gap-2">
         <label htmlFor="title" className="text-sm font-medium text-ink">
           Titre

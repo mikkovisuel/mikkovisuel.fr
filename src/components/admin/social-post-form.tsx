@@ -1,9 +1,10 @@
 "use client";
 
-import { useActionState, useState, useTransition } from "react";
+import { useActionState, useState } from "react";
 import { WarningCircle, CheckCircle } from "@phosphor-icons/react/dist/ssr";
 import { SOCIAL_FORMATS, SOCIAL_NETWORKS } from "@/lib/social-posts";
 import type { SocialPostFormState, SocialPostFormValues } from "@/lib/validation/social-post";
+import { useFormSubmit } from "@/lib/use-form-submit";
 
 const INPUT =
   "rounded-xl border border-line bg-surface-elevated px-3 py-2.5 text-sm text-ink placeholder:text-ink-muted/70 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30";
@@ -28,25 +29,13 @@ export function SocialPostForm({
   submitLabel: string;
 }) {
   const [state, formAction, pending] = useActionState(action, undefined);
-  const [, startTransition] = useTransition();
+  // Évite que React 19 vide le formulaire après une erreur — voir
+  // src/lib/use-form-submit.ts (défaut constaté en testant ce formulaire).
+  const { onSubmit: formSubmit } = useFormSubmit(formAction, { pending, state });
   const [captionLength, setCaptionLength] = useState(defaultValues?.caption.length ?? 0);
 
   return (
-    // Envoi déclenché à la main plutôt que via `<form action>` : dans ce cas
-    // React 19 réinitialise le formulaire après chaque action, **erreur de
-    // validation comprise** — toute la saisie était perdue, et pire, un
-    // <select> contrôlé revenait visuellement à sa valeur initiale pendant
-    // que l'état React gardait l'ancienne, si bien qu'un second envoi
-    // enregistrait silencieusement la mauvaise valeur (constaté en test le
-    // 2026-09-18). Sans cette réinitialisation, rien n'est perdu.
-    <form
-      onSubmit={(event) => {
-        event.preventDefault();
-        const formData = new FormData(event.currentTarget);
-        startTransition(() => formAction(formData));
-      }}
-      className="grid gap-5"
-    >
+    <form action={formAction} onSubmit={formSubmit} className="grid gap-5">
       {clients && (
         <div className="flex flex-col gap-2">
           <label htmlFor="clientId" className={LABEL}>

@@ -4,6 +4,7 @@ import { useActionState, useState } from "react";
 import { EnvelopeSimple, LinkSimple, Phone, Trash, WarningCircle } from "@phosphor-icons/react/dist/ssr";
 import type { ContactFormState } from "@/lib/validation/client";
 import type { StepUpFormState } from "@/lib/step-up-auth";
+import { useFormSubmit } from "@/lib/use-form-submit";
 
 // Ligne d'un contact "orphelin" (rattaché à zéro client) — filtre "Sans
 // client" de /admin/contacts (2026-08-02, "possible de supprimer
@@ -24,7 +25,9 @@ export function OrphanContactRow({
   const [assigning, setAssigning] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [assignState, assignFormAction, assignPending] = useActionState(assignAction, undefined);
+  const { onSubmit: assignFormSubmit } = useFormSubmit(assignFormAction, { pending: assignPending, state: assignState });
   const [deleteState, deleteFormAction, deletePending] = useActionState(deleteAction, undefined);
+  const { onSubmit: deleteFormSubmit } = useFormSubmit(deleteFormAction, { pending: deletePending, state: deleteState });
 
   return (
     <div className="px-6 py-3">
@@ -82,6 +85,7 @@ export function OrphanContactRow({
       {assigning && (
         <form
           action={assignFormAction}
+          onSubmit={assignFormSubmit}
           className="mt-2 flex flex-wrap items-center gap-2 rounded-xl border border-line bg-surface-elevated p-3"
         >
           <input type="hidden" name="mode" value="affecter" />
@@ -120,6 +124,7 @@ export function OrphanContactRow({
       {deleting && (
         <form
           action={deleteFormAction}
+          onSubmit={deleteFormSubmit}
           className="mt-2 flex flex-col gap-2 rounded-xl border border-danger/30 bg-danger/5 p-3"
         >
           <p className="text-xs text-ink">

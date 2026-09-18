@@ -5,9 +5,11 @@ import { WarningCircle } from "@phosphor-icons/react/dist/ssr";
 import { FilePicker } from "@/components/file-picker";
 import { uploadCompanyDocument } from "@/lib/actions/company-documents";
 import { COMPANY_DOCUMENT_CATEGORY, COMPANY_DOCUMENT_CATEGORY_LABELS } from "@/lib/dropdown-lists";
+import { useFormSubmit } from "@/lib/use-form-submit";
 
 export function CompanyDocumentUploadForm() {
   const [state, formAction, pending] = useActionState(uploadCompanyDocument, undefined);
+  const { onSubmit: formSubmit } = useFormSubmit(formAction, { pending, state });
   const formRef = useRef<HTMLFormElement>(null);
   const wasPending = useRef(false);
   const [resetKey, setResetKey] = useState(0);
@@ -21,7 +23,7 @@ export function CompanyDocumentUploadForm() {
   }, [pending, state]);
 
   return (
-    <form ref={formRef} action={formAction} className="flex flex-wrap items-end gap-3">
+    <form ref={formRef} action={formAction} onSubmit={formSubmit} className="flex flex-wrap items-end gap-3">
       <div className="flex flex-col gap-2">
         <label htmlFor="category" className="text-sm font-medium text-ink">
           Catégorie

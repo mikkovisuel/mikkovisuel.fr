@@ -5,6 +5,7 @@ import { WarningCircle } from "@phosphor-icons/react/dist/ssr";
 import { FilePicker } from "@/components/file-picker";
 import { MultiSelectChips } from "@/components/multi-select-chips";
 import type { TaskFormState } from "@/lib/validation/task";
+import { useFormSubmit } from "@/lib/use-form-submit";
 
 interface DropdownOption {
   slug: string;
@@ -44,6 +45,7 @@ export function TaskForm({
   onSuccess?: () => void;
 }) {
   const [state, formAction, pending] = useActionState(action, undefined);
+  const { onSubmit: formSubmit } = useFormSubmit(formAction, { pending, state });
   const formRef = useRef<HTMLFormElement>(null);
   const wasPending = useRef(false);
   const [resetKey, setResetKey] = useState(0);
@@ -70,7 +72,7 @@ export function TaskForm({
 
   return (
     <>
-      <form ref={formRef} action={formAction} className="grid gap-4">
+      <form ref={formRef} action={formAction} onSubmit={formSubmit} className="grid gap-4">
         {clients && (
           <div className="flex flex-col gap-2">
             <label htmlFor="clientId" className="text-sm font-medium text-ink">

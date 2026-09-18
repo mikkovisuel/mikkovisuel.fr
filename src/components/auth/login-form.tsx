@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import Link from "next/link";
 import { WarningCircle } from "@phosphor-icons/react/dist/ssr";
 import type { LoginFormState } from "@/lib/validation/auth";
+import { useFormSubmit } from "@/lib/use-form-submit";
 
 export function LoginForm({
   action,
@@ -13,9 +14,10 @@ export function LoginForm({
   forgotPasswordHref?: string;
 }) {
   const [state, formAction, pending] = useActionState(action, undefined);
+  const { onSubmit: formSubmit } = useFormSubmit(formAction, { pending, state });
 
   return (
-    <form action={formAction} className="grid gap-5">
+    <form action={formAction} onSubmit={formSubmit} className="grid gap-5">
       <div className="flex flex-col gap-2">
         <label htmlFor="email" className="text-sm font-medium text-ink">
           Email

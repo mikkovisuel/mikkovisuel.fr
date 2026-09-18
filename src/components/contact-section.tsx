@@ -3,9 +3,11 @@
 import { useActionState } from "react";
 import { CheckCircle, WarningCircle } from "@phosphor-icons/react/dist/ssr";
 import { submitContactForm } from "@/lib/actions/contact";
+import { useFormSubmit } from "@/lib/use-form-submit";
 
 export function ContactSection() {
   const [state, formAction, pending] = useActionState(submitContactForm, undefined);
+  const { onSubmit: formSubmit } = useFormSubmit(formAction, { pending, state });
 
   return (
     <section id="contact" className="scroll-mt-16 py-20 sm:py-28">
@@ -37,7 +39,7 @@ export function ContactSection() {
               </div>
             </div>
           ) : (
-            <form action={formAction} className="grid gap-5 sm:grid-cols-2">
+            <form action={formAction} onSubmit={formSubmit} className="grid gap-5 sm:grid-cols-2">
               <div className="flex flex-col gap-2">
                 <label htmlFor="name" className="text-sm font-medium text-ink">
                   Nom

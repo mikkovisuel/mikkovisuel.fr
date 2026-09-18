@@ -4,6 +4,7 @@ import { useActionState, useRef, useEffect, useState } from "react";
 import { WarningCircle } from "@phosphor-icons/react/dist/ssr";
 import { FilePicker } from "@/components/file-picker";
 import type { FileUploadState } from "@/lib/actions/files";
+import { useFormSubmit } from "@/lib/use-form-submit";
 
 export function DeliverableUploadForm({
   action,
@@ -11,6 +12,7 @@ export function DeliverableUploadForm({
   action: (state: FileUploadState, formData: FormData) => Promise<FileUploadState>;
 }) {
   const [state, formAction, pending] = useActionState(action, undefined);
+  const { onSubmit: formSubmit } = useFormSubmit(formAction, { pending, state });
   const formRef = useRef<HTMLFormElement>(null);
   const wasPending = useRef(false);
   const [resetKey, setResetKey] = useState(0);
@@ -24,7 +26,7 @@ export function DeliverableUploadForm({
   }, [pending, state]);
 
   return (
-    <form ref={formRef} action={formAction} className="flex flex-col gap-3">
+    <form ref={formRef} action={formAction} onSubmit={formSubmit} className="flex flex-col gap-3">
       <FilePicker
         key={resetKey}
         name="file"

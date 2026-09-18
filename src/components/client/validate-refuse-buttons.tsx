@@ -3,6 +3,7 @@
 import { useActionState, useState, useTransition } from "react";
 import { WarningCircle } from "@phosphor-icons/react/dist/ssr";
 import { validateTask, refuseTask } from "@/lib/actions/tasks";
+import { useFormSubmit } from "@/lib/use-form-submit";
 
 export function ValidateRefuseButtons({
   taskId,
@@ -17,6 +18,7 @@ export function ValidateRefuseButtons({
     refuseTask.bind(null, taskId),
     undefined,
   );
+  const { onSubmit: formSubmit } = useFormSubmit(formAction, { pending: refusePending, state });
 
   if (readOnly) {
     return <p className="text-sm text-ink-muted">Validation désactivée dans l&apos;espace de démonstration.</p>;
@@ -24,7 +26,7 @@ export function ValidateRefuseButtons({
 
   if (showRefuseForm) {
     return (
-      <form action={formAction} className="mt-3 flex flex-col gap-2">
+      <form action={formAction} onSubmit={formSubmit} className="mt-3 flex flex-col gap-2">
         <textarea
           name="reason"
           required

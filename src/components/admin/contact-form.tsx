@@ -3,6 +3,7 @@
 import { useActionState, useRef, useEffect, useState } from "react";
 import { WarningCircle } from "@phosphor-icons/react/dist/ssr";
 import type { ContactFormState, ContactAccessMode } from "@/lib/validation/client";
+import { useFormSubmit } from "@/lib/use-form-submit";
 
 const ACCESS_OPTIONS: { value: ContactAccessMode; label: string; hint: string }[] = [
   {
@@ -43,6 +44,7 @@ export function ContactForm({
   onSuccess?: () => void;
 }) {
   const [state, formAction, pending] = useActionState(action, undefined);
+  const { onSubmit: formSubmit } = useFormSubmit(formAction, { pending, state });
   const [mode, setMode] = useState<Mode>("nouveau");
   const [access, setAccess] = useState<ContactAccessMode>("none");
   const formRef = useRef<HTMLFormElement>(null);
@@ -64,7 +66,7 @@ export function ContactForm({
   const needsEmail = access !== "none";
 
   return (
-    <form ref={formRef} action={formAction} className="grid gap-4 sm:grid-cols-3">
+    <form ref={formRef} action={formAction} onSubmit={formSubmit} className="grid gap-4 sm:grid-cols-3">
       {clients && (
         <div className="flex flex-col gap-2 sm:col-span-3">
           <label htmlFor="ct-clientId" className="text-sm font-medium text-ink">

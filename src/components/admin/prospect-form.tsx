@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { WarningCircle } from "@phosphor-icons/react/dist/ssr";
 import type { ProspectFormState } from "@/lib/validation/prospect";
+import { useFormSubmit } from "@/lib/use-form-submit";
 
 export function ProspectForm({
   action,
@@ -31,9 +32,10 @@ export function ProspectForm({
   submitLabel: string;
 }) {
   const [state, formAction, pending] = useActionState(action, undefined);
+  const { onSubmit: formSubmit } = useFormSubmit(formAction, { pending, state });
 
   return (
-    <form action={formAction} className="grid max-w-lg gap-5">
+    <form action={formAction} onSubmit={formSubmit} className="grid max-w-lg gap-5">
       <div className="grid gap-5 sm:grid-cols-2">
         <div className="flex flex-col gap-2">
           <label htmlFor="name" className="text-sm font-medium text-ink">

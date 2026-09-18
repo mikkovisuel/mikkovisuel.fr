@@ -3,9 +3,11 @@
 import { useActionState } from "react";
 import { CheckCircle, WarningCircle } from "@phosphor-icons/react/dist/ssr";
 import { submitInterfaceFeedback } from "@/lib/actions/feedback";
+import { useFormSubmit } from "@/lib/use-form-submit";
 
 export function FeedbackForm({ readOnly = false }: { readOnly?: boolean }) {
   const [state, formAction, pending] = useActionState(submitInterfaceFeedback, undefined);
+  const { onSubmit: formSubmit } = useFormSubmit(formAction, { pending, state });
 
   if (readOnly) {
     return (
@@ -30,7 +32,7 @@ export function FeedbackForm({ readOnly = false }: { readOnly?: boolean }) {
   }
 
   return (
-    <form action={formAction} className="flex flex-col gap-4">
+    <form action={formAction} onSubmit={formSubmit} className="flex flex-col gap-4">
       <textarea
         name="message"
         required

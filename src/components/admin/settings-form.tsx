@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { WarningCircle, CheckCircle } from "@phosphor-icons/react/dist/ssr";
 import { updateSettings, purgeDeliverablesNow, type PurgeState } from "@/lib/actions/settings";
+import { useFormSubmit } from "@/lib/use-form-submit";
 
 interface SettingsDefaults {
   deliverableRetentionAfterEventDays: number;
@@ -20,6 +21,7 @@ interface SettingsDefaults {
 
 export function SettingsForm({ defaultValues }: { defaultValues: SettingsDefaults }) {
   const [state, formAction, pending] = useActionState(updateSettings, undefined);
+  const { onSubmit: formSubmit } = useFormSubmit(formAction, { pending, state });
   const [purgeState, purgeAction, purgePending] = useActionState<PurgeState, FormData>(
     purgeDeliverablesNow,
     undefined,
@@ -27,7 +29,7 @@ export function SettingsForm({ defaultValues }: { defaultValues: SettingsDefault
 
   return (
     <div className="flex flex-col gap-10">
-      <form action={formAction} className="grid gap-8">
+      <form action={formAction} onSubmit={formSubmit} className="grid gap-8">
         <section className="grid gap-3">
           <h2 className="text-sm font-medium text-ink">Archivage des livrables</h2>
           <p className="text-xs text-ink-muted">

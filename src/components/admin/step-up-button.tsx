@@ -3,6 +3,7 @@
 import { useActionState, useState } from "react";
 import { WarningCircle, CheckCircle } from "@phosphor-icons/react/dist/ssr";
 import type { StepUpFormState } from "@/lib/step-up-auth";
+import { useFormSubmit } from "@/lib/use-form-submit";
 
 // Bouton pour une action admin sensible (suppression définitive,
 // réinitialisation du mot de passe d'un client, usurpation d'espace
@@ -28,6 +29,7 @@ export function StepUpButton({
 }) {
   const [open, setOpen] = useState(false);
   const [state, formAction, pending] = useActionState(action, undefined);
+  const { onSubmit: formSubmit } = useFormSubmit(formAction, { pending, state });
 
   if (successMessage && state?.success) {
     return (
@@ -49,6 +51,7 @@ export function StepUpButton({
   return (
     <form
       action={formAction}
+      onSubmit={formSubmit}
       className="flex w-full max-w-xs flex-col gap-2 rounded-xl border border-line bg-surface-elevated p-3"
     >
       <p className="text-xs text-ink-muted">{confirmMessage}</p>

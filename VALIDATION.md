@@ -767,6 +767,18 @@ Code développé par une autre session Claude Code (branche `claude/hub-bridge`,
 | Espace de démonstration | — | — | Validation / refus depuis le compte de démo public | ⚠️ Vérifié par lecture de code uniquement (`assertNotDemo` en tête des deux actions, boutons remplacés par un message) ; le client de démo est de plus exclu du sélecteur de création | 2026-09-18 |
 | Publication d'un autre client | — | — | Valider/refuser une publication d'un autre client | ⚠️ Vérifié par lecture de code uniquement (comparaison `clientId` avant toute écriture) — une seule base de test avec un seul client actif | 2026-09-18 |
 
+## Formulaires qui ne perdent plus la saisie après une erreur (2026-09-18)
+
+`tsc --noEmit`, lint et `npm run build` propres. 44 formulaires convertis par script (arrêt au moindre fichier non conforme : aucun), puis relus. Testé en navigateur sur des formulaires représentatifs de chaque catégorie. Les pages de connexion n'ont pas été exercées en navigateur (aucune saisie de mot de passe par la session de test) — elles utilisent exactement le même branchement.
+
+| Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |
+|---|---|---|---|---|---|
+| Formulaire d'édition | Fiche prospect : nom, ville, email et statut (liste déroulante) modifiés | — | Email invalide (garde du navigateur retirée pour atteindre le serveur) | ✅ "Adresse email invalide." ; **nom, ville, email tapé et statut choisi tous conservés** | 2026-09-18 |
+| Formulaire vidé après succès | Ajout manuel de 45 min sur une tâche | ✅ Session ajoutée, formulaire vidé (date revenue à aujourd'hui, durée vide), aucune erreur affichée | Durée de −5 min | ✅ "La durée doit être d'au moins 1 minute." ; date et durée conservées | 2026-09-18 |
+| Formulaire qui se vidait déjà lui-même | Ajout d'un élément à la liste des catégories de client | ✅ Élément créé, champ "Nouveau libellé" vidé | — | — | 2026-09-18 |
+| Envoi avant que la page soit interactive | HTML rendu par le serveur (fiche prospect, page de connexion admin) | ✅ Toutes les balises `<form>` en `method="POST"` vers l'action serveur — jamais en GET avec les champs (mot de passe compris) dans l'URL | — | — | 2026-09-18 |
+| Données de test | — | ✅ Session de 45 min et élément de liste supprimés après le test | — | — | 2026-09-18 |
+
 ## Points restant ouverts pour une prochaine passe de validation
 
 - Glisser-déposer et `<select>` natif du Kanban Prospection (limite outil, voir ci-dessus).

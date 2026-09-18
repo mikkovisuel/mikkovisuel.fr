@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { WarningCircle } from "@phosphor-icons/react/dist/ssr";
 import type { ResetPasswordState } from "@/lib/actions/password-reset";
+import { useFormSubmit } from "@/lib/use-form-submit";
 
 export function ResetPasswordForm({
   action,
@@ -10,9 +11,10 @@ export function ResetPasswordForm({
   action: (state: ResetPasswordState, formData: FormData) => Promise<ResetPasswordState>;
 }) {
   const [state, formAction, pending] = useActionState(action, undefined);
+  const { onSubmit: formSubmit } = useFormSubmit(formAction, { pending, state });
 
   return (
-    <form action={formAction} className="grid gap-5">
+    <form action={formAction} onSubmit={formSubmit} className="grid gap-5">
       <div className="flex flex-col gap-2">
         <label htmlFor="password" className="text-sm font-medium text-ink">
           Nouveau mot de passe

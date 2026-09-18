@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { WarningCircle, CheckCircle } from "@phosphor-icons/react/dist/ssr";
 import { updateHomepageContent } from "@/lib/actions/homepage-content";
+import { useFormSubmit } from "@/lib/use-form-submit";
 
 export function HomepageContentForm({
   defaultValues,
@@ -16,9 +17,10 @@ export function HomepageContentForm({
   };
 }) {
   const [state, formAction, pending] = useActionState(updateHomepageContent, undefined);
+  const { onSubmit: formSubmit } = useFormSubmit(formAction, { pending, state });
 
   return (
-    <form action={formAction} className="grid gap-4">
+    <form action={formAction} onSubmit={formSubmit} className="grid gap-4">
       <div className="flex flex-col gap-2">
         <label htmlFor="heroTitle" className="text-sm font-medium text-ink">
           Titre principal (Hero)

@@ -4,6 +4,7 @@ import { useActionState, useRef, useEffect } from "react";
 import { WarningCircle } from "@phosphor-icons/react/dist/ssr";
 import { ColorSelect } from "@/components/admin/color-select";
 import type { DropdownItemFormState } from "@/lib/validation/dropdown";
+import { useFormSubmit } from "@/lib/use-form-submit";
 
 export function NewDropdownItemForm({
   action,
@@ -11,6 +12,7 @@ export function NewDropdownItemForm({
   action: (state: DropdownItemFormState, formData: FormData) => Promise<DropdownItemFormState>;
 }) {
   const [state, formAction, pending] = useActionState(action, undefined);
+  const { onSubmit: formSubmit } = useFormSubmit(formAction, { pending, state });
   const formRef = useRef<HTMLFormElement>(null);
   const wasPending = useRef(false);
 
@@ -22,7 +24,7 @@ export function NewDropdownItemForm({
   }, [pending, state]);
 
   return (
-    <form ref={formRef} action={formAction} className="flex flex-wrap items-center gap-3">
+    <form ref={formRef} action={formAction} onSubmit={formSubmit} className="flex flex-wrap items-center gap-3">
       <input
         name="label"
         required

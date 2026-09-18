@@ -4,6 +4,7 @@ import { useActionState, useRef, useEffect, useState } from "react";
 import { WarningCircle } from "@phosphor-icons/react/dist/ssr";
 import { FilePicker } from "@/components/file-picker";
 import type { MediaItemFormState } from "@/lib/validation/portfolio";
+import { useFormSubmit } from "@/lib/use-form-submit";
 
 export function MediaItemUploadForm({
   action,
@@ -11,6 +12,7 @@ export function MediaItemUploadForm({
   action: (state: MediaItemFormState, formData: FormData) => Promise<MediaItemFormState>;
 }) {
   const [state, formAction, pending] = useActionState(action, undefined);
+  const { onSubmit: formSubmit } = useFormSubmit(formAction, { pending, state });
   const formRef = useRef<HTMLFormElement>(null);
   const wasPending = useRef(false);
   const [resetKey, setResetKey] = useState(0);
@@ -24,7 +26,7 @@ export function MediaItemUploadForm({
   }, [pending, state]);
 
   return (
-    <form ref={formRef} action={formAction} className="flex flex-wrap items-center gap-3">
+    <form ref={formRef} action={formAction} onSubmit={formSubmit} className="flex flex-wrap items-center gap-3">
       <input
         name="title"
         required

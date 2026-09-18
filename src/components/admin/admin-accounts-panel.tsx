@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { WarningCircle, CheckCircle } from "@phosphor-icons/react/dist/ssr";
 import { createAdmin, revokeAdmin } from "@/lib/actions/admin-accounts";
 import { StepUpButton } from "@/components/admin/step-up-button";
+import { useFormSubmit } from "@/lib/use-form-submit";
 
 type AdminAccount = {
   id: string;
@@ -27,6 +28,11 @@ export function AdminAccountsPanel({
   currentAdminId: string;
 }) {
   const [state, formAction, pending] = useActionState(createAdmin, undefined);
+  const { formRef, onSubmit: formSubmit } = useFormSubmit(formAction, {
+    pending,
+    state,
+    resetOnSuccess: true,
+  });
 
   return (
     <div>
@@ -57,7 +63,7 @@ export function AdminAccountsPanel({
         ))}
       </div>
 
-      <form action={formAction} className="mt-4 flex flex-wrap items-end gap-3">
+      <form action={formAction} onSubmit={formSubmit} ref={formRef} className="mt-4 flex flex-wrap items-end gap-3">
         <div className="flex flex-1 min-w-[220px] flex-col gap-2">
           <label htmlFor="invite-admin-email" className="text-sm font-medium text-ink">
             Ajouter un administrateur

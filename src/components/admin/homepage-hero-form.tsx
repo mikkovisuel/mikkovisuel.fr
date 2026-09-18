@@ -4,9 +4,11 @@ import { useActionState, useRef, useEffect, useState } from "react";
 import { WarningCircle, CheckCircle } from "@phosphor-icons/react/dist/ssr";
 import { FilePicker } from "@/components/file-picker";
 import { updateHomepageHero } from "@/lib/actions/homepage";
+import { useFormSubmit } from "@/lib/use-form-submit";
 
 export function HomepageHeroForm() {
   const [state, formAction, pending] = useActionState(updateHomepageHero, undefined);
+  const { onSubmit: formSubmit } = useFormSubmit(formAction, { pending, state });
   const formRef = useRef<HTMLFormElement>(null);
   const wasPending = useRef(false);
   const [resetKey, setResetKey] = useState(0);
@@ -20,7 +22,7 @@ export function HomepageHeroForm() {
   }, [pending, state]);
 
   return (
-    <form ref={formRef} action={formAction} className="grid gap-4 sm:grid-cols-2">
+    <form ref={formRef} action={formAction} onSubmit={formSubmit} className="grid gap-4 sm:grid-cols-2">
       <div className="flex flex-col gap-2">
         <span className="text-sm font-medium text-ink">
           Image principale (1200×900 px conseillé, ratio 4:3)

@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { WarningCircle, CheckCircle } from "@phosphor-icons/react/dist/ssr";
 import type { GmailMessageFormState } from "@/lib/validation/gmail-message";
+import { useFormSubmit } from "@/lib/use-form-submit";
 
 export function EmailComposer({
   action,
@@ -23,9 +24,14 @@ export function EmailComposer({
   placeholder?: string;
 }) {
   const [state, formAction, pending] = useActionState(action, undefined);
+  const { formRef, onSubmit: formSubmit } = useFormSubmit(formAction, {
+    pending,
+    state,
+    resetOnSuccess: true,
+  });
 
   return (
-    <form action={formAction} className="flex flex-col gap-3">
+    <form action={formAction} onSubmit={formSubmit} ref={formRef} className="flex flex-col gap-3">
       {toDisplay ? (
         <p className="text-sm text-ink-muted">
           À : <span className="text-ink">{toDisplay}</span>

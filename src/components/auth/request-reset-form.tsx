@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { CheckCircle } from "@phosphor-icons/react/dist/ssr";
 import type { RequestResetState } from "@/lib/actions/password-reset";
+import { useFormSubmit } from "@/lib/use-form-submit";
 
 export function RequestResetForm({
   action,
@@ -10,6 +11,7 @@ export function RequestResetForm({
   action: (state: RequestResetState, formData: FormData) => Promise<RequestResetState>;
 }) {
   const [state, formAction, pending] = useActionState(action, undefined);
+  const { onSubmit: formSubmit } = useFormSubmit(formAction, { pending, state });
 
   if (state?.message) {
     return (
@@ -21,7 +23,7 @@ export function RequestResetForm({
   }
 
   return (
-    <form action={formAction} className="grid gap-5">
+    <form action={formAction} onSubmit={formSubmit} className="grid gap-5">
       <div className="flex flex-col gap-2">
         <label htmlFor="email" className="text-sm font-medium text-ink">
           Email

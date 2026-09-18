@@ -3,9 +3,11 @@
 import { useActionState, useRef, useEffect } from "react";
 import { WarningCircle } from "@phosphor-icons/react/dist/ssr";
 import { createPaymentRecord } from "@/lib/actions/payment-records";
+import { useFormSubmit } from "@/lib/use-form-submit";
 
 export function PaymentRecordForm({ clients }: { clients: { id: string; name: string }[] }) {
   const [state, formAction, pending] = useActionState(createPaymentRecord, undefined);
+  const { onSubmit: formSubmit } = useFormSubmit(formAction, { pending, state });
   const formRef = useRef<HTMLFormElement>(null);
   const wasPending = useRef(false);
 
@@ -17,7 +19,7 @@ export function PaymentRecordForm({ clients }: { clients: { id: string; name: st
   }, [pending, state]);
 
   return (
-    <form ref={formRef} action={formAction} className="flex flex-wrap items-end gap-3">
+    <form ref={formRef} action={formAction} onSubmit={formSubmit} className="flex flex-wrap items-end gap-3">
       <div className="flex flex-col gap-2">
         <label htmlFor="prclientId" className="text-sm font-medium text-ink">
           Client

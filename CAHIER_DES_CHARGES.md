@@ -1812,10 +1812,9 @@ lien depuis une tâche, bibliothèque par client, rapport mensuel PDF).
   déroulante revenait visuellement à sa valeur initiale pendant que
   l'état interne gardait l'ancienne (un second envoi aurait enregistré la
   mauvaise valeur sans rien signaler). Les formulaires du module envoient
-  désormais à la main, ce qui supprime la réinitialisation. **Le même
-  motif est présent dans une vingtaine de formulaires existants de
-  l'app**, non corrigés dans cette livraison — voir "Points encore
-  ouverts".
+  désormais à la main, ce qui supprime la réinitialisation. Le même
+  défaut touchait tous les autres formulaires de l'app — corrigé le même
+  jour, voir le journal.
 
 ## Décisions techniques déléguées à Claude Code
 
@@ -2033,13 +2032,9 @@ Le client a explicitement délégué ces choix :
 
 ## Points encore ouverts
 
-- **Formulaires qui perdent la saisie après une erreur (constaté le
-  2026-09-18)** : une vingtaine de formulaires existants utilisent
-  `<form action={formAction}>` avec des champs non contrôlés. React 19
-  les réinitialise après chaque action, erreur comprise : une erreur de
-  validation côté serveur (ex. email invalide sur un prospect) efface ce
-  que l'utilisateur venait de taper. Corrigé dans le module Community
-  management (envoi manuel), à généraliser aux autres formulaires.
+- ~~**Formulaires qui perdent la saisie après une erreur**~~ — **corrigé
+  le 2026-09-18** (voir le journal) : 44 formulaires passent par
+  `useFormSubmit` (`src/lib/use-form-submit.ts`).
 
 - **Renforcement de la sécurité — livré le 2026-07-28.** Audit complet mené
   en lecture seule le 2026-07-28 ("renforcer la sécurité au max"), 3 volets :
@@ -2495,3 +2490,4 @@ Le client a explicitement délégué ces choix :
 | 2026-09-13 | "Le site est encore buggé", précisé en "lenteur / pages qui rament" | Suite directe de la quatrième passe du 2026-09-08, qui n'avait traité que la moitié du problème (voir "Cinquième passe de performance" ci-dessus). Mémoire de nouveau à 95 % (489/512 Mo) après ~19 h, mais **sans crash cette fois** et avec des pages publiques à 60-260 ms — dégradation par à-coups, pas panne. **Hypothèse initiale infirmée par la mesure** avant toute action (`scalingo run` sur un conteneur de même taille) : V8 plafonne déjà le tas JS à 259 Mo, Node connaît bien la limite du conteneur — un `NODE_OPTIONS` n'aurait rien changé. Donc ~230 Mo sont **hors tas** : mémoire native, pas une fuite JavaScript. Cause retenue : 8 cœurs visibles et `MALLOC_ARENA_MAX` non défini, soit jusqu'à 64 arènes glibc retenant la mémoire libérée, cas d'école avec libvips (`sharp`). Livré : `MALLOC_ARENA_MAX=2` côté Scalingo + nouvelle sonde admin `/api/admin/memoire` (répartition RSS/tas/tampons/natif) pour vérifier dans la durée et savoir quoi grossit si ça remonte ; purge au passage d'une table d'anti-répétition d'alertes jamais vidée (marginale, explicitement pas la cause). Preuve définitive à observer sur plusieurs heures/jours — voir `VALIDATION.md` |
 | 2026-09-18 | "J'aimerais créer un module community management … il faudrait réaliser un mini cahier des charges : peux-tu regarder les bonnes pratiques et fonctionnement du métier avant et me faire une proposition de fonctionnalité" | **Spécification seulement, rien de construit.** Étude du métier menée avant toute proposition : cycle en 6 étapes de la profession (stratégie, création, relecture, validation client, publication, reporting), fonctionnalités des outils de référence (Planable, Agorapulse, Sked), indicateurs de reporting (portée, engagement, croissance), et contraintes réelles des API (Meta : comptes professionnels + validation de l'app en 2 à 4 semaines ; TikTok : publications privées tant que l'app n'est pas auditée). Proposition en 3 phases, puis 3 arbitrages tranchés par le client : **pour ses clients** (prestation), **phase 1 seule** (sans connexion aux réseaux), réseaux **Instagram, Facebook, TikTok, LinkedIn**. Spécification complète : nouvelle section "4. Module Community management" |
 | 2026-09-18 | "Oui vas-y" (lancement de la livraison 1 du module Community management) | **Livré** : onglet admin "Réseaux" (liste + calendrier, filtres, pastille "à publier"), fiche publication (cycle Idée → Rédaction → À valider → Validé → Publié + À modifier, visuels ordonnés pour les carrousels), onglet client "Réseaux sociaux" affiché seulement s'il y a du contenu (validation / demande de modification avec motif, brouillons jamais visibles), emails client et admin, rappel horaire "à publier maintenant". Heure de Paris gérée explicitement (production en UTC). **Défaut React 19 trouvé en test** : les formulaires perdaient la saisie après une erreur de validation, et une liste déroulante pouvait enregistrer une autre valeur que celle affichée — corrigé dans le module, présent ailleurs dans l'app (noté dans "Points encore ouverts"). Parcours complet testé en navigateur et en base — voir section 4.4 et `VALIDATION.md` |
+| 2026-09-18 | "Corriger les formulaires" (choisi parmi les suggestions, en priorité) | **Livré** : les 44 formulaires de l'app branchés sur une action serveur ne perdent plus la saisie après une erreur (espace client, admin, pages de connexion). Nouvel outil partagé `useFormSubmit` (`src/lib/use-form-submit.ts`), fondé sur une lecture du code de React plutôt qu'une supposition : quand le gestionnaire d'envoi appelle `preventDefault()`, React n'exécute plus l'action lui-même, et c'est là qu'il déclenchait la réinitialisation. L'attribut `action` est **conservé** : avant que la page soit interactive, le navigateur envoie toujours en POST (vérifié sur le HTML rendu, page de connexion comprise), jamais en GET avec les champs dans l'URL. Classement fait formulaire par formulaire : 6 formulaires d'ajout ou d'envoi (temps passé, email, compte admin, 2 imports de prospects, avatar) se vident toujours après un succès, ceux qui se vidaient déjà eux-mêmes gardent leur comportement, les autres (édition, validation) conservent la saisie. Le formulaire de signature de devis contournait déjà le problème par un champ contrôlé — protection jugée non fiable (cf. la liste déroulante du module Réseaux), désormais couvert aussi. Testé en navigateur : fiche prospect (erreur → nom, ville, email et statut conservés), ajout de temps (erreur → saisie conservée ; succès → session ajoutée et formulaire vidé), ajout d'un élément de liste (vidé après succès) — données de test supprimées ensuite — voir `VALIDATION.md` |

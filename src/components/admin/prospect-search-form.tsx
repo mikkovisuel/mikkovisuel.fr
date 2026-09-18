@@ -4,12 +4,14 @@ import { useActionState } from "react";
 import { WarningCircle, CheckCircle, MagnifyingGlass } from "@phosphor-icons/react/dist/ssr";
 import { searchProspectsWithAI } from "@/lib/actions/prospects";
 import type { ProspectSearchState } from "@/lib/validation/prospect";
+import { useFormSubmit } from "@/lib/use-form-submit";
 
 export function ProspectSearchForm() {
   const [state, formAction, pending] = useActionState<ProspectSearchState, FormData>(
     searchProspectsWithAI,
     undefined,
   );
+  const { onSubmit: formSubmit } = useFormSubmit(formAction, { pending, state });
 
   return (
     <details className="rounded-2xl border border-line p-4">
@@ -17,7 +19,7 @@ export function ProspectSearchForm() {
         <MagnifyingGlass size={16} weight="regular" />
         Rechercher des prospects (IA)
       </summary>
-      <form action={formAction} className="mt-4 flex flex-col gap-3">
+      <form action={formAction} onSubmit={formSubmit} className="mt-4 flex flex-col gap-3">
         <textarea
           name="query"
           required

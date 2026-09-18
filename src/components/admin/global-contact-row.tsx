@@ -7,6 +7,7 @@ import { ContactEditForm } from "@/components/admin/contact-edit-form";
 import type { ContactAccessState } from "@/lib/clients";
 import type { ContactEditFormState } from "@/lib/validation/client";
 import type { StepUpFormState } from "@/lib/step-up-auth";
+import { useFormSubmit } from "@/lib/use-form-submit";
 
 // Ligne de l'annuaire global (/admin/contacts) — colonnes alignées en grille
 // (demande du 2026-07-31, "aligner les différentes propriétés
@@ -40,6 +41,7 @@ export function GlobalContactRow({
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [deleteState, deleteFormAction, deletePending] = useActionState(deleteAction, undefined);
+  const { onSubmit: deleteFormSubmit } = useFormSubmit(deleteFormAction, { pending: deletePending, state: deleteState });
 
   return (
     <div className="px-6 py-3">
@@ -116,6 +118,7 @@ export function GlobalContactRow({
       {deleting && (
         <form
           action={deleteFormAction}
+          onSubmit={deleteFormSubmit}
           className="mt-2 flex flex-col gap-2 rounded-xl border border-danger/30 bg-danger/5 p-3"
         >
           <p className="text-xs text-ink">

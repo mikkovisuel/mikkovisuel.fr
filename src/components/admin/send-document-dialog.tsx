@@ -14,6 +14,7 @@ import { sendDocumentByEmail, type SendDocumentState } from "@/lib/actions/payme
 import { fillEmailTemplate, renderInvoiceEmailBody } from "@/lib/invoice-email-templates";
 import { escapeHtml } from "@/lib/html-escape";
 import { formatFileSize } from "@/lib/files";
+import { useFormSubmit } from "@/lib/use-form-submit";
 
 const MONTH_NAMES = [
   "Janvier", "Février", "Mars", "Avril", "Mai", "Juin",
@@ -73,6 +74,7 @@ export function SendDocumentDialog({
     boundAction,
     undefined,
   );
+  const { onSubmit: formSubmit } = useFormSubmit(formAction, { pending, state });
   const wasPending = useRef(false);
 
   useEffect(() => {
@@ -141,7 +143,7 @@ export function SendDocumentDialog({
       </button>
 
       <Modal open={open} onClose={() => setOpen(false)} title={`Envoyer "${fileName}"`}>
-        <form ref={formRef} action={formAction} className="flex flex-col gap-6">
+        <form ref={formRef} action={formAction} onSubmit={formSubmit} className="flex flex-col gap-6">
           <p className="text-sm text-ink-muted">
             À : <span className="text-ink">{billingEmail}</span>
           </p>

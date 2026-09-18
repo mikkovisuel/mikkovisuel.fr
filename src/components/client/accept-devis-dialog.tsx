@@ -4,16 +4,17 @@ import { useActionState, useRef, useState } from "react";
 import { WarningCircle } from "@phosphor-icons/react/dist/ssr";
 import { acceptDevis } from "@/lib/actions/document-signature";
 import { SignatureCanvas, type SignatureCanvasHandle } from "@/components/client/signature-canvas";
+import { useFormSubmit } from "@/lib/use-form-submit";
 
 export function AcceptDevisDialog({ documentId, fileName }: { documentId: string; fileName: string }) {
   const [open, setOpen] = useState(false);
   const signatureRef = useRef<SignatureCanvasHandle>(null);
   const [signatureError, setSignatureError] = useState<string | null>(null);
-  // Contrôlé (pas juste `name=`) : un essai de soumission sans signature
-  // renvoie l'action sans jamais atteindre le serveur (voir `action`
-  // ci-dessous), et React réinitialise les champs non contrôlés d'un
-  // `<form action={...}>` après chaque cycle — un champ non contrôlé
-  // perdrait donc le nom déjà tapé par le client à ce moment-là.
+  // Contrôlé à l'origine pour survivre à la réinitialisation de React 19
+  // après un essai sans signature. Ce n'était pas une protection fiable (un
+  // champ contrôlé peut afficher une autre valeur que son état après cette
+  // réinitialisation) : depuis le 2026-09-18, `useFormSubmit` empêche la
+  // réinitialisation elle-même. Laissé contrôlé, sans inconvénient.
   const [acceptedByName, setAcceptedByName] = useState("");
 
   const action = async (_state: Awaited<ReturnType<typeof acceptDevis>>, formData: FormData) => {
@@ -28,6 +29,7 @@ export function AcceptDevisDialog({ documentId, fileName }: { documentId: string
   };
 
   const [state, formAction, pending] = useActionState(action, undefined);
+  const { onSubmit: formSubmit } = useFormSubmit(formAction, { pending, state });
 
   if (state?.success) {
     return <span className="text-xs text-ink-muted">Devis accepté, merci.</span>;
@@ -48,6 +50,7 @@ export function AcceptDevisDialog({ documentId, fileName }: { documentId: string
   return (
     <form
       action={formAction}
+      onSubmit={formSubmit}
       className="mt-3 flex w-full max-w-sm flex-col gap-3 rounded-2xl border border-line bg-surface-elevated p-4"
     >
       <p className="text-sm text-ink">

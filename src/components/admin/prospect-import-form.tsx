@@ -9,6 +9,7 @@ import {
   Table,
 } from "@phosphor-icons/react/dist/ssr";
 import { importProspectsFromCsv, importProspectsFromGoogleSheet } from "@/lib/actions/prospects";
+import { useFormSubmit } from "@/lib/use-form-submit";
 
 const RECOGNIZED_COLUMNS_HELP =
   "Colonnes reconnues (accents/majuscules non sensibles) : nom (obligatoire), entreprise, " +
@@ -17,9 +18,14 @@ const RECOGNIZED_COLUMNS_HELP =
 
 function CsvFileImport() {
   const [state, formAction, pending] = useActionState(importProspectsFromCsv, undefined);
+  const { formRef, onSubmit: formSubmit } = useFormSubmit(formAction, {
+    pending,
+    state,
+    resetOnSuccess: true,
+  });
 
   return (
-    <form action={formAction} className="mt-4 flex flex-col gap-3">
+    <form action={formAction} onSubmit={formSubmit} ref={formRef} className="mt-4 flex flex-col gap-3">
       <a
         href="/modele-import-prospects.csv"
         download
@@ -68,9 +74,14 @@ function CsvFileImport() {
 // côté serveur.
 function GoogleSheetImport() {
   const [state, formAction, pending] = useActionState(importProspectsFromGoogleSheet, undefined);
+  const { formRef, onSubmit: formSubmit } = useFormSubmit(formAction, {
+    pending,
+    state,
+    resetOnSuccess: true,
+  });
 
   return (
-    <form action={formAction} className="mt-4 flex flex-col gap-3">
+    <form action={formAction} onSubmit={formSubmit} ref={formRef} className="mt-4 flex flex-col gap-3">
       <p className="text-xs text-ink-muted">
         Dans Google Sheets : <span className="font-medium text-ink">Partager</span> →{" "}
         <span className="font-medium text-ink">Toute personne disposant du lien</span> → rôle{" "}

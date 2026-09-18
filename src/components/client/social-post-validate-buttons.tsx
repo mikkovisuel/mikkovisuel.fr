@@ -3,6 +3,7 @@
 import { useActionState, useState, useTransition } from "react";
 import { WarningCircle } from "@phosphor-icons/react/dist/ssr";
 import { validateSocialPost, refuseSocialPost } from "@/lib/actions/social-posts";
+import { useFormSubmit } from "@/lib/use-form-submit";
 
 // Même interaction que ValidateRefuseButtons (BAT des tâches), branchée sur
 // les publications réseaux sociaux : valider en un clic, ou refuser avec un
@@ -18,6 +19,7 @@ export function SocialPostValidateButtons({
   const [showRefuseForm, setShowRefuseForm] = useState(false);
   const [isValidating, startValidateTransition] = useTransition();
   const [state, formAction, refusePending] = useActionState(refuseSocialPost.bind(null, postId), undefined);
+  const { onSubmit: formSubmit } = useFormSubmit(formAction, { pending: refusePending, state });
 
   if (readOnly) {
     return <p className="text-sm text-ink-muted">Validation désactivée dans l&apos;espace de démonstration.</p>;
@@ -25,7 +27,7 @@ export function SocialPostValidateButtons({
 
   if (showRefuseForm) {
     return (
-      <form action={formAction} className="flex flex-col gap-2">
+      <form action={formAction} onSubmit={formSubmit} className="flex flex-col gap-2">
         <textarea
           name="reason"
           required

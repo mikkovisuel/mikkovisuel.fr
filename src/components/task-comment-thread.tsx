@@ -4,6 +4,7 @@ import { useActionState, useRef, useEffect } from "react";
 import { WarningCircle } from "@phosphor-icons/react/dist/ssr";
 import { LinkifiedText } from "@/components/linkified-text";
 import type { CommentFormState } from "@/lib/validation/comment";
+import { useFormSubmit } from "@/lib/use-form-submit";
 
 const DATE_TIME_FORMATTER = new Intl.DateTimeFormat("fr-FR", {
   day: "numeric",
@@ -34,6 +35,7 @@ export function TaskCommentThread({
   readOnly?: boolean;
 }) {
   const [state, formAction, pending] = useActionState(action, undefined);
+  const { onSubmit: formSubmit } = useFormSubmit(formAction, { pending, state });
   const formRef = useRef<HTMLFormElement>(null);
   const wasPending = useRef(false);
 
@@ -79,7 +81,7 @@ export function TaskCommentThread({
           Les commentaires sont désactivés dans l&apos;espace de démonstration.
         </p>
       ) : (
-        <form ref={formRef} action={formAction} className="flex flex-col gap-2">
+        <form ref={formRef} action={formAction} onSubmit={formSubmit} className="flex flex-col gap-2">
           <textarea
             name="body"
             required

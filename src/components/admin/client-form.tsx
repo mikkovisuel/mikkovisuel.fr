@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { WarningCircle } from "@phosphor-icons/react/dist/ssr";
 import type { ClientFormState } from "@/lib/validation/client";
+import { useFormSubmit } from "@/lib/use-form-submit";
 
 const FIELD =
   "rounded-xl border border-line bg-surface-elevated px-4 py-3 text-sm text-ink placeholder:text-ink-muted/70 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30";
@@ -41,9 +42,10 @@ export function ClientForm({
   formId?: string;
 }) {
   const [state, formAction, pending] = useActionState(action, undefined);
+  const { onSubmit: formSubmit } = useFormSubmit(formAction, { pending, state });
 
   return (
-    <form id={formId} action={formAction} className="grid gap-8 lg:grid-cols-2">
+    <form id={formId} action={formAction} onSubmit={formSubmit} className="grid gap-8 lg:grid-cols-2">
       {/* Colonne gauche : identité du client. */}
       <div className="flex flex-col gap-5">
         <div className="flex flex-col gap-2">

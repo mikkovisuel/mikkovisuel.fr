@@ -3,9 +3,11 @@
 import { useActionState, useRef, useEffect, useState } from "react";
 import { WarningCircle } from "@phosphor-icons/react/dist/ssr";
 import { changeClientPassword } from "@/lib/actions/password-reset";
+import { useFormSubmit } from "@/lib/use-form-submit";
 
 export function ChangePasswordForm() {
   const [state, formAction, pending] = useActionState(changeClientPassword, undefined);
+  const { onSubmit: formSubmit } = useFormSubmit(formAction, { pending, state });
   const formRef = useRef<HTMLFormElement>(null);
   const wasPending = useRef(false);
 
@@ -29,7 +31,7 @@ export function ChangePasswordForm() {
 
   return (
     <>
-      <form ref={formRef} action={formAction} className="grid max-w-sm gap-4">
+      <form ref={formRef} action={formAction} onSubmit={formSubmit} className="grid max-w-sm gap-4">
         <div className="flex flex-col gap-2">
           <label htmlFor="currentPassword" className="text-sm font-medium text-ink">
             Mot de passe actuel

@@ -6,6 +6,7 @@ import { ColorSelect } from "@/components/admin/color-select";
 import { DeleteButton } from "@/components/admin/delete-button";
 import { updateDropdownItem, deleteDropdownItem, moveDropdownItem } from "@/lib/actions/dropdown-lists";
 import type { PaletteColor } from "@/lib/dropdown-lists";
+import { useFormSubmit } from "@/lib/use-form-submit";
 
 interface DropdownItemRowProps {
   item: { id: string; label: string; color: string; locked: boolean };
@@ -18,10 +19,11 @@ interface DropdownItemRowProps {
 export function DropdownItemRow({ item, listId, listKey, isFirst, isLast }: DropdownItemRowProps) {
   const boundUpdate = updateDropdownItem.bind(null, item.id, listKey);
   const [state, formAction, pending] = useActionState(boundUpdate, undefined);
+  const { onSubmit: formSubmit } = useFormSubmit(formAction, { pending, state });
 
   return (
     <div className="flex flex-col gap-3 px-6 py-4 sm:flex-row sm:items-center sm:justify-between">
-      <form action={formAction} className="flex flex-1 flex-wrap items-center gap-3">
+      <form action={formAction} onSubmit={formSubmit} className="flex flex-1 flex-wrap items-center gap-3">
         <input
           name="label"
           defaultValue={item.label}

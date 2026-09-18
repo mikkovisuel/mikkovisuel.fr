@@ -8,6 +8,7 @@ import {
   deleteSocialPostMedia,
   moveSocialPostMedia,
 } from "@/lib/actions/social-posts";
+import { useFormSubmit } from "@/lib/use-form-submit";
 
 const ICON_BUTTON =
   "flex h-7 w-7 items-center justify-center rounded-full border border-line bg-surface-elevated text-ink-muted transition-colors hover:border-accent hover:bg-accent hover:text-accent-ink disabled:opacity-40 disabled:hover:border-line disabled:hover:bg-surface-elevated disabled:hover:text-ink-muted";
@@ -23,6 +24,7 @@ interface Media {
 // les flèches — `FileGrid` (livrables) n'a pas cette notion d'ordre.
 export function SocialPostMediaManager({ postId, media }: { postId: string; media: Media[] }) {
   const [state, formAction, pending] = useActionState(uploadSocialPostMedia.bind(null, postId), undefined);
+  const { onSubmit: formSubmit } = useFormSubmit(formAction, { pending, state });
   const [isPending, startTransition] = useTransition();
   const formRef = useRef<HTMLFormElement>(null);
   const wasPending = useRef(false);
@@ -105,7 +107,7 @@ export function SocialPostMediaManager({ postId, media }: { postId: string; medi
         </ol>
       )}
 
-      <form ref={formRef} action={formAction} className="flex flex-col gap-3">
+      <form ref={formRef} action={formAction} onSubmit={formSubmit} className="flex flex-col gap-3">
         <FilePicker
           key={resetKey}
           name="file"
