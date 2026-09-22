@@ -3,10 +3,9 @@ import { NextResponse } from "next/server";
 import { renderToBuffer } from "@react-pdf/renderer";
 import sharp from "sharp";
 import { getAdminSession } from "@/lib/dal";
+import { downloadResponse } from "@/lib/export-response";
 import { db } from "@/lib/db";
 import { getStorageAdapter } from "@/lib/storage";
-import { logAuditEvent } from "@/lib/audit-log";
-import { getClientIp } from "@/lib/request-ip";
 import {
   SOCIAL_POST_STATUS,
   engagementRate,
@@ -22,6 +21,7 @@ import {
   type SocialReportKpi,
   type SocialReportPost,
 } from "@/components/pdf/social-report-document";
+import { slugify } from "@/lib/slugify";
 
 const MONTH_FORMATTER = new Intl.DateTimeFormat("fr-FR", { month: "long", year: "numeric", timeZone: "UTC" });
 // Garde-fou mémoire (conteneur de production, voir l'incident du
@@ -150,28 +150,13 @@ export async function GET(request: Request) {
   }) as Parameters<typeof renderToBuffer>[0];
   const buffer = await renderToBuffer(documentElement);
 
-  const slug = client.name
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
+  const slug = slugify(client.name);
   const fileName = `rapport-reseaux-${slug}-${year}-${pad(month)}.pdf`;
 
-  await logAuditEvent({
-    actorType: "ADMIN",
-    actorId: admin.id,
-    actorLabel: admin.email,
-    action: "data_export",
-    targetType: "Export",
-    targetLabel: fileName,
-    ipAddress: await getClientIp(),
-  });
-
-  return new NextResponse(new Uint8Array(buffer), {
-    headers: {
-      "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="${fileName}"`,
-    },
+  return downloadResponse({
+    admin,
+    fileName: fileName,
+    contentType: "application/pdf",
+    body: new Uint8Array(buffer),
   });
 }

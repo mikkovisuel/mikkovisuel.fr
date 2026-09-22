@@ -138,7 +138,7 @@ export default async function AdminTasksPage({
         where: { key: TASK_FORMAT_LIST_KEY },
         include: { items: { orderBy: { sortOrder: "asc" } } },
       }),
-      db.client.findMany({ where: ACTIVE_CLIENTS, orderBy: { name: "asc" } }),
+      db.client.findMany({ where: ACTIVE_CLIENTS, select: { id: true, name: true }, orderBy: { name: "asc" } }),
       db.scratchpadItem.findMany({ orderBy: { sortOrder: "asc" }, select: { id: true, label: true } }),
     ]);
 

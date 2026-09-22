@@ -12,7 +12,7 @@
 // complète, "+33 6 ..." contre "06 ...", ou simplement un champ rempli une
 // fois et pas l'autre alors que le site web ou la ville concordaient.
 
-export function normalizeEmail(value: string | null | undefined): string | null {
+function normalizeEmail(value: string | null | undefined): string | null {
   const trimmed = value?.trim().toLowerCase();
   return trimmed ? trimmed : null;
 }
@@ -21,7 +21,7 @@ export function normalizeEmail(value: string | null | undefined): string | null 
 // complète ("https://www.instagram.com/handle/") et renvoie le même handle
 // normalisé dans les deux cas, pour comparer `instagram` et `instagramUrl`
 // avec la même clé.
-export function normalizeInstagram(value: string | null | undefined): string | null {
+function normalizeInstagram(value: string | null | undefined): string | null {
   if (!value) return null;
   let handle = value.trim();
   const urlMatch = handle.match(/instagram\.com\/([^/?#]+)/i);
@@ -32,7 +32,7 @@ export function normalizeInstagram(value: string | null | undefined): string | n
 
 // Nom d'hôte seul (sans protocole ni "www."), pour que
 // "https://www.exemple.fr/" et "exemple.fr" soient reconnus identiques.
-export function normalizeWebsite(value: string | null | undefined): string | null {
+function normalizeWebsite(value: string | null | undefined): string | null {
   if (!value) return null;
   const raw = value.trim();
   if (!raw) return null;
@@ -46,7 +46,7 @@ export function normalizeWebsite(value: string | null | undefined): string | nul
 
 // Marché français uniquement (clientèle du site) : ramène "+33 6 12 34 56
 // 78" et "06 12 34 56 78" à la même suite de chiffres.
-export function normalizePhone(value: string | null | undefined): string | null {
+function normalizePhone(value: string | null | undefined): string | null {
   if (!value) return null;
   let digits = value.replace(/\D/g, "");
   if (digits.startsWith("33") && digits.length === 11) digits = `0${digits.slice(2)}`;
@@ -57,7 +57,7 @@ export function normalizePhone(value: string | null | undefined): string | null 
 // coïncide : même nom ou même société, dans la même ville. Volontairement
 // combiné avec la ville (jamais le nom/la société seuls) pour ne pas
 // confondre deux entités homonymes de villes différentes.
-export function normalizeNameCity(
+function normalizeNameCity(
   name: string | null | undefined,
   city: string | null | undefined,
 ): string | null {
@@ -125,7 +125,7 @@ export interface DedupIndex {
   nameCities: Set<string>;
 }
 
-export function emptyDedupIndex(): DedupIndex {
+function emptyDedupIndex(): DedupIndex {
   return { emails: new Set(), instagrams: new Set(), websites: new Set(), phones: new Set(), nameCities: new Set() };
 }
 

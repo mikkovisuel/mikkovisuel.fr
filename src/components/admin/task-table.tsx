@@ -55,7 +55,7 @@ function sortHref(
   return `${basePath}?${params.toString()}`;
 }
 
-// Vue tableau, plus compacte que les cartes empilées de `TaskRow` : une
+// Vue tableau, plus compacte que les cartes empilées d'autrefois : une
 // colonne par information, pour scanner beaucoup de tâches d'un coup d'œil.
 // Type/Formats/Temps sont repliés par ligne (voir TaskTableRow) plutôt que
 // des colonnes toujours visibles — moins consultés au premier coup d'œil.

@@ -17,7 +17,7 @@ const LABEL = "text-sm font-medium text-ink";
 // uniquement par l'attribut HTML `form=`, qui fait fonctionner la
 // soumission mais que `useFormStatus` ne voit pas : ce hook ne suit que le
 // `<form>` ancêtre réel dans l'arbre React, pas une simple association
-// DOM). Avant le 2026-07-31, `FormSubmitButton` ne pouvait donc rendre ni
+// DOM). Avant le 2026-07-31, le bouton déporté ne pouvait donc rendre ni
 // "Enregistrement..." ni une confirmation après coup — appuyer sur
 // "Enregistrer" ne donnait aucune information.
 //

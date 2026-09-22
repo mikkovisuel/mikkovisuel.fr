@@ -14,7 +14,7 @@ export default async function NewTaskPage() {
   await verifyAdminSession();
 
   const [clients, typeList, formatList] = await Promise.all([
-    db.client.findMany({ where: ACTIVE_CLIENTS, orderBy: { name: "asc" } }),
+    db.client.findMany({ where: ACTIVE_CLIENTS, select: { id: true, name: true }, orderBy: { name: "asc" } }),
     db.dropdownList.findUnique({
       where: { key: TASK_TYPE_LIST_KEY },
       include: { items: { orderBy: { sortOrder: "asc" } } },

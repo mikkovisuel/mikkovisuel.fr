@@ -2,11 +2,11 @@ import { createElement } from "react";
 import { NextResponse } from "next/server";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { getAdminSession } from "@/lib/dal";
+import { downloadResponse } from "@/lib/export-response";
 import { db } from "@/lib/db";
 import { TASK_STATUS } from "@/lib/dropdown-lists";
 import { TaskReportDocument } from "@/components/pdf/task-report-document";
-import { logAuditEvent } from "@/lib/audit-log";
-import { getClientIp } from "@/lib/request-ip";
+import { slugify } from "@/lib/slugify";
 
 // Rapport d'état PDF, par client — toutes les tâches non terminées (hors
 // archivées), pour que l'admin puisse envoyer un point d'avancement sans
@@ -51,28 +51,13 @@ export async function GET(
   }) as Parameters<typeof renderToBuffer>[0];
   const buffer = await renderToBuffer(documentElement);
 
-  const slug = client.name
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "") // strip accents (é → e) before slugifying
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
+  const slug = slugify(client.name);
   const fileName = `rapport-${slug}.pdf`;
 
-  await logAuditEvent({
-    actorType: "ADMIN",
-    actorId: admin.id,
-    actorLabel: admin.email,
-    action: "data_export",
-    targetType: "Export",
-    targetLabel: fileName,
-    ipAddress: await getClientIp(),
-  });
-
-  return new NextResponse(new Uint8Array(buffer), {
-    headers: {
-      "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="${fileName}"`,
-    },
+  return downloadResponse({
+    admin,
+    fileName: fileName,
+    contentType: "application/pdf",
+    body: new Uint8Array(buffer),
   });
 }

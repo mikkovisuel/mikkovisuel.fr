@@ -4,6 +4,7 @@ import { renderToBuffer } from "@react-pdf/renderer";
 import { db } from "@/lib/db";
 import { TASK_STATUS } from "@/lib/dropdown-lists";
 import { MonthlyTasksInvoiceDocument } from "@/components/pdf/monthly-tasks-invoice-document";
+import { slugify } from "@/lib/slugify";
 
 const MONTH_NAMES = [
   "janvier", "février", "mars", "avril", "mai", "juin",
@@ -59,12 +60,7 @@ export async function generateMonthlyRecapPdf({
   }) as Parameters<typeof renderToBuffer>[0];
   const buffer = await renderToBuffer(documentElement);
 
-  const slug = client.name
-    .normalize("NFD")
-    .replace(/[̀-ͯ]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
+  const slug = slugify(client.name);
   const fileName = `facturation-${slug}-${annee}-${String(mois).padStart(2, "0")}.pdf`;
 
   return { buffer, fileName, clientName: client.name };

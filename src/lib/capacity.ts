@@ -42,7 +42,7 @@ export async function getCapacityMinutes(since: Date, until: Date): Promise<numb
 // sert à distinguer "0 h de capacité saisie sur toute la période" (donnée
 // manquante, pas de conclusion à en tirer) de "capacité saisie et
 // effectivement nulle" (jours fériés/week-end volontairement mis à 0).
-export async function getCapacityCoverageDays(since: Date, until: Date): Promise<number> {
+async function getCapacityCoverageDays(since: Date, until: Date): Promise<number> {
   return db.workCapacityDay.count({
     where: { date: { gte: toCalendarDate(since), lte: toCalendarDate(until) } },
   });
@@ -72,7 +72,7 @@ export async function getAverageWeeklyCapacityMinutes(): Promise<number | null> 
 // dans l'intervalle. `excludeTaskId` sert à l'alerte de saisie d'échéance
 // (une tâche ne doit pas se compter deux fois quand on modifie sa propre
 // date).
-export async function getCommittedMinutes(
+async function getCommittedMinutes(
   since: Date,
   until: Date,
   excludeTaskId?: string,

@@ -12,14 +12,30 @@ export default async function AdminNotesPage() {
   await verifyAdminSession();
 
   const [folders, notes, clients, prospects] = await Promise.all([
-    db.noteFolder.findMany({ orderBy: { sortOrder: "asc" } }),
-    db.note.findMany({ orderBy: { updatedAt: "desc" } }),
-    db.client.findMany({ where: ACTIVE_CLIENTS, orderBy: { name: "asc" } }),
+    db.noteFolder.findMany({ select: { id: true, name: true }, orderBy: { sortOrder: "asc" } }),
+    // `select` explicite (passe de nettoyage du 2026-09-22) : la page ne
+    // transmet que ces champs au composant, inutile de rapatrier le reste
+    // des colonnes de chaque note.
+    db.note.findMany({
+      select: {
+        id: true,
+        title: true,
+        content: true,
+        pinned: true,
+        folderId: true,
+        clientId: true,
+        prospectId: true,
+        reminderAt: true,
+        updatedAt: true,
+      },
+      orderBy: { updatedAt: "desc" },
+    }),
+    db.client.findMany({ where: ACTIVE_CLIENTS, select: { id: true, name: true }, orderBy: { name: "asc" } }),
     // Affectation aux prospects (demande du 2026-07-31) — pas de filtre de
     // statut ici, contrairement à `ACTIVE_CLIENTS` : un prospect "fermé"
     // (converti en client) ou "archivé" garde ses notes rattachées et
     // consultables, l'assignation n'est pas un indicateur de workflow.
-    db.prospect.findMany({ orderBy: { name: "asc" } }),
+    db.prospect.findMany({ select: { id: true, name: true }, orderBy: { name: "asc" } }),
   ]);
 
   return (

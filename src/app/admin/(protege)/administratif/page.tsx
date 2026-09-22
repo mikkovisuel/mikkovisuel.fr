@@ -165,7 +165,7 @@ export default async function AdminAdministratifPage({
       where: { ...documentWhere, paymentStatus: "unpaid" },
       select: { amountCents: true },
     }),
-    db.client.findMany({ where: ACTIVE_CLIENTS, orderBy: { name: "asc" } }),
+    db.client.findMany({ where: ACTIVE_CLIENTS, select: { id: true, name: true }, orderBy: { name: "asc" } }),
     db.dropdownList.findUnique({
       where: { key: DOCUMENT_TYPE_LIST_KEY },
       include: { items: { orderBy: { sortOrder: "asc" } } },

@@ -4,6 +4,8 @@ import { ZipArchive } from "archiver";
 import { getAdminSession } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { getStorageAdapter } from "@/lib/storage";
+import { slugify } from "@/lib/slugify";
+import { logExportDownload } from "@/lib/export-response";
 
 // "Kit de publication" (2026-09-18) : tous les visuels d'une publication en
 // un seul zip, numérotés dans l'ordre du carrousel ("01-…", "02-…"), pour
@@ -38,18 +40,17 @@ export async function GET(_request: Request, { params }: { params: Promise<{ id:
     await archive.finalize();
   })();
 
-  const slug =
-    post.title
-      .normalize("NFD")
-      .replace(/[̀-ͯ]/g, "")
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-|-$/g, "") || "publication";
+  const slug = slugify(post.title) || "publication";
+
+  const fileName = `visuels-${slug}.zip`;
+  // Journalisé comme les autres exports (passe de nettoyage du 2026-09-22) :
+  // ce sont des fichiers de client qui sortent de l'application.
+  await logExportDownload(admin, fileName);
 
   return new NextResponse(Readable.toWeb(archive) as ReadableStream<Uint8Array>, {
     headers: {
       "Content-Type": "application/zip",
-      "Content-Disposition": `attachment; filename="visuels-${slug}.zip"`,
+      "Content-Disposition": `attachment; filename="${fileName}"`,
     },
   });
 }

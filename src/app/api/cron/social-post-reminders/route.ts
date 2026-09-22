@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { denyUnauthorizedCron } from "@/lib/cron-auth";
 import { sendDueSocialPostReminders, sendDueSlotReminders } from "@/lib/social-post-reminders";
 
 // Planifié dans cron.json **toutes les heures** (contrairement aux autres
@@ -6,13 +7,8 @@ import { sendDueSocialPostReminders, sendDueSlotReminders } from "@/lib/social-p
 // protection CRON_SECRET que les autres routes /api/cron/*. Traite aussi les
 // rappels de créneaux récurrents (pas de tâche dédiée : limite Scalingo).
 export async function GET(request: Request) {
-  const secret = process.env.CRON_SECRET;
-  if (!secret) {
-    return new NextResponse(null, { status: 503 });
-  }
-  if (request.headers.get("authorization") !== `Bearer ${secret}`) {
-    return new NextResponse(null, { status: 401 });
-  }
+  const denied = denyUnauthorizedCron(request);
+  if (denied) return denied;
 
   const result = await sendDueSocialPostReminders();
   const slots = await sendDueSlotReminders();

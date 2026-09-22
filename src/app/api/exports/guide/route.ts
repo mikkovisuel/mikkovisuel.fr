@@ -2,9 +2,8 @@ import { createElement } from "react";
 import { NextResponse } from "next/server";
 import { renderToBuffer } from "@react-pdf/renderer";
 import { getAdminSession } from "@/lib/dal";
+import { downloadResponse } from "@/lib/export-response";
 import { ClientGuideDocument } from "@/components/pdf/client-guide-document";
-import { logAuditEvent } from "@/lib/audit-log";
-import { getClientIp } from "@/lib/request-ip";
 
 // Mode d'emploi de l'espace client, dans la DA du site — voir "Mode
 // d'emploi client" sur /admin/reglages. Même approche que le rapport de
@@ -22,20 +21,10 @@ export async function GET() {
   >[0];
   const buffer = await renderToBuffer(documentElement);
 
-  await logAuditEvent({
-    actorType: "ADMIN",
-    actorId: admin.id,
-    actorLabel: admin.email,
-    action: "data_export",
-    targetType: "Export",
-    targetLabel: "guide-espace-client-mikko-visuel.pdf",
-    ipAddress: await getClientIp(),
-  });
-
-  return new NextResponse(new Uint8Array(buffer), {
-    headers: {
-      "Content-Type": "application/pdf",
-      "Content-Disposition": `attachment; filename="guide-espace-client-mikko-visuel.pdf"`,
-    },
+  return downloadResponse({
+    admin,
+    fileName: "guide-espace-client-mikko-visuel.pdf",
+    contentType: "application/pdf",
+    body: new Uint8Array(buffer),
   });
 }

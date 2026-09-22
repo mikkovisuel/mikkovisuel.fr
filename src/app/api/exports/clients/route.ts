@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { getAdminSession } from "@/lib/dal";
+import { downloadResponse } from "@/lib/export-response";
 import { buildClientsCsv } from "@/lib/exports";
-import { logAuditEvent } from "@/lib/audit-log";
-import { getClientIp } from "@/lib/request-ip";
 
 export async function GET() {
   const admin = await getAdminSession();
@@ -10,20 +9,10 @@ export async function GET() {
     return new NextResponse(null, { status: 403 });
   }
 
-  await logAuditEvent({
-    actorType: "ADMIN",
-    actorId: admin.id,
-    actorLabel: admin.email,
-    action: "data_export",
-    targetType: "Export",
-    targetLabel: "clients.csv",
-    ipAddress: await getClientIp(),
-  });
-
-  return new NextResponse(await buildClientsCsv(), {
-    headers: {
-      "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": 'attachment; filename="clients.csv"',
-    },
+  return downloadResponse({
+    admin,
+    fileName: "clients.csv",
+    contentType: "text/csv; charset=utf-8",
+    body: await buildClientsCsv(),
   });
 }

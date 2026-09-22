@@ -123,20 +123,6 @@ export function groupTasksByEventDate<T extends { eventDate: Date | null }>(task
   return { byDay, undated };
 }
 
-// Vue "Par client", triée alphabétiquement comme la vue groupée Notion.
-export function groupTasksByClient<T extends { client: { name: string } }>(tasks: T[]) {
-  const byClient = new Map<string, T[]>();
-
-  for (const task of tasks) {
-    const key = task.client.name;
-    const list = byClient.get(key);
-    if (list) list.push(task);
-    else byClient.set(key, [task]);
-  }
-
-  return [...byClient.entries()].sort(([a], [b]) => a.localeCompare(b, "fr"));
-}
-
 // Timeline de suivi côté espace client : les statuts verrouillés (voir
 // TASK_STATUS) se replient sur 4 étapes visuelles — "BAT validé" et "À
 // modifier" sont deux issues de l'étape "À valider" (validé vs à corriger),

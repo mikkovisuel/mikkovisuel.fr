@@ -2001,6 +2001,64 @@ J-2 — restent notées ici comme pistes).
 Migration additive : `SocialPost.captionVariants`, `previousCaption`,
 `previousHashtags`, table `SocialPostComment`.
 
+## Passe de nettoyage du code (2026-09-22)
+
+Demande du client : "fais une passe globale sur le code et nettoie tout,
+optimise au mieux". Faite à comportement constant — aucune fonctionnalité
+ajoutée ni retirée, hors les deux points de cohérence signalés plus bas.
+
+**Code mort supprimé** : deux composants qui n'étaient plus importés nulle
+part (`form-submit-button.tsx`, `task-row.tsx` — remplacés respectivement
+par le bouton déporté de la fiche client et par la vue tableau des tâches),
+la fonction `groupTasksByClient` (vue "Par client" retirée le 2026-07-31),
+et les cinq SVG du gabarit Next jamais utilisés. Huit fonctions exportées
+sans appelant extérieur repassent en portée interne.
+
+**Duplications regroupées** :
+
+- le générateur de nom de fichier (accents retirés, minuscules, tirets)
+  était réécrit à l'identique dans quatre fichiers alors que `slugify`
+  existait déjà ;
+- les six routes `/api/cron/*` répétaient la même vérification du secret →
+  `denyUnauthorizedCron` (`src/lib/cron-auth.ts`), qui conserve les deux
+  réponses distinctes (503 sans secret configuré, 401 si le secret ne
+  correspond pas) ;
+- les huit routes `/api/exports/*` répétaient la journalisation d'audit et
+  les en-têtes de téléchargement → `downloadResponse` / `logExportDownload`
+  (`src/lib/export-response.ts`), qui gèrent aussi l'aperçu "inline" de la
+  facture mensuelle et les en-têtes supplémentaires de la sauvegarde.
+
+**Requêtes allégées** : la page Notes rapatriait toutes les colonnes de
+chaque note, de chaque client et de chaque prospect pour n'en utiliser
+qu'une poignée ; trois autres pages chargeaient les clients entiers pour ne
+remplir qu'une liste déroulante (`id` + `name`). Toutes passent par un
+`select` explicite.
+
+**Tables qui grossissaient sans fin, désormais purgées** par la tâche
+quotidienne existante (`/api/cron/purge-sessions`, aucune tâche planifiée
+ajoutée) : `EmailLog` au-delà de 90 jours (table jamais relue par
+l'application), `LoginAttempt` et `PasswordResetAttempt` au-delà de 30
+jours (la limite d'essais ne regarde que 15 minutes), `ClientLoginEvent`
+au-delà d'un an. `AuditLogEntry` n'est volontairement pas purgée : c'est la
+trace des actions sensibles.
+
+**Deux points de cohérence** : le téléchargement du zip des visuels d'une
+publication est maintenant journalisé comme les sept autres exports ;
+`server-only`, utilisé dans 43 fichiers, est déclaré explicitement dans
+`package.json` (il n'était disponible que par l'alias interne de Next).
+Ajout d'un raccourci `npm run typecheck`.
+
+**Non touché, volontairement** : le rendu dynamique des pages publiques
+(choix documenté — contenu modifiable sans reconstruction, et base de
+données absente au premier build), les trois plus gros fichiers d'actions
+serveur (découpage à fort risque de régression sans tests automatiques), et
+la cible TypeScript `ES2017` (sans effet réel, Next compilant selon sa
+propre liste de navigateurs).
+
+Bilan : **369 lignes supprimées pour 168 ajoutées**, `tsc`, lint et build
+propres, et les 14 pages d'administration comme les 8 exports vérifiés en
+conditions réelles (voir `VALIDATION.md`).
+
 ## Décisions techniques déléguées à Claude Code
 
 Le client a explicitement délégué ces choix :
@@ -2681,3 +2739,4 @@ Le client a explicitement délégué ces choix :
 | 2026-09-18 | "Lors de la demande de création sur la page réseaux, ajouter un encart possible pour la date de l'event" | **Livré** : champ "Date de l'évènement (facultatif)" dans la case "Demander une création" (nouvelle publication) et dans la section "Création" de la fiche ; enregistré dans la date d'évènement de la tâche interne et affiché sur la fiche ("évènement le 3 oct."). Défaut trouvé en test et corrigé : une date impossible (30 février) était acceptée et devenait le 2 mars — les dates de ces formulaires sont désormais vérifiées strictement. Voir section 4.6 et `VALIDATION.md` |
 | 2026-09-18 | "Comme tout le reste du site, fait en sorte de scaler la page réseau sur la largeur de la fenêtre" | **Livré** : la fiche publication, la nouvelle publication et les réglages réseaux d'un client prennent la même largeur que le reste de l'admin (elles étaient limitées à une colonne étroite ; la liste Réseaux l'était déjà). Fiche publication en deux colonnes sur grand écran, comme la fiche tâche (suivi, contenu, visuels à gauche ; aperçu, création demandée, notes à droite) ; réglages client en deux colonnes. Une seule colonne sur mobile. Défaut trouvé en test et corrigé : sur mobile, le tableau des chiffres mensuels élargissait toute la page (626 px pour un écran de 375) au lieu de défiler dans son cadre. Voir `VALIDATION.md` |
 | 2026-09-22 | "As-tu des suggestions pour améliorer le calendrier éditorial : préparation, validation, publication" — 9 des 12 suggestions retenues (non retenues : envoi groupé en validation, relance automatique du client à J-2) | **Livré** : glisser-déposer dans le calendrier, créneaux récurrents affichés en pointillés avec création pré-remplie, texte adapté par réseau, duplication d'une publication, équilibre des catégories du mois, échange admin ↔ client par publication (emails des deux côtés), comparaison avant/après une demande de modification, kit de publication (copie du texte par réseau, visuels en .zip, texte dans l'email de rappel), carte "Réseaux — aujourd'hui" au tableau de bord, rappel et ajout après coup du lien du post publié. Détails section 4.7, tests dans `VALIDATION.md` |
+| 2026-09-22 | "Fais une passe globale sur le code et nettoie tout, optimise au mieux" | **Livré, à comportement constant** : code mort supprimé (2 composants, 1 fonction, 5 SVG du gabarit Next, 8 exports repassés en portée interne), duplications regroupées (générateur de nom de fichier ×4, garde des tâches planifiées ×6, journalisation + en-têtes des exports ×8), requêtes allégées par `select` explicite (page Notes et 3 listes déroulantes de clients), purge des tables qui grossissaient sans fin (journal d'emails, tentatives de connexion, connexions client) dans la tâche quotidienne existante. 369 lignes supprimées pour 168 ajoutées. Détails et points volontairement non touchés : section "Passe de nettoyage du code" |

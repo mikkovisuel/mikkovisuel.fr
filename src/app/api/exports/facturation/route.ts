@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { getAdminSession } from "@/lib/dal";
+import { downloadResponse } from "@/lib/export-response";
 import { generateMonthlyRecapPdf } from "@/lib/monthly-recap";
-import { logAuditEvent } from "@/lib/audit-log";
-import { getClientIp } from "@/lib/request-ip";
 
 // Récapitulatif mensuel des tâches terminées, PDF téléchargé à la demande
 // (rien n'est enregistré côté app — demande explicite du 2026-09-02, "juste
@@ -35,20 +34,11 @@ export async function GET(request: Request) {
   }
   const { buffer, fileName } = result;
 
-  await logAuditEvent({
-    actorType: "ADMIN",
-    actorId: admin.id,
-    actorLabel: admin.email,
-    action: "data_export",
-    targetType: "Export",
-    targetLabel: fileName,
-    ipAddress: await getClientIp(),
-  });
-
-  return new NextResponse(new Uint8Array(buffer), {
-    headers: {
-      "Content-Type": "application/pdf",
-      "Content-Disposition": `${preview ? "inline" : "attachment"}; filename="${fileName}"`,
-    },
+  return downloadResponse({
+    admin,
+    fileName,
+    contentType: "application/pdf",
+    body: new Uint8Array(buffer),
+    disposition: preview ? "inline" : "attachment",
   });
 }

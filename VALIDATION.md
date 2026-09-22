@@ -843,6 +843,21 @@ Code développé par une autre session Claude Code (branche `claude/hub-bridge`,
 | Tableau de bord "Réseaux — aujourd'hui" | Données de test | ✅ "À publier (1)", "En attente du client (1)", "Créations en cours (0)" et "1 publication publiée sans lien du post" | — | — | 2026-09-22 |
 | Lien du post ajouté après coup | Lien Instagram valide sur une publication déjà publiée | ✅ Encart "Lien du post manquant" remplacé par "Voir le post publié" ; repère "Lien manquant" retiré de la liste | Champ vide ; lien sans `https://` | ✅ "Collez le lien du post." ; "Lien invalide (il doit commencer par http:// ou https://)." — **saisie conservée** | 2026-09-22 |
 
+## Passe de nettoyage du code (2026-09-22)
+
+`tsc --noEmit`, lint complet et `npm run build` propres après chaque lot. Passe à comportement constant : la vérification a donc porté sur l'**absence de régression** — toutes les pages d'administration, les 8 exports et les 6 tâches planifiées exercés pour de vrai, en dev local avec une vraie session admin.
+
+| Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |
+|---|---|---|---|---|---|
+| Exports (8 routes refactorées) | Téléchargement des 8 exports : clients.csv, documents.csv, taches.csv, guide PDF, sauvegarde .zip, rapport client PDF, facturation PDF, facturation en aperçu | ✅ 200 pour les 8, types corrects (csv / pdf / zip), **noms de fichiers identiques à avant** la mise en commun du `slugify`, aperçu bien en `inline` et téléchargement en `attachment` | Sans session admin | ✅ 403 | 2026-09-22 |
+| Journalisation des exports | Les 8 téléchargements ci-dessus | ✅ **8 entrées `data_export`** dans la piste d'audit, avec le bon nom de fichier — la journalisation déplacée dans le module commun fonctionne | — | — | 2026-09-22 |
+| Zip des visuels d'une publication | — | ✅ Désormais journalisé lui aussi (il ne l'était pas) | — | — | 2026-09-22 |
+| Tâches planifiées (garde factorisée) | Les 6 routes `/api/cron/*` appelées avec le secret | ✅ Les 6 répondent leur résultat habituel (purges, rappels, récapitulatif hebdomadaire) | Les 6 appelées sans secret | ✅ **401 pour les 6** | 2026-09-22 |
+| Purge des journaux (nouvelle) | Premier passage sur la base de développement | ✅ `{"purgedCount":8,"emailLogsPurged":0,"loginAttemptsPurged":65,"clientLoginsPurged":0}` — 8 sessions expirées et 65 tentatives de connexion obsolètes réellement supprimées | Second passage immédiat | ✅ Tout à 0, rien de plus à purger | 2026-09-22 |
+| Pages d'administration (requêtes allégées) | Les 14 pages ouvertes : tableau de bord, Notes, Tâches, Nouvelle tâche, Administratif, Réseaux, Clients, Prospection, Réglages, Planning, Audit, Contacts, Portfolio | ✅ 200 partout, rendu inchangé | — | — | 2026-09-22 |
+| Site public | Accueil et une galerie du portfolio | ✅ 200 sur les deux | `/portfolio` sans galerie | ✅ 404 — comportement d'avant la passe (il n'existe pas de page d'index) | 2026-09-22 |
+| Code mort supprimé | `form-submit-button.tsx`, `task-row.tsx`, `groupTasksByClient`, 5 SVG du gabarit Next | ✅ Aucun import restant (vérifié avant suppression), build propre | — | — | 2026-09-22 |
+
 ## Points restant ouverts pour une prochaine passe de validation
 
 - Glisser-déposer et `<select>` natif du Kanban Prospection (limite outil, voir ci-dessus).

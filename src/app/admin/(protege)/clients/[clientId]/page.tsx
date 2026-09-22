@@ -320,7 +320,7 @@ export default async function ClientDetailPage({
         </div>
 
         {/* Même tableau que /admin/taches (demande du 2026-07-30) plutôt que
-            les cartes empilées de `TaskRow` : mêmes colonnes, même tri, mêmes
+            les cartes empilées d'autrefois : mêmes colonnes, même tri, mêmes
             actions groupées. `basePath` garde les liens de tri sur la fiche.
             Les terminées sont repliées, comme sur la liste globale. */}
         {(() => {

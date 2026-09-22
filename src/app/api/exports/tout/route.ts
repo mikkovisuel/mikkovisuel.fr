@@ -1,8 +1,7 @@
 import { NextResponse } from "next/server";
 import { getAdminSession } from "@/lib/dal";
+import { downloadResponse } from "@/lib/export-response";
 import { createBackupStream } from "@/lib/backup";
-import { logAuditEvent } from "@/lib/audit-log";
-import { getClientIp } from "@/lib/request-ip";
 
 // Sauvegarde complète (bouton sur /admin/exports) : les 3 CSV de métadonnées
 // **et** tous les fichiers réels — documents, livrables, pièces jointes,
@@ -26,25 +25,15 @@ export async function GET() {
 
   const dateStamp = new Date().toISOString().slice(0, 10);
 
-  await logAuditEvent({
-    actorType: "ADMIN",
-    actorId: admin.id,
-    actorLabel: admin.email,
-    action: "data_export",
-    targetType: "Export",
-    targetLabel: `mikko-visuel-sauvegarde-${dateStamp}.zip`,
-    ipAddress: await getClientIp(),
-  });
-
   const stream = await createBackupStream();
 
-  return new NextResponse(stream, {
-    headers: {
-      "Content-Type": "application/zip",
-      "Content-Disposition": `attachment; filename="mikko-visuel-sauvegarde-${dateStamp}.zip"`,
-      // Pas de `Content-Length` : la taille finale n'est pas connue à l'avance
-      // puisque l'archive est produite au fil de l'eau.
-      "Cache-Control": "no-store",
-    },
+  return downloadResponse({
+    admin,
+    fileName: `mikko-visuel-sauvegarde-${dateStamp}.zip`,
+    contentType: "application/zip",
+    body: stream,
+    // Pas de `Content-Length` : la taille finale n'est pas connue à l'avance
+    // puisque l'archive est produite au fil de l'eau.
+    headers: { "Cache-Control": "no-store" },
   });
 }
