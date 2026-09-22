@@ -20,6 +20,8 @@ export const SocialPostSchema = z.object({
 export interface SocialPostFormValues {
   clientId?: string;
   categoryId?: string;
+  /** Variantes de légende par réseau (slug → texte). */
+  captionVariants?: Record<string, string>;
   title: string;
   networks: string[];
   format: string;
@@ -82,4 +84,13 @@ export const SocialPostNoteSchema = z.object({
     .trim()
     .min(1, { message: "La note est vide." })
     .max(4000, { message: "Note trop longue (4 000 caractères maximum)." }),
+});
+
+// Message de l'échange admin ↔ client sur une publication (2026-09-18).
+export const SocialPostCommentSchema = z.object({
+  body: z
+    .string()
+    .trim()
+    .min(1, { message: "Le message est vide." })
+    .max(4000, { message: "Message trop long (4 000 caractères maximum)." }),
 });

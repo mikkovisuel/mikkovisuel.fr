@@ -7,6 +7,7 @@ import {
   submitSocialPostForValidation,
   validateSocialPostByAdmin,
   markSocialPostPublished,
+  setSocialPostPublishedUrl,
 } from "@/lib/actions/social-posts";
 import { SOCIAL_POST_STATUS_META, type SocialPostStatus } from "@/lib/social-posts";
 import { useFormSubmit } from "@/lib/use-form-submit";
@@ -42,6 +43,12 @@ export function SocialPostWorkflow({
     pending: publishPending,
     state: publishState,
   });
+
+  const [linkState, linkAction, linkPending] = useActionState(
+    setSocialPostPublishedUrl.bind(null, postId),
+    undefined,
+  );
+  const { onSubmit: linkSubmit } = useFormSubmit(linkAction, { pending: linkPending, state: linkState });
 
   const isDraft = status === "idee" || status === "redaction";
 
@@ -154,7 +161,37 @@ export function SocialPostWorkflow({
               <ArrowSquareOut size={14} weight="regular" />
             </a>
           ) : (
-            <p className="text-sm text-ink-muted">Publiée (aucun lien renseigné).</p>
+            // Rappel du lien manquant (2026-09-18) : sans lien, le client ne
+            // retrouve pas le post et le rapport mensuel est incomplet.
+            <form
+              action={linkAction}
+              onSubmit={linkSubmit}
+              className="grid w-full gap-2 rounded-xl border border-amber-500/40 bg-amber-500/5 p-3"
+            >
+              <p className="text-sm font-medium text-ink">Lien du post manquant</p>
+              <p className="text-xs text-ink-muted">
+                Sans lien, le client ne retrouve pas le post et le rapport mensuel est incomplet.
+              </p>
+              <div className="flex flex-wrap gap-2">
+                <input
+                  name="publishedUrl"
+                  type="url"
+                  required
+                  placeholder="https://www.instagram.com/p/..."
+                  className={INPUT}
+                  aria-label="Lien du post publié"
+                />
+                <button type="submit" disabled={linkPending} className={PRIMARY}>
+                  {linkPending ? "..." : "Ajouter le lien"}
+                </button>
+              </div>
+              {linkState?.error && (
+                <span className="flex items-center gap-1 text-sm text-danger">
+                  <WarningCircle size={16} weight="fill" />
+                  {linkState.error}
+                </span>
+              )}
+            </form>
           )}
           <button
             type="button"

@@ -82,7 +82,15 @@ export function SocialTaskRequestForm({
   );
 }
 
-export function SocialPostNoteForm({ action }: { action: Action }) {
+export function SocialPostNoteForm({
+  action,
+  placeholder = "Ajouter une note (visible de vous seul)",
+  submitLabel = "Ajouter la note",
+}: {
+  action: Action;
+  placeholder?: string;
+  submitLabel?: string;
+}) {
   const [state, formAction, pending] = useActionState(action, undefined);
   const { formRef, onSubmit } = useFormSubmit(formAction, { pending, state, resetOnSuccess: true });
   return (
@@ -91,12 +99,59 @@ export function SocialPostNoteForm({ action }: { action: Action }) {
         name="body"
         required
         rows={2}
-        placeholder="Ajouter une note (visible de vous seul)"
+        placeholder={placeholder}
         className={`${INPUT} resize-y`}
       />
       <div className="flex flex-wrap items-center gap-3">
         <button type="submit" disabled={pending} className={SUBMIT}>
-          {pending ? "Ajout..." : "Ajouter la note"}
+          {pending ? "Envoi..." : submitLabel}
+        </button>
+        <ErrorMessage state={state} />
+      </div>
+    </form>
+  );
+}
+
+// Dupliquer une publication (2026-09-18) : vers une autre date et/ou un
+// autre client ; redirige vers la copie.
+export function SocialPostDuplicateForm({
+  action,
+  clients,
+  defaultClientId,
+  defaultScheduledAt,
+}: {
+  action: Action;
+  clients: { id: string; name: string }[];
+  defaultClientId: string;
+  /** Valeur `datetime-local`, heure de Paris, ou "". */
+  defaultScheduledAt: string;
+}) {
+  const [state, formAction, pending] = useActionState(action, undefined);
+  const { onSubmit } = useFormSubmit(formAction, { pending, state });
+  return (
+    <form action={formAction} onSubmit={onSubmit} className="grid gap-3">
+      <div className="flex flex-wrap gap-3">
+        <label className="grid gap-1 text-xs text-ink-muted">
+          Client
+          <select name="clientId" defaultValue={defaultClientId} className={INPUT}>
+            {clients.map((client) => (
+              <option key={client.id} value={client.id}>
+                {client.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="grid gap-1 text-xs text-ink-muted">
+          Nouvelle date (Paris)
+          <input name="scheduledAt" type="datetime-local" defaultValue={defaultScheduledAt} className={INPUT} />
+        </label>
+      </div>
+      <p className="text-xs text-ink-muted">
+        Copie en « Idée » : textes, variantes, catégorie et visuels repris ; ni notes, ni échange, ni validation.
+      </p>
+      <div className="flex flex-wrap items-center gap-3">
+        <button type="submit" disabled={pending} className={SUBMIT}>
+          {pending ? "Duplication..." : "Dupliquer"}
         </button>
         <ErrorMessage state={state} />
       </div>

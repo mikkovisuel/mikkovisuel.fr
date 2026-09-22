@@ -19,7 +19,12 @@ import {
   isSocialPostStatus,
   networkLabel,
   toParisWallClockDate,
+  toParisDateTimeLocal,
+  isSameParisDay,
+  parseParisDateTimeLocal,
+  slotOccurrencesInMonth,
 } from "@/lib/social-posts";
+import { moveSocialPostToDay } from "@/lib/actions/social-posts";
 
 export const metadata: Metadata = {
   title: "Réseaux sociaux — Admin Mikko Visuel",
@@ -114,6 +119,9 @@ function PostList({ posts, now }: { posts: PostRow[]; now: Date }) {
                   {formatSchedule(post.scheduledAt)}
                 </span>
                 {late && <span className="block text-xs text-danger">En retard</span>}
+                {post.status === SOCIAL_POST_STATUS.PUBLIE && !post.publishedUrl && (
+                  <span className="block text-xs text-amber-600 dark:text-amber-400">Lien manquant</span>
+                )}
               </span>
               {meta && <StatusBadge label={meta.label} color={meta.color} />}
             </Link>
@@ -263,6 +271,84 @@ export default async function SocialPostsPage({
     return [parisNow.getFullYear(), parisNow.getMonth()];
   })();
 
+  // Mois affiché, bornes en heure de Paris (calendrier, cases fantômes,
+  // équilibre du mois).
+  const pad = (n: number) => String(n).padStart(2, "0");
+  const monthStart = parseParisDateTimeLocal(`${calendarYear}-${pad(calendarMonth + 1)}-01T00:00`)!;
+  const monthEnd = parseParisDateTimeLocal(
+    calendarMonth === 11 ? `${calendarYear + 1}-01-01T00:00` : `${calendarYear}-${pad(calendarMonth + 2)}-01T00:00`,
+  )!;
+  const monthLabel = new Intl.DateTimeFormat("fr-FR", { month: "long", year: "numeric", timeZone: "UTC" }).format(
+    new Date(Date.UTC(calendarYear, calendarMonth, 1)),
+  );
+
+  // Créneaux récurrents sans publication ce jour-là : cases fantômes du
+  // calendrier (2026-09-18), un clic ouvre la création pré-remplie.
+  const ghostEntries =
+    view === "calendrier"
+      ? await (async () => {
+          const slots = await db.socialRecurringSlot.findMany({
+            where: { active: true, client: EXCLUDE_DEMO_CLIENT, ...(clientId ? { clientId } : {}) },
+            include: { client: { select: { name: true } } },
+          });
+          if (slots.length === 0) return [];
+          const monthPosts = await db.socialPost.findMany({
+            where: {
+              clientId: { in: slots.map((slot) => slot.clientId) },
+              scheduledAt: { gte: monthStart, lt: monthEnd },
+            },
+            select: { clientId: true, scheduledAt: true },
+          });
+          return slots.flatMap((slot) =>
+            slotOccurrencesInMonth(slot.weekday, slot.time, calendarYear, calendarMonth, now)
+              .filter(
+                (occurrence) =>
+                  !monthPosts.some(
+                    (post) =>
+                      post.clientId === slot.clientId &&
+                      post.scheduledAt &&
+                      isSameParisDay(post.scheduledAt, occurrence),
+                  ),
+              )
+              .map((occurrence) => {
+                const params = new URLSearchParams({
+                  clientId: slot.clientId,
+                  titre: slot.title,
+                  format: slot.format,
+                  reseaux: slot.networks.join(","),
+                  date: toParisDateTimeLocal(occurrence),
+                });
+                return {
+                  id: `creneau-${slot.id}-${occurrence.getTime()}`,
+                  title: `${slot.client.name} · ${slot.title}`,
+                  eventDate: toParisWallClockDate(occurrence),
+                  status: { color: "slate", label: "Créneau à préparer" },
+                  href: `/admin/reseaux/nouveau?${params.toString()}`,
+                  ghost: true,
+                };
+              }),
+          );
+        })()
+      : [];
+
+  // Équilibre du mois pour le client filtré (2026-09-18) : répartition des
+  // publications du mois affiché par catégorie, zéros compris — c'est ce
+  // qui manque qui compte.
+  const monthBalance = clientId
+    ? await (async () => {
+        const monthPosts = await db.socialPost.findMany({
+          where: { clientId, scheduledAt: { gte: monthStart, lt: monthEnd } },
+          select: { categoryId: true },
+        });
+        const counts = categories.map((item) => ({
+          label: item.label,
+          count: monthPosts.filter((post) => post.categoryId === item.id).length,
+        }));
+        const uncategorized = monthPosts.filter((post) => !post.categoryId).length;
+        return { total: monthPosts.length, counts, uncategorized };
+      })()
+    : null;
+
   return (
     <div className="mx-auto max-w-7xl 2xl:max-w-[100rem] px-4 py-10 sm:px-6 lg:px-8">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -379,11 +465,26 @@ export default async function SocialPostsPage({
         </nav>
       </div>
 
+      {monthBalance && (
+        <p className="mt-4 text-sm text-ink-muted">
+          <span className="capitalize">{monthLabel}</span> : {monthBalance.total} publication
+          {monthBalance.total > 1 ? "s" : ""}
+          {monthBalance.counts.map((item) => (
+            <span key={item.label} className={item.count === 0 ? "text-ink-muted/60" : "text-ink"}>
+              {" · "}
+              {item.label} {item.count}
+            </span>
+          ))}
+          {monthBalance.uncategorized > 0 && <span> · Sans catégorie {monthBalance.uncategorized}</span>}
+        </p>
+      )}
+
       {view === "grille" ? (
         <InstagramGrid posts={posts} clientChosen={Boolean(clientId)} />
       ) : view === "calendrier" ? (
         <TaskCalendarView
-          tasks={posts.map((post) => {
+          tasks={[
+            ...posts.map((post) => {
             const meta = isSocialPostStatus(post.status) ? SOCIAL_POST_STATUS_META[post.status] : null;
             return {
               id: post.id,
@@ -398,7 +499,10 @@ export default async function SocialPostsPage({
                 ...(requestedTaskStatus(post) ? [`Création : ${requestedTaskStatus(post)!.label}`] : []),
               ],
             };
-          })}
+          }),
+            ...ghostEntries,
+          ]}
+          onMove={moveSocialPostToDay}
           year={calendarYear}
           month={calendarMonth}
           basePath="/admin/reseaux"
@@ -438,6 +542,12 @@ export default async function SocialPostsPage({
               <h2 className="text-sm font-medium text-ink">
                 Publiées {published.length === PUBLISHED_LIMIT ? `(${PUBLISHED_LIMIT} plus récentes)` : `(${published.length})`}
               </h2>
+              {published.some((post) => !post.publishedUrl) && (
+                <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+                  {published.filter((post) => !post.publishedUrl).length} sans lien du post : ouvrez-les pour l&apos;ajouter
+                  (le client et le rapport mensuel en ont besoin).
+                </p>
+              )}
               <div className="mt-3">
                 <PostList posts={published} now={now} />
               </div>

@@ -242,3 +242,100 @@ export function slotReminderTime(occurrence: Date, daysBefore: number): Date {
   const latest = new Date(occurrence.getTime() - 60 * 60 * 1000);
   return morning && morning < latest ? morning : latest;
 }
+
+// --- Variantes de légende par réseau (2026-09-18) --------------------------
+
+/** Lit `SocialPost.captionVariants` (JSON libre en base) de façon sûre. */
+export function readCaptionVariants(value: unknown): Partial<Record<SocialNetworkSlug, string>> {
+  if (!value || typeof value !== "object" || Array.isArray(value)) return {};
+  const result: Partial<Record<SocialNetworkSlug, string>> = {};
+  for (const network of SOCIAL_NETWORKS) {
+    const text = (value as Record<string, unknown>)[network.slug];
+    if (typeof text === "string" && text.trim()) result[network.slug] = text;
+  }
+  return result;
+}
+
+/** Texte à publier sur un réseau : sa variante, sinon le texte commun. */
+export function captionForNetwork(
+  post: { caption: string | null; captionVariants: unknown },
+  network: string,
+): string | null {
+  return readCaptionVariants(post.captionVariants)[network as SocialNetworkSlug] ?? post.caption;
+}
+
+// --- Avant / après une demande de modification ----------------------------
+
+export type DiffPart = { kind: "same" | "added" | "removed"; text: string };
+
+/**
+ * Différence mot à mot (plus longue sous-séquence commune) entre deux
+ * textes, espaces et retours à la ligne conservés. Suffisant pour des
+ * légendes de quelques centaines de mots ; au-delà de 2 000 mots de chaque
+ * côté, on renvoie simplement "tout retiré / tout ajouté" pour ne pas
+ * allouer une matrice démesurée.
+ */
+export function diffWords(before: string, after: string): DiffPart[] {
+  const a = before.split(/(\s+)/).filter((part) => part !== "");
+  const b = after.split(/(\s+)/).filter((part) => part !== "");
+  if (a.length > 2000 || b.length > 2000) {
+    return [
+      { kind: "removed", text: before },
+      { kind: "added", text: after },
+    ];
+  }
+  const lcs: number[][] = Array.from({ length: a.length + 1 }, () => new Array<number>(b.length + 1).fill(0));
+  for (let i = a.length - 1; i >= 0; i--) {
+    for (let j = b.length - 1; j >= 0; j--) {
+      lcs[i][j] = a[i] === b[j] ? lcs[i + 1][j + 1] + 1 : Math.max(lcs[i + 1][j], lcs[i][j + 1]);
+    }
+  }
+  const parts: DiffPart[] = [];
+  const push = (kind: DiffPart["kind"], text: string) => {
+    const last = parts[parts.length - 1];
+    if (last?.kind === kind) last.text += text;
+    else parts.push({ kind, text });
+  };
+  let i = 0;
+  let j = 0;
+  while (i < a.length && j < b.length) {
+    if (a[i] === b[j]) {
+      push("same", a[i]);
+      i++;
+      j++;
+    } else if (lcs[i + 1][j] >= lcs[i][j + 1]) {
+      push("removed", a[i++]);
+    } else {
+      push("added", b[j++]);
+    }
+  }
+  while (i < a.length) push("removed", a[i++]);
+  while (j < b.length) push("added", b[j++]);
+  return parts;
+}
+
+// --- Créneaux récurrents dans le calendrier --------------------------------
+
+/**
+ * Occurrences d'un créneau (jour ISO + "HH:mm", heure de Paris) sur un mois
+ * calendaire donné (`month` 0-11), à partir de `from` inclus.
+ */
+export function slotOccurrencesInMonth(
+  weekday: number,
+  time: string,
+  year: number,
+  month: number,
+  from: Date,
+): Date[] {
+  if (!/^\d{2}:\d{2}$/.test(time)) return [];
+  const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+  const result: Date[] = [];
+  for (let day = 1; day <= daysInMonth; day++) {
+    const date = new Date(Date.UTC(year, month, day));
+    const isoWeekday = date.getUTCDay() === 0 ? 7 : date.getUTCDay();
+    if (isoWeekday !== weekday) continue;
+    const occurrence = parseParisDateTimeLocal(`${year}-${pad(month + 1)}-${pad(day)}T${time}`);
+    if (occurrence && occurrence >= from) result.push(occurrence);
+  }
+  return result;
+}

@@ -4,6 +4,7 @@ import { sendEmailToAdmins } from "@/lib/email/service";
 import { escapeHtml } from "@/lib/html-escape";
 import {
   SOCIAL_POST_STATUS,
+  captionForNetwork,
   formatLabel,
   formatSchedule,
   isSameParisDay,
@@ -41,7 +42,21 @@ export async function sendDueSocialPostReminders() {
         <li>
           <strong>${escapeHtml(post.client.name)}</strong> — ${escapeHtml(post.title)}
           (${escapeHtml(post.networks.map(networkLabel).join(", "))}, prévue ${escapeHtml(formatSchedule(post.scheduledAt))})
-          — <a href="${SITE_URL}/admin/reseaux/${post.id}">ouvrir</a>
+          — <a href="${SITE_URL}/admin/reseaux/${post.id}">ouvrir le kit de publication</a>
+          ${post.networks
+            .map((network) => {
+              // Texte prêt à copier depuis le téléphone (kit de publication,
+              // 2026-09-18) : variante du réseau sinon texte commun, puis
+              // hashtags.
+              const text = [captionForNetwork(post, network), post.hashtags].filter(Boolean).join("\n\n");
+              return text
+                ? `<p style="margin:8px 0 0"><strong>Texte ${escapeHtml(networkLabel(network))} :</strong></p>
+                   <pre style="white-space:pre-wrap;font-family:inherit;margin:4px 0 0;padding:8px;background:#f4f4f5;border-radius:6px">${escapeHtml(text)}</pre>`
+                : "";
+            })
+            // Deux réseaux au texte identique : un seul bloc suffit.
+            .filter((block, index, blocks) => block && blocks.findIndex((other) => other.replace(/Texte [^<]+/, "") === block.replace(/Texte [^<]+/, "")) === index)
+            .join("")}
         </li>`,
     )
     .join("");

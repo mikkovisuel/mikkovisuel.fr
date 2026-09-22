@@ -1009,6 +1009,14 @@ model SocialPost {
   format              String
   caption             String?       @db.Text
   hashtags            String?       @db.Text
+  // Variantes de légende par réseau (2026-09-18), ex. {"linkedin": "..."} —
+  // facultatives : un réseau absent reprend `caption`.
+  captionVariants     Json?
+  // Version refusée par le client (2026-09-18, "voir les changements") :
+  // texte et hashtags au moment de la demande de modification, pour
+  // afficher avant/après au renvoi. Effacés à la validation.
+  previousCaption     String?       @db.Text
+  previousHashtags    String?       @db.Text
   // Instant exact (UTC) de publication prévue. La saisie et l'affichage se
   // font en heure de Paris, explicitement : le serveur de production tourne
   // en UTC (vérifié), une conversion implicite décalerait d'1 à 2 h.
@@ -1048,14 +1056,31 @@ model SocialPost {
   createdAt           DateTime      @default(now())
   updatedAt           DateTime      @updatedAt
 
-  media SocialPostMedia[]
-  notes SocialPostNote[]
+  media    SocialPostMedia[]
+  notes    SocialPostNote[]
+  comments SocialPostComment[]
 
   @@index([clientId])
   @@index([status])
   @@index([scheduledAt])
   @@index([sourceTaskId])
   @@index([categoryId])
+}
+
+// Échange admin ↔ client sur une publication (2026-09-18) — visible des
+// deux côtés, contrairement à SocialPostNote. `authorName` dénormalisé
+// comme TaskComment.
+model SocialPostComment {
+  id         String     @id @default(cuid())
+  postId     String
+  post       SocialPost @relation(fields: [postId], references: [id], onDelete: Cascade)
+  authorType String
+  authorId   String
+  authorName String
+  body       String     @db.Text
+  createdAt  DateTime   @default(now())
+
+  @@index([postId])
 }
 
 // Notes internes d'une publication (2026-09-18) — fil daté, visible de

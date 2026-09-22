@@ -1,6 +1,7 @@
 "use server";
 
 import { randomUUID } from "node:crypto";
+import { Prisma } from "@/generated/prisma/client";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { db } from "@/lib/db";
@@ -13,6 +14,8 @@ import { contentMatchesDeclaredType } from "@/lib/file-signature";
 import { notifiableEmailsFromContacts } from "@/lib/clients";
 import {
   ADMIN_SELECTABLE_STATUSES,
+  CLIENT_VISIBLE_STATUSES,
+  SOCIAL_NETWORKS,
   SOCIAL_POST_STATUS,
   formatSchedule,
   parseParisDateTimeLocal,
@@ -25,6 +28,7 @@ import {
   SocialPostPublishSchema,
   SocialTaskRequestSchema,
   SocialPostNoteSchema,
+  SocialPostCommentSchema,
   optionalIsoDate,
   type SocialPostFormState,
   type SocialPostRefusalState,
@@ -76,6 +80,18 @@ function scheduleFromForm(raw: string | undefined): { ok: true; value: Date | nu
   return value ? { ok: true, value } : { ok: false };
 }
 
+// Variantes de légende par réseau (champs `variant_<réseau>`) : un champ
+// vide = le réseau reprend le texte commun. `null` si aucune variante.
+function variantsFromForm(formData: FormData): { ok: true; value: Record<string, string> | null } | { ok: false } {
+  const variants: Record<string, string> = {};
+  for (const network of SOCIAL_NETWORKS) {
+    const text = String(formData.get(`variant_${network.slug}`) ?? "").trim();
+    if (text.length > 4000) return { ok: false };
+    if (text) variants[network.slug] = text;
+  }
+  return { ok: true, value: Object.keys(variants).length > 0 ? variants : null };
+}
+
 // Catégorie choisie dans le formulaire : vide = aucune ; sinon doit
 // appartenir à la liste "Catégories de publication" (un id arbitraire
 // envoyé à la main est refusé plutôt que relié à n'importe quel élément).
@@ -117,6 +133,8 @@ export async function createSocialPost(
   if (!schedule.ok) return { error: "Date de publication invalide." };
   const category = await categoryFromForm(formData);
   if (!category.ok) return { error: "Catégorie inconnue." };
+  const variants = variantsFromForm(formData);
+  if (!variants.ok) return { error: "Texte par réseau trop long (4 000 caractères maximum)." };
   // Case "Demander une création" : le type est vérifié avant de créer quoi
   // que ce soit, pour ne pas laisser une publication sans sa tâche.
   const requestTask = formData.get("requestTask") === "on";
@@ -137,6 +155,7 @@ export async function createSocialPost(
       hashtags: parsed.data.hashtags || null,
       scheduledAt: schedule.value,
       categoryId: category.value,
+      captionVariants: variants.value ?? Prisma.DbNull,
     },
   });
 
@@ -179,6 +198,8 @@ export async function updateSocialPost(
   if (!schedule.ok) return { error: "Date de publication invalide." };
   const category = await categoryFromForm(formData);
   if (!category.ok) return { error: "Catégorie inconnue." };
+  const variants = variantsFromForm(formData);
+  if (!variants.ok) return { error: "Texte par réseau trop long (4 000 caractères maximum)." };
 
   const scheduleChanged = (post.scheduledAt?.getTime() ?? null) !== (schedule.value?.getTime() ?? null);
 
@@ -192,6 +213,7 @@ export async function updateSocialPost(
       hashtags: parsed.data.hashtags || null,
       scheduledAt: schedule.value,
       categoryId: category.value,
+      captionVariants: variants.value ?? Prisma.DbNull,
       // Nouvelle date = nouveau rappel à envoyer le moment venu.
       ...(scheduleChanged ? { reminderSentAt: null } : {}),
     },
@@ -305,6 +327,8 @@ export async function validateSocialPost(postId: string) {
       validatedByName: clientUser.name,
       refusalReason: null,
       refusedAt: null,
+      previousCaption: null,
+      previousHashtags: null,
     },
   });
   await notifyAdminsOfClientDecision(post, { kind: "validated", by: clientUser.name });
@@ -337,6 +361,9 @@ export async function refuseSocialPost(
       status: SOCIAL_POST_STATUS.A_MODIFIER,
       refusalReason: parsed.data.reason,
       refusedAt: new Date(),
+      // Version refusée, pour montrer "avant / après" au renvoi.
+      previousCaption: post.caption ?? "",
+      previousHashtags: post.hashtags ?? "",
     },
   });
   await notifyAdminsOfClientDecision(post, {
@@ -365,6 +392,8 @@ export async function validateSocialPostByAdmin(postId: string) {
       validatedByName: "Mikko (au nom du client)",
       refusalReason: null,
       refusedAt: null,
+      previousCaption: null,
+      previousHashtags: null,
     },
   });
   revalidateSocialPaths(postId);
@@ -641,4 +670,191 @@ export async function deleteSocialPostNote(noteId: string) {
   if (!note) return;
   await db.socialPostNote.delete({ where: { id: noteId } });
   revalidateSocialPaths(note.postId);
+}
+
+// Glisser-déposer dans le calendrier (2026-09-18) : change le jour en
+// gardant l'heure de Paris. Même effet qu'une modification de date dans le
+// formulaire (rappel "à publier" remis à zéro).
+export async function moveSocialPostToDay(postId: string, day: string): Promise<{ error?: string }> {
+  await verifyAdminSession();
+  const post = await db.socialPost.findUnique({ where: { id: postId } });
+  if (!post) return { error: "Publication introuvable." };
+  if (!post.scheduledAt) return { error: "Publication sans date." };
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(day)) return { error: "Jour invalide." };
+
+  const time = toParisDateTimeLocal(post.scheduledAt).slice(11);
+  const scheduledAt = parseParisDateTimeLocal(`${day}T${time}`);
+  if (!scheduledAt) return { error: "Jour invalide." };
+  if (scheduledAt.getTime() === post.scheduledAt.getTime()) return {};
+
+  await db.socialPost.update({ where: { id: postId }, data: { scheduledAt, reminderSentAt: null } });
+  revalidateSocialPaths(postId);
+  return {};
+}
+
+// Duplication (2026-09-18) : nouveau brouillon "Idée" avec le même contenu
+// (textes, variantes, catégorie, réseaux, format) et des **copies** des
+// visuels. Ni les notes, ni l'échange avec le client, ni la tâche liée, ni
+// le suivi de validation ne sont repris.
+export async function duplicateSocialPost(
+  postId: string,
+  _prev: SocialPostFormState,
+  formData: FormData,
+): Promise<SocialPostFormState> {
+  await verifyAdminSession();
+  const source = await db.socialPost.findUnique({
+    where: { id: postId },
+    include: { media: { orderBy: { sortOrder: "asc" } } },
+  });
+  if (!source) return { error: "Publication introuvable." };
+
+  const clientId = String(formData.get("clientId") ?? "");
+  const client = clientId ? await db.client.findUnique({ where: { id: clientId }, select: { id: true } }) : null;
+  if (!client) return { error: "Choisissez un client." };
+  const schedule = scheduleFromForm(String(formData.get("scheduledAt") ?? "") || undefined);
+  if (!schedule.ok) return { error: "Date de publication invalide." };
+
+  const copy = await db.socialPost.create({
+    data: {
+      clientId,
+      title: source.title,
+      networks: source.networks,
+      format: source.format,
+      caption: source.caption,
+      hashtags: source.hashtags,
+      captionVariants: source.captionVariants ?? Prisma.DbNull,
+      // La catégorie reste valable d'un client à l'autre (liste commune).
+      categoryId: source.categoryId,
+      scheduledAt: schedule.value,
+    },
+  });
+
+  const storage = getStorageAdapter();
+  for (const media of source.media) {
+    try {
+      const storageKey = `social-posts/${randomUUID()}`;
+      await storage.save(storageKey, await storage.read(media.storageKey));
+      await db.socialPostMedia.create({
+        data: {
+          postId: copy.id,
+          fileName: media.fileName,
+          storageKey,
+          mimeType: media.mimeType,
+          sizeBytes: media.sizeBytes,
+          storageBackend: storage.backend,
+          sortOrder: media.sortOrder,
+        },
+      });
+    } catch (error) {
+      console.error("duplicateSocialPost: copie impossible", media.id, error);
+    }
+  }
+
+  revalidateSocialPaths();
+  redirect(`/admin/reseaux/${copy.id}`);
+}
+
+// Échange admin ↔ client sur une publication (2026-09-18). Email à l'autre
+// partie à chaque message, comme les commentaires de tâche. Côté client,
+// seulement sur une publication qui lui est visible.
+export async function addSocialPostCommentByAdmin(
+  postId: string,
+  _prev: SocialPostFormState,
+  formData: FormData,
+): Promise<SocialPostFormState> {
+  const admin = await verifyAdminSession();
+  const parsed = SocialPostCommentSchema.safeParse({ body: formData.get("body") });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Le message est vide." };
+
+  const post = await db.socialPost.findUnique({
+    where: { id: postId },
+    include: { client: { include: { contacts: { include: { contact: true } } } } },
+  });
+  if (!post) return { error: "Publication introuvable." };
+  if (!CLIENT_VISIBLE_STATUSES.includes(post.status as SocialPostStatus)) {
+    return { error: "Le client ne voit pas encore cette publication : envoyez-la d'abord en validation." };
+  }
+
+  await db.socialPostComment.create({
+    data: { postId, authorType: "ADMIN", authorId: admin.id, authorName: "Mikko", body: parsed.data.body },
+  });
+  for (const to of notifiableEmailsFromContacts(post.client.contacts)) {
+    await sendEmail({
+      trigger: "social_post_comment",
+      to,
+      subject: `Nouveau message — ${post.title}`,
+      html: `
+        <p>Mikko a laissé un message sur la publication "${escapeHtml(post.title)}" :</p>
+        <blockquote>${escapeHtml(parsed.data.body)}</blockquote>
+        <p><a href="${SITE_URL}/espace-client/reseaux">Répondre depuis votre espace client</a></p>
+      `,
+    });
+  }
+  revalidateSocialPaths(postId);
+  return { saved: true };
+}
+
+export async function addSocialPostCommentByClient(
+  postId: string,
+  _prev: SocialPostFormState,
+  formData: FormData,
+): Promise<SocialPostFormState> {
+  const clientUser = await verifyClientSession();
+  assertNotDemo(clientUser);
+  const parsed = SocialPostCommentSchema.safeParse({ body: formData.get("body") });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Le message est vide." };
+
+  const post = await db.socialPost.findUnique({ where: { id: postId }, include: { client: true } });
+  if (
+    !post ||
+    post.clientId !== clientUser.clientId ||
+    !CLIENT_VISIBLE_STATUSES.includes(post.status as SocialPostStatus)
+  ) {
+    return { error: "Publication introuvable." };
+  }
+
+  await db.socialPostComment.create({
+    data: {
+      postId,
+      authorType: "CLIENT_USER",
+      authorId: clientUser.id,
+      authorName: clientUser.name,
+      body: parsed.data.body,
+    },
+  });
+  for (const to of await getAdminEmails()) {
+    await sendEmail({
+      trigger: "social_post_comment",
+      to,
+      subject: `Message de ${clientUser.name} — ${post.title} (${post.client.name})`,
+      html: `
+        <p>${escapeHtml(clientUser.name)} a laissé un message sur "${escapeHtml(post.title)}" (${escapeHtml(post.client.name)}) :</p>
+        <blockquote>${escapeHtml(parsed.data.body)}</blockquote>
+        <p><a href="${SITE_URL}/admin/reseaux/${post.id}">Ouvrir la publication</a></p>
+      `,
+    });
+  }
+  revalidateSocialPaths(postId);
+  return { saved: true };
+}
+
+// Lien ajouté après coup à une publication déjà marquée publiée
+// (2026-09-18, "rappel du lien publié") : le lien est ici obligatoire, et
+// la date de publication d'origine est conservée.
+export async function setSocialPostPublishedUrl(
+  postId: string,
+  _prev: SocialPostPublishState,
+  formData: FormData,
+): Promise<SocialPostPublishState> {
+  await verifyAdminSession();
+  const parsed = SocialPostPublishSchema.safeParse({ publishedUrl: formData.get("publishedUrl") ?? "" });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Lien invalide." };
+  if (!parsed.data.publishedUrl) return { error: "Collez le lien du post." };
+
+  const post = await db.socialPost.findUnique({ where: { id: postId } });
+  if (!post || post.status !== SOCIAL_POST_STATUS.PUBLIE) return { error: "Publication introuvable ou pas encore publiée." };
+
+  await db.socialPost.update({ where: { id: postId }, data: { publishedUrl: parsed.data.publishedUrl } });
+  revalidateSocialPaths(postId);
+  return undefined;
 }

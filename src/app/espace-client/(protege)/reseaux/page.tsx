@@ -7,6 +7,10 @@ import { FileGrid } from "@/components/file-grid";
 import { StatusBadge } from "@/components/status-badge";
 import { SocialPostValidateButtons } from "@/components/client/social-post-validate-buttons";
 import { SocialPostPreview } from "@/components/social-post-preview";
+import { SocialCaptionDiff, hasCaptionChanges } from "@/components/social-caption-diff";
+import { SocialPostThread } from "@/components/social-post-thread";
+import { SocialPostNoteForm } from "@/components/admin/social-post-task-note-forms";
+import { addSocialPostCommentByClient } from "@/lib/actions/social-posts";
 import {
   CLIENT_VISIBLE_STATUSES,
   SOCIAL_POST_STATUS,
@@ -15,13 +19,15 @@ import {
   formatSchedule,
   isSocialPostStatus,
   networkLabel,
+  captionForNetwork,
+  readCaptionVariants,
 } from "@/lib/social-posts";
 
 export const metadata: Metadata = {
   title: "Réseaux sociaux — Espace client Mikko Visuel",
 };
 
-type Post = Prisma.SocialPostGetPayload<{ include: { media: true } }>;
+type Post = Prisma.SocialPostGetPayload<{ include: { media: true; comments: true } }>;
 
 function PostCard({ post, readOnly, clientName }: { post: Post; readOnly: boolean; clientName: string }) {
   const meta = isSocialPostStatus(post.status) ? SOCIAL_POST_STATUS_META[post.status] : null;
@@ -43,7 +49,7 @@ function PostCard({ post, readOnly, clientName }: { post: Post; readOnly: boolea
       <div className="mt-4">
         <SocialPostPreview
           clientName={clientName}
-          caption={post.caption}
+          caption={captionForNetwork(post, "instagram")}
           hashtags={post.hashtags}
           media={post.media.map((item) => ({ id: item.id, mimeType: item.mimeType }))}
         />
@@ -57,6 +63,25 @@ function PostCard({ post, readOnly, clientName }: { post: Post; readOnly: boolea
           {post.caption && <p className="mt-2 whitespace-pre-wrap text-ink">{post.caption}</p>}
           {post.hashtags && <p className="mt-2 whitespace-pre-wrap text-ink-muted">{post.hashtags}</p>}
         </details>
+      )}
+
+      {/* Textes adaptés par réseau (2026-09-18), quand il y en a. */}
+      {Object.entries(readCaptionVariants(post.captionVariants))
+        .filter(([network]) => post.networks.includes(network))
+        .map(([network, text]) => (
+          <details key={network} className="mt-2 text-sm">
+            <summary className="cursor-pointer text-ink-muted hover:text-ink">Texte {networkLabel(network)}</summary>
+            <p className="mt-2 whitespace-pre-wrap text-ink">{text}</p>
+          </details>
+        ))}
+
+      {/* Avant / après une demande de modification (2026-09-18). */}
+      {post.status === SOCIAL_POST_STATUS.A_VALIDER && hasCaptionChanges(post) && (
+        <div className="mt-4 grid gap-3 rounded-xl border border-line bg-surface-elevated p-3">
+          <p className="text-sm font-medium text-ink">Ce qui a changé depuis votre demande</p>
+          <SocialCaptionDiff label="Texte" before={post.previousCaption ?? ""} after={post.caption ?? ""} />
+          <SocialCaptionDiff label="Hashtags" before={post.previousHashtags ?? ""} after={post.hashtags ?? ""} />
+        </div>
       )}
 
       {post.media.length > 1 && (
@@ -91,6 +116,26 @@ function PostCard({ post, readOnly, clientName }: { post: Post; readOnly: boolea
           <ArrowSquareOut size={14} weight="regular" />
         </a>
       )}
+
+      {/* Échange avec Mikko (2026-09-18) — une question, une précision,
+          sans passer par une demande de modification. */}
+      <details open={post.comments.length > 0} className="mt-5 border-t border-line pt-4">
+        <summary className="cursor-pointer text-sm font-medium text-ink">
+          Échanger avec Mikko{post.comments.length > 0 ? ` (${post.comments.length})` : ""}
+        </summary>
+        <div className="mt-3 grid gap-3">
+          <SocialPostThread comments={post.comments} viewer="CLIENT_USER" />
+          {readOnly ? (
+            <p className="text-xs text-ink-muted">Espace de démonstration : envoi désactivé.</p>
+          ) : (
+            <SocialPostNoteForm
+              action={addSocialPostCommentByClient.bind(null, post.id)}
+              placeholder="Une question, une précision ?"
+              submitLabel="Envoyer"
+            />
+          )}
+        </div>
+      </details>
     </article>
   );
 }
@@ -128,7 +173,7 @@ export default async function ClientSocialPostsPage() {
   // CLIENT_VISIBLE_STATUSES : le client ne reçoit que ce qui est prêt.
   const posts = await db.socialPost.findMany({
     where: { clientId: clientUser.clientId, status: { in: CLIENT_VISIBLE_STATUSES } },
-    include: { media: { orderBy: { sortOrder: "asc" } } },
+    include: { media: { orderBy: { sortOrder: "asc" } }, comments: { orderBy: { createdAt: "asc" } } },
     orderBy: [{ scheduledAt: { sort: "asc", nulls: "last" } }, { createdAt: "asc" }],
   });
 

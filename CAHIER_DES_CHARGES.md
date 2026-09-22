@@ -1942,6 +1942,65 @@ par défaut pour toutes les tâches existantes), nouvelle table
 `SocialPostNote`. Migration purement additive, qui crée aussi la liste et
 ses 3 valeurs (idempotente, ne touche à aucune autre liste).
 
+### 4.7 Calendrier éditorial — préparation, validation, publication (2026-09-22)
+
+Suggestions d'amélioration proposées puis choisies par le client (les deux
+non retenues — envoi groupé en validation, relance automatique du client à
+J-2 — restent notées ici comme pistes).
+
+**Préparation**
+
+- **Glisser-déposer dans le calendrier** : une publication déplacée d'un
+  jour à l'autre garde son heure (Paris) et voit son rappel "à publier"
+  remis à zéro, comme une modification de date au formulaire. Glisser-
+  déposer HTML natif, donc souris uniquement : sur téléphone, la date se
+  change depuis la fiche.
+- **Créneaux récurrents visibles dans le calendrier** : chaque occurrence à
+  venir sans publication ce jour-là apparaît en pointillés ("Créneau à
+  préparer") ; un clic ouvre la création pré-remplie (client, titre,
+  format, réseaux, date). Disparaît dès qu'une publication existe ce jour.
+- **Texte adapté par réseau** (`SocialPost.captionVariants`) : une variante
+  facultative par réseau ; vide = texte commun. Reprise partout (aperçu
+  Instagram, kit de publication, espace client).
+- **Dupliquer une publication** vers une autre date et/ou un autre client :
+  copie en "Idée" des textes, variantes, catégorie, réseaux, format et
+  **copies** des visuels ; ni notes, ni échange, ni validation, ni tâche
+  liée.
+- **Équilibre du mois** (client filtré) : répartition des publications du
+  mois affiché par catégorie, zéros compris — c'est ce qui manque qui
+  compte.
+
+**Validation**
+
+- **Échange avec le client** (`SocialPostComment`) : fil de messages sur
+  chaque publication, visible des deux côtés, avec email à l'autre partie à
+  chaque message (contacts notifiables seulement). Disponible à partir de
+  l'envoi en validation — jamais sur un brouillon, garde côté serveur
+  comprise. Les notes internes restent privées.
+- **Voir les changements** : le texte et les hashtags refusés sont
+  conservés (`previousCaption`, `previousHashtags`) à la demande de
+  modification, puis comparés mot à mot à la nouvelle version (ajouts
+  surlignés, suppressions barrées) côté admin **et** côté client. Effacés à
+  la validation.
+
+**Publication**
+
+- **Kit de publication** (publications validées ou publiées) : un bouton
+  "Copier le texte" par réseau (variante + hashtags), les visuels
+  téléchargeables un par un et en .zip numéroté (`/api/exports/reseaux/
+  [id]/visuels`, admin uniquement). Le texte prêt à coller est aussi
+  inclus dans l'email de rappel "à publier maintenant", pour publier depuis
+  le téléphone. Repli automatique si le presse-papiers est refusé, et
+  affichage du texte à copier à la main en dernier recours.
+- **Carte "Réseaux — aujourd'hui"** sur le tableau de bord admin : à
+  publier (retards signalés), en attente du client, créations en cours.
+- **Rappel du lien publié** : une publication marquée publiée sans lien
+  est signalée (carte, liste, tableau de bord) et le lien peut être ajouté
+  après coup, sans repasser par "Marquer comme publiée".
+
+Migration additive : `SocialPost.captionVariants`, `previousCaption`,
+`previousHashtags`, table `SocialPostComment`.
+
 ## Décisions techniques déléguées à Claude Code
 
 Le client a explicitement délégué ces choix :
@@ -2621,3 +2680,4 @@ Le client a explicitement délégué ces choix :
 | 2026-09-18 | "Pour les posts, ajoute des catégorisation (paramétrables, exemple : flyer soirée, contenu food, contenu club...) et dans la vue calendrier ne pas scaler les cases en fonction des textes : retour à la ligne automatique. Peux tu ajouter des notes à chaque tâches dans réseaux. Ajouter également une case à cocher ou un système pour "demander une infographie" ou "contenu" qui fera la création d'une tâche dans les tâches et ou on peut voir l'avancement de la tâche dans les cartons de publications des réseaux" — arbitrages : catégorie **unique, admin uniquement** ; **notes internes** ; **choix du type de tâche** ; tâche **invisible du client + visuels ajoutés automatiquement** | **Livré** : liste paramétrable "Catégories de publication" (filtre, badges), notes internes par publication, "Demander une création" (case à la création + section sur la fiche) créant une **tâche interne** dans Tâches, avancement affiché sur les cartes/le calendrier/la fiche, fichiers finaux copiés dans les visuels au passage "Terminé" (une seule fois). Tâches internes masquées partout côté client (pages, compteurs, fichiers, actions, emails, PDF remis au client). Calendrier à colonnes fixes avec retour à la ligne (profite aussi aux calendriers Tâches et espace client). Détails section 4.6, tests dans `VALIDATION.md` |
 | 2026-09-18 | "Lors de la demande de création sur la page réseaux, ajouter un encart possible pour la date de l'event" | **Livré** : champ "Date de l'évènement (facultatif)" dans la case "Demander une création" (nouvelle publication) et dans la section "Création" de la fiche ; enregistré dans la date d'évènement de la tâche interne et affiché sur la fiche ("évènement le 3 oct."). Défaut trouvé en test et corrigé : une date impossible (30 février) était acceptée et devenait le 2 mars — les dates de ces formulaires sont désormais vérifiées strictement. Voir section 4.6 et `VALIDATION.md` |
 | 2026-09-18 | "Comme tout le reste du site, fait en sorte de scaler la page réseau sur la largeur de la fenêtre" | **Livré** : la fiche publication, la nouvelle publication et les réglages réseaux d'un client prennent la même largeur que le reste de l'admin (elles étaient limitées à une colonne étroite ; la liste Réseaux l'était déjà). Fiche publication en deux colonnes sur grand écran, comme la fiche tâche (suivi, contenu, visuels à gauche ; aperçu, création demandée, notes à droite) ; réglages client en deux colonnes. Une seule colonne sur mobile. Défaut trouvé en test et corrigé : sur mobile, le tableau des chiffres mensuels élargissait toute la page (626 px pour un écran de 375) au lieu de défiler dans son cadre. Voir `VALIDATION.md` |
+| 2026-09-22 | "As-tu des suggestions pour améliorer le calendrier éditorial : préparation, validation, publication" — 9 des 12 suggestions retenues (non retenues : envoi groupé en validation, relance automatique du client à J-2) | **Livré** : glisser-déposer dans le calendrier, créneaux récurrents affichés en pointillés avec création pré-remplie, texte adapté par réseau, duplication d'une publication, équilibre des catégories du mois, échange admin ↔ client par publication (emails des deux côtés), comparaison avant/après une demande de modification, kit de publication (copie du texte par réseau, visuels en .zip, texte dans l'email de rappel), carte "Réseaux — aujourd'hui" au tableau de bord, rappel et ajout après coup du lien du post publié. Détails section 4.7, tests dans `VALIDATION.md` |

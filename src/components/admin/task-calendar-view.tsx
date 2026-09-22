@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { dueDateKey, groupTasksByEventDate, isoWeekNumber } from "@/lib/tasks";
 import { PALETTE_SWATCH_CLASSES, type PaletteColor } from "@/lib/dropdown-lists";
+import { CalendarDraggable, CalendarDropZone } from "@/components/admin/calendar-dnd";
 
 const WEEKDAY_LABELS = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
 const MONTH_FORMATTER = new Intl.DateTimeFormat("fr-FR", { month: "long", year: "numeric" });
@@ -13,6 +14,11 @@ interface CalendarTask {
   /** Lignes secondaires facultatives (ex. catégorie et création demandée
    * d'une publication réseaux), passées à la ligne comme le titre. */
   details?: string[];
+  /** Lien propre à l'élément (sinon `${taskBasePath}/${id}`). */
+  href?: string;
+  /** Élément "fantôme" (créneau récurrent sans publication) : pointillés,
+   * jamais déplaçable. */
+  ghost?: boolean;
 }
 
 // Grille de semaines (lundi en premier), avec des cases vides en bordure de
@@ -58,6 +64,7 @@ export function TaskCalendarView({
   taskBasePath = "/admin/taches",
   extraParams,
   undatedLabel = "Sans date d'événement",
+  onMove,
 }: {
   tasks: CalendarTask[];
   /** Mois affiché, `month` indexé à partir de 0 (comme Date). */
@@ -74,6 +81,8 @@ export function TaskCalendarView({
   extraParams?: Record<string, string>;
   /** Titre de la section des éléments sans date. */
   undatedLabel?: string;
+  /** Active le glisser-déposer d'un jour à l'autre (publications réseaux). */
+  onMove?: (id: string, day: string) => Promise<{ error?: string }>;
 }) {
   const weeks = buildMonthGrid(year, month);
   const { byDay, undated } = groupTasksByEventDate(tasks);
@@ -135,24 +144,26 @@ export function TaskCalendarView({
                   const dayTasks = byDay.get(key) ?? [];
                   const isToday = key === today;
 
-                  return (
-                    <div
-                      key={key}
-                      className={`flex min-h-28 min-w-0 flex-col gap-1.5 rounded-xl border p-2 ${
-                        isToday ? "border-accent" : "border-line"
-                      }`}
-                    >
+                  const cellClass = `flex min-h-28 min-w-0 flex-col gap-1.5 rounded-xl border p-2 transition-colors ${
+                    isToday ? "border-accent" : "border-line"
+                  }`;
+                  const content = (
+                    <>
                       <span className="text-xs font-medium text-ink-muted">{day.getDate()}</span>
                       <div className="flex flex-col gap-1">
                         {dayTasks.map((task) => {
                           const dot =
                             PALETTE_SWATCH_CLASSES[task.status.color as PaletteColor] ??
                             PALETTE_SWATCH_CLASSES.slate;
-                          return (
+                          const link = (
                             <Link
                               key={task.id}
-                              href={`${taskBasePath}/${task.id}`}
-                              className="flex min-w-0 flex-col gap-0.5 rounded-lg bg-surface-elevated px-2 py-1 text-xs text-ink hover:underline"
+                              href={task.href ?? `${taskBasePath}/${task.id}`}
+                              className={`flex min-w-0 flex-col gap-0.5 rounded-lg px-2 py-1 text-xs hover:underline ${
+                                task.ghost
+                                  ? "border border-dashed border-line text-ink-muted"
+                                  : "bg-surface-elevated text-ink"
+                              }`}
                             >
                               <span className="flex items-start gap-1.5">
                                 <span className={`mt-1 h-1.5 w-1.5 shrink-0 rounded-full ${dot}`} />
@@ -168,8 +179,24 @@ export function TaskCalendarView({
                               ))}
                             </Link>
                           );
+                          return onMove && !task.ghost ? (
+                            <CalendarDraggable key={task.id} id={task.id}>
+                              {link}
+                            </CalendarDraggable>
+                          ) : (
+                            link
+                          );
                         })}
                       </div>
+                    </>
+                  );
+                  return onMove ? (
+                    <CalendarDropZone key={key} day={key} onMove={onMove} className={cellClass}>
+                      {content}
+                    </CalendarDropZone>
+                  ) : (
+                    <div key={key} className={cellClass}>
+                      {content}
                     </div>
                   );
                 }),

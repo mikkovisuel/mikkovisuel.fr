@@ -824,6 +824,25 @@ Code développé par une autre session Claude Code (branche `claude/hub-bridge`,
 | Pages Réseaux en pleine largeur | Fenêtre de 1 600 px : fiche publication, nouvelle publication, réglages client | ✅ Contenu sur toute la largeur (1 589 px) ; fiche en 2 colonnes (1 085 + 416 px) ; réglages en 2 colonnes (751 + 751 px) ; aucun défilement horizontal | Téléphone (375 px) | ❌ puis ✅ **Défaut trouvé en test** : la page Réglages débordait à 626 px (tableau des chiffres qui élargissait la grille) — colonnes contraintes, les 3 pages à 375 px, le tableau défile dans son cadre (560 px dans 293) | 2026-09-18 |
 | Rapport d'état / récapitulatif client | — | — | Tâche interne dans les PDF remis au client | ⚠️ Vérifié par lecture de code uniquement (filtre `internal: false` ajouté aux deux requêtes) | 2026-09-18 |
 
+## Calendrier éditorial — 9 améliorations (2026-09-22)
+
+`tsc --noEmit`, lint complet et `npm run build` propres. Testé en navigateur (dev local, vraies sessions admin et client), par `curl` et en base, sur un client de test ("ZZ Test CM L6") **supprimé après les tests**, fichiers compris.
+
+| Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |
+|---|---|---|---|---|---|
+| Glisser-déposer dans le calendrier | Publication du 18 déplacée sur le 19 (événements de glisser réels) | ✅ Enregistrée au 19/09 16:00 UTC = **18 h Paris conservée** ; la case du 18 se vide, celle du 19 affiche la publication | Publication sans date ; jour invalide | ⚠️ Vérifié par lecture de code (gardes `Publication sans date.` / `Jour invalide.`) — une publication sans date n'apparaît pas dans la grille | 2026-09-22 |
+| Créneaux récurrents en pointillés | Créneau "samedi 18 h", mois de septembre | ✅ Cases fantômes sur les samedis **à venir** (19 et 26), liens pré-remplis corrects ; **aucune sur les samedis passés** | Jour déjà couvert par une publication | ✅ La case fantôme du 19 disparaît dès qu'une publication y est déplacée | 2026-09-22 |
+| Texte adapté par réseau | Variante LinkedIn enregistrée | ✅ Reprise dans le formulaire, dans le kit ("Copier le texte LinkedIn") et côté client ("Texte LinkedIn") ; l'aperçu Instagram garde le texte commun | Variante > 4 000 caractères | ⚠️ Vérifié par lecture de code (message "Texte par réseau trop long") | 2026-09-22 |
+| Dupliquer une publication | Copie vers la date proposée (+7 jours) | ✅ Nouvelle publication en **"Idée"** au 26/09 18 h, textes, variante, catégorie et 2 visuels repris ; **clés de stockage neuves** (copies) ; 0 note, 0 échange | — | — | 2026-09-22 |
+| Équilibre du mois | Client filtré, septembre | ✅ "3 publications · Flyer soirée 1 · Contenu food 0 · Contenu club 0 · Sans catégorie 2" | — | — | 2026-09-22 |
+| Échange avec le client | Message admin, puis réponse du client | ✅ Fil des deux côtés, champ vidé après envoi, **un email dans chaque sens** (`EmailLog` : admin et contact client) | Message vide ; publication en brouillon (formulaire resté ouvert dans un 2ᵉ onglet) | ✅ "Le message est vide." ; "Le client ne voit pas encore cette publication : envoyez-la d'abord en validation." | 2026-09-22 |
+| Contacts non notifiables | — | — | Contact sans notifications email activées | ✅ Aucun email envoyé (règle existante `notifiableEmailsFromContacts`), le message est quand même enregistré | 2026-09-22 |
+| Voir les changements | Version refusée "vendredi… #techno #club" vs nouvelle "samedi… avec DJ invité" | ✅ Mot à mot des deux côtés : barré "vendredi" et " #club", surligné "samedi" et " avec DJ invité" | — | — | 2026-09-22 |
+| Kit de publication — copie | Bouton "Copier le texte LinkedIn" | ❌ puis ✅ **Défaut trouvé en test** : l'API presse-papiers refusée ne donnait aucun retour — repli `execCommand` ajouté (confirmation "Copié" obtenue), et affichage du texte à copier à la main si les deux échouent | — | — | 2026-09-22 |
+| Kit de publication — visuels | Archive .zip d'une publication à 2 visuels | ✅ 200 `application/zip`, entrées numérotées `01-visuel-1.jpg`, `02-visuel-2.jpg` | Session client ; anonyme | ✅ 403 / 403 | 2026-09-22 |
+| Tableau de bord "Réseaux — aujourd'hui" | Données de test | ✅ "À publier (1)", "En attente du client (1)", "Créations en cours (0)" et "1 publication publiée sans lien du post" | — | — | 2026-09-22 |
+| Lien du post ajouté après coup | Lien Instagram valide sur une publication déjà publiée | ✅ Encart "Lien du post manquant" remplacé par "Voir le post publié" ; repère "Lien manquant" retiré de la liste | Champ vide ; lien sans `https://` | ✅ "Collez le lien du post." ; "Lien invalide (il doit commencer par http:// ou https://)." — **saisie conservée** | 2026-09-22 |
+
 ## Points restant ouverts pour une prochaine passe de validation
 
 - Glisser-déposer et `<select>` natif du Kanban Prospection (limite outil, voir ci-dessus).

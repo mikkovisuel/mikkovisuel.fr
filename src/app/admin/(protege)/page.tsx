@@ -12,6 +12,7 @@ import { StatusBreakdown } from "@/components/admin/status-breakdown";
 import { InactiveClients } from "@/components/admin/inactive-clients";
 import { ClientLoginJournal } from "@/components/admin/client-login-journal";
 import { InstallPwaCta } from "@/components/install-pwa-cta";
+import { SocialToday } from "@/components/admin/social-today";
 
 const INACTIVE_THRESHOLD_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -240,6 +241,8 @@ export default async function AdminDashboardPage() {
           newComments={newComments}
         />
       )}
+
+      <SocialToday />
 
       <div className="mt-8 grid gap-4 lg:grid-cols-2">
         <PinnedTasks tasks={pinnedTasks} />

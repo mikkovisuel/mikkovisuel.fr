@@ -18,7 +18,22 @@ import {
   addSocialPostNote,
   deleteSocialPostNote,
 } from "@/lib/actions/social-posts";
-import { SocialTaskRequestForm, SocialPostNoteForm } from "@/components/admin/social-post-task-note-forms";
+import {
+  SocialTaskRequestForm,
+  SocialPostNoteForm,
+  SocialPostDuplicateForm,
+} from "@/components/admin/social-post-task-note-forms";
+import { SocialPublishKit } from "@/components/admin/social-publish-kit";
+import { SocialCaptionDiff, hasCaptionChanges } from "@/components/social-caption-diff";
+import { SocialPostThread } from "@/components/social-post-thread";
+import { addSocialPostCommentByAdmin, duplicateSocialPost } from "@/lib/actions/social-posts";
+import { ACTIVE_CLIENTS } from "@/lib/clients";
+import {
+  CLIENT_VISIBLE_STATUSES,
+  captionForNetwork,
+  networkLabel,
+  readCaptionVariants,
+} from "@/lib/social-posts";
 import { TASK_STATUS } from "@/lib/dropdown-lists";
 import {
   SOCIAL_POST_STATUS_META,
@@ -56,6 +71,7 @@ export default async function SocialPostDetailPage({ params }: { params: Promise
       },
       category: { select: { label: true, color: true } },
       notes: { orderBy: { createdAt: "desc" } },
+      comments: { orderBy: { createdAt: "asc" } },
     },
   });
   if (!post || !isSocialPostStatus(post.status)) notFound();
@@ -71,6 +87,25 @@ export default async function SocialPostDetailPage({ params }: { params: Promise
     due.setUTCDate(due.getUTCDate() - 3);
     return due.toISOString().slice(0, 10);
   })();
+
+  const duplicateClients = await db.client.findMany({
+    where: ACTIVE_CLIENTS,
+    select: { id: true, name: true },
+    orderBy: { name: "asc" },
+  });
+  // Date proposée pour une copie : une semaine plus tard, même heure.
+  const duplicateDate = post.scheduledAt
+    ? toParisDateTimeLocal(new Date(post.scheduledAt.getTime() + 7 * 24 * 60 * 60 * 1000))
+    : "";
+  const clientSees = CLIENT_VISIBLE_STATUSES.includes(post.status);
+  // Texte prêt à coller, par réseau ciblé (variante sinon texte commun,
+  // puis hashtags).
+  const publishTexts = post.networks
+    .map((network) => {
+      const text = [captionForNetwork(post, network), post.hashtags].filter(Boolean).join("\n\n");
+      return { network, label: networkLabel(network), text };
+    })
+    .filter((item) => item.text);
 
   const statusMeta = SOCIAL_POST_STATUS_META[post.status];
   const hasContactsToNotify = notifiableEmailsFromContacts(post.client.contacts).length > 0;
@@ -144,6 +179,35 @@ export default async function SocialPostDetailPage({ params }: { params: Promise
               />
             </div>
           </section>
+
+          {(post.status === "valide" || post.status === "publie") && (publishTexts.length > 0 || post.media.length > 0) && (
+            <section className={SECTION}>
+              <h2 className={SECTION_TITLE}>Kit de publication</h2>
+              <p className="mt-1 text-xs text-ink-muted">
+                Pour publier depuis le téléphone : texte (avec hashtags) copié pour chaque réseau, visuels à enregistrer.
+              </p>
+              <div className="mt-4">
+                <SocialPublishKit
+                  postId={post.id}
+                  texts={publishTexts}
+                  media={post.media.map((item) => ({ id: item.id, fileName: item.fileName }))}
+                />
+              </div>
+            </section>
+          )}
+
+          {(post.status === "a_modifier" || post.status === "a_valider") && hasCaptionChanges(post) && (
+            <section className={SECTION}>
+              <h2 className={SECTION_TITLE}>Changements depuis la demande de modification</h2>
+              <p className="mt-1 text-xs text-ink-muted">
+                Barré : texte refusé par le client. Surligné : nouvelle version. Le client voit la même comparaison.
+              </p>
+              <div className="mt-4 grid gap-4">
+                <SocialCaptionDiff label="Texte" before={post.previousCaption ?? ""} after={post.caption ?? ""} />
+                <SocialCaptionDiff label="Hashtags" before={post.previousHashtags ?? ""} after={post.hashtags ?? ""} />
+              </div>
+            </section>
+          )}
           <section className={SECTION}>
             <h2 className={SECTION_TITLE}>Contenu</h2>
             {(post.status === "a_valider" || post.status === "valide") && (
@@ -160,6 +224,7 @@ export default async function SocialPostDetailPage({ params }: { params: Promise
                 categories={categories}
                 defaultValues={{
                   categoryId: post.categoryId ?? undefined,
+                  captionVariants: readCaptionVariants(post.captionVariants),
                   title: post.title,
                   networks: post.networks,
                   format: post.format,
@@ -188,7 +253,7 @@ export default async function SocialPostDetailPage({ params }: { params: Promise
             <div className="mt-4 flex justify-center">
               <SocialPostPreview
                 clientName={post.client.name}
-                caption={post.caption}
+                caption={captionForNetwork(post, "instagram")}
                 hashtags={post.hashtags}
                 media={post.media.map((item) => ({ id: item.id, mimeType: item.mimeType }))}
               />
@@ -261,6 +326,41 @@ export default async function SocialPostDetailPage({ params }: { params: Promise
             )}
             <div className="mt-4">
               <SocialPostNoteForm action={addSocialPostNote.bind(null, post.id)} />
+            </div>
+          </section>
+
+          <section className={SECTION}>
+            <h2 className={SECTION_TITLE}>Échange avec le client ({post.comments.length})</h2>
+            {clientSees ? (
+              <>
+                <p className="mt-1 text-xs text-ink-muted">Visible par le client, qui reçoit un email à chaque message.</p>
+                <div className="mt-4">
+                  <SocialPostThread comments={post.comments} viewer="ADMIN" />
+                </div>
+                <div className="mt-4">
+                  <SocialPostNoteForm
+                    action={addSocialPostCommentByAdmin.bind(null, post.id)}
+                    placeholder="Écrire au client"
+                    submitLabel="Envoyer au client"
+                  />
+                </div>
+              </>
+            ) : (
+              <p className="mt-2 text-xs text-ink-muted">
+                Disponible une fois la publication envoyée au client pour validation (il ne voit pas les brouillons).
+              </p>
+            )}
+          </section>
+
+          <section className={SECTION}>
+            <h2 className={SECTION_TITLE}>Dupliquer</h2>
+            <div className="mt-4">
+              <SocialPostDuplicateForm
+                action={duplicateSocialPost.bind(null, post.id)}
+                clients={duplicateClients}
+                defaultClientId={post.clientId}
+                defaultScheduledAt={duplicateDate}
+              />
             </div>
           </section>
         </div>

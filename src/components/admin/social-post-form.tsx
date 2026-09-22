@@ -304,6 +304,34 @@ export function SocialPostForm({
         )}
       </div>
 
+      {/* Variantes par réseau (2026-09-18) : ouvert d'office s'il y en a déjà. */}
+      <details
+        open={Object.keys(defaultValues?.captionVariants ?? {}).length > 0}
+        className="rounded-xl border border-line px-4 py-3"
+      >
+        <summary className="cursor-pointer text-sm font-medium text-ink">
+          Adapter le texte par réseau (facultatif)
+        </summary>
+        <p className="mt-2 text-xs text-ink-muted">
+          Laissez vide pour reprendre le texte commun. Ex. un ton plus posé pour LinkedIn, plus court pour TikTok.
+        </p>
+        <div className="mt-3 grid gap-3 lg:grid-cols-2">
+          {SOCIAL_NETWORKS.map((network) => (
+            <label key={network.slug} className="grid gap-1 text-xs text-ink-muted">
+              Texte {network.label}
+              <textarea
+                name={`variant_${network.slug}`}
+                rows={4}
+                maxLength={4000}
+                defaultValue={defaultValues?.captionVariants?.[network.slug] ?? ""}
+                placeholder="Texte commun"
+                className={`${INPUT} resize-y`}
+              />
+            </label>
+          ))}
+        </div>
+      </details>
+
       <div className="flex flex-col gap-2">
         <label htmlFor="hashtags" className={LABEL}>
           Hashtags
