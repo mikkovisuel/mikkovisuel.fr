@@ -2048,6 +2048,48 @@ sans publication apparaissent toujours en pointillés dans le calendrier
 supplémentaire** (limite Scalingo de 5). `lastRunFor` garantit qu'une
 occurrence n'est jamais traitée deux fois.
 
+### 4.9 Programmation : plans de communication standard (2026-09-25)
+
+Demande du client : des "plans de communication standard" paramétrables,
+avec des J-7, J-30… Quatre arbitrages tranchés par le client : application
+**depuis une tâche ou par saisie directe**, étapes passées **décochées mais
+rattrapables**, production par défaut **brouillon + rappel**, et **plan
+vivant** avec avancement.
+
+Deux façons de programmer, un seul moteur : la **routine** (section 4.8)
+est calée sur le calendrier, le **plan** est calé sur un évènement.
+
+**Le modèle de plan** (global, applicable à n'importe quel client) porte un
+nom, une description et des **étapes**. Chaque étape se paramètre :
+
+- son **décalage** en jours : négatif avant l'évènement (−30 = J-30),
+  positif après (1 = J+1), 0 le jour même, et son heure (Paris) ;
+- ce qu'elle produit, combinable : **brouillon de publication**, **rappel
+  email** (avec son avance propre), **tâche de travail** interne ;
+- son contenu : titre produit, réseaux, format, catégorie, texte de départ,
+  hashtags, et pour la tâche son type, son échéance et son brief ;
+- les textes acceptent les **variables** `{evenement}`, `{date}`, `{lieu}`,
+  `{client}` et `{etape}`.
+
+**L'application** se fait depuis la page Plans (choix du plan, du client, du
+nom, de la date et du lieu) ou **directement depuis une tâche** qui a une
+date d'évènement — le formulaire y est alors pré-rempli. Dans les deux cas,
+un **aperçu** montre les étapes avec leurs vraies dates : rien n'est créé
+avant validation, et les étapes déjà passées arrivent décochées, signalées,
+mais restent cochables pour rattraper un plan appliqué tard.
+
+**Le suivi** : chaque application crée un "plan appliqué" qui reste vivant
+(`SocialPlanRun`), avec l'avancement ("2/3 étapes prêtes"), le détail de
+chaque étape (publication, tâche, rappel envoyé ou prévu) et deux sorties :
+**annuler** — supprime les brouillons encore intacts et les tâches non
+terminées, **garde ce qui est déjà validé ou publié** — ou supprimer le
+suivi sans toucher à ce qui a été créé. Une publication créée par une étape
+qui produit aussi une tâche est reliée à cette tâche : ses livrables finaux
+rejoindront ses visuels au passage "Terminé".
+
+Les rappels d'étape partent de la tâche planifiée horaire existante, comme
+les routines.
+
 ## Passe de nettoyage du code (2026-09-22)
 
 Demande du client : "fais une passe globale sur le code et nettoie tout,
@@ -2788,3 +2830,4 @@ Le client a explicitement délégué ces choix :
 | 2026-09-22 | "As-tu des suggestions pour améliorer le calendrier éditorial : préparation, validation, publication" — 9 des 12 suggestions retenues (non retenues : envoi groupé en validation, relance automatique du client à J-2) | **Livré** : glisser-déposer dans le calendrier, créneaux récurrents affichés en pointillés avec création pré-remplie, texte adapté par réseau, duplication d'une publication, équilibre des catégories du mois, échange admin ↔ client par publication (emails des deux côtés), comparaison avant/après une demande de modification, kit de publication (copie du texte par réseau, visuels en .zip, texte dans l'email de rappel), carte "Réseaux — aujourd'hui" au tableau de bord, rappel et ajout après coup du lien du post publié. Détails section 4.7, tests dans `VALIDATION.md` |
 | 2026-09-22 | "Fais une passe globale sur le code et nettoie tout, optimise au mieux" | **Livré, à comportement constant** : code mort supprimé (2 composants, 1 fonction, 5 SVG du gabarit Next, 8 exports repassés en portée interne), duplications regroupées (générateur de nom de fichier ×4, garde des tâches planifiées ×6, journalisation + en-têtes des exports ×8), requêtes allégées par `select` explicite (page Notes et 3 listes déroulantes de clients), purge des tables qui grossissaient sans fin (journal d'emails, tentatives de connexion, connexions client) dans la tâche quotidienne existante. 369 lignes supprimées pour 168 ajoutées. Détails et points volontairement non touchés : section "Passe de nettoyage du code" |
 | 2026-09-25 | "J'aimerais pouvoir avoir une section calendriers éditoriaux de routines… tout soit bien cohérent et facilement paramétrable" — arbitrages : production **au choix par routine**, cadences **hebdo + mensuel complet**, **modèles réutilisables**, **routines internes** sans client | **Livré** : page Programmation avec semaine type, calendriers de routines par client, routines internes (pense-bête), modèles applicables en un clic. Cadences hebdomadaire, une semaine sur deux, le N du mois et le Nième jour du mois ; période de validité ; avance paramétrable. Chaque routine produit au choix rappel, brouillon de publication pré-rempli et/ou tâche de travail. Les anciens "créneaux récurrents" sont **migrés** en routines équivalentes puis supprimés. Exécution dans la tâche horaire existante. Détails section 4.8, tests dans `VALIDATION.md` |
+| 2026-09-25 | "Peux-tu me faire une autre section pour créer des plans de communication standard avec la possibilité de mettre des j-7, j-30 etc… paramétrer tout ça" — arbitrages : application **depuis une tâche ou par saisie**, étapes passées **décochées mais rattrapables**, production par défaut **brouillon + rappel**, **plan vivant** avec avancement | **Livré** : modèles de plans avec étapes paramétrables (décalage J-30/J-7/J+1, heure, production au choix, contenu et variables), application avec aperçu daté avant création, depuis la page Plans ou depuis une tâche à date d'évènement, suivi vivant avec avancement, annulation groupée respectant ce qui est déjà validé, et rappels d'étape dans la tâche horaire existante. Détails section 4.9, tests dans `VALIDATION.md` |

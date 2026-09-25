@@ -376,6 +376,12 @@ export default async function SocialPostsPage({
           >
             Programmation
           </Link>
+          <Link
+            href="/admin/reseaux/plans"
+            className="rounded-full border border-line px-5 py-2.5 text-sm text-ink transition-colors hover:border-accent"
+          >
+            Plans
+          </Link>
           {clientId && (
             <Link
               href={`/admin/reseaux/clients/${clientId}`}

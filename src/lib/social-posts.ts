@@ -171,6 +171,19 @@ const SCHEDULE_FORMATTER = new Intl.DateTimeFormat("fr-FR", {
   minute: "2-digit",
 });
 
+const DAY_FORMATTER = new Intl.DateTimeFormat("fr-FR", {
+  timeZone: PARIS_TZ,
+  weekday: "short",
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+});
+
+/** Ex. "lun. 5 octobre 2026" — pour une date sans heure (date d'évènement). */
+export function formatDay(date: Date | null | undefined): string {
+  return date ? DAY_FORMATTER.format(date) : "Date à définir";
+}
+
 /** Ex. "jeu. 24 sept., 18:00" — toujours en heure de Paris. */
 export function formatSchedule(date: Date | null | undefined): string {
   return date ? SCHEDULE_FORMATTER.format(date) : "Date à définir";

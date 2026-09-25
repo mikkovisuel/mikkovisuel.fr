@@ -18,6 +18,7 @@ import { DeliverableUploadForm } from "@/components/admin/deliverable-upload-for
 import { AttachmentUploadForm } from "@/components/admin/attachment-upload-form";
 import { SendDeliverablesButton } from "@/components/admin/send-deliverables-button";
 import { CreatePostFromTaskButton } from "@/components/admin/create-post-from-task-button";
+import { PlanApplyStartForm } from "@/components/admin/social-plan-forms";
 import { createSocialPostFromTask } from "@/lib/actions/social-posts";
 import { FileGrid } from "@/components/file-grid";
 import { TaskCommentThread } from "@/components/task-comment-thread";
@@ -64,7 +65,7 @@ export default async function TaskDetailPage({
   await verifyAdminSession();
   const { taskId } = await params;
 
-  const [task, typeList, formatList, statusList] = await Promise.all([
+  const [task, typeList, formatList, statusList, plans] = await Promise.all([
     db.task.findUnique({
       where: { id: taskId },
       include: {
@@ -74,6 +75,7 @@ export default async function TaskDetailPage({
         formats: true,
         deliverables: true,
         socialPosts: { select: { id: true, title: true }, orderBy: { createdAt: "desc" } },
+        socialPlanRuns: { select: { id: true, eventName: true, planName: true }, orderBy: { createdAt: "desc" } },
         attachments: true,
         comments: { orderBy: { createdAt: "asc" } },
         refusalHistory: { orderBy: { refusedAt: "desc" } },
@@ -93,6 +95,11 @@ export default async function TaskDetailPage({
     db.dropdownList.findUnique({
       where: { key: TASK_STATUS_LIST_KEY },
       include: { items: { orderBy: { sortOrder: "asc" } } },
+    }),
+    db.socialPlan.findMany({
+      where: { active: true },
+      include: { _count: { select: { steps: true } } },
+      orderBy: { name: "asc" },
     }),
   ]);
 
@@ -392,6 +399,46 @@ export default async function TaskDetailPage({
                   </span>
                 )}
               </div>
+            )}
+
+            {task.eventDate && plans.some((plan) => plan._count.steps > 0) && (
+              <details className="mt-4">
+                <summary className="cursor-pointer text-sm font-medium text-ink">
+                  Appliquer un plan de communication
+                </summary>
+                <p className="mt-2 text-xs text-ink-muted">
+                  Crée la séquence (J-30, J-7, J+1…) autour de la date d&apos;évènement de cette tâche. Vous verrez
+                  l&apos;aperçu avant que quoi que ce soit ne soit créé.
+                </p>
+                {task.socialPlanRuns.length > 0 && (
+                  <p className="mt-2 text-xs text-ink-muted">
+                    Déjà appliqué :{" "}
+                    {task.socialPlanRuns.map((run, index) => (
+                      <span key={run.id}>
+                        {index > 0 && ", "}
+                        <Link
+                          href={`/admin/reseaux/plans/suivi/${run.id}`}
+                          className="text-ink underline underline-offset-2 hover:text-accent"
+                        >
+                          {run.planName} — {run.eventName}
+                        </Link>
+                      </span>
+                    ))}
+                  </p>
+                )}
+                <div className="mt-3">
+                  <PlanApplyStartForm
+                    plans={plans
+                      .filter((plan) => plan._count.steps > 0)
+                      .map((plan) => ({ id: plan.id, name: plan.name, steps: plan._count.steps }))}
+                    clients={[{ id: task.clientId, name: task.client.name }]}
+                    defaultClientId={task.clientId}
+                    defaultEventName={task.title}
+                    defaultEventDate={toDateInputValue(task.eventDate)}
+                    sourceTaskId={task.id}
+                  />
+                </div>
+              </details>
             )}
 
             <div className="mt-4">

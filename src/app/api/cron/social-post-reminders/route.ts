@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { denyUnauthorizedCron } from "@/lib/cron-auth";
 import { sendDueSocialPostReminders } from "@/lib/social-post-reminders";
 import { runDueRoutines } from "@/lib/social-routine-runner";
+import { sendDuePlanStepReminders } from "@/lib/social-plan-reminders";
 
 // Planifié dans cron.json **toutes les heures** (contrairement aux autres
 // rappels, quotidiens) : une publication se prévoit à l'heure près. Même
@@ -13,5 +14,6 @@ export async function GET(request: Request) {
 
   const result = await sendDueSocialPostReminders();
   const routines = await runDueRoutines();
-  return NextResponse.json({ ...result, ...routines });
+  const planSteps = await sendDuePlanStepReminders();
+  return NextResponse.json({ ...result, ...routines, ...planSteps });
 }

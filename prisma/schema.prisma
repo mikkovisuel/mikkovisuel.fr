@@ -1260,9 +1260,11 @@ model SocialPlanStep {
   offsetDays Int
   time       String     @default("18:00")
 
-  createsDraft    Boolean @default(true)
-  createsReminder Boolean @default(true)
-  createsTask     Boolean @default(false)
+  createsDraft     Boolean @default(true)
+  createsReminder  Boolean @default(true)
+  createsTask      Boolean @default(false)
+  // Avance du rappel de l'étape, en jours avant sa date.
+  remindDaysBefore Int     @default(2)
 
   networks        String[]
   format          String        @default("post")
@@ -1310,11 +1312,15 @@ model SocialPlanRun {
 }
 
 model SocialPlanRunItem {
-  id    String        @id @default(cuid())
-  runId String
-  run   SocialPlanRun @relation(fields: [runId], references: [id], onDelete: Cascade)
-  label String
-  dueAt DateTime
+  id             String        @id @default(cuid())
+  runId          String
+  run            SocialPlanRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  label          String
+  dueAt          DateTime
+  // Rappel de l'étape : calculé à l'application, envoyé une seule fois par
+  // la tâche planifiée horaire.
+  remindAt       DateTime?
+  reminderSentAt DateTime?
 
   // `SetNull` : supprimer une publication ou une tâche ne doit pas faire
   // disparaître la ligne de suivi, qui garde la trace de l'étape prévue.

@@ -875,6 +875,22 @@ Code développé par une autre session Claude Code (branche `claude/hub-bridge`,
 | Calendrier éditorial | Vue Calendrier d'octobre | ✅ 9 cases "à préparer" en pointillés (5 samedis × 2 clients, moins le jour déjà couvert), lien "Programmation" dans l'en-tête | — | — | 2026-09-25 |
 | Fiche Réglages d'un client | Section Routines | ✅ "Routines (1)", cadence et prochaine occurrence affichées, renvoi vers Programmation | — | — | 2026-09-25 |
 
+## Programmation — plans de communication (2026-09-25)
+
+`tsc --noEmit`, lint et `npm run build` propres. Parcours complet exercé en navigateur avec une vraie session admin, **application réelle** d'un plan et **exécution réelle** de la tâche planifiée. Client et plan de test supprimés après les tests.
+
+| Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |
+|---|---|---|---|---|---|
+| Modèle de plan | Plan "ZZ Soirée club" + 3 étapes (J-30 avec tâche, J-7, J+1) | ✅ Étapes rangées dans l'ordre du décalage, résumé "de J-30 à J+1", production affichée par étape | — | — | 2026-09-25 |
+| Aperçu avant application | Évènement au 05/10 (dans 10 jours) | ✅ Dates calculées justes (J-7 = lun. 28 sept. 12:00, J+1 = mar. 6 oct. 19:00), titres remplis par les variables ("Rappel — Techno Night") | Étape J-30 déjà passée | ✅ **Décochée et signalée "déjà passée"**, mais cochable ; rien n'est créé avant validation | 2026-09-25 |
+| Application | Validation de l'aperçu (2 étapes cochées) | ✅ 2 brouillons créés aux bonnes dates (28/09 10:00 UTC = 12 h Paris, 06/10 17:00 UTC = 19 h Paris), rappels programmés 2 j avant, redirection vers le suivi | Plan inexistant dans l'URL | ✅ 404 | 2026-09-25 |
+| Rappel d'étape | Rappel arrivé à échéance | ✅ Email "Étape à préparer — Rappel (Techno Night)" avec lien vers la publication ; `planStepReminderCount: 1` | 2ᵉ passage de la tâche planifiée | ✅ 0 : jamais deux fois | 2026-09-25 |
+| Suivi | Plan appliqué | ✅ "0/2 étapes prêtes", chaque étape avec sa publication, sa tâche et son rappel (envoyé ou prévu) | — | — | 2026-09-25 |
+| Annulation groupée | Plan dont une publication a été **validée** | ✅ Les 2 brouillons et la tâche non terminée supprimés, **la publication validée conservée**, plan marqué "Annulé" | Annulation d'un plan déjà annulé | ✅ Sans effet (garde `canceledAt`) | 2026-09-25 |
+| Application depuis une tâche | Tâche "Soirée Halloween" avec date d'évènement au 31/10 | ✅ Bloc "Appliquer un plan de communication" pré-rempli : client, nom de l'évènement, date, et tâche d'origine transmise | Tâche sans date d'évènement | ✅ Bloc absent | 2026-09-25 |
+| Date d'évènement affichée | — | ❌ puis ✅ **Défaut trouvé en test** : la date d'évènement s'affichait avec une heure parasite ("lun. 5 oct., 14:00") — format date seule ajouté ("lun. 5 octobre 2026") | — | — | 2026-09-25 |
+| Client Prisma périmé | — | — | Serveur de développement lancé avant la migration | ❌ puis ✅ **Défaut d'environnement** : "Unknown argument remindDaysBefore" — le serveur tournait avec l'ancien client généré ; redémarrage suffisant, aucun code en cause | 2026-09-25 |
+
 ## Points restant ouverts pour une prochaine passe de validation
 
 - Glisser-déposer et `<select>` natif du Kanban Prospection (limite outil, voir ci-dessus).
