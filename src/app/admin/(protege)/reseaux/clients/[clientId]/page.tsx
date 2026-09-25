@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, Trash, FilePdf } from "@phosphor-icons/react/dist/ssr";
+import { ArrowLeft, Trash, FilePdf, PencilSimple } from "@phosphor-icons/react/dist/ssr";
 import { verifyAdminSession } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { DeleteButton } from "@/components/admin/delete-button";
@@ -15,6 +15,7 @@ import { describeCadence, nextRoutineOccurrence } from "@/lib/social-routines";
 import {
   saveSocialProfile,
   addSocialLibraryItem,
+  updateSocialLibraryItem,
   deleteSocialLibraryItem,
   saveMonthlyStats,
   deleteMonthlyStats,
@@ -100,6 +101,16 @@ export default async function SocialClientSettingsPage({ params }: { params: Pro
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium text-ink">{item.name}</p>
                       <p className="mt-1 break-words text-sm text-ink-muted">{item.content}</p>
+                      <details className="mt-2">
+                        <summary className="cursor-pointer text-xs text-ink-muted hover:text-ink">Modifier</summary>
+                        <div className="mt-2">
+                          <SocialLibraryItemForm
+                            action={updateSocialLibraryItem.bind(null, item.id)}
+                            kind="hashtags"
+                            defaultValues={{ name: item.name, content: item.content }}
+                          />
+                        </div>
+                      </details>
                     </div>
                     <DeleteButton
                       action={deleteSocialLibraryItem.bind(null, item.id)}
@@ -126,6 +137,16 @@ export default async function SocialClientSettingsPage({ params }: { params: Pro
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium text-ink">{item.name}</p>
                       <p className="mt-1 whitespace-pre-wrap text-sm text-ink-muted">{item.content}</p>
+                      <details className="mt-2">
+                        <summary className="cursor-pointer text-xs text-ink-muted hover:text-ink">Modifier</summary>
+                        <div className="mt-2">
+                          <SocialLibraryItemForm
+                            action={updateSocialLibraryItem.bind(null, item.id)}
+                            kind="template"
+                            defaultValues={{ name: item.name, content: item.content }}
+                          />
+                        </div>
+                      </details>
                     </div>
                     <DeleteButton
                       action={deleteSocialLibraryItem.bind(null, item.id)}
@@ -247,6 +268,27 @@ export default async function SocialClientSettingsPage({ params }: { params: Pro
                               >
                                 <FilePdf size={14} weight="regular" />
                               </a>
+                              <details className="relative">
+                                <summary
+                                  title="Modifier ce mois"
+                                  className="flex h-7 w-7 cursor-pointer list-none items-center justify-center rounded-full border border-line text-ink-muted transition-colors hover:border-accent hover:text-ink"
+                                >
+                                  <PencilSimple size={14} weight="regular" />
+                                </summary>
+                                <div className="absolute right-0 z-10 mt-2 w-80 rounded-xl border border-line bg-surface p-3 text-left shadow-lg">
+                                  <MonthlyStatsForm
+                                    action={saveMonthlyStats.bind(null, client.id)}
+                                    defaultYear={stats.year}
+                                    defaultMonth={stats.month}
+                                    defaultValues={{
+                                      followers: stats.followers,
+                                      reach: stats.reach,
+                                      interactions: stats.interactions,
+                                      notes: stats.notes ?? "",
+                                    }}
+                                  />
+                                </div>
+                              </details>
                               <DeleteButton
                                 action={deleteMonthlyStats.bind(null, stats.id)}
                                 confirmMessage="Supprimer les chiffres de ce mois ?"

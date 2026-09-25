@@ -25,6 +25,7 @@ import {
 } from "@/lib/social-posts";
 import { routineOccurrencesInMonth } from "@/lib/social-routines";
 import { SocialActionsBoard } from "@/components/admin/social-actions-board";
+import { NewSocialActionButton } from "@/components/admin/social-action-buttons";
 import { moveSocialPostToDay } from "@/lib/actions/social-posts";
 
 export const metadata: Metadata = {
@@ -426,6 +427,10 @@ export default async function SocialPostsPage({
               Réglages du client
             </Link>
           )}
+          <NewSocialActionButton
+            clients={clients}
+            defaultDueAt={`${toParisDateTimeLocal(now).slice(0, 10)}T09:00`}
+          />
           <Link
             href={clientId ? `/admin/reseaux/nouveau?clientId=${clientId}` : "/admin/reseaux/nouveau"}
             className="rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-accent-ink transition-transform active:scale-[0.98]"
@@ -545,12 +550,7 @@ export default async function SocialPostsPage({
       )}
 
       {view === "afaire" ? (
-        <SocialActionsBoard
-          actions={actions}
-          clients={clients}
-          now={now}
-          defaultDueAt={`${toParisDateTimeLocal(now).slice(0, 10)}T09:00`}
-        />
+        <SocialActionsBoard actions={actions} clients={clients} now={now} />
       ) : view === "grille" ? (
         <InstagramGrid posts={posts} clientChosen={Boolean(clientId)} />
       ) : view === "calendrier" ? (

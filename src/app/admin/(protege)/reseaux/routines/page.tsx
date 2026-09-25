@@ -318,6 +318,17 @@ export default async function SocialRoutinesPage() {
                   icon={<Trash size={14} weight="regular" />}
                   className={ICON_BUTTON}
                 />
+                <details className="w-full">
+                  <summary className="cursor-pointer text-xs text-ink-muted hover:text-ink">Renommer</summary>
+                  <div className="mt-2">
+                    <RoutineSetForm
+                      action={renameRoutineSet.bind(null, template.id)}
+                      placeholder="Nom du modèle"
+                      submitLabel="Renommer"
+                      defaultValue={template.name}
+                    />
+                  </div>
+                </details>
               </li>
             ))}
           </ul>

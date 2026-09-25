@@ -422,3 +422,32 @@ export async function deletePlanRun(runId: string) {
   revalidatePlans();
   redirect("/admin/reseaux/plans");
 }
+
+/**
+ * Corriger l'évènement d'un plan appliqué (2026-09-25) : son nom et son
+ * lieu. La **date** n'est volontairement pas modifiable ici : les
+ * publications, tâches et actions ont déjà été créées à leurs propres dates,
+ * les changer en cascade ferait plus de dégâts que de bien. Pour décaler un
+ * évènement, on déplace chaque publication (glisser-déposer du calendrier),
+ * ou on annule le plan et on le réapplique.
+ */
+export async function updatePlanRun(
+  runId: string,
+  _prev: SocialPlanFormState,
+  formData: FormData,
+): Promise<SocialPlanFormState> {
+  await verifyAdminSession();
+  const run = await db.socialPlanRun.findUnique({ where: { id: runId }, select: { id: true } });
+  if (!run) return { error: "Plan appliqué introuvable." };
+
+  const eventName = String(formData.get("eventName") ?? "").trim();
+  if (!eventName) return { error: "Donnez un nom à l'évènement." };
+  const eventPlace = String(formData.get("eventPlace") ?? "").trim();
+
+  await db.socialPlanRun.update({
+    where: { id: runId },
+    data: { eventName: eventName.slice(0, 160), eventPlace: eventPlace ? eventPlace.slice(0, 160) : null },
+  });
+  revalidatePlans(runId);
+  return { saved: true };
+}

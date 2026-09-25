@@ -83,9 +83,22 @@ export function SocialProfileForm({
   );
 }
 
-export function SocialLibraryItemForm({ action, kind }: { action: Action; kind: "hashtags" | "template" }) {
+export function SocialLibraryItemForm({
+  action,
+  kind,
+  defaultValues,
+}: {
+  action: Action;
+  kind: "hashtags" | "template";
+  /** Renseigné pour une modification : le formulaire n'est alors pas vidé. */
+  defaultValues?: { name: string; content: string };
+}) {
   const [state, formAction, pending] = useActionState(action, undefined);
-  const { formRef, onSubmit } = useFormSubmit(formAction, { pending, state, resetOnSuccess: true });
+  const { formRef, onSubmit } = useFormSubmit(formAction, {
+    pending,
+    state,
+    resetOnSuccess: !defaultValues,
+  });
   const isHashtags = kind === "hashtags";
   return (
     <form ref={formRef} action={formAction} onSubmit={onSubmit} className="grid gap-2">
@@ -93,6 +106,7 @@ export function SocialLibraryItemForm({ action, kind }: { action: Action; kind: 
         name="name"
         required
         maxLength={80}
+        defaultValue={defaultValues?.name ?? ""}
         placeholder={isHashtags ? "Nom du groupe (ex. Soirées techno)" : "Nom du modèle (ex. Annonce de soirée)"}
         className={INPUT}
       />
@@ -100,14 +114,21 @@ export function SocialLibraryItemForm({ action, kind }: { action: Action; kind: 
         name="content"
         required
         rows={isHashtags ? 2 : 4}
+        defaultValue={defaultValues?.content ?? ""}
         placeholder={isHashtags ? "#techno #lyon #clubbing" : "Texte réutilisable, à compléter à chaque publication"}
         className={`${INPUT} resize-y`}
       />
       <div className="flex flex-wrap items-center gap-3">
         <button type="submit" disabled={pending} className={SUBMIT}>
-          {pending ? "Ajout..." : isHashtags ? "Ajouter le groupe" : "Ajouter le modèle"}
+          {pending
+            ? "Enregistrement..."
+            : defaultValues
+              ? "Enregistrer"
+              : isHashtags
+                ? "Ajouter le groupe"
+                : "Ajouter le modèle"}
         </button>
-        <Feedback state={state} pending={pending} savedLabel="Ajouté" />
+        <Feedback state={state} pending={pending} savedLabel={defaultValues ? "Enregistré" : "Ajouté"} />
       </div>
     </form>
   );
@@ -117,10 +138,18 @@ export function MonthlyStatsForm({
   action,
   defaultYear,
   defaultMonth,
+  defaultValues,
 }: {
   action: Action;
   defaultYear: number;
   defaultMonth: number;
+  /** Renseigné pour corriger un mois déjà saisi. */
+  defaultValues?: {
+    followers: number | null;
+    reach: number | null;
+    interactions: number | null;
+    notes: string;
+  };
 }) {
   const [state, formAction, pending] = useActionState(action, undefined);
   const { formRef, onSubmit } = useFormSubmit(formAction, { pending, state, resetOnSuccess: true });
@@ -150,20 +179,39 @@ export function MonthlyStatsForm({
         </label>
         <label className="grid gap-1 text-xs text-ink-muted">
           Abonnés (fin de mois)
-          <input name="followers" type="number" min={0} className={`${INPUT} w-32`} />
+          <input
+            name="followers"
+            type="number"
+            min={0}
+            defaultValue={defaultValues?.followers ?? ""}
+            className={`${INPUT} w-32`}
+          />
         </label>
         <label className="grid gap-1 text-xs text-ink-muted">
           Portée
-          <input name="reach" type="number" min={0} className={`${INPUT} w-32`} />
+          <input
+            name="reach"
+            type="number"
+            min={0}
+            defaultValue={defaultValues?.reach ?? ""}
+            className={`${INPUT} w-32`}
+          />
         </label>
         <label className="grid gap-1 text-xs text-ink-muted">
           Interactions
-          <input name="interactions" type="number" min={0} className={`${INPUT} w-32`} />
+          <input
+            name="interactions"
+            type="number"
+            min={0}
+            defaultValue={defaultValues?.interactions ?? ""}
+            className={`${INPUT} w-32`}
+          />
         </label>
       </div>
       <textarea
         name="notes"
         rows={2}
+        defaultValue={defaultValues?.notes ?? ""}
         placeholder="Commentaire du mois pour le client (facultatif)"
         className={`${INPUT} resize-y`}
       />

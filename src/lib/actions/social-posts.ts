@@ -986,3 +986,57 @@ export async function toggleSocialPostDone(postId: string) {
   });
   revalidateSocialPaths(postId);
 }
+
+// --- Passe "tout doit être modifiable" (2026-09-25) ------------------------
+
+/** Corriger une note interne après coup. */
+export async function updateSocialPostNote(
+  noteId: string,
+  _prev: SocialPostFormState,
+  formData: FormData,
+): Promise<SocialPostFormState> {
+  await verifyAdminSession();
+  const parsed = SocialPostNoteSchema.safeParse({ body: formData.get("body") });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "La note est vide." };
+
+  const note = await db.socialPostNote.findUnique({ where: { id: noteId } });
+  if (!note) return { error: "Note introuvable." };
+
+  await db.socialPostNote.update({ where: { id: noteId }, data: { body: parsed.data.body } });
+  revalidateSocialPaths(note.postId);
+  return { saved: true };
+}
+
+/**
+ * Corriger **son propre** message de l'échange avec le client. Un message du
+ * client n'est jamais réécrit : on peut le supprimer, pas lui faire dire
+ * autre chose.
+ */
+export async function updateSocialPostComment(
+  commentId: string,
+  _prev: SocialPostFormState,
+  formData: FormData,
+): Promise<SocialPostFormState> {
+  await verifyAdminSession();
+  const parsed = SocialPostCommentSchema.safeParse({ body: formData.get("body") });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Le message est vide." };
+
+  const comment = await db.socialPostComment.findUnique({ where: { id: commentId } });
+  if (!comment) return { error: "Message introuvable." };
+  if (comment.authorType !== "ADMIN") {
+    return { error: "Un message du client ne se modifie pas — vous pouvez seulement le supprimer." };
+  }
+
+  await db.socialPostComment.update({ where: { id: commentId }, data: { body: parsed.data.body } });
+  revalidateSocialPaths(comment.postId);
+  return { saved: true };
+}
+
+/** Supprimer un message de l'échange (le sien ou celui du client). */
+export async function deleteSocialPostComment(commentId: string) {
+  await verifyAdminSession();
+  const comment = await db.socialPostComment.findUnique({ where: { id: commentId } });
+  if (!comment) return;
+  await db.socialPostComment.delete({ where: { id: commentId } });
+  revalidateSocialPaths(comment.postId);
+}

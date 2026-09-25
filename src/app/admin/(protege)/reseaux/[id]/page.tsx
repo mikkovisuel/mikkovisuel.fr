@@ -26,12 +26,14 @@ import {
 } from "@/components/admin/social-post-task-note-forms";
 import { SocialPublishKit } from "@/components/admin/social-publish-kit";
 import { SocialCaptionDiff, hasCaptionChanges } from "@/components/social-caption-diff";
-import { SocialPostThread } from "@/components/social-post-thread";
 import {
   addSocialPostCommentByAdmin,
+  deleteSocialPostComment,
   duplicateSocialPost,
   importLinkedTaskMediaNow,
   requestLinkedTaskRevision,
+  updateSocialPostComment,
+  updateSocialPostNote,
 } from "@/lib/actions/social-posts";
 import { ACTIVE_CLIENTS } from "@/lib/clients";
 import {
@@ -397,6 +399,16 @@ export default async function SocialPostDetailPage({ params }: { params: Promise
                     <div className="min-w-0 flex-1">
                       <p className="whitespace-pre-wrap break-words text-sm text-ink">{note.body}</p>
                       <p className="mt-1 text-xs text-ink-muted">{formatSchedule(note.createdAt)}</p>
+                      <details className="mt-2">
+                        <summary className="cursor-pointer text-xs text-ink-muted hover:text-ink">Modifier</summary>
+                        <div className="mt-2">
+                          <SocialPostNoteForm
+                            action={updateSocialPostNote.bind(null, note.id)}
+                            defaultValue={note.body}
+                            submitLabel="Enregistrer"
+                          />
+                        </div>
+                      </details>
                     </div>
                     <DeleteButton
                       action={deleteSocialPostNote.bind(null, note.id)}
@@ -420,7 +432,42 @@ export default async function SocialPostDetailPage({ params }: { params: Promise
               <>
                 <p className="mt-1 text-xs text-ink-muted">Visible par le client, qui reçoit un email à chaque message.</p>
                 <div className="mt-4">
-                  <SocialPostThread comments={post.comments} viewer="ADMIN" />
+                  <div className="grid gap-2">
+                    {post.comments.map((comment) => (
+                      <div key={comment.id} className="rounded-xl border border-line p-3">
+                        <p className="whitespace-pre-wrap break-words text-sm text-ink">{comment.body}</p>
+                        <p className="mt-1 text-xs text-ink-muted">
+                          {comment.authorName} · {formatSchedule(comment.createdAt)}
+                        </p>
+                        <div className="mt-2 flex flex-wrap items-start gap-3">
+                          {comment.authorType === "ADMIN" && (
+                            <details>
+                              <summary className="cursor-pointer text-xs text-ink-muted hover:text-ink">
+                                Modifier
+                              </summary>
+                              <div className="mt-2">
+                                <SocialPostNoteForm
+                                  action={updateSocialPostComment.bind(null, comment.id)}
+                                  defaultValue={comment.body}
+                                  submitLabel="Enregistrer"
+                                />
+                              </div>
+                            </details>
+                          )}
+                          <DeleteButton
+                            action={deleteSocialPostComment.bind(null, comment.id)}
+                            confirmMessage={
+                              comment.authorType === "ADMIN"
+                                ? "Supprimer votre message ?"
+                                : "Supprimer ce message du client ? Il ne le verra plus non plus."
+                            }
+                            label="Supprimer le message"
+                            className="text-xs text-ink-muted underline underline-offset-2 hover:text-danger"
+                          />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
                 </div>
                 <div className="mt-4">
                   <SocialPostNoteForm

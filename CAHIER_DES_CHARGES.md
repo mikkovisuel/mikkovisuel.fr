@@ -2131,7 +2131,9 @@ client, ni cycle de statut : c'est ce qui la distingue d'une **tâche**
   dans les cases du calendrier éditorial, cochées d'un ✓ quand elles sont
   faites. L'onglet affiche le nombre d'actions restantes, et le tableau de
   bord liste celles du jour.
-- **Création** : formulaire en tête de l'onglet, ou production automatique.
+- **Création** : bouton **« Nouvelle action »** à côté de « Nouvelle
+  publication », qui ouvre une pop-up (voir 4.12), ou production
+  automatique.
 - **Produite par une routine ou une étape de plan** : quatrième case à
   cocher, à côté de rappel / brouillon / tâche, avec sa description type et
   son avance propre (`actionLeadDays`, en jours avant l'occurrence ou avant
@@ -2147,6 +2149,54 @@ cycle de validation du client :
   « Publié » avec sa date, décocher la ramène à « Validé » si le client
   avait validé (sinon « Rédaction ») et efface date et lien de publication.
   Il n'y a donc **jamais deux vérités** sur la mise en ligne.
+
+### 4.12 Tout est modifiable, éditable et supprimable (2026-09-25)
+
+Demande du client : « NOUVELLE ACTION doit être un bouton à côté de
+nouvelle publication : ouverture de la pop-up de création. Fais une passe
+mais tout dans la section réseau doit être modifiable, éditable et peut
+être supprimé. »
+
+**Création d'une action en pop-up.** Le bouton « Nouvelle action » vit
+désormais dans l'en-tête de Réseaux, à côté de « Nouvelle publication », et
+ouvre la même modale que « Ajouter un document ». Le formulaire qui
+occupait le haut de l'onglet « À faire » a disparu : la liste des choses à
+faire n'est plus repoussée par un formulaire qui ne sert qu'une fois de
+temps en temps. La date proposée par défaut reste le jour même.
+
+**Passe d'éditabilité.** Chaque objet de la section Réseaux se modifie et
+se supprime, sans exception :
+
+| Objet | Modifier | Supprimer |
+| --- | --- | --- |
+| Publication | fiche complète | oui |
+| Visuel d'une publication | remplacement par un nouvel envoi | oui |
+| Note interne | oui (nouveau) | oui |
+| Message de l'échange client | **ses propres messages seulement** (nouveau) | oui, des deux côtés |
+| Action | pop-up de modification (nouveau) | oui |
+| Groupe de hashtags, modèle de texte | oui (nouveau) | oui |
+| Chiffres d'un mois | oui, au crayon sur la ligne (nouveau) | oui |
+| Ligne éditoriale et ton | oui | sans objet (réglage) |
+| Routine, calendrier de routines | oui | oui |
+| Modèle de routines | renommage (nouveau) | oui |
+| Plan, étape de plan | oui | oui |
+| Plan appliqué | nom et lieu de l'évènement (nouveau) | annuler, ou supprimer le suivi |
+| Catégorie de publication | via /admin/listes, comme les autres listes | idem |
+
+Deux limites assumées, pour que « tout est modifiable » ne devienne pas
+« tout est réécrivable » :
+
+- **Le message d'un client ne se réécrit pas.** On peut le supprimer — une
+  demande obsolète ou déplacée n'a pas à rester — mais pas lui faire dire
+  autre chose : un échange où chacun peut réécrire la parole de l'autre ne
+  vaut plus rien comme trace. La garde est côté serveur, pas seulement dans
+  l'affichage du bouton.
+- **La date d'un plan appliqué ne se change pas** depuis son suivi. Les
+  publications, tâches et actions ont déjà été créées à leurs propres
+  dates ; les décaler toutes en silence ferait plus de dégâts que de bien.
+  Le nom et le lieu de l'évènement, eux, se corrigent librement, et la
+  fiche explique quoi faire pour décaler : déplacer les publications dans
+  le calendrier, ou annuler et réappliquer le plan.
 
 ## Passe de nettoyage du code (2026-09-22)
 
@@ -2891,3 +2941,4 @@ Le client a explicitement délégué ces choix :
 | 2026-09-25 | "Peux-tu me faire une autre section pour créer des plans de communication standard avec la possibilité de mettre des j-7, j-30 etc… paramétrer tout ça" — arbitrages : application **depuis une tâche ou par saisie**, étapes passées **décochées mais rattrapables**, production par défaut **brouillon + rappel**, **plan vivant** avec avancement | **Livré** : modèles de plans avec étapes paramétrables (décalage J-30/J-7/J+1, heure, production au choix, contenu et variables), application avec aperçu daté avant création, depuis la page Plans ou depuis une tâche à date d'évènement, suivi vivant avec avancement, annulation groupée respectant ce qui est déjà validé, et rappels d'étape dans la tâche horaire existante. Détails section 4.9, tests dans `VALIDATION.md` |
 | 2026-09-25 | "Lorsque la création est terminée, mettre à disposition le livrable directement dans la page réseau… fluidifier les mouvements entre réseau et tâches car ce ne sera pas la même personne" | **Livré** (les 4 points choisis) : livrables finaux visibles sur la fiche publication dès leur dépôt avec import immédiat, alerte "visuels prêts" (email + pastille Réseaux + carte du tableau de bord) au passage en Terminé, bouton "Demander une retouche" qui renvoie la création en "À modifier" avec motif depuis la publication, et rappel de la date de publication prévue + "à livrer avant le…" sur la tâche. Détails section 4.10, tests dans `VALIDATION.md` |
 | 2026-09-25 | "Ajouter dans la section réseau une liste de tâches issues des routines… planifier les tâches par jour et les cocher une fois faites… créer une action avec description, date, statut fait / non fait. Idem pour les publications, un statut prête / faite" — arbitrages : **objet léger propre à Réseaux**, affiché **dans un onglet À faire et dans le calendrier**, **4ᵉ case** produite par routines et plans, **deux cases prête / faite** | **Livré** : nouvel objet "action" (titre, description, date, client facultatif, fait/pas fait), onglet "À faire" groupé par échéance avec compteur, actions dans les cases du calendrier et au tableau de bord, production par les routines et les étapes de plan (avance propre, suppression des actions non cochées à l'annulation d'un plan), et repères "Prête"/"Faite" sur les publications — "Faite" restant adossée au statut Publié. Détails section 4.11, tests dans `VALIDATION.md` |
+| 2026-09-25 | "NOUVELLE ACTION doit être un bouton à côté de nouvelle publication : ouverture de la pop up de création. Fais une passe mais tout dans la section réseau doit être modifiable, éditable et peut être supprimé." | **Livré** : "Nouvelle action" devient un bouton en tête de Réseaux ouvrant une pop-up (le formulaire qui occupait l'onglet "À faire" est retiré), et chaque action se modifie dans la même pop-up. Passe d'éditabilité sur toute la section : notes internes, messages de l'échange, groupes de hashtags, modèles de texte, chiffres mensuels, modèles de routines et nom/lieu d'un plan appliqué deviennent modifiables ; tout reste supprimable. Deux limites assumées : le message d'un client se supprime mais ne se réécrit pas (garde côté serveur), et la date d'un plan déjà appliqué ne se change pas depuis son suivi. Détails section 4.12, tests dans `VALIDATION.md` |

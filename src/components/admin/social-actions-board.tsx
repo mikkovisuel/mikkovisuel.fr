@@ -1,7 +1,8 @@
 import { Trash } from "@phosphor-icons/react/dist/ssr";
 import { DeleteButton } from "@/components/admin/delete-button";
-import { SocialActionCheckbox, SocialActionForm } from "@/components/admin/social-action-forms";
-import { createSocialAction, deleteSocialAction, updateSocialAction } from "@/lib/actions/social-actions";
+import { SocialActionCheckbox } from "@/components/admin/social-action-forms";
+import { EditSocialActionButton } from "@/components/admin/social-action-buttons";
+import { deleteSocialAction } from "@/lib/actions/social-actions";
 import { formatSchedule, toParisDateTimeLocal } from "@/lib/social-posts";
 
 // Liste "À faire" du module Réseaux (2026-09-25) : les actions groupées par
@@ -46,7 +47,7 @@ function groupByDay(actions: ActionRow[], now: Date) {
   return groups.filter((group) => group.actions.length > 0);
 }
 
-function ActionItem({ action }: { action: ActionRow }) {
+function ActionItem({ action, clients }: { action: ActionRow; clients: { id: string; name: string }[] }) {
   return (
     <li className="flex items-start gap-3 rounded-xl border border-line p-3">
       <div className="pt-0.5">
@@ -64,6 +65,16 @@ function ActionItem({ action }: { action: ActionRow }) {
           <p className="mt-1 whitespace-pre-wrap break-words text-xs text-ink-muted">{action.description}</p>
         )}
       </div>
+      <EditSocialActionButton
+        actionId={action.id}
+        clients={clients}
+        values={{
+          title: action.title,
+          description: action.description ?? "",
+          clientId: action.client?.id ?? "",
+          dueAt: toParisDateTimeLocal(action.dueAt),
+        }}
+      />
       <DeleteButton
         action={deleteSocialAction.bind(null, action.id)}
         confirmMessage={`Supprimer l'action "${action.title}" ?`}
@@ -79,13 +90,10 @@ export function SocialActionsBoard({
   actions,
   clients,
   now,
-  defaultDueAt,
 }: {
   actions: ActionRow[];
   clients: { id: string; name: string }[];
   now: Date;
-  /** Valeur `datetime-local` proposée par défaut (aujourd'hui, 9 h). */
-  defaultDueAt: string;
 }) {
   const todo = actions.filter((action) => !action.doneAt);
   const done = actions.filter((action) => action.doneAt);
@@ -93,17 +101,6 @@ export function SocialActionsBoard({
 
   return (
     <div className="mt-8 grid gap-6">
-      <section className={SECTION}>
-        <h2 className="text-xs font-medium uppercase tracking-wide text-ink-muted">Nouvelle action</h2>
-        <p className="mt-1 text-xs text-ink-muted">
-          Une chose à faire, un jour donné, cochée quand c&apos;est fait. Rien à voir avec une tâche de production :
-          pas de livrable, pas de validation client.
-        </p>
-        <div className="mt-4 max-w-2xl">
-          <SocialActionForm action={createSocialAction} clients={clients} defaultValues={{ dueAt: defaultDueAt }} />
-        </div>
-      </section>
-
       {groups.length === 0 ? (
         <section className={SECTION}>
           <p className="text-sm text-ink-muted">Rien à faire pour l&apos;instant.</p>
@@ -116,7 +113,7 @@ export function SocialActionsBoard({
             </h2>
             <ul className="mt-3 grid gap-2">
               {group.actions.map((action) => (
-                <ActionItem key={action.id} action={action} />
+                <ActionItem key={action.id} action={action} clients={clients} />
               ))}
             </ul>
           </section>
@@ -129,36 +126,9 @@ export function SocialActionsBoard({
             <summary className="cursor-pointer text-sm font-medium text-ink">Faites ({done.length})</summary>
             <ul className="mt-3 grid gap-2">
               {done.slice(0, 50).map((action) => (
-                <ActionItem key={action.id} action={action} />
+                <ActionItem key={action.id} action={action} clients={clients} />
               ))}
             </ul>
-          </details>
-        </section>
-      )}
-
-      {todo.length > 0 && (
-        <section className={SECTION}>
-          <details>
-            <summary className="cursor-pointer text-sm font-medium text-ink">Modifier une action</summary>
-            <div className="mt-4 grid gap-4">
-              {todo.slice(0, 20).map((action) => (
-                <div key={action.id} className="rounded-xl border border-line p-3">
-                  <p className="mb-2 text-xs text-ink-muted">{action.title}</p>
-                  <SocialActionForm
-                    action={updateSocialAction.bind(null, action.id)}
-                    clients={clients}
-                    resetOnSuccess={false}
-                    submitLabel="Enregistrer"
-                    defaultValues={{
-                      title: action.title,
-                      description: action.description ?? "",
-                      clientId: action.client?.id ?? "",
-                      dueAt: toParisDateTimeLocal(action.dueAt),
-                    }}
-                  />
-                </div>
-              ))}
-            </div>
           </details>
         </section>
       )}

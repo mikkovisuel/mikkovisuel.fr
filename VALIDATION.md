@@ -910,7 +910,7 @@ Code développé par une autre session Claude Code (branche `claude/hub-bridge`,
 
 | Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |
 |---|---|---|---|---|---|
-| Onglet « À faire » | Action créée pour aujourd'hui 9 h | ✅ Rangée sous "Aujourd'hui (1)", 4ᵉ onglet présent à côté de Liste / Calendrier / Grille | Action sans titre ou sans date | ⚠️ Vérifié par lecture de code (messages "Donnez un titre à l'action." / "Donnez une date à l'action.") — le navigateur bloque déjà les deux champs requis | 2026-09-25 |
+| Onglet « À faire » | Action créée pour aujourd'hui 9 h | ✅ Rangée sous "Aujourd'hui (1)", 4ᵉ onglet présent à côté de Liste / Calendrier / Grille | Action sans date (attribut `required` retiré pour atteindre le serveur) | ✅ "Donnez une date à l'action.", rien enregistré (exercé dans la passe d'éditabilité ci-dessous) | 2026-09-25 |
 | Cocher une action | Clic sur la case | ✅ Action barrée, déplacée dans "Faites (1)", groupe du jour vidé | — | — | 2026-09-25 |
 | Actions dans le calendrier | Mois de septembre | ✅ "✓ ZZ Répondre aux commentaires — Action faite — Interne" dans la case du jour | — | — | 2026-09-25 |
 | Action produite par une routine | Routine hebdo "action à cocher", avance 30 j, action posée le jour de l'occurrence | ✅ `{"routineActionsCreated":1}` — action au lun. 28 sept. 18 h, rattachée au client et à la routine ; résumé "Produit : action à cocher · rappel email" | 2ᵉ passage de la tâche planifiée | ✅ 0 : jamais deux fois | 2026-09-25 |
@@ -918,6 +918,28 @@ Code développé par une autre session Claude Code (branche `claude/hub-bridge`,
 | Repère « Faite » | Case cochée | ✅ Publication passée "Publié" avec sa date | Case décochée ensuite | ✅ Retour à "Validé" (le client avait validé), date et lien de publication effacés, "Prête" conservée | 2026-09-25 |
 | Tableau de bord | Action en retard ou due aujourd'hui | ✅ Bloc "À faire aujourd'hui (1)" dans la carte "Réseaux — aujourd'hui" | Rien de dû | ✅ Carte entièrement masquée | 2026-09-25 |
 | Annulation d'un plan | — | — | Plan annulé avec des actions | ⚠️ Vérifié par lecture de code : seules les actions **non cochées** sont supprimées | 2026-09-25 |
+
+## Passe d'éditabilité de la section Réseaux (2026-09-25)
+
+`tsc --noEmit`, lint et `npm run build` propres. Parcours exercé en navigateur avec une vraie session admin sur un client de test (publication, notes, messages des deux côtés, bibliothèque, chiffres mensuels), un modèle de routines et un plan réellement appliqué ; toutes les données de test supprimées après les tests (vérification : 0 client, 0 action, 0 plan, 0 calendrier, 0 suivi, 0 tâche et 0 publication de test restants).
+
+| Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |
+|---|---|---|---|---|---|
+| Bouton « Nouvelle action » en tête de page | Ouverture de la pop-up depuis l'en-tête de Réseaux | ✅ En-tête = ["Nouvelle action", "Nouvelle publication"] ; la modale s'ouvre, l'action est créée, la modale se referme seule et la liste se met à jour ; plus aucun formulaire de création dans l'onglet "À faire" | — | — | 2026-09-25 |
+| Modifier une action | Crayon sur une ligne de l'onglet "À faire" | ✅ Pop-up préremplie (`{titre: "ZZ Action modale", date: "2026-09-26T10:00"}`), enregistrement répercuté dans la liste | Date vidée (`required` retiré pour atteindre le serveur) | ✅ "Donnez une date à l'action.", **modale maintenue ouverte** et titre conservé — rien n'est enregistré | 2026-09-25 |
+| Supprimer une action | Corbeille + confirmation | ✅ Action disparue de la liste | — | — | 2026-09-25 |
+| Note interne modifiable | "Modifier" sous une note | ✅ Champ prérempli "Note initiale", enregistré en "Note corrigée" | — | — | 2026-09-25 |
+| Échange client — messages de l'admin | Message écrit par l'admin | ✅ Boutons ["Modifier", "Enregistrer", "Supprimer le message"] ; modification prise en compte | — | — | 2026-09-25 |
+| Échange client — message du client | Message écrit par le client | ✅ Un seul bouton : ["Supprimer le message"] — aucun moyen de le réécrire depuis l'interface ; suppression effective ("Échange avec le client (1)") | Tentative de réécriture en forçant l'identifiant du message dans une soumission native du formulaire (chemin sans JavaScript) | ✅ Message du client **inchangé en base** ("Message du client (bis)") ; l'action n'a même pas été invoquée (aucune trace dans le journal du serveur). La garde serveur elle-même (auteur ADMIN uniquement) reste vérifiée par lecture de code — voir "Points restant ouverts" | 2026-09-25 |
+| Groupe de hashtags modifiable | "Modifier" sur un groupe | ✅ Champs préremplis ("Groupe initial", "#a #b"), enregistré en "Groupe corrigé" / "#c #d" | Nom composé uniquement d'espaces (`required` retiré) | ✅ "Donnez un nom.", groupe inchangé dans la liste | 2026-09-25 |
+| Modèle de texte modifiable | "Modifier" sur un modèle | ✅ Champs préremplis ("Modèle initial", "Texte type"), enregistré en "Modèle corrigé" / "Texte revu" | — | — | 2026-09-25 |
+| Chiffres d'un mois modifiables | Crayon "Modifier ce mois" sur la ligne Août 2026 | ✅ Formulaire prérempli (mois 8, année 2026, 100 / 1 000 / 50) ; enregistré en 250 / 2 000 / 160, **engagement recalculé à 8,0 %** sur la même ligne (pas de doublon de mois) | — | — | 2026-09-25 |
+| Modèle de routines renommable | "Renommer" sur un modèle | ✅ Champ prérempli "ZZ Modèle test", renommé en "ZZ Modèle renommé", répercuté dans la liste déroulante d'application | — | — | 2026-09-25 |
+| Plan appliqué : nom et lieu | Fiche de suivi d'un plan réellement appliqué | ✅ Champs préremplis ("ZZ Soirée test", "Lyon"), enregistrés en "ZZ Soirée corrigée" / "Villeurbanne" — titre de la page et en-tête mis à jour | Nom d'évènement composé uniquement d'espaces (`required` retiré) | ✅ "Donnez un nom à l'évènement.", titre inchangé et saisie conservée dans le champ | 2026-09-25 |
+| Plan appliqué : date | — | — | Date de l'évènement | ✅ **Volontairement non modifiable** : la fiche l'explique et propose les deux issues (déplacer les publications dans le calendrier, ou annuler et réappliquer le plan) | 2026-09-25 |
+| Couverture de la section | Inventaire des objets Réseaux | ✅ Chaque objet a une action de modification **et** une action de suppression, toutes câblées dans l'interface (publication, visuel, note, message, action, groupe de hashtags, modèle de texte, chiffres mensuels, routine, calendrier de routines, modèle, plan, étape, plan appliqué) ; les catégories restent gérées dans /admin/listes | — | — | 2026-09-25 |
+
+**Corrigé pendant la passe** : le message de confirmation des formulaires de bibliothèque affichait "Ajouté" après une **modification** ; il affiche désormais "Enregistré" quand le formulaire édite un élément existant (observé avant/après en navigateur).
 
 ## Points restant ouverts pour une prochaine passe de validation
 
@@ -993,3 +1015,5 @@ Code développé par une autre session Claude Code (branche `claude/hub-bridge`,
 - **Sélecteur de club, requête forgée réelle (2026-08-25)** : le garde-fou anti-usurpation de `switchClientSpace` (id d'un `ClientContact` appartenant à un autre `Contact`) a été relu en code, pas exercé par une vraie requête HTTP forgée contournant l'UI — à confirmer si l'occasion se présente (outil d'intercession HTTP, ou test automatisé futur).
 - **Pense-bête avec un second compte admin réellement actif** (2026-08-27) : non exercé, un seul compte admin de test disponible dans cet environnement. La liste est partagée par construction (pas de champ `adminId`), à confirmer visuellement le jour où un second compte admin est utilisé en parallèle.
 - **Rendu mobile du pense-bête** (2026-08-27) : seul le rendu desktop a été observé en navigateur.
+- **Garde serveur « on ne modifie que ses propres messages »** (2026-09-25) : vérifiée par lecture de code, pas exercée de bout en bout. L'interface ne propose pas le bouton sur un message du client, et une soumission forcée du formulaire avec l'identifiant d'un message client n'a pas abouti (action jamais invoquée, message inchangé en base) — mais aucune requête n'a réellement atteint la garde elle-même. La seule façon de l'atteindre depuis cette session aurait été de retirer temporairement le contrôle d'affichage, ce que la protection de l'environnement refuse à juste titre. À confirmer le jour où un harnais de tests automatisés permettra d'appeler l'action directement.
+- **Rendu mobile des nouvelles pop-up et des formulaires d'édition de la section Réseaux** (2026-09-25) : seul le rendu desktop a été observé en navigateur.

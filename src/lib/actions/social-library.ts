@@ -163,3 +163,28 @@ export async function suggestSocialCaption(input: {
     return { error: `Proposition IA impossible : ${error instanceof Error ? error.message : "erreur inconnue"}.` };
   }
 }
+
+/** Corriger un groupe de hashtags ou un modèle de texte (2026-09-25). */
+export async function updateSocialLibraryItem(
+  itemId: string,
+  _prev: SocialLibraryFormState,
+  formData: FormData,
+): Promise<SocialLibraryFormState> {
+  await verifyAdminSession();
+  const item = await db.socialLibraryItem.findUnique({ where: { id: itemId } });
+  if (!item) return { error: "Élément introuvable." };
+
+  const parsed = SocialLibraryItemSchema.safeParse({
+    kind: item.kind,
+    name: formData.get("name"),
+    content: formData.get("content"),
+  });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Formulaire invalide." };
+
+  await db.socialLibraryItem.update({
+    where: { id: itemId },
+    data: { name: parsed.data.name, content: parsed.data.content },
+  });
+  revalidateClientSettings(item.clientId);
+  return { saved: true };
+}

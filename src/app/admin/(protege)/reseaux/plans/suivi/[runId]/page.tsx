@@ -6,7 +6,8 @@ import { verifyAdminSession } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { DeleteButton } from "@/components/admin/delete-button";
 import { StatusBadge } from "@/components/status-badge";
-import { cancelPlanRun, deletePlanRun } from "@/lib/actions/social-plans";
+import { cancelPlanRun, deletePlanRun, updatePlanRun } from "@/lib/actions/social-plans";
+import { PlanRunForm } from "@/components/admin/social-plan-forms";
 import {
   SOCIAL_POST_STATUS,
   SOCIAL_POST_STATUS_META,
@@ -85,6 +86,22 @@ export default async function PlanRunPage({ params }: { params: Promise<{ runId:
           </span>
         )}
       </div>
+
+      <section className="mt-6 rounded-2xl border border-line p-6">
+        <h2 className="text-xs font-medium uppercase tracking-wide text-ink-muted">Évènement</h2>
+        <p className="mt-1 text-xs text-ink-muted">
+          La date n&apos;est pas modifiable ici : les publications, tâches et actions ont déjà été créées à leurs
+          propres dates. Pour décaler, déplacez chaque publication dans le calendrier, ou annulez et réappliquez le
+          plan.
+        </p>
+        <div className="mt-4">
+          <PlanRunForm
+            action={updatePlanRun.bind(null, run.id)}
+            defaultName={run.eventName}
+            defaultPlace={run.eventPlace ?? ""}
+          />
+        </div>
+      </section>
 
       <section className="mt-6 rounded-2xl border border-line p-6">
         <h2 className="text-xs font-medium uppercase tracking-wide text-ink-muted">Étapes</h2>

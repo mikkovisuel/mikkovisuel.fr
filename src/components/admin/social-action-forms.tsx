@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useTransition } from "react";
+import { useActionState, useEffect, useTransition } from "react";
 import { WarningCircle, CheckCircle, Check } from "@phosphor-icons/react/dist/ssr";
 import { useFormSubmit } from "@/lib/use-form-submit";
 import { toggleSocialAction } from "@/lib/actions/social-actions";
@@ -23,15 +23,22 @@ export function SocialActionForm({
   defaultValues,
   submitLabel = "Créer l'action",
   resetOnSuccess = true,
+  onSuccess,
 }: {
   action: Action;
   clients: { id: string; name: string }[];
   defaultValues?: { title?: string; description?: string; clientId?: string; dueAt?: string };
   submitLabel?: string;
   resetOnSuccess?: boolean;
+  /** Appelé après un enregistrement réussi — sert à refermer la modale. */
+  onSuccess?: () => void;
 }) {
   const [state, formAction, pending] = useActionState(action, undefined);
   const { formRef, onSubmit } = useFormSubmit(formAction, { pending, state, resetOnSuccess });
+
+  useEffect(() => {
+    if (!pending && state?.saved) onSuccess?.();
+  }, [pending, state, onSuccess]);
 
   return (
     <form ref={formRef} action={formAction} onSubmit={onSubmit} className="grid gap-3">

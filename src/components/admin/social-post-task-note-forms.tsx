@@ -86,19 +86,27 @@ export function SocialPostNoteForm({
   action,
   placeholder = "Ajouter une note (visible de vous seul)",
   submitLabel = "Ajouter la note",
+  defaultValue = "",
 }: {
   action: Action;
   placeholder?: string;
   submitLabel?: string;
+  /** Renseigné pour une modification : le champ n'est alors pas vidé. */
+  defaultValue?: string;
 }) {
   const [state, formAction, pending] = useActionState(action, undefined);
-  const { formRef, onSubmit } = useFormSubmit(formAction, { pending, state, resetOnSuccess: true });
+  const { formRef, onSubmit } = useFormSubmit(formAction, {
+    pending,
+    state,
+    resetOnSuccess: defaultValue === "",
+  });
   return (
     <form ref={formRef} action={formAction} onSubmit={onSubmit} className="grid gap-2">
       <textarea
         name="body"
         required
         rows={2}
+        defaultValue={defaultValue}
         placeholder={placeholder}
         className={`${INPUT} resize-y`}
       />

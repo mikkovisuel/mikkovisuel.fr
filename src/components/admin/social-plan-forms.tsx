@@ -444,3 +444,37 @@ export function PlanApplyStartForm({
     </form>
   );
 }
+
+/** Nom et lieu d'un évènement déjà planifié (2026-09-25). */
+export function PlanRunForm({
+  action,
+  defaultName,
+  defaultPlace,
+}: {
+  action: Action;
+  defaultName: string;
+  defaultPlace: string;
+}) {
+  const [state, formAction, pending] = useActionState(action, undefined);
+  const { onSubmit } = useFormSubmit(formAction, { pending, state });
+  return (
+    <form action={formAction} onSubmit={onSubmit} className="grid gap-3">
+      <div className="flex flex-wrap gap-3">
+        <label className={`grid gap-1 ${LABEL}`}>
+          Nom de l&apos;évènement
+          <input name="eventName" required maxLength={160} defaultValue={defaultName} className={INPUT} />
+        </label>
+        <label className={`grid gap-1 ${LABEL}`}>
+          Lieu (facultatif)
+          <input name="eventPlace" maxLength={160} defaultValue={defaultPlace} className={INPUT} />
+        </label>
+      </div>
+      <div className="flex flex-wrap items-center gap-3">
+        <button type="submit" disabled={pending} className={SUBMIT}>
+          {pending ? "..." : "Enregistrer"}
+        </button>
+        <Feedback state={state} pending={pending} savedLabel="Enregistré" />
+      </div>
+    </form>
+  );
+}
