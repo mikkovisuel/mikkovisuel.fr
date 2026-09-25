@@ -891,6 +891,19 @@ Code développé par une autre session Claude Code (branche `claude/hub-bridge`,
 | Date d'évènement affichée | — | ❌ puis ✅ **Défaut trouvé en test** : la date d'évènement s'affichait avec une heure parasite ("lun. 5 oct., 14:00") — format date seule ajouté ("lun. 5 octobre 2026") | — | — | 2026-09-25 |
 | Client Prisma périmé | — | — | Serveur de développement lancé avant la migration | ❌ puis ✅ **Défaut d'environnement** : "Unknown argument remindDaysBefore" — le serveur tournait avec l'ancien client généré ; redémarrage suffisant, aucun code en cause | 2026-09-25 |
 
+## Fluidité Réseaux ↔ Tâches (2026-09-25)
+
+`tsc --noEmit`, lint et `npm run build` propres. Parcours exercé en navigateur avec une vraie session admin, sur une publication et sa création liée ; client de test supprimé après les tests.
+
+| Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |
+|---|---|---|---|---|---|
+| Livrables visibles avant la fin | Livrable final déposé, tâche encore "Nouveau" | ✅ Vignette affichée sur la fiche publication, avec "Livrables finaux déposés (1)" | — | — | 2026-09-25 |
+| Import immédiat | "Ajouter aux visuels maintenant" | ✅ "Visuels (1)", bouton retiré ensuite | Libellé après import manuel | ❌ puis ✅ **Défaut trouvé en test** : la fiche annonçait encore que les fichiers "s'ajouteront quand elle sera terminée" — l'état d'import prime désormais sur le statut de la tâche | 2026-09-25 |
+| Alerte "visuels prêts" | Tâche passée "Terminé" depuis sa fiche | ✅ Email "Visuels prêts — Post avec création" (1 visuel ajouté, lien), **pastille "Réseaux 1"**, et bloc "Visuels prêts (1)" dans la carte du tableau de bord | — | — | 2026-09-25 |
+| Demander une retouche | Motif saisi depuis la publication | ✅ Tâche repassée "À modifier", motif enregistré et consigné dans l'historique des refus, bloc masqué ensuite | Formulaire envoyant le motif sous un autre nom de champ | ❌ puis ✅ **Défaut trouvé en test** : la demande partait dans le vide (champ `body` contre `reason` attendu) — les deux noms sont acceptés | 2026-09-25 |
+| Retouche déjà demandée | — | — | Deuxième demande sur une création déjà "À modifier" | ⚠️ Vérifié par lecture de code (garde explicite) — le bloc est de toute façon masqué dans ce cas | 2026-09-25 |
+| Contexte sur la fiche tâche | Tâche interne liée à une publication du 10/10 | ✅ "Publication prévue : sam. 10 oct., 18:00" et "À livrer avant le 8 octobre 2026" dans le bandeau | — | — | 2026-09-25 |
+
 ## Points restant ouverts pour une prochaine passe de validation
 
 - Glisser-déposer et `<select>` natif du Kanban Prospection (limite outil, voir ci-dessus).

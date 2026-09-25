@@ -18,6 +18,7 @@ import { DeliverableUploadForm } from "@/components/admin/deliverable-upload-for
 import { AttachmentUploadForm } from "@/components/admin/attachment-upload-form";
 import { SendDeliverablesButton } from "@/components/admin/send-deliverables-button";
 import { CreatePostFromTaskButton } from "@/components/admin/create-post-from-task-button";
+import { formatSchedule } from "@/lib/social-posts";
 import { PlanApplyStartForm } from "@/components/admin/social-plan-forms";
 import { createSocialPostFromTask } from "@/lib/actions/social-posts";
 import { FileGrid } from "@/components/file-grid";
@@ -44,7 +45,7 @@ import {
   TASK_FORMAT_LIST_KEY,
   TASK_STATUS_LIST_KEY,
 } from "@/lib/dropdown-lists";
-import { taskDateFormatter, taskDateTimeFormatter } from "@/lib/tasks";
+import { isTaskOverdue, taskDateFormatter, taskDateTimeFormatter } from "@/lib/tasks";
 import { buildDeliverablesMailDraft } from "@/lib/mail-draft";
 import { sumTaskTimeMs } from "@/lib/time-tracking";
 
@@ -74,7 +75,10 @@ export default async function TaskDetailPage({
         types: true,
         formats: true,
         deliverables: true,
-        socialPosts: { select: { id: true, title: true }, orderBy: { createdAt: "desc" } },
+        socialPosts: {
+          select: { id: true, title: true, scheduledAt: true, status: true },
+          orderBy: { createdAt: "desc" },
+        },
         socialPlanRuns: { select: { id: true, eventName: true, planName: true }, orderBy: { createdAt: "desc" } },
         attachments: true,
         comments: { orderBy: { createdAt: "asc" } },
@@ -169,6 +173,25 @@ export default async function TaskDetailPage({
             . Aucun email ni fichier n&apos;est envoyé au client ; une fois « Terminé », les fichiers finaux image/MP4
             s&apos;ajoutent aux visuels de la publication.
           </p>
+          {/* Contexte pour la personne qui produit (2026-09-25) : quand la
+              publication part, et pour quand il faut donc livrer. */}
+          <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-sm">
+            {task.socialPosts.some((post) => post.scheduledAt) && (
+              <p className="text-ink">
+                <span className="text-ink-muted">Publication prévue : </span>
+                {task.socialPosts
+                  .filter((post) => post.scheduledAt)
+                  .map((post) => formatSchedule(post.scheduledAt))
+                  .join(" · ")}
+              </p>
+            )}
+            {task.dueDate && (
+              <p className={isTaskOverdue(task) ? "font-medium text-danger" : "text-ink"}>
+                <span className="text-ink-muted">À livrer avant le </span>
+                {taskDateFormatter.format(task.dueDate)}
+              </p>
+            )}
+          </div>
         </div>
       )}
 

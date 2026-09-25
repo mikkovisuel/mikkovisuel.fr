@@ -35,7 +35,7 @@ import {
   type SocialPostPublishState,
 } from "@/lib/validation/social-post";
 import type { FileUploadState } from "@/lib/actions/files";
-import { SOCIAL_CATEGORY_LIST_KEY, TASK_STATUS } from "@/lib/dropdown-lists";
+import { SOCIAL_CATEGORY_LIST_KEY, TASK_STATUS, TASK_STATUS_LIST_KEY } from "@/lib/dropdown-lists";
 import {
   SOCIAL_MEDIA_TYPES,
   MAX_SOCIAL_MEDIA_FROM_TASK,
@@ -857,4 +857,87 @@ export async function setSocialPostPublishedUrl(
   await db.socialPost.update({ where: { id: postId }, data: { publishedUrl: parsed.data.publishedUrl } });
   revalidateSocialPaths(postId);
   return undefined;
+}
+
+// --- Fluidité Réseaux ↔ Tâches (2026-09-25) --------------------------------
+//
+// Les deux côtés sont souvent tenus par deux personnes différentes : la
+// personne qui gère les réseaux ne doit pas avoir à ouvrir Tâches pour
+// savoir où en est un visuel, ni pour demander une retouche.
+
+/**
+ * Ajoute tout de suite aux visuels les livrables finaux de la tâche liée,
+ * sans attendre qu'elle passe "Terminé" (le graphiste a déposé le fichier,
+ * la personne réseaux veut le récupérer).
+ */
+export async function importLinkedTaskMediaNow(postId: string): Promise<void> {
+  await verifyAdminSession();
+  const post = await db.socialPost.findUnique({
+    where: { id: postId },
+    select: { id: true, sourceTaskId: true },
+  });
+  if (!post?.sourceTaskId) return;
+
+  const copied = await copyTaskDeliverablesToPost(post.sourceTaskId, post.id);
+  if (copied > 0) {
+    await db.socialPost.update({ where: { id: postId }, data: { taskMediaImportedAt: new Date() } });
+  }
+  revalidateSocialPaths(postId);
+}
+
+/**
+ * Renvoie la tâche liée en "À modifier" avec un motif, depuis la
+ * publication — sans passer par la fiche tâche. Le motif est consigné
+ * comme un refus de BAT (`TaskRefusalHistory`), pour garder la trace.
+ */
+export async function requestLinkedTaskRevision(
+  postId: string,
+  _prev: SocialPostFormState,
+  formData: FormData,
+): Promise<SocialPostFormState> {
+  const admin = await verifyAdminSession();
+  // Le formulaire réutilisé (SocialPostNoteForm) envoie le motif dans
+  // `body` : accepté aussi, pour ne pas dupliquer un composant.
+  const parsed = SocialPostRefusalSchema.safeParse({
+    reason: formData.get("reason") ?? formData.get("body"),
+  });
+  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Le motif est requis." };
+
+  const post = await db.socialPost.findUnique({
+    where: { id: postId },
+    include: { sourceTask: { select: { id: true, internal: true, status: { select: { slug: true } } } } },
+  });
+  if (!post?.sourceTask) return { error: "Aucune création liée à cette publication." };
+  if (post.sourceTask.status.slug === TASK_STATUS.A_MODIFIER) {
+    return { error: "Une retouche est déjà demandée sur cette création." };
+  }
+
+  const statusList = await db.dropdownList.findUniqueOrThrow({ where: { key: TASK_STATUS_LIST_KEY } });
+  const status = await db.dropdownItem.findUniqueOrThrow({
+    where: { listId_slug: { listId: statusList.id, slug: TASK_STATUS.A_MODIFIER } },
+  });
+  const refusedAt = new Date();
+
+  await db.task.update({
+    where: { id: post.sourceTask.id },
+    data: { statusId: status.id, refusalReason: parsed.data.reason, refusedAt },
+  });
+  await db.taskRefusalHistory.create({
+    data: { taskId: post.sourceTask.id, reason: parsed.data.reason, refusedAt },
+  });
+  await db.taskStatusHistory.create({
+    data: {
+      taskId: post.sourceTask.id,
+      statusSlug: status.slug,
+      statusLabel: status.label,
+      changedByType: "ADMIN",
+      changedById: admin.id,
+      changedByName: "Mikko",
+    },
+  });
+
+  revalidateSocialPaths(postId);
+  revalidatePath(`/admin/taches/${post.sourceTask.id}`);
+  revalidatePath("/admin/taches");
+  return { saved: true };
 }

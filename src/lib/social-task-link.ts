@@ -1,6 +1,9 @@
 import "server-only";
 import { randomUUID } from "node:crypto";
 import { db } from "@/lib/db";
+import { sendEmailToAdmins } from "@/lib/email/service";
+import { escapeHtml } from "@/lib/html-escape";
+import { formatSchedule } from "@/lib/social-posts";
 import { getStorageAdapter } from "@/lib/storage";
 import { TASK_STATUS, TASK_STATUS_LIST_KEY, TASK_TYPE_LIST_KEY } from "@/lib/dropdown-lists";
 
@@ -13,6 +16,8 @@ import { TASK_STATUS, TASK_STATUS_LIST_KEY, TASK_TYPE_LIST_KEY } from "@/lib/dro
 // Les deux posent `SocialPost.sourceTaskId` ; `taskMediaImportedAt` garantit
 // qu'une tâche ne recopie jamais deux fois ses fichiers dans la même
 // publication (retour en arrière puis "Terminé" à nouveau, par exemple).
+
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.mikkovisuel.fr";
 
 export const SOCIAL_MEDIA_TYPES = new Set(["image/png", "image/jpeg", "image/webp", "video/mp4"]);
 
@@ -70,12 +75,49 @@ export async function copyTaskDeliverablesToPost(taskId: string, postId: string)
 export async function importTaskDeliverablesIntoLinkedPosts(taskId: string): Promise<string[]> {
   const posts = await db.socialPost.findMany({
     where: { sourceTaskId: taskId, taskMediaImportedAt: null },
-    select: { id: true },
+    select: { id: true, title: true, scheduledAt: true, client: { select: { name: true } } },
   });
+  const ready: { id: string; title: string; clientName: string; scheduledAt: Date | null; copied: number }[] = [];
   for (const post of posts) {
-    await copyTaskDeliverablesToPost(taskId, post.id);
+    const copied = await copyTaskDeliverablesToPost(taskId, post.id);
     await db.socialPost.update({ where: { id: post.id }, data: { taskMediaImportedAt: new Date() } });
+    ready.push({
+      id: post.id,
+      title: post.title,
+      clientName: post.client.name,
+      scheduledAt: post.scheduledAt,
+      copied,
+    });
   }
+
+  // Alerte "visuels prêts" (2026-09-25) : côté réseaux, personne n'ouvrait
+  // la fiche pour découvrir que le graphiste avait fini. L'email part une
+  // seule fois, au passage en "Terminé".
+  if (ready.length > 0) {
+    const rows = ready
+      .map(
+        (post) => `
+        <li>
+          <strong>${escapeHtml(post.clientName)}</strong> — ${escapeHtml(post.title)}
+          (${escapeHtml(formatSchedule(post.scheduledAt))}) :
+          ${post.copied} visuel${post.copied > 1 ? "s" : ""} ajouté${post.copied > 1 ? "s" : ""}
+          — <a href="${SITE_URL}/admin/reseaux/${post.id}">ouvrir la publication</a>
+        </li>`,
+      )
+      .join("");
+    await sendEmailToAdmins({
+      trigger: "social_media_ready",
+      subject:
+        ready.length > 1
+          ? `Visuels prêts pour ${ready.length} publications`
+          : `Visuels prêts — ${ready[0].title}`,
+      html: `
+      <p>La création est terminée : ${ready.length > 1 ? "ces publications ont" : "cette publication a"} reçu ses visuels.</p>
+      <ul>${rows}</ul>
+    `,
+    });
+  }
+
   return posts.map((post) => post.id);
 }
 

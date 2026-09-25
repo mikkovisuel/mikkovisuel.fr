@@ -57,7 +57,7 @@ export async function SocialToday() {
   const endOfToday = new Date(parseParisDateTimeLocal(`${today}T23:59`)!.getTime() + 60_000);
   const client = EXCLUDE_DEMO_CLIENT;
 
-  const [toPublish, waiting, creations, missingLinks] = await Promise.all([
+  const [toPublish, waiting, creations, missingLinks, mediaReady] = await Promise.all([
     db.socialPost.findMany({
       where: { client, status: SOCIAL_POST_STATUS.VALIDE, scheduledAt: { lt: endOfToday } },
       include: { client: { select: { name: true } } },
@@ -80,9 +80,21 @@ export async function SocialToday() {
       orderBy: [{ scheduledAt: { sort: "asc", nulls: "last" } }],
     }),
     db.socialPost.count({ where: { client, status: SOCIAL_POST_STATUS.PUBLIE, publishedUrl: null } }),
+    // Visuels prêts (2026-09-25) : la création est terminée, les fichiers
+    // sont déjà dans la publication, mais elle dort encore en brouillon.
+    db.socialPost.findMany({
+      where: {
+        client,
+        status: { in: [SOCIAL_POST_STATUS.IDEE, SOCIAL_POST_STATUS.REDACTION] },
+        taskMediaImportedAt: { not: null },
+        sourceTask: { internal: true, status: { slug: TASK_STATUS.TERMINE } },
+      },
+      include: { client: { select: { name: true } } },
+      orderBy: [{ scheduledAt: { sort: "asc", nulls: "last" } }],
+    }),
   ]);
 
-  if (toPublish.length + waiting.length + creations.length + missingLinks === 0) return null;
+  if (toPublish.length + waiting.length + creations.length + missingLinks + mediaReady.length === 0) return null;
 
   return (
     <section className="mt-8 rounded-2xl border border-line p-6">
@@ -131,6 +143,26 @@ export async function SocialToday() {
           more={creations.length - LIST_LIMIT}
         />
       </div>
+      {mediaReady.length > 0 && (
+        <div className="mt-4 rounded-xl border border-accent/40 bg-accent/5 p-3">
+          <p className="text-sm font-medium text-ink">
+            Visuels prêts ({mediaReady.length}) — la création est terminée
+          </p>
+          <ul className="mt-2 grid gap-1 text-sm">
+            {mediaReady.slice(0, LIST_LIMIT).map((post) => (
+              <li key={post.id} className="min-w-0 truncate">
+                <Link href={`/admin/reseaux/${post.id}`} className="text-ink hover:underline">
+                  {post.title}
+                </Link>{" "}
+                <span className="text-ink-muted">
+                  — {post.client.name} · {formatSchedule(post.scheduledAt)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {missingLinks > 0 && (
         <p className="mt-4 text-xs text-amber-600 dark:text-amber-400">
           {missingLinks} publication{missingLinks > 1 ? "s" : ""} publiée{missingLinks > 1 ? "s" : ""} sans lien du

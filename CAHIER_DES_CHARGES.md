@@ -2090,6 +2090,28 @@ rejoindront ses visuels au passage "Terminé".
 Les rappels d'étape partent de la tâche planifiée horaire existante, comme
 les routines.
 
+### 4.10 Fluidité entre Réseaux et Tâches (2026-09-25)
+
+Demande du client : "fluidifier les mouvements entre réseaux et tâches, car
+ce ne sera globalement pas la même personne qui gère ces deux côtés".
+Quatre ajouts, tous choisis par le client.
+
+- **Livrables visibles avant la fin** : la fiche publication affiche les
+  livrables **finaux** de la création liée dès leur dépôt (vignettes
+  cliquables), avec un bouton **« Ajouter aux visuels maintenant »** —
+  inutile d'attendre que la tâche passe "Terminé", ni d'ouvrir Tâches.
+- **Alerte « visuels prêts »** : au passage en "Terminé", un email part
+  avec le nombre de visuels ajoutés et le lien vers la publication ; la
+  pastille de l'onglet **Réseaux** compte désormais aussi les publications
+  dont les visuels sont arrivés mais qui dorment en brouillon, et la carte
+  "Réseaux — aujourd'hui" du tableau de bord les liste.
+- **Demander une retouche** depuis la publication : renvoie la création en
+  "À modifier" avec un motif, consigné comme un refus (`TaskRefusalHistory`)
+  — sans passer par la fiche tâche.
+- **Contexte côté production** : le bandeau de la tâche interne affiche la
+  **date de publication prévue** et l'échéance **« À livrer avant le… »**,
+  en rouge si elle est dépassée.
+
 ## Passe de nettoyage du code (2026-09-22)
 
 Demande du client : "fais une passe globale sur le code et nettoie tout,
@@ -2831,3 +2853,4 @@ Le client a explicitement délégué ces choix :
 | 2026-09-22 | "Fais une passe globale sur le code et nettoie tout, optimise au mieux" | **Livré, à comportement constant** : code mort supprimé (2 composants, 1 fonction, 5 SVG du gabarit Next, 8 exports repassés en portée interne), duplications regroupées (générateur de nom de fichier ×4, garde des tâches planifiées ×6, journalisation + en-têtes des exports ×8), requêtes allégées par `select` explicite (page Notes et 3 listes déroulantes de clients), purge des tables qui grossissaient sans fin (journal d'emails, tentatives de connexion, connexions client) dans la tâche quotidienne existante. 369 lignes supprimées pour 168 ajoutées. Détails et points volontairement non touchés : section "Passe de nettoyage du code" |
 | 2026-09-25 | "J'aimerais pouvoir avoir une section calendriers éditoriaux de routines… tout soit bien cohérent et facilement paramétrable" — arbitrages : production **au choix par routine**, cadences **hebdo + mensuel complet**, **modèles réutilisables**, **routines internes** sans client | **Livré** : page Programmation avec semaine type, calendriers de routines par client, routines internes (pense-bête), modèles applicables en un clic. Cadences hebdomadaire, une semaine sur deux, le N du mois et le Nième jour du mois ; période de validité ; avance paramétrable. Chaque routine produit au choix rappel, brouillon de publication pré-rempli et/ou tâche de travail. Les anciens "créneaux récurrents" sont **migrés** en routines équivalentes puis supprimés. Exécution dans la tâche horaire existante. Détails section 4.8, tests dans `VALIDATION.md` |
 | 2026-09-25 | "Peux-tu me faire une autre section pour créer des plans de communication standard avec la possibilité de mettre des j-7, j-30 etc… paramétrer tout ça" — arbitrages : application **depuis une tâche ou par saisie**, étapes passées **décochées mais rattrapables**, production par défaut **brouillon + rappel**, **plan vivant** avec avancement | **Livré** : modèles de plans avec étapes paramétrables (décalage J-30/J-7/J+1, heure, production au choix, contenu et variables), application avec aperçu daté avant création, depuis la page Plans ou depuis une tâche à date d'évènement, suivi vivant avec avancement, annulation groupée respectant ce qui est déjà validé, et rappels d'étape dans la tâche horaire existante. Détails section 4.9, tests dans `VALIDATION.md` |
+| 2026-09-25 | "Lorsque la création est terminée, mettre à disposition le livrable directement dans la page réseau… fluidifier les mouvements entre réseau et tâches car ce ne sera pas la même personne" | **Livré** (les 4 points choisis) : livrables finaux visibles sur la fiche publication dès leur dépôt avec import immédiat, alerte "visuels prêts" (email + pastille Réseaux + carte du tableau de bord) au passage en Terminé, bouton "Demander une retouche" qui renvoie la création en "À modifier" avec motif depuis la publication, et rappel de la date de publication prévue + "à livrer avant le…" sur la tâche. Détails section 4.10, tests dans `VALIDATION.md` |

@@ -26,7 +26,12 @@ import {
 import { SocialPublishKit } from "@/components/admin/social-publish-kit";
 import { SocialCaptionDiff, hasCaptionChanges } from "@/components/social-caption-diff";
 import { SocialPostThread } from "@/components/social-post-thread";
-import { addSocialPostCommentByAdmin, duplicateSocialPost } from "@/lib/actions/social-posts";
+import {
+  addSocialPostCommentByAdmin,
+  duplicateSocialPost,
+  importLinkedTaskMediaNow,
+  requestLinkedTaskRevision,
+} from "@/lib/actions/social-posts";
 import { ACTIVE_CLIENTS } from "@/lib/clients";
 import {
   CLIENT_VISIBLE_STATUSES,
@@ -67,6 +72,14 @@ export default async function SocialPostDetailPage({ params }: { params: Promise
           eventDate: true,
           status: { select: { slug: true, label: true, color: true } },
           _count: { select: { deliverables: { where: { kind: "final" } } } },
+          // Livrables finaux visibles côté réseaux dès leur dépôt
+          // (2026-09-25) : deux personnes différentes tiennent souvent les
+          // deux côtés, il ne faut pas avoir à ouvrir Tâches pour savoir.
+          deliverables: {
+            where: { kind: "final" },
+            select: { id: true, fileName: true, mimeType: true },
+            orderBy: { uploadedAt: "asc" },
+          },
         },
       },
       category: { select: { label: true, color: true } },
@@ -277,11 +290,11 @@ export default async function SocialPostDetailPage({ params }: { params: Promise
                     {requestedTask.eventDate &&
                       ` · évènement le ${new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short", timeZone: "UTC" }).format(requestedTask.eventDate)}`}
                     {" · "}
-                    {requestedTask.status.slug === TASK_STATUS.TERMINE
-                      ? post.taskMediaImportedAt
-                        ? `fichiers finaux ajoutés aux visuels le ${formatSchedule(post.taskMediaImportedAt)}`
-                        : "terminée"
-                      : "ses fichiers finaux s'ajouteront aux visuels quand elle sera terminée"}
+                    {post.taskMediaImportedAt
+                      ? `fichiers finaux ajoutés aux visuels le ${formatSchedule(post.taskMediaImportedAt)}`
+                      : requestedTask.status.slug === TASK_STATUS.TERMINE
+                        ? "terminée"
+                        : "ses fichiers finaux s'ajouteront aux visuels quand elle sera terminée"}
                   </p>
                 </div>
                 <StatusBadge label={requestedTask.status.label} color={requestedTask.status.color} />
@@ -292,6 +305,67 @@ export default async function SocialPostDetailPage({ params }: { params: Promise
                 avancement s&apos;affiche ici et sur la carte, et ses fichiers finaux rejoignent les visuels une fois terminée.
               </p>
             )}
+            {requestedTask && requestedTask.deliverables.length > 0 && (
+              <div className="mt-4 rounded-xl border border-line p-3">
+                <p className="text-xs font-medium text-ink">
+                  Livrables finaux déposés ({requestedTask.deliverables.length})
+                </p>
+                <ul className="mt-2 flex flex-wrap gap-2">
+                  {requestedTask.deliverables.map((file) => (
+                    <li key={file.id} className="w-20">
+                      <a
+                        href={`/api/fichiers/livrables/${file.id}`}
+                        title={file.fileName}
+                        className="block overflow-hidden rounded-lg border border-line bg-surface-elevated"
+                      >
+                        {file.mimeType.startsWith("image/") ? (
+                          // eslint-disable-next-line @next/next/no-img-element -- vignette servie par une route authentifiée
+                          <img
+                            src={`/api/fichiers/livrables/${file.id}?thumb=1`}
+                            alt={file.fileName}
+                            loading="lazy"
+                            className="h-20 w-20 object-cover"
+                          />
+                        ) : (
+                          <span className="flex h-20 w-20 items-center justify-center text-center text-[10px] text-ink-muted">
+                            {file.fileName.split(".").pop()?.toUpperCase()}
+                          </span>
+                        )}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+                {!post.taskMediaImportedAt && (
+                  <form action={importLinkedTaskMediaNow.bind(null, post.id)} className="mt-3">
+                    <button
+                      type="submit"
+                      className="rounded-full border border-line px-4 py-2 text-sm text-ink transition-colors hover:border-accent hover:bg-accent hover:text-accent-ink"
+                    >
+                      Ajouter aux visuels maintenant
+                    </button>
+                  </form>
+                )}
+              </div>
+            )}
+
+            {requestedTask && requestedTask.status.slug !== TASK_STATUS.A_MODIFIER && (
+              <details className="mt-4">
+                <summary className="cursor-pointer text-sm text-ink-muted hover:text-ink">
+                  Demander une retouche
+                </summary>
+                <p className="mt-2 text-xs text-ink-muted">
+                  Renvoie la création en « À modifier » avec votre motif, sans passer par la fiche tâche.
+                </p>
+                <div className="mt-3">
+                  <SocialPostNoteForm
+                    action={requestLinkedTaskRevision.bind(null, post.id)}
+                    placeholder="Ce qu'il faut corriger"
+                    submitLabel="Demander la retouche"
+                  />
+                </div>
+              </details>
+            )}
+
             {!taskInProgress && taskTypes.length > 0 && (
               <div className="mt-4">
                 <SocialTaskRequestForm

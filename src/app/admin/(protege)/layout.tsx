@@ -65,10 +65,21 @@ export default async function AdminProtectedLayout({
     db.prospect.count({
       where: { nextReminderAt: { lte: new Date() }, reminderSentAt: null },
     }),
-    // Pastille "Réseaux" — publications validées par le client dont l'heure
-    // est arrivée : c'est ce qui attend une action immédiate (les publier).
+    // Pastille "Réseaux" — ce qui attend une action immédiate : les
+    // publications validées dont l'heure est arrivée, plus (2026-09-25)
+    // celles dont la création est terminée et les visuels déjà récupérés,
+    // mais qui dorment encore en brouillon.
     db.socialPost.count({
-      where: { status: SOCIAL_POST_STATUS.VALIDE, scheduledAt: { lte: new Date() } },
+      where: {
+        OR: [
+          { status: SOCIAL_POST_STATUS.VALIDE, scheduledAt: { lte: new Date() } },
+          {
+            status: { in: [SOCIAL_POST_STATUS.IDEE, SOCIAL_POST_STATUS.REDACTION] },
+            taskMediaImportedAt: { not: null },
+            sourceTask: { internal: true, status: { slug: TASK_STATUS.TERMINE } },
+          },
+        ],
+      },
     }),
   ]);
 
