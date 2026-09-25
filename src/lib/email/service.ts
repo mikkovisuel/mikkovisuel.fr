@@ -27,7 +27,8 @@ export type EmailTrigger =
   | "social_post_refused"
   | "social_post_reminder"
   | "social_slot_reminder"
-  | "social_post_comment";
+  | "social_post_comment"
+  | "social_routine_reminder";
 
 export interface EmailAttachmentInput {
   filename: string;

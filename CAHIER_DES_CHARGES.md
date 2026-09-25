@@ -2001,6 +2001,53 @@ J-2 — restent notées ici comme pistes).
 Migration additive : `SocialPost.captionVariants`, `previousCaption`,
 `previousHashtags`, table `SocialPostComment`.
 
+### 4.8 Programmation : routines (2026-09-25)
+
+Demande du client : une section "calendriers éditoriaux de routines", avec
+des routines de travail, "cohérent et facilement paramétrable". Quatre
+arbitrages tranchés par le client : production **au choix par routine**,
+cadences **hebdomadaires et mensuelles complètes**, **bibliothèque de
+modèles** réutilisables, et **routines internes** sans client.
+
+**Un seul objet, la routine**, qui remplace les "créneaux récurrents" de la
+livraison 2 — leurs données sont reprises par la migration (chaque créneau
+devient une routine hebdomadaire qui ne produit qu'un rappel, à l'identique).
+
+- **Quand** : chaque semaine (un ou plusieurs jours), une semaine sur deux,
+  le N du mois (un 31 tombe le dernier jour des mois plus courts), ou le
+  "1er lundi / dernier vendredi". Heure de Paris, période de validité
+  facultative (du… au…), et **avance** en jours (`leadDays`) qui déclenche
+  la production avant l'occurrence.
+- **Pour qui** : un client, ou **interne** (sans client).
+- **Ce que ça produit**, combinable : un **rappel email**, un **brouillon de
+  publication** déjà daté et pré-rempli (réseaux, format, catégorie, texte
+  avec les variables `{client}` et `{date}`, hashtags), une **tâche de
+  travail** interne (type, échéance calculée, brief). Une routine interne
+  n'ayant pas de client auquel rattacher une tâche, elle alimente le
+  **pense-bête** de la page Tâches.
+- **Anti-doublon** conservé : si une publication existe déjà ce jour-là pour
+  ce client, la routine ne produit rien.
+
+**Regroupement** : les routines vivent dans un **calendrier**
+(`SocialRoutineSet`), que l'on met en pause d'un bloc, que l'on duplique, ou
+que l'on enregistre comme **modèle**. Un modèle n'a pas de client et ne
+produit jamais rien ; il s'applique à un client en un clic et y crée un
+calendrier indépendant. Trois natures d'ensembles, à ne pas confondre :
+client, interne (exécuté), modèle (jamais exécuté).
+
+**Où** : nouvelle page **Programmation** (`/admin/reseaux/routines`),
+accessible depuis Réseaux, avec la **semaine type** (lundi → dimanche, plus
+les cadences mensuelles listées à part), les calendriers par client, les
+routines internes et les modèles. La fiche Réglages d'un client affiche un
+résumé de ses routines et renvoie vers cette page. Les occurrences à venir
+sans publication apparaissent toujours en pointillés dans le calendrier
+éditorial.
+
+**Exécution** : dans la tâche planifiée horaire existante
+(`/api/cron/social-post-reminders`) — **aucune tâche planifiée
+supplémentaire** (limite Scalingo de 5). `lastRunFor` garantit qu'une
+occurrence n'est jamais traitée deux fois.
+
 ## Passe de nettoyage du code (2026-09-22)
 
 Demande du client : "fais une passe globale sur le code et nettoie tout,
@@ -2740,3 +2787,4 @@ Le client a explicitement délégué ces choix :
 | 2026-09-18 | "Comme tout le reste du site, fait en sorte de scaler la page réseau sur la largeur de la fenêtre" | **Livré** : la fiche publication, la nouvelle publication et les réglages réseaux d'un client prennent la même largeur que le reste de l'admin (elles étaient limitées à une colonne étroite ; la liste Réseaux l'était déjà). Fiche publication en deux colonnes sur grand écran, comme la fiche tâche (suivi, contenu, visuels à gauche ; aperçu, création demandée, notes à droite) ; réglages client en deux colonnes. Une seule colonne sur mobile. Défaut trouvé en test et corrigé : sur mobile, le tableau des chiffres mensuels élargissait toute la page (626 px pour un écran de 375) au lieu de défiler dans son cadre. Voir `VALIDATION.md` |
 | 2026-09-22 | "As-tu des suggestions pour améliorer le calendrier éditorial : préparation, validation, publication" — 9 des 12 suggestions retenues (non retenues : envoi groupé en validation, relance automatique du client à J-2) | **Livré** : glisser-déposer dans le calendrier, créneaux récurrents affichés en pointillés avec création pré-remplie, texte adapté par réseau, duplication d'une publication, équilibre des catégories du mois, échange admin ↔ client par publication (emails des deux côtés), comparaison avant/après une demande de modification, kit de publication (copie du texte par réseau, visuels en .zip, texte dans l'email de rappel), carte "Réseaux — aujourd'hui" au tableau de bord, rappel et ajout après coup du lien du post publié. Détails section 4.7, tests dans `VALIDATION.md` |
 | 2026-09-22 | "Fais une passe globale sur le code et nettoie tout, optimise au mieux" | **Livré, à comportement constant** : code mort supprimé (2 composants, 1 fonction, 5 SVG du gabarit Next, 8 exports repassés en portée interne), duplications regroupées (générateur de nom de fichier ×4, garde des tâches planifiées ×6, journalisation + en-têtes des exports ×8), requêtes allégées par `select` explicite (page Notes et 3 listes déroulantes de clients), purge des tables qui grossissaient sans fin (journal d'emails, tentatives de connexion, connexions client) dans la tâche quotidienne existante. 369 lignes supprimées pour 168 ajoutées. Détails et points volontairement non touchés : section "Passe de nettoyage du code" |
+| 2026-09-25 | "J'aimerais pouvoir avoir une section calendriers éditoriaux de routines… tout soit bien cohérent et facilement paramétrable" — arbitrages : production **au choix par routine**, cadences **hebdo + mensuel complet**, **modèles réutilisables**, **routines internes** sans client | **Livré** : page Programmation avec semaine type, calendriers de routines par client, routines internes (pense-bête), modèles applicables en un clic. Cadences hebdomadaire, une semaine sur deux, le N du mois et le Nième jour du mois ; période de validité ; avance paramétrable. Chaque routine produit au choix rappel, brouillon de publication pré-rempli et/ou tâche de travail. Les anciens "créneaux récurrents" sont **migrés** en routines équivalentes puis supprimés. Exécution dans la tâche horaire existante. Détails section 4.8, tests dans `VALIDATION.md` |

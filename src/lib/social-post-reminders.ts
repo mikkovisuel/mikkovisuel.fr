@@ -5,13 +5,8 @@ import { escapeHtml } from "@/lib/html-escape";
 import {
   SOCIAL_POST_STATUS,
   captionForNetwork,
-  formatLabel,
   formatSchedule,
-  isSameParisDay,
   networkLabel,
-  nextSlotOccurrence,
-  slotReminderTime,
-  toParisDateTimeLocal,
 } from "@/lib/social-posts";
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://www.mikkovisuel.fr";
@@ -82,84 +77,4 @@ export async function sendDueSocialPostReminders() {
   });
 
   return { sentCount: due.length };
-}
-
-// Créneaux récurrents (livraison 2) : choix "simple rappel" — aucune
-// publication n'est créée automatiquement. Pour chaque créneau actif, un
-// email part à partir de `slotReminderTime` avec un lien qui pré-remplit la
-// création ; une seule fois par occurrence (`lastRemindedFor`). Si une
-// publication existe déjà ce jour-là (heure de Paris) pour ce client, pas
-// d'email : le créneau est déjà couvert. Appelé par la même tâche horaire
-// que les rappels de publication (limite Scalingo de 5 tâches planifiées).
-export async function sendDueSlotReminders(now = new Date()) {
-  const slots = await db.socialRecurringSlot.findMany({
-    where: { active: true },
-    include: { client: { select: { name: true } } },
-  });
-
-  const due: { slot: (typeof slots)[number]; occurrence: Date }[] = [];
-  const covered: { id: string; occurrence: Date }[] = [];
-  for (const slot of slots) {
-    const occurrence = nextSlotOccurrence(slot.weekday, slot.time, now);
-    if (!occurrence) continue;
-    if (slot.lastRemindedFor?.getTime() === occurrence.getTime()) continue;
-    if (now < slotReminderTime(occurrence, slot.remindDaysBefore)) continue;
-
-    const dayWindow = 36 * 60 * 60 * 1000;
-    const nearby = await db.socialPost.findMany({
-      where: {
-        clientId: slot.clientId,
-        scheduledAt: { gte: new Date(occurrence.getTime() - dayWindow), lte: new Date(occurrence.getTime() + dayWindow) },
-      },
-      select: { scheduledAt: true },
-    });
-    if (nearby.some((post) => post.scheduledAt && isSameParisDay(post.scheduledAt, occurrence))) {
-      covered.push({ id: slot.id, occurrence });
-    } else {
-      due.push({ slot, occurrence });
-    }
-  }
-
-  if (due.length > 0) {
-    const items = due
-      .map(({ slot, occurrence }) => {
-        const params = new URLSearchParams({
-          clientId: slot.clientId,
-          titre: slot.title,
-          format: slot.format,
-          reseaux: slot.networks.join(","),
-          date: toParisDateTimeLocal(occurrence),
-        });
-        return `
-        <li>
-          <strong>${escapeHtml(slot.client.name)}</strong> — ${escapeHtml(slot.title)}
-          (${escapeHtml(formatLabel(slot.format))}, ${escapeHtml(slot.networks.map(networkLabel).join(", "))},
-          ${escapeHtml(formatSchedule(occurrence))})
-          — <a href="${SITE_URL}/admin/reseaux/nouveau?${escapeHtml(params.toString())}">préparer la publication</a>
-        </li>`;
-      })
-      .join("");
-
-    await sendEmailToAdmins({
-      trigger: "social_slot_reminder",
-      subject:
-        due.length > 1
-          ? `${due.length} créneaux réseaux à préparer`
-          : `À préparer — ${due[0].slot.title} (${due[0].slot.client.name})`,
-      html: `
-      <p>${due.length > 1 ? "Ces créneaux récurrents approchent et n'ont pas encore de publication" : "Ce créneau récurrent approche et n'a pas encore de publication"} :</p>
-      <ul>${items}</ul>
-      <p>Le lien ouvre une nouvelle publication déjà remplie (client, titre, format, réseaux, date).</p>
-    `,
-    });
-  }
-
-  // Même principe que ci-dessus : marqué après la tentative d'envoi pour ne
-  // pas relancer la même alerte toutes les heures. Les créneaux déjà
-  // couverts sont marqués aussi, pour ne pas refaire la vérification.
-  for (const { id, occurrence } of [...due.map(({ slot, occurrence }) => ({ id: slot.id, occurrence })), ...covered]) {
-    await db.socialRecurringSlot.update({ where: { id }, data: { lastRemindedFor: occurrence } });
-  }
-
-  return { slotReminderCount: due.length, coveredSlotCount: covered.length };
 }

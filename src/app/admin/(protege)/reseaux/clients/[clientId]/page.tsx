@@ -8,28 +8,22 @@ import { DeleteButton } from "@/components/admin/delete-button";
 import {
   SocialProfileForm,
   SocialLibraryItemForm,
-  RecurringSlotForm,
   MonthlyStatsForm,
 } from "@/components/admin/social-client-settings-forms";
+import { StatusBadge } from "@/components/status-badge";
+import { describeCadence, nextRoutineOccurrence } from "@/lib/social-routines";
 import {
   saveSocialProfile,
   addSocialLibraryItem,
   deleteSocialLibraryItem,
-  addRecurringSlot,
-  toggleRecurringSlot,
-  deleteRecurringSlot,
   saveMonthlyStats,
   deleteMonthlyStats,
 } from "@/lib/actions/social-library";
 import {
-  WEEKDAY_LABELS,
   engagementRate,
   formatCount,
-  formatLabel,
   formatRate,
   formatSchedule,
-  networkLabel,
-  nextSlotOccurrence,
   toParisWallClockDate,
 } from "@/lib/social-posts";
 
@@ -41,12 +35,6 @@ const SECTION = "rounded-2xl border border-line p-6";
 const SECTION_TITLE = "text-xs font-medium uppercase tracking-wide text-ink-muted";
 const ICON_DELETE =
   "flex h-7 w-7 items-center justify-center rounded-full border border-line text-ink-muted transition-colors hover:border-danger hover:bg-danger hover:text-white";
-// "18:00" → "18 h", "09:30" → "9 h 30".
-function formatSlotTime(time: string) {
-  const [hours, minutes] = time.split(":");
-  return minutes === "00" ? `${Number(hours)} h` : `${Number(hours)} h ${minutes}`;
-}
-
 const MONTH_FORMATTER = new Intl.DateTimeFormat("fr-FR", { month: "long", year: "numeric", timeZone: "UTC" });
 
 // Réglages "réseaux sociaux" d'un client (livraison 2 du module Community
@@ -61,7 +49,7 @@ export default async function SocialClientSettingsPage({ params }: { params: Pro
     include: {
       socialProfile: true,
       socialLibrary: { orderBy: { createdAt: "asc" } },
-      socialSlots: { orderBy: [{ weekday: "asc" }, { time: "asc" }] },
+      socialRoutineSets: { include: { routines: { orderBy: { createdAt: "asc" } } }, orderBy: { createdAt: "asc" } },
       socialStats: { orderBy: [{ year: "desc" }, { month: "desc" }] },
     },
   });
@@ -70,6 +58,7 @@ export default async function SocialClientSettingsPage({ params }: { params: Pro
   const hashtagSets = client.socialLibrary.filter((item) => item.kind === "hashtags");
   const templates = client.socialLibrary.filter((item) => item.kind === "template");
   const now = new Date();
+  const routineCount = client.socialRoutineSets.reduce((total, set) => total + set.routines.length, 0);
   // Mois proposé par défaut pour la saisie des chiffres : le mois écoulé
   // (on fait le bilan d'un mois une fois qu'il est terminé).
   const parisNow = toParisWallClockDate(now);
@@ -156,51 +145,50 @@ export default async function SocialClientSettingsPage({ params }: { params: Pro
         </div>
         <div className="grid min-w-0 grid-cols-1 gap-6">
           <section className={SECTION}>
-            <h2 className={SECTION_TITLE}>Créneaux récurrents ({client.socialSlots.length})</h2>
+            <h2 className={SECTION_TITLE}>Routines ({routineCount})</h2>
             <p className="mt-1 text-xs text-ink-muted">
-              Rien n&apos;est créé automatiquement : vous recevez un email à 8 h le jour du rappel, avec un lien qui
-              pré-remplit la publication. Pas de rappel si une publication existe déjà ce jour-là pour ce client.
+              Ce qui revient régulièrement pour ce client : rappel, brouillon de publication, tâche de travail. Le
+              détail et la création se font sur la page Programmation, commune à tous les clients.
             </p>
-            {client.socialSlots.length > 0 && (
-              <ul className="mt-4 grid gap-2">
-                {client.socialSlots.map((slot) => {
-                  const next = nextSlotOccurrence(slot.weekday, slot.time, now);
-                  return (
-                    <li key={slot.id} className="flex items-start gap-3 rounded-xl border border-line p-3">
-                      <div className={`min-w-0 flex-1 ${slot.active ? "" : "opacity-60"}`}>
-                        <p className="text-sm font-medium text-ink">{slot.title}</p>
-                        <p className="mt-1 text-sm text-ink-muted">
-                          Chaque {WEEKDAY_LABELS[slot.weekday - 1]?.toLowerCase()} à {formatSlotTime(slot.time)} ·{" "}
-                          {slot.networks.map(networkLabel).join(", ")} · {formatLabel(slot.format)} · rappel{" "}
-                          {slot.remindDaysBefore === 0 ? "le jour même" : `${slot.remindDaysBefore} j avant`}
-                        </p>
-                        <p className="mt-1 text-xs text-ink-muted">
-                          {slot.active ? `Prochain : ${formatSchedule(next)}` : "En pause"}
-                        </p>
-                      </div>
-                      <form action={toggleRecurringSlot.bind(null, slot.id)}>
-                        <button
-                          type="submit"
-                          className="rounded-full border border-line px-3 py-1 text-xs text-ink-muted transition-colors hover:border-accent hover:text-ink"
-                        >
-                          {slot.active ? "Mettre en pause" : "Réactiver"}
-                        </button>
-                      </form>
-                      <DeleteButton
-                        action={deleteRecurringSlot.bind(null, slot.id)}
-                        confirmMessage={`Supprimer le créneau "${slot.title}" ?`}
-                        label={`Supprimer ${slot.title}`}
-                        icon={<Trash size={14} weight="regular" />}
-                        className={ICON_DELETE}
-                      />
-                    </li>
-                  );
-                })}
+            {client.socialRoutineSets.length === 0 ? (
+              <p className="mt-4 text-sm text-ink-muted">Aucune routine pour ce client.</p>
+            ) : (
+              <ul className="mt-4 grid gap-3">
+                {client.socialRoutineSets.map((set) => (
+                  <li key={set.id} className="rounded-xl border border-line p-3">
+                    <p className="flex flex-wrap items-center gap-2 text-sm font-medium text-ink">
+                      {set.name}
+                      {!set.active && <StatusBadge label="En pause" color="amber" />}
+                    </p>
+                    {set.routines.length === 0 ? (
+                      <p className="mt-1 text-xs text-ink-muted">Calendrier vide.</p>
+                    ) : (
+                      <ul className="mt-2 grid gap-1">
+                        {set.routines.map((routine) => {
+                          const next = nextRoutineOccurrence(routine, now);
+                          return (
+                            <li key={routine.id} className={`text-sm ${routine.active && set.active ? "" : "opacity-60"}`}>
+                              <span className="text-ink">{routine.title}</span>{" "}
+                              <span className="text-ink-muted">
+                                — {describeCadence(routine)}
+                                {routine.active && set.active && next ? ` · prochaine : ${formatSchedule(next)}` : ""}
+                                {!routine.active ? " · en pause" : ""}
+                              </span>
+                            </li>
+                          );
+                        })}
+                      </ul>
+                    )}
+                  </li>
+                ))}
               </ul>
             )}
-            <div className="mt-4">
-              <RecurringSlotForm action={addRecurringSlot.bind(null, client.id)} />
-            </div>
+            <Link
+              href="/admin/reseaux/routines"
+              className="mt-4 inline-flex rounded-full border border-line px-4 py-2 text-sm text-ink transition-colors hover:border-accent"
+            >
+              Ouvrir la programmation
+            </Link>
           </section>
           <section className={SECTION}>
             <h2 className={SECTION_TITLE}>Chiffres mensuels et rapport</h2>

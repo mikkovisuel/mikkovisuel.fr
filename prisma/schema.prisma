@@ -107,22 +107,23 @@ model Client {
   // Renommé "users" -> "contacts" le 2026-07-31 (split Contact/ClientContact,
   // voir plus bas) — ce sont les rattachements de contacts à ce client, pas
   // des comptes utilisateurs au sens propre.
-  contacts       ClientContact[]
-  tasks          Task[]
-  documents      Document[]
-  paymentRecords PaymentRecord[]
+  contacts          ClientContact[]
+  tasks             Task[]
+  documents         Document[]
+  paymentRecords    PaymentRecord[]
   // Nommé différemment du champ `notes` (texte libre juste au-dessus) —
   // celui-ci est la relation vers le module de notes internes (Note[]).
-  linkedNotes    Note[]
-  socialPosts    SocialPost[]
-  socialProfile  SocialClientProfile?
-  socialLibrary  SocialLibraryItem[]
-  socialSlots    SocialRecurringSlot[]
-  socialStats    SocialMonthlyStats[]
+  linkedNotes       Note[]
+  socialPosts       SocialPost[]
+  socialProfile     SocialClientProfile?
+  socialLibrary     SocialLibraryItem[]
+  socialRoutineSets SocialRoutineSet[]
+  socialPlanRuns    SocialPlanRun[]
+  socialStats       SocialMonthlyStats[]
   // Renseigné uniquement quand ce client vient de la conversion d'un
   // prospect (bouton "Convertir en client" sur /admin/prospection) — voir
   // Prospect.convertedClient ci-dessous.
-  prospectOrigin Prospect?
+  prospectOrigin    Prospect?
 
   // Perf (2026-08-16) : Prisma n'indexe pas automatiquement les colonnes de
   // clé étrangère (contrairement à certains ORM) — seul un `@@unique` en
@@ -309,9 +310,11 @@ model DropdownItem {
   prospects Prospect[]
   clients   Client[]   @relation("ClientCategory")
 
-  taskTypeOf   Task[]       @relation("TaskTypes")
-  taskFormatOf Task[]       @relation("TaskFormats")
-  socialPosts  SocialPost[] @relation("SocialPostCategory")
+  taskTypeOf      Task[]           @relation("TaskTypes")
+  taskFormatOf    Task[]           @relation("TaskFormats")
+  socialPosts     SocialPost[]     @relation("SocialPostCategory")
+  socialRoutines  SocialRoutine[]  @relation("SocialRoutineCategory")
+  socialPlanSteps SocialPlanStep[] @relation("SocialPlanStepCategory")
 
   @@unique([listId, slug])
 }
@@ -376,14 +379,16 @@ model Task {
   types   DropdownItem[] @relation("TaskTypes")
   formats DropdownItem[] @relation("TaskFormats")
 
-  deliverables   Deliverable[]
-  attachments    Attachment[]
-  comments       TaskComment[]
-  refusalHistory TaskRefusalHistory[]
-  statusHistory  TaskStatusHistory[]
-  timeEntries    TaskTimeEntry[]
-  checklistItems TaskChecklistItem[]
-  socialPosts    SocialPost[]
+  deliverables    Deliverable[]
+  attachments     Attachment[]
+  comments        TaskComment[]
+  refusalHistory  TaskRefusalHistory[]
+  statusHistory   TaskStatusHistory[]
+  timeEntries     TaskTimeEntry[]
+  checklistItems  TaskChecklistItem[]
+  socialPosts     SocialPost[]
+  socialPlanRuns  SocialPlanRun[]      @relation("SocialPlanRunSourceTask")
+  socialPlanItems SocialPlanRunItem[]  @relation("SocialPlanRunItemTask")
 
   @@index([clientId])
   @@index([statusId])
@@ -1056,9 +1061,10 @@ model SocialPost {
   createdAt           DateTime      @default(now())
   updatedAt           DateTime      @updatedAt
 
-  media    SocialPostMedia[]
-  notes    SocialPostNote[]
-  comments SocialPostComment[]
+  media     SocialPostMedia[]
+  notes     SocialPostNote[]
+  comments  SocialPostComment[]
+  planItems SocialPlanRunItem[] @relation("SocialPlanRunItemPost")
 
   @@index([clientId])
   @@index([status])
@@ -1142,29 +1148,182 @@ model SocialLibraryItem {
   @@index([clientId])
 }
 
-// Créneau récurrent (ex. "chaque jeudi 18 h, flyer de la soirée du
-// samedi"). Choix du client : **simple rappel**, rien n'est créé
-// automatiquement — un email part `remindDaysBefore` jours avant chaque
-// occurrence, avec un lien qui pré-remplit la publication.
-// `lastRemindedFor` = occurrence (instant exact) déjà rappelée, pour ne
-// jamais doubler un rappel.
-model SocialRecurringSlot {
-  id               String    @id @default(cuid())
-  clientId         String
-  client           Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  title            String
-  // Jour de la semaine en heure de Paris : 1 = lundi ... 7 = dimanche (ISO).
-  weekday          Int
-  // "HH:mm", heure de Paris.
-  time             String
-  networks         String[]
-  format           String
-  remindDaysBefore Int       @default(3)
-  active           Boolean   @default(true)
-  lastRemindedFor  DateTime?
-  createdAt        DateTime  @default(now())
+// --- Programmation : routines et plans de communication (2026-09-25) -----
+//
+// Deux façons de programmer du travail, un seul moteur derrière :
+//   - une **routine** est calée sur le calendrier ("chaque jeudi 18 h") ;
+//   - un **plan de communication** est calé sur un évènement ("J-30, J-7,
+//     J+1 autour de la soirée du 14 novembre", voir SocialPlan plus bas).
+// Les deux produisent au choix : un rappel email, un brouillon de
+// publication, une tâche de travail interne.
+//
+// Remplace `SocialRecurringSlot` (livraison 2 du module), dont les données
+// sont reprises telles quelles par la migration : un créneau devient une
+// routine hebdomadaire qui ne produit qu'un rappel.
+
+// Ensemble nommé de routines : permet de tout mettre en pause d'un bloc
+// (vacances, fin de saison), de dupliquer vers un autre client, et de
+// servir de **modèle réutilisable** (`isTemplate`, sans client).
+model SocialRoutineSet {
+  id         String          @id @default(cuid())
+  name       String
+  clientId   String?
+  client     Client?         @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  isTemplate Boolean         @default(false)
+  active     Boolean         @default(true)
+  createdAt  DateTime        @default(now())
+  routines   SocialRoutine[]
 
   @@index([clientId])
+}
+
+model SocialRoutine {
+  id    String           @id @default(cuid())
+  setId String
+  set   SocialRoutineSet @relation(fields: [setId], references: [id], onDelete: Cascade)
+  title String
+
+  // Cadence : "weekly" (un ou plusieurs jours), "biweekly" (une semaine sur
+  // deux, comptée depuis `biweeklyAnchor`), "monthly_day" (le N du mois) ou
+  // "monthly_weekday" (le 1er lundi, le dernier vendredi...).
+  cadence        String    @default("weekly")
+  // Jours ISO 1 = lundi ... 7 = dimanche, heure de Paris.
+  weekdays       Int[]
+  biweeklyAnchor DateTime?
+  monthDay       Int?
+  // 1 à 4 = première à quatrième semaine, -1 = dernière.
+  monthWeek      Int?
+  monthWeekday   Int?
+  // "HH:mm", heure de Paris.
+  time           String    @default("18:00")
+  // Période de validité facultative (une saison de soirées, par exemple).
+  activeFrom     DateTime?
+  activeUntil    DateTime?
+  active         Boolean   @default(true)
+
+  // Ce que l'occurrence produit — combinable.
+  createsReminder Boolean @default(true)
+  createsDraft    Boolean @default(false)
+  createsTask     Boolean @default(false)
+  // Nombre de jours d'avance : rappel envoyé et brouillon/tâche créés à
+  // J-`leadDays` de l'occurrence.
+  leadDays        Int     @default(3)
+
+  // Contenu par défaut de la publication produite. Texte libre plutôt qu'un
+  // lien vers la bibliothèque du client : une routine peut appartenir à un
+  // modèle sans client, et un modèle doit rester applicable à n'importe qui.
+  networks        String[]
+  format          String        @default("post")
+  categoryId      String?
+  category        DropdownItem? @relation("SocialRoutineCategory", fields: [categoryId], references: [id], onDelete: SetNull)
+  captionTemplate String?       @db.Text
+  hashtags        String?       @db.Text
+
+  // Tâche de travail produite (interne, jamais visible du client).
+  taskTypeSlug String?
+  taskLeadDays Int?
+  taskBrief    String? @db.Text
+
+  // Dernière occurrence déjà traitée : garantit qu'une occurrence ne
+  // produit jamais deux fois la même chose (même principe que
+  // `SocialRecurringSlot.lastRemindedFor` auparavant).
+  lastRunFor DateTime?
+  createdAt  DateTime  @default(now())
+
+  @@index([setId])
+  @@index([categoryId])
+}
+
+// --- Plans de communication standard --------------------------------------
+//
+// Un modèle de séquence autour d'un évènement : J-30 annonce, J-7 rappel,
+// J+1 after-movie... Global (pas rattaché à un client) pour être appliqué à
+// n'importe lequel ; les textes acceptent les variables {evenement},
+// {date}, {lieu} et {client}.
+model SocialPlan {
+  id          String           @id @default(cuid())
+  name        String
+  description String?
+  active      Boolean          @default(true)
+  createdAt   DateTime         @default(now())
+  steps       SocialPlanStep[]
+  runs        SocialPlanRun[]
+}
+
+model SocialPlanStep {
+  id         String     @id @default(cuid())
+  planId     String
+  plan       SocialPlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+  label      String
+  // Décalage en jours par rapport à l'évènement : négatif avant (J-30 =
+  // -30), positif après (J+1 = 1), 0 le jour même.
+  offsetDays Int
+  time       String     @default("18:00")
+
+  createsDraft    Boolean @default(true)
+  createsReminder Boolean @default(true)
+  createsTask     Boolean @default(false)
+
+  networks        String[]
+  format          String        @default("post")
+  categoryId      String?
+  category        DropdownItem? @relation("SocialPlanStepCategory", fields: [categoryId], references: [id], onDelete: SetNull)
+  titlePattern    String        @default("{etape} — {evenement}")
+  captionTemplate String?       @db.Text
+  hashtags        String?       @db.Text
+
+  taskTypeSlug String?
+  taskLeadDays Int?
+  taskBrief    String? @db.Text
+
+  sortOrder Int @default(0)
+
+  @@index([planId])
+}
+
+// Plan appliqué à un évènement précis : reste vivant pour suivre
+// l'avancement et tout annuler d'un bloc si l'évènement tombe à l'eau.
+model SocialPlanRun {
+  id       String      @id @default(cuid())
+  planId   String?
+  plan     SocialPlan? @relation(fields: [planId], references: [id], onDelete: SetNull)
+  // Dénormalisé : le suivi doit rester lisible même si le modèle est
+  // supprimé ou renommé (même principe que TaskComment.authorName).
+  planName String
+  clientId String
+  client   Client      @relation(fields: [clientId], references: [id], onDelete: Cascade)
+
+  eventName    String
+  eventDate    DateTime
+  eventPlace   String?
+  // Tâche d'évènement d'origine quand le plan a été appliqué depuis Tâches.
+  sourceTaskId String?
+  sourceTask   Task?    @relation("SocialPlanRunSourceTask", fields: [sourceTaskId], references: [id], onDelete: SetNull)
+
+  createdAt  DateTime  @default(now())
+  canceledAt DateTime?
+
+  items SocialPlanRunItem[]
+
+  @@index([clientId])
+  @@index([sourceTaskId])
+}
+
+model SocialPlanRunItem {
+  id    String        @id @default(cuid())
+  runId String
+  run   SocialPlanRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  label String
+  dueAt DateTime
+
+  // `SetNull` : supprimer une publication ou une tâche ne doit pas faire
+  // disparaître la ligne de suivi, qui garde la trace de l'étape prévue.
+  postId String?
+  post   SocialPost? @relation("SocialPlanRunItemPost", fields: [postId], references: [id], onDelete: SetNull)
+  taskId String?
+  task   Task?       @relation("SocialPlanRunItemTask", fields: [taskId], references: [id], onDelete: SetNull)
+
+  @@index([runId])
 }
 
 // Chiffres du mois saisis à la main pour le rapport mensuel (choix du

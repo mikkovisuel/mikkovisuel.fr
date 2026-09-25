@@ -858,6 +858,23 @@ Code développé par une autre session Claude Code (branche `claude/hub-bridge`,
 | Site public | Accueil et une galerie du portfolio | ✅ 200 sur les deux | `/portfolio` sans galerie | ✅ 404 — comportement d'avant la passe (il n'existe pas de page d'index) | 2026-09-22 |
 | Code mort supprimé | `form-submit-button.tsx`, `task-row.tsx`, `groupTasksByClient`, 5 SVG du gabarit Next | ✅ Aucun import restant (vérifié avant suppression), build propre | — | — | 2026-09-22 |
 
+## Programmation — routines (2026-09-25)
+
+`tsc --noEmit`, lint et `npm run build` propres. Moteur de cadences testé sous `TZ=UTC`, `America/New_York` et `Asia/Tokyo` ; parcours complet exercé en navigateur avec une vraie session admin, et **exécution réelle** de la tâche planifiée. Client de test supprimé après les tests.
+
+| Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |
+|---|---|---|---|---|---|
+| Moteur de cadences | Hebdo multi-jours, 1 semaine sur 2, le N du mois, 1er lundi / dernier vendredi, changement d'heure, période de validité | ✅ **21 vérifications OK sous les 3 fuseaux** — dont "lundi 26/10 à 18 h Paris = 17:00 UTC" après le passage à l'heure d'hiver, et un 31 qui tombe le 28 février | Cadence incomplète (aucun jour coché, mensuel sans jour, heure "25:00") | ✅ `null` : aucune occurrence inventée | 2026-09-25 |
+| Migration des créneaux | Créneau témoin (jeudi 18 h 30, Instagram + TikTok, reel, rappel 5 j, en pause, déjà rappelé) | ✅ Devenu une routine hebdomadaire **identique** : mêmes jour, heure, réseaux, format, avance, état et dernière occurrence traitée | — | — | 2026-09-25 |
+| Routine de client (les 3 productions) | Samedi 18 h, avance 30 j, rappel + brouillon + tâche | ✅ `{"routineReminderCount":1,"routineDraftsCreated":1,"routineTasksCreated":1}` — brouillon au 26/09 18 h avec texte "Samedi chez ZZ Test Routines — sam. 26 sept., 18:00" (variables remplies), tâche **interne** échéance 24/09, email listant ce qui a été produit | 2ᵉ passage immédiat de la tâche planifiée | ✅ Tout à 0 : une occurrence n'est jamais traitée deux fois | 2026-09-25 |
+| Anti-doublon | Publication déjà prévue ce jour-là | ✅ `{"routinesAlreadyCovered":1}` — rien de créé, aucun email | — | — | 2026-09-25 |
+| Routine interne (sans client) | Lundi 9 h, pense-bête + rappel | ✅ Ligne "ZZ Programmer la semaine" ajoutée au pense-bête, email envoyé ; le formulaire masque le brouillon et parle de "ligne dans le pense-bête" | Champ "format" absent de ce formulaire | ❌ puis ✅ **Défaut trouvé en test** : le schéma exigeait un format inexistant pour ce cas ("Invalid option: expected one of post\|carrousel…") — valeurs par défaut ajoutées | 2026-09-25 |
+| Type de tâche | Routine de client avec tâche | ✅ Type exigé et vérifié | Routine **interne** avec pense-bête | ❌ puis ✅ **Défaut trouvé en test** : le type de tâche était exigé alors qu'il n'existe pas dans ce cas — règle déplacée dans l'action, qui sait si le calendrier a un client | 2026-09-25 |
+| Calendriers internes vs modèles | Création des deux depuis "Nouveau calendrier" | ❌ puis ✅ **Défaut de conception trouvé en test** : tout calendrier sans client devenait un *modèle*, donc n'était jamais exécuté — les deux natures sont désormais distinctes (bouton dédié pour chacune) | — | — | 2026-09-25 |
+| Modèle réutilisable | "Enregistrer comme modèle" puis application à un autre client | ✅ Modèle créé sans client, application crée un calendrier **indépendant** chez le client choisi ("Modèle appliqué") | — | — | 2026-09-25 |
+| Calendrier éditorial | Vue Calendrier d'octobre | ✅ 9 cases "à préparer" en pointillés (5 samedis × 2 clients, moins le jour déjà couvert), lien "Programmation" dans l'en-tête | — | — | 2026-09-25 |
+| Fiche Réglages d'un client | Section Routines | ✅ "Routines (1)", cadence et prochaine occurrence affichées, renvoi vers Programmation | — | — | 2026-09-25 |
+
 ## Points restant ouverts pour une prochaine passe de validation
 
 - Glisser-déposer et `<select>` natif du Kanban Prospection (limite outil, voir ci-dessus).

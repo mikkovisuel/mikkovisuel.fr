@@ -22,8 +22,8 @@ import {
   toParisDateTimeLocal,
   isSameParisDay,
   parseParisDateTimeLocal,
-  slotOccurrencesInMonth,
 } from "@/lib/social-posts";
+import { routineOccurrencesInMonth } from "@/lib/social-routines";
 import { moveSocialPostToDay } from "@/lib/actions/social-posts";
 
 export const metadata: Metadata = {
@@ -282,52 +282,63 @@ export default async function SocialPostsPage({
     new Date(Date.UTC(calendarYear, calendarMonth, 1)),
   );
 
-  // Créneaux récurrents sans publication ce jour-là : cases fantômes du
-  // calendrier (2026-09-18), un clic ouvre la création pré-remplie.
+  // Routines sans publication ce jour-là : cases "à préparer" du calendrier
+  // (2026-09-25 — remplace les anciens créneaux récurrents). Un clic ouvre
+  // la création pré-remplie.
   const ghostEntries =
     view === "calendrier"
       ? await (async () => {
-          const slots = await db.socialRecurringSlot.findMany({
-            where: { active: true, client: EXCLUDE_DEMO_CLIENT, ...(clientId ? { clientId } : {}) },
-            include: { client: { select: { name: true } } },
+          const routines = await db.socialRoutine.findMany({
+            where: {
+              active: true,
+              set: {
+                active: true,
+                isTemplate: false,
+                clientId: clientId ? clientId : { not: null },
+                client: EXCLUDE_DEMO_CLIENT,
+              },
+            },
+            include: { set: { include: { client: { select: { id: true, name: true } } } } },
           });
-          if (slots.length === 0) return [];
+          if (routines.length === 0) return [];
           const monthPosts = await db.socialPost.findMany({
             where: {
-              clientId: { in: slots.map((slot) => slot.clientId) },
+              clientId: { in: routines.map((routine) => routine.set.clientId!).filter(Boolean) },
               scheduledAt: { gte: monthStart, lt: monthEnd },
             },
             select: { clientId: true, scheduledAt: true },
           });
-          return slots.flatMap((slot) =>
-            slotOccurrencesInMonth(slot.weekday, slot.time, calendarYear, calendarMonth, now)
+          return routines.flatMap((routine) => {
+            const client = routine.set.client;
+            if (!client) return [];
+            return routineOccurrencesInMonth(routine, calendarYear, calendarMonth, now)
               .filter(
                 (occurrence) =>
                   !monthPosts.some(
                     (post) =>
-                      post.clientId === slot.clientId &&
+                      post.clientId === client.id &&
                       post.scheduledAt &&
                       isSameParisDay(post.scheduledAt, occurrence),
                   ),
               )
               .map((occurrence) => {
                 const params = new URLSearchParams({
-                  clientId: slot.clientId,
-                  titre: slot.title,
-                  format: slot.format,
-                  reseaux: slot.networks.join(","),
+                  clientId: client.id,
+                  titre: routine.title,
+                  format: routine.format,
+                  reseaux: routine.networks.join(","),
                   date: toParisDateTimeLocal(occurrence),
                 });
                 return {
-                  id: `creneau-${slot.id}-${occurrence.getTime()}`,
-                  title: `${slot.client.name} · ${slot.title}`,
+                  id: `routine-${routine.id}-${occurrence.getTime()}`,
+                  title: `${client.name} · ${routine.title}`,
                   eventDate: toParisWallClockDate(occurrence),
-                  status: { color: "slate", label: "Créneau à préparer" },
+                  status: { color: "slate", label: routine.createsDraft ? "Brouillon prévu" : "À préparer" },
                   href: `/admin/reseaux/nouveau?${params.toString()}`,
                   ghost: true,
                 };
-              }),
-          );
+              });
+          });
         })()
       : [];
 
@@ -359,6 +370,12 @@ export default async function SocialPostsPage({
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
+          <Link
+            href="/admin/reseaux/routines"
+            className="rounded-full border border-line px-5 py-2.5 text-sm text-ink transition-colors hover:border-accent"
+          >
+            Programmation
+          </Link>
           {clientId && (
             <Link
               href={`/admin/reseaux/clients/${clientId}`}

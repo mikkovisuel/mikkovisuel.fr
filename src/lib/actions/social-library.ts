@@ -6,7 +6,6 @@ import { verifyAdminSession } from "@/lib/dal";
 import {
   SocialProfileSchema,
   SocialLibraryItemSchema,
-  SocialRecurringSlotSchema,
   SocialMonthlyStatsSchema,
   SocialCaptionRequestSchema,
   type SocialLibraryFormState,
@@ -78,45 +77,6 @@ export async function deleteSocialLibraryItem(itemId: string) {
   if (!item) return;
   await db.socialLibraryItem.delete({ where: { id: itemId } });
   revalidateClientSettings(item.clientId);
-}
-
-export async function addRecurringSlot(
-  clientId: string,
-  _prev: SocialLibraryFormState,
-  formData: FormData,
-): Promise<SocialLibraryFormState> {
-  await verifyAdminSession();
-  if (!(await clientExists(clientId))) return { error: "Client introuvable." };
-
-  const parsed = SocialRecurringSlotSchema.safeParse({
-    title: formData.get("title"),
-    weekday: formData.get("weekday"),
-    time: formData.get("time"),
-    networks: formData.getAll("networks"),
-    format: formData.get("format"),
-    remindDaysBefore: formData.get("remindDaysBefore"),
-  });
-  if (!parsed.success) return { error: parsed.error.issues[0]?.message ?? "Formulaire invalide." };
-
-  await db.socialRecurringSlot.create({ data: { clientId, ...parsed.data } });
-  revalidateClientSettings(clientId);
-  return { saved: true };
-}
-
-export async function toggleRecurringSlot(slotId: string) {
-  await verifyAdminSession();
-  const slot = await db.socialRecurringSlot.findUnique({ where: { id: slotId } });
-  if (!slot) return;
-  await db.socialRecurringSlot.update({ where: { id: slotId }, data: { active: !slot.active } });
-  revalidateClientSettings(slot.clientId);
-}
-
-export async function deleteRecurringSlot(slotId: string) {
-  await verifyAdminSession();
-  const slot = await db.socialRecurringSlot.findUnique({ where: { id: slotId } });
-  if (!slot) return;
-  await db.socialRecurringSlot.delete({ where: { id: slotId } });
-  revalidateClientSettings(slot.clientId);
 }
 
 // Une saisie par client et par mois : enregistrer un mois déjà saisi le

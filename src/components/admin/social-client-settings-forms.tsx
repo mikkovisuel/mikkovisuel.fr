@@ -3,7 +3,6 @@
 import { useActionState } from "react";
 import { WarningCircle, CheckCircle } from "@phosphor-icons/react/dist/ssr";
 import { useFormSubmit } from "@/lib/use-form-submit";
-import { SOCIAL_FORMATS, SOCIAL_NETWORKS, WEEKDAY_LABELS } from "@/lib/social-posts";
 import type { SocialLibraryFormState } from "@/lib/validation/social-library";
 
 // Formulaires de la page "Réglages réseaux" d'un client
@@ -109,75 +108,6 @@ export function SocialLibraryItemForm({ action, kind }: { action: Action; kind: 
           {pending ? "Ajout..." : isHashtags ? "Ajouter le groupe" : "Ajouter le modèle"}
         </button>
         <Feedback state={state} pending={pending} savedLabel="Ajouté" />
-      </div>
-    </form>
-  );
-}
-
-export function RecurringSlotForm({ action }: { action: Action }) {
-  const [state, formAction, pending] = useActionState(action, undefined);
-  const { formRef, onSubmit } = useFormSubmit(formAction, { pending, state, resetOnSuccess: true });
-  return (
-    <form ref={formRef} action={formAction} onSubmit={onSubmit} className="grid gap-3">
-      <input
-        name="title"
-        required
-        maxLength={160}
-        placeholder="Ex. Flyer de la soirée du samedi"
-        className={INPUT}
-      />
-      <div className="flex flex-wrap gap-3">
-        <label className="grid gap-1 text-xs text-ink-muted">
-          Jour
-          <select name="weekday" defaultValue="4" className={INPUT}>
-            {WEEKDAY_LABELS.map((label, index) => (
-              <option key={label} value={index + 1}>
-                {label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="grid gap-1 text-xs text-ink-muted">
-          Heure (Paris)
-          <input name="time" type="time" required defaultValue="18:00" className={INPUT} />
-        </label>
-        <label className="grid gap-1 text-xs text-ink-muted">
-          Format
-          <select name="format" defaultValue="post" className={INPUT}>
-            {SOCIAL_FORMATS.map((format) => (
-              <option key={format.slug} value={format.slug}>
-                {format.label}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="grid gap-1 text-xs text-ink-muted">
-          Rappel (jours avant)
-          <input name="remindDaysBefore" type="number" min={0} max={30} defaultValue={3} required className={`${INPUT} w-24`} />
-        </label>
-      </div>
-      <div className="flex flex-wrap gap-2">
-        {SOCIAL_NETWORKS.map((network) => (
-          <label
-            key={network.slug}
-            className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-line px-3 py-1.5 text-sm text-ink transition-colors has-[:checked]:border-accent has-[:checked]:bg-accent has-[:checked]:text-accent-ink"
-          >
-            <input
-              type="checkbox"
-              name="networks"
-              value={network.slug}
-              defaultChecked={network.slug === "instagram"}
-              className="sr-only"
-            />
-            {network.label}
-          </label>
-        ))}
-      </div>
-      <div className="flex flex-wrap items-center gap-3">
-        <button type="submit" disabled={pending} className={SUBMIT}>
-          {pending ? "Ajout..." : "Ajouter le créneau"}
-        </button>
-        <Feedback state={state} pending={pending} savedLabel="Créneau ajouté" />
       </div>
     </form>
   );

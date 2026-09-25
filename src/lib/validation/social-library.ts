@@ -17,19 +17,6 @@ export const SocialLibraryItemSchema = z.object({
   content: z.string().trim().min(1, { message: "Le contenu est vide." }).max(4000),
 });
 
-export const SocialRecurringSlotSchema = z.object({
-  title: z.string().trim().min(1, { message: "Donnez un titre au créneau." }).max(160),
-  weekday: z.coerce.number().int().min(1).max(7),
-  time: z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, { message: "Heure invalide." }),
-  networks: z.array(z.enum(NETWORK_SLUGS)).min(1, { message: "Choisissez au moins un réseau." }),
-  format: z.enum(FORMAT_SLUGS),
-  remindDaysBefore: z.coerce
-    .number({ message: "Nombre de jours invalide." })
-    .int()
-    .min(0, { message: "Le rappel ne peut pas être après le créneau." })
-    .max(30, { message: "30 jours maximum." }),
-});
-
 // Chiffres saisis à la main : un champ vide = inconnu (null), jamais 0 —
 // "0 abonné" et "pas renseigné" ne veulent pas dire la même chose, et le
 // taux d'engagement n'est calculé que si portée et interactions sont
