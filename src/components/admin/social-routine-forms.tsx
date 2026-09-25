@@ -60,6 +60,7 @@ export interface RoutineFormValues {
   createsReminder: boolean;
   createsDraft: boolean;
   createsTask: boolean;
+  createsAction: boolean;
   leadDays: number;
   networks: string[];
   format: string;
@@ -69,6 +70,8 @@ export interface RoutineFormValues {
   taskTypeSlug: string;
   taskLeadDays: number | null;
   taskBrief: string;
+  actionLeadDays: number | null;
+  actionBrief: string;
 }
 
 const EMPTY: RoutineFormValues = {
@@ -84,6 +87,7 @@ const EMPTY: RoutineFormValues = {
   createsReminder: true,
   createsDraft: false,
   createsTask: false,
+  createsAction: false,
   leadDays: 3,
   networks: ["instagram"],
   format: "post",
@@ -93,6 +97,8 @@ const EMPTY: RoutineFormValues = {
   taskTypeSlug: "",
   taskLeadDays: 2,
   taskBrief: "",
+  actionLeadDays: 0,
+  actionBrief: "",
 };
 
 export function RoutineForm({
@@ -121,6 +127,7 @@ export function RoutineForm({
   const [cadence, setCadence] = useState(values.cadence);
   const [createsDraft, setCreatesDraft] = useState(values.createsDraft);
   const [createsTask, setCreatesTask] = useState(values.createsTask);
+  const [createsAction, setCreatesAction] = useState(values.createsAction);
 
   const needsWeekdays = cadence === "weekly" || cadence === "biweekly";
 
@@ -277,7 +284,43 @@ export function RoutineForm({
           />
           {hasClient ? "Une tâche de travail (interne)" : "Une ligne dans le pense-bête"}
         </label>
+        <label className="flex cursor-pointer items-center gap-2 text-sm text-ink">
+          <input
+            type="checkbox"
+            name="createsAction"
+            checked={createsAction}
+            onChange={(event) => setCreatesAction(event.target.checked)}
+            className={CHECKBOX}
+          />
+          Une action à cocher (liste « À faire »)
+        </label>
       </fieldset>
+
+      {createsAction && (
+        <fieldset className="grid gap-3 rounded-xl border border-line p-3">
+          <legend className="px-1 text-xs font-medium uppercase tracking-wide text-ink-muted">
+            Action à cocher
+          </legend>
+          <label className={`grid gap-1 ${LABEL}`}>
+            Posée (jours avant l&apos;occurrence)
+            <input
+              name="actionLeadDays"
+              type="number"
+              min={0}
+              max={120}
+              defaultValue={values.actionLeadDays ?? 0}
+              className={`${INPUT} w-28`}
+            />
+          </label>
+          <textarea
+            name="actionBrief"
+            rows={2}
+            defaultValue={values.actionBrief}
+            placeholder="Description de l'action (facultatif)"
+            className={`${INPUT} resize-y`}
+          />
+        </fieldset>
+      )}
 
       {/* --- Contenu du brouillon --------------------------------------- */}
       {hasClient && createsDraft && (

@@ -41,6 +41,7 @@ function routineDataFromForm(data: ReturnType<typeof RoutineSchema.parse>) {
     createsReminder: data.createsReminder,
     createsDraft: data.createsDraft,
     createsTask: data.createsTask,
+    createsAction: data.createsAction,
     leadDays: data.leadDays,
     networks: data.networks,
     format: data.format,
@@ -49,6 +50,8 @@ function routineDataFromForm(data: ReturnType<typeof RoutineSchema.parse>) {
     taskTypeSlug: data.createsTask ? data.taskTypeSlug || null : null,
     taskLeadDays: data.createsTask ? number(data.taskLeadDays) : null,
     taskBrief: data.createsTask ? data.taskBrief || null : null,
+    actionLeadDays: data.createsAction ? number(data.actionLeadDays) : null,
+    actionBrief: data.createsAction ? data.actionBrief || null : null,
   };
 }
 
@@ -66,6 +69,7 @@ function parseRoutineForm(formData: FormData) {
     createsReminder: formData.get("createsReminder") === "on",
     createsDraft: formData.get("createsDraft") === "on",
     createsTask: formData.get("createsTask") === "on",
+    createsAction: formData.get("createsAction") === "on",
     leadDays: formData.get("leadDays"),
     networks: formData.getAll("networks"),
     format: formData.get("format") ?? undefined,
@@ -75,6 +79,8 @@ function parseRoutineForm(formData: FormData) {
     taskTypeSlug: formData.get("taskTypeSlug") ?? "",
     taskLeadDays: formData.get("taskLeadDays") ?? "",
     taskBrief: formData.get("taskBrief") ?? "",
+    actionLeadDays: formData.get("actionLeadDays") ?? "",
+    actionBrief: formData.get("actionBrief") ?? "",
   });
 }
 

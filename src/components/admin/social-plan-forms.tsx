@@ -89,6 +89,7 @@ export interface PlanStepValues {
   createsDraft: boolean;
   createsReminder: boolean;
   createsTask: boolean;
+  createsAction: boolean;
   remindDaysBefore: number;
   networks: string[];
   format: string;
@@ -99,6 +100,8 @@ export interface PlanStepValues {
   taskTypeSlug: string;
   taskLeadDays: number | null;
   taskBrief: string;
+  actionLeadDays: number | null;
+  actionBrief: string;
 }
 
 const EMPTY_STEP: PlanStepValues = {
@@ -108,6 +111,7 @@ const EMPTY_STEP: PlanStepValues = {
   createsDraft: true,
   createsReminder: true,
   createsTask: false,
+  createsAction: false,
   remindDaysBefore: 2,
   networks: ["instagram"],
   format: "post",
@@ -118,6 +122,8 @@ const EMPTY_STEP: PlanStepValues = {
   taskTypeSlug: "",
   taskLeadDays: 2,
   taskBrief: "",
+  actionLeadDays: 0,
+  actionBrief: "",
 };
 
 export function PlanStepForm({
@@ -140,6 +146,7 @@ export function PlanStepForm({
   const { formRef, onSubmit } = useFormSubmit(formAction, { pending, state, resetOnSuccess });
   const [createsDraft, setCreatesDraft] = useState(values.createsDraft);
   const [createsTask, setCreatesTask] = useState(values.createsTask);
+  const [createsAction, setCreatesAction] = useState(values.createsAction);
 
   return (
     <form ref={formRef} action={formAction} onSubmit={onSubmit} className="grid gap-3">
@@ -200,6 +207,16 @@ export function PlanStepForm({
             className={CHECKBOX}
           />
           Une tâche de travail (interne)
+        </label>
+        <label className="flex cursor-pointer items-center gap-2 text-sm text-ink">
+          <input
+            type="checkbox"
+            name="createsAction"
+            checked={createsAction}
+            onChange={(event) => setCreatesAction(event.target.checked)}
+            className={CHECKBOX}
+          />
+          Une action à cocher (liste « À faire »)
         </label>
         <label className={`grid gap-1 ${LABEL}`}>
           Rappel (jours avant l&apos;étape)
@@ -277,6 +294,32 @@ export function PlanStepForm({
             className={`${INPUT} resize-y`}
           />
           <input name="hashtags" defaultValue={values.hashtags} placeholder="#hashtags (facultatif)" className={INPUT} />
+        </fieldset>
+      )}
+
+      {createsAction && (
+        <fieldset className="grid gap-3 rounded-xl border border-line p-3">
+          <legend className="px-1 text-xs font-medium uppercase tracking-wide text-ink-muted">
+            Action à cocher
+          </legend>
+          <label className={`grid gap-1 ${LABEL}`}>
+            Posée (jours avant l&apos;étape)
+            <input
+              name="actionLeadDays"
+              type="number"
+              min={0}
+              max={120}
+              defaultValue={values.actionLeadDays ?? 0}
+              className={`${INPUT} w-28`}
+            />
+          </label>
+          <textarea
+            name="actionBrief"
+            rows={2}
+            defaultValue={values.actionBrief}
+            placeholder="Description de l'action (facultatif), mêmes variables"
+            className={`${INPUT} resize-y`}
+          />
         </fieldset>
       )}
 

@@ -118,6 +118,7 @@ model Client {
   socialProfile     SocialClientProfile?
   socialLibrary     SocialLibraryItem[]
   socialRoutineSets SocialRoutineSet[]
+  socialActions     SocialAction[]
   socialPlanRuns    SocialPlanRun[]
   socialStats       SocialMonthlyStats[]
   // Renseigné uniquement quand ce client vient de la conversion d'un
@@ -1022,6 +1023,11 @@ model SocialPost {
   // afficher avant/après au renvoi. Effacés à la validation.
   previousCaption     String?       @db.Text
   previousHashtags    String?       @db.Text
+  // "Prête" (2026-09-25) : le contenu est finalisé côté interne (visuel et
+  // texte), indépendamment du cycle de validation du client. "Faite" n'a
+  // pas de colonne : c'est le statut "publie" et `publishedAt`, qui restent
+  // la seule source de vérité sur la mise en ligne.
+  readyAt             DateTime?
   // Instant exact (UTC) de publication prévue. La saisie et l'affichage se
   // font en heure de Paris, explicitement : le serveur de production tourne
   // en UTC (vérifié), une conversion implicite décalerait d'1 à 2 h.
@@ -1148,6 +1154,36 @@ model SocialLibraryItem {
   @@index([clientId])
 }
 
+// Action (2026-09-25) : une chose à faire, un jour donné, cochée quand
+// c'est fait. Objet volontairement léger — ni livrable, ni validation
+// client, ni cycle de statut : c'est la liste "À faire" du module Réseaux,
+// à distinguer d'une tâche (Task), qui porte du travail de production.
+// Créée à la main, ou produite par une routine ou une étape de plan.
+model SocialAction {
+  id          String    @id @default(cuid())
+  // Facultatif : une action peut être interne ("programmer la semaine").
+  clientId    String?
+  client      Client?   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  title       String
+  description String?   @db.Text
+  // Jour et heure de Paris auxquels l'action est prévue.
+  dueAt       DateTime
+  doneAt      DateTime?
+
+  // Origine, pour retrouver ce qui a produit l'action. `SetNull` :
+  // supprimer la routine ne retire pas l'action déjà posée dans la liste.
+  routineId String?
+  routine   SocialRoutine? @relation(fields: [routineId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  planItems SocialPlanRunItem[]
+
+  @@index([clientId])
+  @@index([dueAt])
+  @@index([routineId])
+}
+
 // --- Programmation : routines et plans de communication (2026-09-25) -----
 //
 // Deux façons de programmer du travail, un seul moteur derrière :
@@ -1205,6 +1241,7 @@ model SocialRoutine {
   createsReminder Boolean @default(true)
   createsDraft    Boolean @default(false)
   createsTask     Boolean @default(false)
+  createsAction   Boolean @default(false)
   // Nombre de jours d'avance : rappel envoyé et brouillon/tâche créés à
   // J-`leadDays` de l'occurrence.
   leadDays        Int     @default(3)
@@ -1223,6 +1260,11 @@ model SocialRoutine {
   taskTypeSlug String?
   taskLeadDays Int?
   taskBrief    String? @db.Text
+
+  // Action produite : posée `actionLeadDays` jours avant l'occurrence.
+  actionLeadDays Int?
+  actionBrief    String?        @db.Text
+  actions        SocialAction[]
 
   // Dernière occurrence déjà traitée : garantit qu'une occurrence ne
   // produit jamais deux fois la même chose (même principe que
@@ -1263,6 +1305,7 @@ model SocialPlanStep {
   createsDraft     Boolean @default(true)
   createsReminder  Boolean @default(true)
   createsTask      Boolean @default(false)
+  createsAction    Boolean @default(false)
   // Avance du rappel de l'étape, en jours avant sa date.
   remindDaysBefore Int     @default(2)
 
@@ -1277,6 +1320,9 @@ model SocialPlanStep {
   taskTypeSlug String?
   taskLeadDays Int?
   taskBrief    String? @db.Text
+
+  actionLeadDays Int?
+  actionBrief    String? @db.Text
 
   sortOrder Int @default(0)
 
@@ -1324,10 +1370,12 @@ model SocialPlanRunItem {
 
   // `SetNull` : supprimer une publication ou une tâche ne doit pas faire
   // disparaître la ligne de suivi, qui garde la trace de l'étape prévue.
-  postId String?
-  post   SocialPost? @relation("SocialPlanRunItemPost", fields: [postId], references: [id], onDelete: SetNull)
-  taskId String?
-  task   Task?       @relation("SocialPlanRunItemTask", fields: [taskId], references: [id], onDelete: SetNull)
+  postId   String?
+  post     SocialPost?   @relation("SocialPlanRunItemPost", fields: [postId], references: [id], onDelete: SetNull)
+  taskId   String?
+  task     Task?         @relation("SocialPlanRunItemTask", fields: [taskId], references: [id], onDelete: SetNull)
+  actionId String?
+  action   SocialAction? @relation(fields: [actionId], references: [id], onDelete: SetNull)
 
   @@index([runId])
 }

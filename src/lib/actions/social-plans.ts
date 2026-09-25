@@ -105,6 +105,7 @@ function parseStepForm(formData: FormData) {
     createsDraft: formData.get("createsDraft") === "on",
     createsReminder: formData.get("createsReminder") === "on",
     createsTask: formData.get("createsTask") === "on",
+    createsAction: formData.get("createsAction") === "on",
     remindDaysBefore: formData.get("remindDaysBefore") ?? 2,
     networks: formData.getAll("networks"),
     format: formData.get("format") ?? undefined,
@@ -115,6 +116,8 @@ function parseStepForm(formData: FormData) {
     taskTypeSlug: formData.get("taskTypeSlug") ?? "",
     taskLeadDays: formData.get("taskLeadDays") ?? "",
     taskBrief: formData.get("taskBrief") ?? "",
+    actionLeadDays: formData.get("actionLeadDays") ?? "",
+    actionBrief: formData.get("actionBrief") ?? "",
   });
 }
 
@@ -145,6 +148,7 @@ async function stepDataFromForm(data: ReturnType<typeof PlanStepSchema.parse>) {
       createsDraft: data.createsDraft,
       createsReminder: data.createsReminder,
       createsTask: data.createsTask,
+      createsAction: data.createsAction,
       remindDaysBefore: data.remindDaysBefore,
       networks: data.networks,
       format: data.format,
@@ -155,6 +159,8 @@ async function stepDataFromForm(data: ReturnType<typeof PlanStepSchema.parse>) {
       taskTypeSlug: data.createsTask ? data.taskTypeSlug || null : null,
       taskLeadDays: data.createsTask && data.taskLeadDays !== "" ? Number(data.taskLeadDays) : null,
       taskBrief: data.createsTask ? data.taskBrief || null : null,
+      actionLeadDays: data.createsAction && data.actionLeadDays !== "" ? Number(data.actionLeadDays) : null,
+      actionBrief: data.createsAction ? data.actionBrief || null : null,
     },
   };
 }
@@ -338,6 +344,19 @@ export async function applyPlan(
       }
     }
 
+    let actionId: string | null = null;
+    if (step.createsAction) {
+      const action = await db.socialAction.create({
+        data: {
+          clientId: client.id,
+          title: fillPlanTemplate(step.titlePattern, values).slice(0, 160),
+          description: step.actionBrief ? fillPlanTemplate(step.actionBrief, values) : null,
+          dueAt: new Date(dueAt.getTime() - (step.actionLeadDays ?? 0) * 24 * 60 * 60 * 1000),
+        },
+      });
+      actionId = action.id;
+    }
+
     await db.socialPlanRunItem.create({
       data: {
         runId: run.id,
@@ -348,6 +367,7 @@ export async function applyPlan(
           : null,
         postId,
         taskId,
+        actionId,
       },
     });
   }
@@ -370,6 +390,7 @@ export async function cancelPlanRun(runId: string) {
         include: {
           post: { select: { id: true, status: true } },
           task: { select: { id: true, status: { select: { slug: true } } } },
+          action: { select: { id: true, doneAt: true } },
         },
       },
     },
@@ -382,6 +403,10 @@ export async function cancelPlanRun(runId: string) {
     }
     if (item.task && item.task.status.slug !== TASK_STATUS.TERMINE) {
       await db.task.delete({ where: { id: item.task.id } });
+    }
+    // Une action déjà cochée est un travail fait : elle reste.
+    if (item.action && !item.action.doneAt) {
+      await db.socialAction.delete({ where: { id: item.action.id } });
     }
   }
 

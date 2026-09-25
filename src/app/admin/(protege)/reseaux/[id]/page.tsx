@@ -9,6 +9,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { DeleteButton } from "@/components/admin/delete-button";
 import { SocialPostForm } from "@/components/admin/social-post-form";
 import { SocialPostWorkflow } from "@/components/admin/social-post-workflow";
+import { SocialPostStateToggles } from "@/components/admin/social-post-state-toggles";
 import { SocialPostMediaManager } from "@/components/admin/social-post-media-manager";
 import { SocialPostPreview } from "@/components/social-post-preview";
 import { updateSocialPost, deleteSocialPost } from "@/lib/actions/social-posts";
@@ -34,6 +35,7 @@ import {
 } from "@/lib/actions/social-posts";
 import { ACTIVE_CLIENTS } from "@/lib/clients";
 import {
+  SOCIAL_POST_STATUS,
   CLIENT_VISIBLE_STATUSES,
   captionForNetwork,
   networkLabel,
@@ -183,6 +185,15 @@ export default async function SocialPostDetailPage({ params }: { params: Promise
         <div className="grid min-w-0 grid-cols-1 gap-6">
           <section className={SECTION}>
             <h2 className={SECTION_TITLE}>Suivi</h2>
+            {/* Repères internes (2026-09-25), indépendants du cycle client :
+                où en est le contenu, et est-ce en ligne. */}
+            <div className="mt-3">
+              <SocialPostStateToggles
+                postId={post.id}
+                ready={post.readyAt !== null}
+                done={post.status === SOCIAL_POST_STATUS.PUBLIE}
+              />
+            </div>
             <div className="mt-4">
               <SocialPostWorkflow
                 postId={post.id}

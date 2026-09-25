@@ -904,6 +904,21 @@ Code développé par une autre session Claude Code (branche `claude/hub-bridge`,
 | Retouche déjà demandée | — | — | Deuxième demande sur une création déjà "À modifier" | ⚠️ Vérifié par lecture de code (garde explicite) — le bloc est de toute façon masqué dans ce cas | 2026-09-25 |
 | Contexte sur la fiche tâche | Tâche interne liée à une publication du 10/10 | ✅ "Publication prévue : sam. 10 oct., 18:00" et "À livrer avant le 8 octobre 2026" dans le bandeau | — | — | 2026-09-25 |
 
+## Actions à cocher et repères « prête / faite » (2026-09-25)
+
+`tsc --noEmit`, lint et `npm run build` propres. Parcours exercé en navigateur avec une vraie session admin, exécution réelle de la tâche planifiée, client de test supprimé après les tests.
+
+| Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |
+|---|---|---|---|---|---|
+| Onglet « À faire » | Action créée pour aujourd'hui 9 h | ✅ Rangée sous "Aujourd'hui (1)", 4ᵉ onglet présent à côté de Liste / Calendrier / Grille | Action sans titre ou sans date | ⚠️ Vérifié par lecture de code (messages "Donnez un titre à l'action." / "Donnez une date à l'action.") — le navigateur bloque déjà les deux champs requis | 2026-09-25 |
+| Cocher une action | Clic sur la case | ✅ Action barrée, déplacée dans "Faites (1)", groupe du jour vidé | — | — | 2026-09-25 |
+| Actions dans le calendrier | Mois de septembre | ✅ "✓ ZZ Répondre aux commentaires — Action faite — Interne" dans la case du jour | — | — | 2026-09-25 |
+| Action produite par une routine | Routine hebdo "action à cocher", avance 30 j, action posée le jour de l'occurrence | ✅ `{"routineActionsCreated":1}` — action au lun. 28 sept. 18 h, rattachée au client et à la routine ; résumé "Produit : action à cocher · rappel email" | 2ᵉ passage de la tâche planifiée | ✅ 0 : jamais deux fois | 2026-09-25 |
+| Repère « Prête » | Case cochée sur une publication validée | ✅ `readyAt` enregistré, repère affiché ; le statut du cycle client n'a pas bougé | — | — | 2026-09-25 |
+| Repère « Faite » | Case cochée | ✅ Publication passée "Publié" avec sa date | Case décochée ensuite | ✅ Retour à "Validé" (le client avait validé), date et lien de publication effacés, "Prête" conservée | 2026-09-25 |
+| Tableau de bord | Action en retard ou due aujourd'hui | ✅ Bloc "À faire aujourd'hui (1)" dans la carte "Réseaux — aujourd'hui" | Rien de dû | ✅ Carte entièrement masquée | 2026-09-25 |
+| Annulation d'un plan | — | — | Plan annulé avec des actions | ⚠️ Vérifié par lecture de code : seules les actions **non cochées** sont supprimées | 2026-09-25 |
+
 ## Points restant ouverts pour une prochaine passe de validation
 
 - Glisser-déposer et `<select>` natif du Kanban Prospection (limite outil, voir ci-dessus).

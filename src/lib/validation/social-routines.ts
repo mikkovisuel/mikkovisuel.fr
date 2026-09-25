@@ -40,6 +40,7 @@ export const RoutineSchema = z
     createsReminder: z.boolean(),
     createsDraft: z.boolean(),
     createsTask: z.boolean(),
+    createsAction: z.boolean(),
     leadDays: z.coerce
       .number({ message: "Nombre de jours invalide." })
       .int()
@@ -56,6 +57,8 @@ export const RoutineSchema = z
     taskTypeSlug: z.string().optional(),
     taskLeadDays: z.union([z.coerce.number().int().min(0).max(120), z.literal("")]).optional(),
     taskBrief: z.string().trim().max(4000).optional(),
+    actionLeadDays: z.union([z.coerce.number().int().min(0).max(120), z.literal("")]).optional(),
+    actionBrief: z.string().trim().max(4000).optional(),
   })
   .superRefine((data, ctx) => {
     const needsWeekdays = data.cadence === "weekly" || data.cadence === "biweekly";
@@ -68,7 +71,7 @@ export const RoutineSchema = z
     if (data.cadence === "monthly_weekday" && (!data.monthWeek || !data.monthWeekday)) {
       ctx.addIssue({ code: "custom", message: "Choisissez la semaine et le jour." });
     }
-    if (!data.createsReminder && !data.createsDraft && !data.createsTask) {
+    if (!data.createsReminder && !data.createsDraft && !data.createsTask && !data.createsAction) {
       ctx.addIssue({ code: "custom", message: "Une routine doit produire au moins une chose." });
     }
     if (data.createsDraft && data.networks.length === 0) {

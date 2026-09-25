@@ -24,6 +24,7 @@ export const PlanStepSchema = z
     createsDraft: z.boolean(),
     createsReminder: z.boolean(),
     createsTask: z.boolean(),
+    createsAction: z.boolean(),
     remindDaysBefore: z.coerce.number().int().min(0).max(60).default(2),
     networks: z.array(z.enum(NETWORK_SLUGS)).default([]),
     format: z.enum(FORMAT_SLUGS).default("post"),
@@ -34,9 +35,11 @@ export const PlanStepSchema = z
     taskTypeSlug: z.string().optional(),
     taskLeadDays: z.union([z.coerce.number().int().min(0).max(120), z.literal("")]).optional(),
     taskBrief: z.string().trim().max(4000).optional(),
+    actionLeadDays: z.union([z.coerce.number().int().min(0).max(120), z.literal("")]).optional(),
+    actionBrief: z.string().trim().max(4000).optional(),
   })
   .superRefine((data, ctx) => {
-    if (!data.createsDraft && !data.createsReminder && !data.createsTask) {
+    if (!data.createsDraft && !data.createsReminder && !data.createsTask && !data.createsAction) {
       ctx.addIssue({ code: "custom", message: "Une étape doit produire au moins une chose." });
     }
     if (data.createsDraft && data.networks.length === 0) {

@@ -2112,6 +2112,42 @@ Quatre ajouts, tous choisis par le client.
   **date de publication prévue** et l'échéance **« À livrer avant le… »**,
   en rouge si elle est dépassée.
 
+### 4.11 Actions à cocher et repères « prête / faite » (2026-09-25)
+
+Demande du client : une liste de choses à faire par jour dans Réseaux, à
+cocher une fois faites, produite aussi par les routines et les plans ; et,
+sur les publications, de quoi voir d'un coup d'œil quand elles sont prêtes
+et quand elles sont faites. Quatre arbitrages tranchés par le client.
+
+**L'action** est un **objet léger, propre à Réseaux** : un titre, une
+description facultative, une date et une heure (Paris), un client
+facultatif, et un seul état — fait ou pas fait. Ni livrable, ni validation
+client, ni cycle de statut : c'est ce qui la distingue d'une **tâche**
+(`Task`), qui porte du travail de production.
+
+- **Où** : nouvel onglet **« À faire »** dans Réseaux, à côté de Liste /
+  Calendrier / Grille, groupé par échéance (En retard, Aujourd'hui, Demain,
+  Cette semaine, Plus tard), les actions faites repliées à part ; **et**
+  dans les cases du calendrier éditorial, cochées d'un ✓ quand elles sont
+  faites. L'onglet affiche le nombre d'actions restantes, et le tableau de
+  bord liste celles du jour.
+- **Création** : formulaire en tête de l'onglet, ou production automatique.
+- **Produite par une routine ou une étape de plan** : quatrième case à
+  cocher, à côté de rappel / brouillon / tâche, avec sa description type et
+  son avance propre (`actionLeadDays`, en jours avant l'occurrence ou avant
+  la date de l'étape). Annuler un plan supprime ses actions **non cochées**
+  seulement : une action faite est un travail réalisé, elle reste.
+
+**Repères « prête » et « faite » sur une publication**, indépendants du
+cycle de validation du client :
+
+- **Prête** (`SocialPost.readyAt`) : le contenu est finalisé côté interne,
+  visuel et texte. Repère purement interne, affiché aussi dans la liste.
+- **Faite** : adossée au statut existant — cocher marque la publication
+  « Publié » avec sa date, décocher la ramène à « Validé » si le client
+  avait validé (sinon « Rédaction ») et efface date et lien de publication.
+  Il n'y a donc **jamais deux vérités** sur la mise en ligne.
+
 ## Passe de nettoyage du code (2026-09-22)
 
 Demande du client : "fais une passe globale sur le code et nettoie tout,
@@ -2854,3 +2890,4 @@ Le client a explicitement délégué ces choix :
 | 2026-09-25 | "J'aimerais pouvoir avoir une section calendriers éditoriaux de routines… tout soit bien cohérent et facilement paramétrable" — arbitrages : production **au choix par routine**, cadences **hebdo + mensuel complet**, **modèles réutilisables**, **routines internes** sans client | **Livré** : page Programmation avec semaine type, calendriers de routines par client, routines internes (pense-bête), modèles applicables en un clic. Cadences hebdomadaire, une semaine sur deux, le N du mois et le Nième jour du mois ; période de validité ; avance paramétrable. Chaque routine produit au choix rappel, brouillon de publication pré-rempli et/ou tâche de travail. Les anciens "créneaux récurrents" sont **migrés** en routines équivalentes puis supprimés. Exécution dans la tâche horaire existante. Détails section 4.8, tests dans `VALIDATION.md` |
 | 2026-09-25 | "Peux-tu me faire une autre section pour créer des plans de communication standard avec la possibilité de mettre des j-7, j-30 etc… paramétrer tout ça" — arbitrages : application **depuis une tâche ou par saisie**, étapes passées **décochées mais rattrapables**, production par défaut **brouillon + rappel**, **plan vivant** avec avancement | **Livré** : modèles de plans avec étapes paramétrables (décalage J-30/J-7/J+1, heure, production au choix, contenu et variables), application avec aperçu daté avant création, depuis la page Plans ou depuis une tâche à date d'évènement, suivi vivant avec avancement, annulation groupée respectant ce qui est déjà validé, et rappels d'étape dans la tâche horaire existante. Détails section 4.9, tests dans `VALIDATION.md` |
 | 2026-09-25 | "Lorsque la création est terminée, mettre à disposition le livrable directement dans la page réseau… fluidifier les mouvements entre réseau et tâches car ce ne sera pas la même personne" | **Livré** (les 4 points choisis) : livrables finaux visibles sur la fiche publication dès leur dépôt avec import immédiat, alerte "visuels prêts" (email + pastille Réseaux + carte du tableau de bord) au passage en Terminé, bouton "Demander une retouche" qui renvoie la création en "À modifier" avec motif depuis la publication, et rappel de la date de publication prévue + "à livrer avant le…" sur la tâche. Détails section 4.10, tests dans `VALIDATION.md` |
+| 2026-09-25 | "Ajouter dans la section réseau une liste de tâches issues des routines… planifier les tâches par jour et les cocher une fois faites… créer une action avec description, date, statut fait / non fait. Idem pour les publications, un statut prête / faite" — arbitrages : **objet léger propre à Réseaux**, affiché **dans un onglet À faire et dans le calendrier**, **4ᵉ case** produite par routines et plans, **deux cases prête / faite** | **Livré** : nouvel objet "action" (titre, description, date, client facultatif, fait/pas fait), onglet "À faire" groupé par échéance avec compteur, actions dans les cases du calendrier et au tableau de bord, production par les routines et les étapes de plan (avance propre, suppression des actions non cochées à l'annulation d'un plan), et repères "Prête"/"Faite" sur les publications — "Faite" restant adossée au statut Publié. Détails section 4.11, tests dans `VALIDATION.md` |

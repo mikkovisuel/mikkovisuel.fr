@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { FileVideo, Images, NotePencil } from "@phosphor-icons/react/dist/ssr";
+import { FileVideo, Images, NotePencil, Check } from "@phosphor-icons/react/dist/ssr";
 import type { Prisma } from "@/generated/prisma/client";
 import { verifyAdminSession } from "@/lib/dal";
 import { db } from "@/lib/db";
@@ -24,6 +24,7 @@ import {
   parseParisDateTimeLocal,
 } from "@/lib/social-posts";
 import { routineOccurrencesInMonth } from "@/lib/social-routines";
+import { SocialActionsBoard } from "@/components/admin/social-actions-board";
 import { moveSocialPostToDay } from "@/lib/actions/social-posts";
 
 export const metadata: Metadata = {
@@ -91,7 +92,7 @@ function PostList({ posts, now }: { posts: PostRow[]; now: Date }) {
                 <span className="block truncate text-sm text-ink-muted">
                   {post.client.name} · {post.networks.map(networkLabel).join(", ")} · {formatLabel(post.format)}
                 </span>
-                {(post.category || requestedTaskStatus(post) || post._count.notes > 0) && (
+                {(post.category || requestedTaskStatus(post) || post._count.notes > 0 || post.readyAt) && (
                   <span className="mt-1 flex flex-wrap items-center gap-2 text-xs">
                     {post.category && <StatusBadge label={post.category.label} color={post.category.color} />}
                     {requestedTaskStatus(post) && (
@@ -105,7 +106,13 @@ function PostList({ posts, now }: { posts: PostRow[]; now: Date }) {
                         Création : {requestedTaskStatus(post)!.label}
                       </span>
                     )}
-                    {post._count.notes > 0 && (
+                        {post.readyAt && post.status !== SOCIAL_POST_STATUS.PUBLIE && (
+                      <span className="inline-flex items-center gap-1 text-ink-muted">
+                        <Check size={12} weight="bold" className="text-accent" />
+                        Prête
+                      </span>
+                    )}
+                {post._count.notes > 0 && (
                       <span className="inline-flex items-center gap-1 text-ink-muted">
                         <NotePencil size={12} weight="regular" />
                         {post._count.notes} note{post._count.notes > 1 ? "s" : ""}
@@ -222,7 +229,8 @@ export default async function SocialPostsPage({
     orderBy: { sortOrder: "asc" },
   });
   const category = categories.find((item) => item.slug === categorie);
-  const view = vue === "calendrier" ? "calendrier" : vue === "grille" ? "grille" : "liste";
+  const view =
+    vue === "calendrier" ? "calendrier" : vue === "grille" ? "grille" : vue === "afaire" ? "afaire" : "liste";
   const status = isSocialPostStatus(statut) ? statut : undefined;
   const network = SOCIAL_NETWORKS.some((item) => item.slug === reseau) ? reseau : undefined;
 
@@ -235,7 +243,7 @@ export default async function SocialPostsPage({
   };
 
   const now = new Date();
-  const [posts, clients] = await Promise.all([
+  const [posts, clients, actions] = await Promise.all([
     db.socialPost.findMany({
       where,
       include: POST_ROW_INCLUDE,
@@ -245,6 +253,13 @@ export default async function SocialPostsPage({
       where: { ...EXCLUDE_DEMO_CLIENT, socialPosts: { some: {} } },
       select: { id: true, name: true },
       orderBy: { name: "asc" },
+    }),
+    // Actions (2026-09-25) : la liste "À faire" et les cases du calendrier.
+    // Les actions faites restent visibles, repliées, pour garder une trace.
+    db.socialAction.findMany({
+      where: clientId ? { OR: [{ clientId }, { clientId: null }] } : {},
+      include: { client: { select: { id: true, name: true } } },
+      orderBy: { dueAt: "asc" },
     }),
   ]);
 
@@ -263,6 +278,8 @@ export default async function SocialPostsPage({
     .sort((a, b) => (b.publishedAt?.getTime() ?? 0) - (a.publishedAt?.getTime() ?? 0))
     .slice(0, PUBLISHED_LIMIT);
   const upcoming = posts.filter((post) => post.status !== SOCIAL_POST_STATUS.PUBLIE && !toPublishNow.includes(post));
+
+  const pendingActionCount = actions.filter((action) => !action.doneAt).length;
 
   const [calendarYear, calendarMonth] = (() => {
     const match = mois ? /^(\d{4})-(\d{2})$/.exec(mois) : null;
@@ -340,6 +357,25 @@ export default async function SocialPostsPage({
               });
           });
         })()
+      : [];
+
+  // Actions du mois affiché : elles apparaissent dans les cases du
+  // calendrier à côté des publications (choix du client : les deux vues).
+  const actionEntries =
+    view === "calendrier"
+      ? actions
+          .filter((action) => action.dueAt >= monthStart && action.dueAt < monthEnd)
+          .map((action) => ({
+            id: `action-${action.id}`,
+            title: `${action.doneAt ? "✓ " : ""}${action.title}`,
+            eventDate: toParisWallClockDate(action.dueAt),
+            status: {
+              color: action.doneAt ? "emerald" : "amber",
+              label: action.doneAt ? "Action faite" : "Action à faire",
+            },
+            details: action.client ? [action.client.name] : ["Interne"],
+            href: "/admin/reseaux?vue=afaire",
+          }))
       : [];
 
   // Équilibre du mois pour le client filtré (2026-09-18) : répartition des
@@ -467,7 +503,7 @@ export default async function SocialPostsPage({
         </FilterMenu>
 
         <nav className="flex gap-2">
-          {(["liste", "calendrier", "grille"] as const).map((option) => {
+          {(["liste", "calendrier", "grille", "afaire"] as const).map((option) => {
             const params = new URLSearchParams(filterParams);
             if (option !== "liste") params.set("vue", option);
             const query = params.toString();
@@ -481,7 +517,13 @@ export default async function SocialPostsPage({
                     : "border-line text-ink-muted hover:text-ink"
                 }`}
               >
-                {option === "liste" ? "Liste" : option === "calendrier" ? "Calendrier" : "Grille Instagram"}
+                {option === "liste"
+                  ? "Liste"
+                  : option === "calendrier"
+                    ? "Calendrier"
+                    : option === "grille"
+                      ? "Grille Instagram"
+                      : `À faire${pendingActionCount > 0 ? ` (${pendingActionCount})` : ""}`}
               </Link>
             );
           })}
@@ -502,7 +544,14 @@ export default async function SocialPostsPage({
         </p>
       )}
 
-      {view === "grille" ? (
+      {view === "afaire" ? (
+        <SocialActionsBoard
+          actions={actions}
+          clients={clients}
+          now={now}
+          defaultDueAt={`${toParisDateTimeLocal(now).slice(0, 10)}T09:00`}
+        />
+      ) : view === "grille" ? (
         <InstagramGrid posts={posts} clientChosen={Boolean(clientId)} />
       ) : view === "calendrier" ? (
         <TaskCalendarView
@@ -524,6 +573,7 @@ export default async function SocialPostsPage({
             };
           }),
             ...ghostEntries,
+            ...actionEntries,
           ]}
           onMove={moveSocialPostToDay}
           year={calendarYear}

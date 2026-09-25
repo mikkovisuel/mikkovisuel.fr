@@ -57,7 +57,7 @@ export async function SocialToday() {
   const endOfToday = new Date(parseParisDateTimeLocal(`${today}T23:59`)!.getTime() + 60_000);
   const client = EXCLUDE_DEMO_CLIENT;
 
-  const [toPublish, waiting, creations, missingLinks, mediaReady] = await Promise.all([
+  const [toPublish, waiting, creations, missingLinks, todoActions, mediaReady] = await Promise.all([
     db.socialPost.findMany({
       where: { client, status: SOCIAL_POST_STATUS.VALIDE, scheduledAt: { lt: endOfToday } },
       include: { client: { select: { name: true } } },
@@ -80,6 +80,13 @@ export async function SocialToday() {
       orderBy: [{ scheduledAt: { sort: "asc", nulls: "last" } }],
     }),
     db.socialPost.count({ where: { client, status: SOCIAL_POST_STATUS.PUBLIE, publishedUrl: null } }),
+    // Actions du jour et en retard (2026-09-25) : la liste "À faire" du
+    // module Réseaux, vue depuis le tableau de bord.
+    db.socialAction.findMany({
+      where: { doneAt: null, dueAt: { lt: endOfToday } },
+      include: { client: { select: { name: true } } },
+      orderBy: { dueAt: "asc" },
+    }),
     // Visuels prêts (2026-09-25) : la création est terminée, les fichiers
     // sont déjà dans la publication, mais elle dort encore en brouillon.
     db.socialPost.findMany({
@@ -94,7 +101,11 @@ export async function SocialToday() {
     }),
   ]);
 
-  if (toPublish.length + waiting.length + creations.length + missingLinks + mediaReady.length === 0) return null;
+  if (
+    toPublish.length + waiting.length + creations.length + missingLinks + mediaReady.length + todoActions.length ===
+    0
+  )
+    return null;
 
   return (
     <section className="mt-8 rounded-2xl border border-line p-6">
@@ -143,6 +154,24 @@ export async function SocialToday() {
           more={creations.length - LIST_LIMIT}
         />
       </div>
+      {todoActions.length > 0 && (
+        <div className="mt-4">
+          <h3 className="text-sm font-medium text-ink">À faire aujourd&apos;hui ({todoActions.length})</h3>
+          <ul className="mt-2 grid gap-1 text-sm">
+            {todoActions.slice(0, LIST_LIMIT).map((action) => (
+              <li key={action.id} className="min-w-0 truncate">
+                <Link href="/admin/reseaux?vue=afaire" className="text-ink hover:underline">
+                  {action.title}
+                </Link>{" "}
+                <span className={action.dueAt < now ? "text-danger" : "text-ink-muted"}>
+                  — {action.client?.name ?? "interne"} · {formatSchedule(action.dueAt)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {mediaReady.length > 0 && (
         <div className="mt-4 rounded-xl border border-accent/40 bg-accent/5 p-3">
           <p className="text-sm font-medium text-ink">

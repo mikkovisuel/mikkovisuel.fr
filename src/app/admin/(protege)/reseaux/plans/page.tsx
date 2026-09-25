@@ -236,6 +236,7 @@ export default async function SocialPlansPage() {
                             hashtags: step.hashtags ?? "",
                             taskTypeSlug: step.taskTypeSlug ?? "",
                             taskBrief: step.taskBrief ?? "",
+                            actionBrief: step.actionBrief ?? "",
                           }}
                         />
                       </div>

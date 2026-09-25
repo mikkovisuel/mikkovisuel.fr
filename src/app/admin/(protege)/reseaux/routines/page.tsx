@@ -263,6 +263,7 @@ export default async function SocialRoutinesPage() {
                               hashtags: routine.hashtags ?? "",
                               taskTypeSlug: routine.taskTypeSlug ?? "",
                               taskBrief: routine.taskBrief ?? "",
+                              actionBrief: routine.actionBrief ?? "",
                               activeFrom: routine.activeFrom ? toParisDateTimeLocal(routine.activeFrom).slice(0, 10) : "",
                               activeUntil: routine.activeUntil
                                 ? toParisDateTimeLocal(routine.activeUntil).slice(0, 10)

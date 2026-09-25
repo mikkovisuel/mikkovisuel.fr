@@ -126,6 +126,7 @@ export async function runDueRoutines(now = new Date()) {
   let draftsCreated = 0;
   let tasksCreated = 0;
   let scratchpadCreated = 0;
+  let actionsCreated = 0;
   let coveredCount = 0;
   const processed: { id: string; occurrence: Date }[] = [];
 
@@ -173,6 +174,26 @@ export async function runDueRoutines(now = new Date()) {
         date: toParisDateTimeLocal(occurrence),
       });
       link = `${SITE_URL}/admin/reseaux/nouveau?${params.toString()}`;
+    }
+
+    if (routine.createsAction) {
+      // Action à cocher (2026-09-25) : posée `actionLeadDays` jours avant
+      // l'occurrence, dans la liste "À faire" du module Réseaux.
+      const dueAt = new Date(
+        occurrence.getTime() - (routine.actionLeadDays ?? 0) * 24 * 60 * 60 * 1000,
+      );
+      await db.socialAction.create({
+        data: {
+          clientId: client?.id ?? null,
+          title: routine.title,
+          description: routine.actionBrief,
+          dueAt,
+          routineId: routine.id,
+        },
+      });
+      actionsCreated++;
+      produced.push("action à faire ajoutée");
+      if (!routine.createsDraft) link = `${SITE_URL}/admin/reseaux?vue=afaire`;
     }
 
     if (routine.createsTask) {
@@ -241,6 +262,7 @@ export async function runDueRoutines(now = new Date()) {
     routineDraftsCreated: draftsCreated,
     routineTasksCreated: tasksCreated,
     routineScratchpadCreated: scratchpadCreated,
+    routineActionsCreated: actionsCreated,
     routinesAlreadyCovered: coveredCount,
   };
 }
@@ -250,6 +272,7 @@ export function describeRoutineProduction(routine: {
   createsReminder: boolean;
   createsDraft: boolean;
   createsTask: boolean;
+  createsAction: boolean;
   networks: string[];
   format: string;
   hasClient: boolean;
@@ -260,6 +283,7 @@ export function describeRoutineProduction(routine: {
       `brouillon ${formatLabel(routine.format).toLowerCase()} (${routine.networks.map(networkLabel).join(", ") || "réseau à choisir"})`,
     );
   }
+  if (routine.createsAction) parts.push("action à cocher");
   if (routine.createsTask) parts.push(routine.hasClient ? "tâche de travail" : "ligne au pense-bête");
   if (routine.createsReminder) parts.push("rappel email");
   return parts.join(" · ") || "rien";

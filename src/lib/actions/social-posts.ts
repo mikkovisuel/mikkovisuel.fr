@@ -941,3 +941,48 @@ export async function requestLinkedTaskRevision(
   revalidatePath("/admin/taches");
   return { saved: true };
 }
+
+/**
+ * Cases "Prête" et "Faite" d'une publication (2026-09-25).
+ *
+ * "Prête" est un repère **interne** : le contenu est finalisé (visuel et
+ * texte), indépendamment du cycle de validation du client — utile quand
+ * deux personnes se partagent le travail.
+ *
+ * "Faite" reste adossée au cycle existant : cocher marque la publication
+ * "Publié" (comme le bouton du suivi), décocher la ramène à "Validé" si le
+ * client avait validé, sinon à "Rédaction", et efface la date et le lien de
+ * publication — il n'y a donc jamais deux vérités sur la mise en ligne.
+ */
+export async function toggleSocialPostReady(postId: string) {
+  await verifyAdminSession();
+  const post = await db.socialPost.findUnique({ where: { id: postId }, select: { readyAt: true } });
+  if (!post) return;
+  await db.socialPost.update({
+    where: { id: postId },
+    data: { readyAt: post.readyAt ? null : new Date() },
+  });
+  revalidateSocialPaths(postId);
+}
+
+export async function toggleSocialPostDone(postId: string) {
+  await verifyAdminSession();
+  const post = await db.socialPost.findUnique({
+    where: { id: postId },
+    select: { status: true, validatedAt: true },
+  });
+  if (!post) return;
+
+  const done = post.status === SOCIAL_POST_STATUS.PUBLIE;
+  await db.socialPost.update({
+    where: { id: postId },
+    data: done
+      ? {
+          status: post.validatedAt ? SOCIAL_POST_STATUS.VALIDE : SOCIAL_POST_STATUS.REDACTION,
+          publishedAt: null,
+          publishedUrl: null,
+        }
+      : { status: SOCIAL_POST_STATUS.PUBLIE, publishedAt: new Date() },
+  });
+  revalidateSocialPaths(postId);
+}
