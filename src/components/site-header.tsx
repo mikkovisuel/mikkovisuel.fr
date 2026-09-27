@@ -2,11 +2,15 @@ import Link from "next/link";
 import { BrandLogo } from "./brand-logo";
 import { ThemeToggle } from "./theme-toggle";
 
+// Ancres préfixées par « / » : l'en-tête est aussi affiché sur d'autres pages
+// (mentions légales, application club), où « #contact » seul ne mènerait
+// nulle part.
 const navLinks = [
-  { href: "#portfolio", label: "Portfolio" },
-  { href: "#contact", label: "Contact" },
-  { href: "#application", label: "Application" },
-  { href: "#conditions", label: "Conditions" },
+  { href: "/#portfolio", label: "Portfolio" },
+  { href: "/application-club", label: "App club" },
+  { href: "/#contact", label: "Contact" },
+  { href: "/#application", label: "Application" },
+  { href: "/#conditions", label: "Conditions" },
 ];
 
 export function SiteHeader() {

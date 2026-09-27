@@ -13,13 +13,23 @@ import type { NextConfig } from "next";
 // l'application, un changement d'architecture plus large que ce qui a été
 // validé pour cette passe.
 const isDev = process.env.NODE_ENV === "development";
+
+// Démo interactive de l'application pour clubs, servie sous /demo (voir
+// src/app/application-club et public/demo). C'est une application web
+// construite à part, dans le dépôt de l'application
+// (`pnpm demo:site` dans apps/mobile), puis déposée ici telle quelle : elle
+// appelle l'API de démonstration, hébergée sur son propre domaine. Cette
+// origine doit correspondre à l'adresse figée dans la démo à sa
+// construction ; en changer, c'est reconstruire la démo.
+const DEMO_API_ORIGIN = "https://mikkoclub-demo-api.osc-fr1.scalingo.io";
+
 const cspDirectives = [
   "default-src 'self'",
   `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https://picsum.photos",
   "font-src 'self'",
-  "connect-src 'self'",
+  `connect-src 'self' ${DEMO_API_ORIGIN}`,
   "frame-src 'self'",
   "worker-src 'self'",
   "manifest-src 'self'",
@@ -52,6 +62,22 @@ const nextConfig: NextConfig = {
   },
   async headers() {
     return [{ source: "/(.*)", headers: securityHeaders }];
+  },
+  // La démo est une application d'une seule page : ses fichiers
+  // (public/demo/_expo, public/demo/assets) sont servis tels quels, et toute
+  // autre adresse sous /demo (/demo, /demo/agenda...) renvoie sa page
+  // d'entrée, qui choisit l'écran. `afterFiles` : ces réécritures ne passent
+  // qu'après les fichiers de public/, elles ne masquent donc jamais un
+  // fichier réel.
+  async rewrites() {
+    return {
+      beforeFiles: [],
+      afterFiles: [
+        { source: "/demo", destination: "/demo/index.html" },
+        { source: "/demo/:path*", destination: "/demo/index.html" },
+      ],
+      fallback: [],
+    };
   },
   // Default Server Actions body limit is 1 MB. Deliverables can be several
   // files at a time - see MAX_DELIVERABLE_SIZE / MAX_UPLOAD_TOTAL_SIZE in

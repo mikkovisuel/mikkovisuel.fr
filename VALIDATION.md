@@ -941,6 +941,24 @@ Code développé par une autre session Claude Code (branche `claude/hub-bridge`,
 
 **Corrigé pendant la passe** : le message de confirmation des formulaires de bibliothèque affichait "Ajouté" après une **modification** ; il affiche désormais "Enregistré" quand le formulaire édite un élément existant (observé avant/après en navigateur).
 
+## Page « Application club » et démo sous /demo (2026-09-27)
+
+Testé en navigateur (Chromium) contre `next build` + `next start` en local,
+base PostgreSQL de test migrée, et l'API de l'application lancée en local en
+`DEMO_MODE=true` (démo construite pour ce test contre cette API locale,
+puis reconstruite contre l'adresse de l'API de démonstration Scalingo pour
+le commit).
+
+| Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |
+|---|---|---|---|---|---|
+| Page `/application-club` | Affichage bureau (1440 px) en thème clair et sombre, et téléphone (390 px) | ✅ Page rendue (200), sections et icônes affichées, capture de l'application nette, aucune erreur JavaScript | — | — | 2026-09-27 |
+| Bouton « Essayer la démo » → `/demo` → « Essayer la demo » | Clic depuis la page, puis entrée dans la démo | ✅ Bureau et téléphone : arrivée sur `/demo`, écran de connexion avec bandeau « Démonstration », puis accueil de l'application connecté au compte de démonstration | API injoignable ou n'autorisant pas l'origine du site (CORS) | ✅ Observé en premier essai (API lancée avec un autre `CORS_ORIGINS`) : la démo affiche « Configuration du club indisponible. Failed to fetch » dans son cadre, sans page blanche ni erreur du site | 2026-09-27 |
+| Réécritures `/demo` | `/demo`, `/demo/agenda`, `/demo/profile` | ✅ 200, page d'entrée de la démo ; les fichiers `/demo/_expo/...` servis tels quels (200, `application/javascript`) | Adresse d'un fichier réel sous `/demo` | ✅ Le fichier est servi, pas la page d'entrée (réécritures en `afterFiles`) | 2026-09-27 |
+| Bandeau « Vous gérez un club ? » (accueil) | Affichage téléphone, clic sur « Découvrir l'application » | ✅ Bandeau visible entre portfolio et contact, arrivée sur `/application-club` | — | — | 2026-09-27 |
+| Ancres de l'en-tête | Liens `/#contact`… depuis `/application-club` | ⚠️ Vérifié par lecture du rendu (`href="/#contact"`) et par le clic « Parler de votre club » de la page ; les autres liens de l'en-tête non cliqués un à un | — | — | 2026-09-27 |
+| CSP (Report-Only) | En-tête de `/demo` | ✅ `connect-src 'self' https://mikkoclub-demo-api.osc-fr1.scalingo.io` présent ; seul message console : l'avertissement déjà existant sur `upgrade-insecure-requests` en Report-Only | — | — | 2026-09-27 |
+| Types et lint | `tsc --noEmit`, `eslint` sur les fichiers modifiés, `next build` | ✅ Sans erreur | Lien `<a>` vers une page du site | ✅ Signalé par ESLint (`no-html-link-for-pages`), corrigé en `<Link>` | 2026-09-27 |
+
 ## Points restant ouverts pour une prochaine passe de validation
 
 - Glisser-déposer et `<select>` natif du Kanban Prospection (limite outil, voir ci-dessus).
@@ -1017,3 +1035,4 @@ Code développé par une autre session Claude Code (branche `claude/hub-bridge`,
 - **Rendu mobile du pense-bête** (2026-08-27) : seul le rendu desktop a été observé en navigateur.
 - **Garde serveur « on ne modifie que ses propres messages »** (2026-09-25) : vérifiée par lecture de code, pas exercée de bout en bout. L'interface ne propose pas le bouton sur un message du client, et une soumission forcée du formulaire avec l'identifiant d'un message client n'a pas abouti (action jamais invoquée, message inchangé en base) — mais aucune requête n'a réellement atteint la garde elle-même. La seule façon de l'atteindre depuis cette session aurait été de retirer temporairement le contrôle d'affichage, ce que la protection de l'environnement refuse à juste titre. À confirmer le jour où un harnais de tests automatisés permettra d'appeler l'action directement.
 - **Rendu mobile des nouvelles pop-up et des formulaires d'édition de la section Réseaux** (2026-09-25) : seul le rendu desktop a été observé en navigateur.
+- **Démo `/demo` contre l'API de démonstration réelle** (2026-09-27) : non exercée, l'API de démonstration n'est pas encore en ligne sur Scalingo. Testée contre une API locale identique. À vérifier après sa mise en ligne : chargement de la configuration, « Essayer la démo », photos de la galerie.

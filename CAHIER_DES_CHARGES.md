@@ -2198,6 +2198,49 @@ Deux limites assumées, pour que « tout est modifiable » ne devienne pas
   fiche explique quoi faire pour décaler : déplacer les publications dans
   le calendrier, ou annuler et réappliquer le plan.
 
+## 5. Page « Application club » et démo interactive (2026-09-27)
+
+Le site présente désormais l'offre d'application pour clubs et discothèques
+(le produit développé dans le dépôt `application_mikkoclub`), avec une démo
+utilisable directement dans le navigateur.
+
+- **Page `/application-club`** : présentation de l'offre (ce que les clients
+  trouvent dans l'application, ce que le club pilote depuis le back-office,
+  la personnalisation), boutons « Essayer la démo » et « Parler de votre
+  club » (vers le formulaire de contact de l'accueil). N'y figurent que les
+  fonctions réellement livrées : billetterie, paiement et cashless ne sont
+  pas annoncés tant qu'ils ne sont pas développés. Le visuel est une capture
+  réelle de l'application (`public/application-club/accueil.webp`).
+- **Liens vers la page** : entrée « App club » dans l'en-tête, et un bandeau
+  « Vous gérez un club ? » sur l'accueil, entre le portfolio et le contact —
+  nécessaire parce que les liens de l'en-tête sont masqués sur téléphone.
+- **Démo sous `/demo`** : l'application construite pour le web, déposée
+  telle quelle dans `public/demo/` (fichiers statiques, aucune dépendance
+  ajoutée au site). Elle est produite dans le dépôt de l'application par
+  `pnpm demo:site <dossier du site>` (dans `apps/mobile`) : **pour mettre la
+  démo à jour, on relance cette commande et on commite `public/demo/`**.
+  Elle tourne sur un club et des données fictifs, affiche en permanence
+  « Démonstration · club et données fictifs », et propose « Essayer la
+  démo » qui ouvre un compte de démonstration sans identifiants. Sur
+  ordinateur, elle s'affiche dans un cadre de téléphone.
+- **Réécritures** (`next.config.ts`) : `/demo` et toute adresse sous `/demo`
+  qui n'est pas un fichier renvoient `public/demo/index.html` (la démo est
+  une application d'une seule page) ; posées en `afterFiles`, elles ne
+  masquent jamais un fichier réel.
+- **CSP** : l'origine de l'API de démonstration
+  (`https://mikkoclub-demo-api.osc-fr1.scalingo.io`) est ajoutée à
+  `connect-src`. Elle doit correspondre à l'adresse figée dans la démo à sa
+  construction.
+- **Correctif de l'en-tête** : ses ancres (`#portfolio`, `#contact`…)
+  deviennent `/#portfolio`, `/#contact`… — sur toute autre page que
+  l'accueil (mentions légales, application club), elles ne menaient nulle
+  part.
+- **Prérequis côté application** : l'API de démonstration doit être en ligne
+  avec `DEMO_MODE=true`, et son `CORS_ORIGINS` doit contenir
+  `https://mikkovisuel.fr`. Sans l'API, la page `/demo` affiche
+  « Configuration du club indisponible » : **ne pas mettre ces changements
+  en ligne avant l'API de démonstration**.
+
 ## Passe de nettoyage du code (2026-09-22)
 
 Demande du client : "fais une passe globale sur le code et nettoie tout,
@@ -2942,3 +2985,4 @@ Le client a explicitement délégué ces choix :
 | 2026-09-25 | "Lorsque la création est terminée, mettre à disposition le livrable directement dans la page réseau… fluidifier les mouvements entre réseau et tâches car ce ne sera pas la même personne" | **Livré** (les 4 points choisis) : livrables finaux visibles sur la fiche publication dès leur dépôt avec import immédiat, alerte "visuels prêts" (email + pastille Réseaux + carte du tableau de bord) au passage en Terminé, bouton "Demander une retouche" qui renvoie la création en "À modifier" avec motif depuis la publication, et rappel de la date de publication prévue + "à livrer avant le…" sur la tâche. Détails section 4.10, tests dans `VALIDATION.md` |
 | 2026-09-25 | "Ajouter dans la section réseau une liste de tâches issues des routines… planifier les tâches par jour et les cocher une fois faites… créer une action avec description, date, statut fait / non fait. Idem pour les publications, un statut prête / faite" — arbitrages : **objet léger propre à Réseaux**, affiché **dans un onglet À faire et dans le calendrier**, **4ᵉ case** produite par routines et plans, **deux cases prête / faite** | **Livré** : nouvel objet "action" (titre, description, date, client facultatif, fait/pas fait), onglet "À faire" groupé par échéance avec compteur, actions dans les cases du calendrier et au tableau de bord, production par les routines et les étapes de plan (avance propre, suppression des actions non cochées à l'annulation d'un plan), et repères "Prête"/"Faite" sur les publications — "Faite" restant adossée au statut Publié. Détails section 4.11, tests dans `VALIDATION.md` |
 | 2026-09-25 | "NOUVELLE ACTION doit être un bouton à côté de nouvelle publication : ouverture de la pop up de création. Fais une passe mais tout dans la section réseau doit être modifiable, éditable et peut être supprimé." | **Livré** : "Nouvelle action" devient un bouton en tête de Réseaux ouvrant une pop-up (le formulaire qui occupait l'onglet "À faire" est retiré), et chaque action se modifie dans la même pop-up. Passe d'éditabilité sur toute la section : notes internes, messages de l'échange, groupes de hashtags, modèles de texte, chiffres mensuels, modèles de routines et nom/lieu d'un plan appliqué deviennent modifiables ; tout reste supprimable. Deux limites assumées : le message d'un client se supprime mais ne se réécrit pas (garde côté serveur), et la date d'un plan déjà appliqué ne se change pas depuis son suivi. Détails section 4.12, tests dans `VALIDATION.md` |
+| 2026-09-27 | "Et si je la mettais en ligne sur mon site ?" (la démo de l'application club) — arbitrages : démo servie **sous mikkovisuel.fr/demo** (plutôt qu'un sous-domaine et une application Scalingo de plus), présentée par une **page dédiée à l'offre** | **Livré** : page `/application-club`, lien « App club » dans l'en-tête et bandeau sur l'accueil, démo statique sous `/demo` avec réécritures et CSP, ancres de l'en-tête corrigées pour les pages hors accueil. Mise en ligne à faire **après** l'API de démonstration (voir §5) |
