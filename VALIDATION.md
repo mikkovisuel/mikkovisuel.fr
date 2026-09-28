@@ -975,7 +975,25 @@ le commit).
 | CORS depuis une origine autorisée | `fetch` vers l'API depuis `http://localhost:3000` | ✅ 200 et corps lu — la requête inter-origines aboutit | — | — | 2026-09-28 |
 | Erreurs console de la démo | Console de `/demo` | ✅ Seul message : l'avertissement préexistant sur `upgrade-insecure-requests` en Report-Only | — | — | 2026-09-28 |
 
-**Refus d'environnement rencontré** : la recopie des identifiants S3 du site vers l'application de démonstration a été refusée (écriture de secrets d'un magasin vers un autre). Les variables `STORAGE_S3_*` restent donc à poser manuellement — voir « Points restant ouverts ».
+**Refus d'environnement rencontré** : la recopie des identifiants S3 du site vers l'application de démonstration a été refusée (écriture de secrets d'un magasin vers un autre). Les variables ont donc été posées par le client dans le tableau de bord Scalingo.
+
+### Bascule sur le stockage S3 (2026-09-28, même journée)
+
+| Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |
+|---|---|---|---|---|---|
+| Variables posées | Relevé des noms sur `mikkoclub-demo-api` | ✅ Les 6 variables présentes et correctement nommées (`STORAGE_S3_ACCESS_KEY` / `STORAGE_S3_SECRET_KEY`, pas les noms du site) ; `DATABASE_URL` et `SCALINGO_POSTGRESQL_URL` intactes | Croisement des noms raté | — (non rencontré : le client a suivi la correspondance) | 2026-09-28 |
+| Pilote actif au démarrage | Journaux après redémarrage | ✅ L'avertissement « STORAGE_DRIVER=local : les photos seront perdues » a disparu ; `Nest application successfully started` | — | — | 2026-09-28 |
+| Remplissage rejoué sur S3 | `node apps/api/dist/seed/cli.js --demo` | ✅ « Stockage : seau S3 « marked-reines » sur https://s3.gra.io.cloud.ovh.net » puis jeu complet ; **idempotent**, aucun doublon | — | — | 2026-09-28 |
+| Fichier réellement déposé | `GET /api/gallery/media/:id/file` en ligne de commande, redirection suivie | ✅ `200`, `image/jpeg`, 5 952 octets — le fichier est bien sur le seau et servi | — | — | 2026-09-28 |
+| Liste de la galerie | `GET /api/gallery/photos` avec un jeton de démonstration | ✅ `200`, 5 photos publiées, horodatées du remplissage | Sans jeton | ✅ `401` « Jeton d'authentification manquant. » | 2026-09-28 |
+| **Affichage des photos dans la démo** | Page `/demo/galerie` en ligne | ❌ **Échec** : les trois vignettes restent vides, aucune image chargée | Cause identifiée | ✅ L'API renvoie une **redirection 302 vers une URL signée OVH**, et le seau ne renvoie **aucun en-tête CORS** (vérifié : `GET` avec `Origin: https://www.mikkovisuel.fr` → `200 image/jpeg`, zéro en-tête `access-control-*`). Le navigateur, qui demande le fichier avec un jeton, bloque donc la réponse — « Failed to fetch ». Avec le disque local, l'API servait les octets depuis sa propre origine, d'où le fonctionnement précédent | 2026-09-28 |
+| CSP du site | Hypothèse écartée | ✅ La CSP est en `Content-Security-Policy-Report-Only` : elle n'a rien bloqué. Le sujet est bien le CORS du seau, pas la CSP | — | — | 2026-09-28 |
+
+**Trois issues possibles pour les images**, par ordre de propreté croissante :
+
+1. **Règle CORS sur le seau `marked-reines`** autorisant `GET` depuis `https://www.mikkovisuel.fr` — le plus rapide, mais c'est une modification sur le seau qui héberge les fichiers des clients. Elle n'ouvre aucun accès nouveau (l'URL signée reste l'unique laissez-passer), elle autorise seulement un navigateur de cette origine à lire la réponse.
+2. **Seau OVH dédié à la démo**, avec sa propre règle CORS et ses propres identifiants — règle du même coup le partage d'identifiants avec un service dont le mot de passe est public.
+3. **Faire transiter les octets par l'API** au lieu de rediriger (changement dans le dépôt de l'application). C'est le correctif durable pour une démo **web** : l'application mobile native ignore le CORS, le navigateur non. Les médias de démonstration pèsent quelques kilo-octets, le coût serait nul.
 
 ## Points restant ouverts pour une prochaine passe de validation
 
@@ -1053,7 +1071,7 @@ le commit).
 - **Rendu mobile du pense-bête** (2026-08-27) : seul le rendu desktop a été observé en navigateur.
 - **Garde serveur « on ne modifie que ses propres messages »** (2026-09-25) : vérifiée par lecture de code, pas exercée de bout en bout. L'interface ne propose pas le bouton sur un message du client, et une soumission forcée du formulaire avec l'identifiant d'un message client n'a pas abouti (action jamais invoquée, message inchangé en base) — mais aucune requête n'a réellement atteint la garde elle-même. La seule façon de l'atteindre depuis cette session aurait été de retirer temporairement le contrôle d'affichage, ce que la protection de l'environnement refuse à juste titre. À confirmer le jour où un harnais de tests automatisés permettra d'appeler l'action directement.
 - **Rendu mobile des nouvelles pop-up et des formulaires d'édition de la section Réseaux** (2026-09-25) : seul le rendu desktop a été observé en navigateur.
-- **Stockage des médias de la démo** (2026-09-28) : `STORAGE_DRIVER` et les quatre `STORAGE_S3_*` ne sont pas posées sur `mikkoclub-demo-api`. Les 5 photos et 2 vidéos du jeu de démonstration sont sur le disque du conteneur et **disparaîtront au prochain redéploiement** ; il faudra relancer le remplissage après avoir posé les variables. Non testé : la démo une fois branchée sur un stockage S3.
+- **Images de la galerie de la démo** (2026-09-28) : **cassées en ligne**, faute d'en-tête CORS sur le seau OVH (voir la section dédiée). Le reste de la démo — soirées, réservations, coupons, fidélité, infos pratiques, avis — fonctionne. Les vidéos n'ont pas été testées séparément : elles empruntent le même chemin et échoueront de la même façon.
 - **Mot de passe public de la démo** (2026-09-28) : `Motdepasse123` figure dans le dépôt de l'application, pour le compte propriétaire comme pour le compte membre. Le changer a été retenu, mais reste à faire — et le bouton « Réinitialiser la démo » du back-office le rétablirait, puisqu'il rejoue le jeu de démonstration. À confirmer le jour où le back-office sera déployé.
 - **Démo `/demo` en ligne sur www.mikkovisuel.fr** (2026-09-28) : vérifiée depuis `http://localhost:3000` contre l'API réelle, pas encore depuis le domaine de production au moment de la rédaction. Les galeries photos et vidéos de la démo n'ont pas été ouvertes une à une.
 - **Campagnes programmées de la démo** (2026-09-28) : le processus `worker` est à zéro instance, aucun planificateur ne tourne. Un écran montrant une campagne programmée resterait figé, sans erreur visible. Non exercé.

@@ -2267,10 +2267,20 @@ La génération a donc lieu à la fois dans `build` (pour compiler) et dans
 production. Ces correctifs sont poussés vers Scalingo, **pas** vers leur
 branche GitHub, où une autre session travaille.
 
-**Reste à faire** : les quatre variables `STORAGE_S3_*` et `STORAGE_DRIVER=s3`
-ne sont pas posées. Tant qu'elles manquent, les photos et vidéos de la démo
-vivent sur le disque du conteneur et disparaîtront au prochain
-redéploiement — il faudra alors relancer le remplissage.
+**Stockage (2026-09-28)** : les variables `STORAGE_DRIVER=s3` et
+`STORAGE_S3_*` ont été posées par le client, sur le seau OVH du site
+(`marked-reines`), et le jeu de démonstration a été rejoué — les 5 photos et
+2 vidéos sont bien sur le seau.
+
+**Point ouvert : les images de la galerie ne s'affichent pas.** Avec le
+disque local, l'API servait elle-même les octets, depuis sa propre origine.
+Avec S3, elle renvoie une **redirection 302 vers une URL signée OVH**, et le
+seau ne renvoie **aucun en-tête CORS** : le navigateur, qui réclame le
+fichier avec un jeton, bloque la réponse. Vérifié en ligne de commande —
+l'URL signée renvoie bien `200 image/jpeg`, mais sans
+`Access-Control-Allow-Origin`. Trois issues possibles, détaillées dans
+`VALIDATION.md` : une règle CORS sur le seau, un seau dédié à la démo, ou
+faire transiter les octets par l'API plutôt que rediriger.
 
 ## Passe de nettoyage du code (2026-09-22)
 
