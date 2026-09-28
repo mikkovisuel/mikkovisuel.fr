@@ -2236,10 +2236,41 @@ utilisable directement dans le navigateur.
   l'accueil (mentions légales, application club), elles ne menaient nulle
   part.
 - **Prérequis côté application** : l'API de démonstration doit être en ligne
-  avec `DEMO_MODE=true`, et son `CORS_ORIGINS` doit contenir
-  `https://mikkovisuel.fr`. Sans l'API, la page `/demo` affiche
-  « Configuration du club indisponible » : **ne pas mettre ces changements
-  en ligne avant l'API de démonstration**.
+  avec `DEMO_MODE=true`, et son `CORS_ORIGINS` doit contenir l'origine
+  réellement servie. Sans l'API, la page `/demo` affiche « Configuration du
+  club indisponible » : **ne pas mettre ces changements en ligne avant l'API
+  de démonstration**.
+
+### 5.1 Mise en ligne de l'API de démonstration (2026-09-28)
+
+L'API est en ligne : application Scalingo `mikkoclub-demo-api` (région
+osc-fr1), un conteneur **S**, PostgreSQL Starter 512M, soit **14,40 € HT par
+mois**. Le back-office (`mikkoclub-demo-admin` du § 0 de leur guide) n'a
+**pas** été créé : la démo du site n'appelle que l'API, et il aurait coûté un
+conteneur de plus. Le processus `worker` reste à zéro instance — il ne porte
+que le planificateur, dont une démo sans notifications ni e-mails n'a pas
+l'usage. Conséquence assumée : une campagne programmée n'avancerait jamais.
+
+**L'origine à autoriser est `https://www.mikkovisuel.fr`, pas l'apex.** Le
+site ne répond en tant que tel que sur `www` — c'est le seul domaine déclaré
+sur Scalingo — tandis que `mikkovisuel.fr` sert encore l'ancien portfolio
+Adobe. `CORS_ORIGINS` contient donc les deux, plus `http://localhost:3000`
+pour les vérifications locales.
+
+Trois corrections ont été nécessaires côté dépôt de l'application, leur guide
+n'ayant visiblement jamais été exécuté : rien ne générait le client Prisma
+(ni `postinstall`, ni étape de build), `scalingo-prebuild` s'exécute *avant*
+l'installation des dépendances, et l'élagage des dépendances de développement
+recrée le dossier pnpm de `@prisma/client` en effaçant les fichiers générés.
+La génération a donc lieu à la fois dans `build` (pour compiler) et dans
+`scalingo-cleanup` (après l'élagage), la CLI Prisma passant en dépendance de
+production. Ces correctifs sont poussés vers Scalingo, **pas** vers leur
+branche GitHub, où une autre session travaille.
+
+**Reste à faire** : les quatre variables `STORAGE_S3_*` et `STORAGE_DRIVER=s3`
+ne sont pas posées. Tant qu'elles manquent, les photos et vidéos de la démo
+vivent sur le disque du conteneur et disparaîtront au prochain
+redéploiement — il faudra alors relancer le remplissage.
 
 ## Passe de nettoyage du code (2026-09-22)
 
@@ -2986,3 +3017,4 @@ Le client a explicitement délégué ces choix :
 | 2026-09-25 | "Ajouter dans la section réseau une liste de tâches issues des routines… planifier les tâches par jour et les cocher une fois faites… créer une action avec description, date, statut fait / non fait. Idem pour les publications, un statut prête / faite" — arbitrages : **objet léger propre à Réseaux**, affiché **dans un onglet À faire et dans le calendrier**, **4ᵉ case** produite par routines et plans, **deux cases prête / faite** | **Livré** : nouvel objet "action" (titre, description, date, client facultatif, fait/pas fait), onglet "À faire" groupé par échéance avec compteur, actions dans les cases du calendrier et au tableau de bord, production par les routines et les étapes de plan (avance propre, suppression des actions non cochées à l'annulation d'un plan), et repères "Prête"/"Faite" sur les publications — "Faite" restant adossée au statut Publié. Détails section 4.11, tests dans `VALIDATION.md` |
 | 2026-09-25 | "NOUVELLE ACTION doit être un bouton à côté de nouvelle publication : ouverture de la pop up de création. Fais une passe mais tout dans la section réseau doit être modifiable, éditable et peut être supprimé." | **Livré** : "Nouvelle action" devient un bouton en tête de Réseaux ouvrant une pop-up (le formulaire qui occupait l'onglet "À faire" est retiré), et chaque action se modifie dans la même pop-up. Passe d'éditabilité sur toute la section : notes internes, messages de l'échange, groupes de hashtags, modèles de texte, chiffres mensuels, modèles de routines et nom/lieu d'un plan appliqué deviennent modifiables ; tout reste supprimable. Deux limites assumées : le message d'un client se supprime mais ne se réécrit pas (garde côté serveur), et la date d'un plan déjà appliqué ne se change pas depuis son suivi. Détails section 4.12, tests dans `VALIDATION.md` |
 | 2026-09-27 | "Et si je la mettais en ligne sur mon site ?" (la démo de l'application club) — arbitrages : démo servie **sous mikkovisuel.fr/demo** (plutôt qu'un sous-domaine et une application Scalingo de plus), présentée par une **page dédiée à l'offre** | **Livré** : page `/application-club`, lien « App club » dans l'en-tête et bandeau sur l'accueil, démo statique sous `/demo` avec réécritures et CSP, ancres de l'en-tête corrigées pour les pages hors accueil. Mise en ligne à faire **après** l'API de démonstration (voir §5) |
+| 2026-09-28 | "Mettez en ligne l'API de démonstration sur Scalingo, en suivant docs/scalingo.md § 0. J'y ai ajouté `https://mikkovisuel.fr` dans `CORS_ORIGINS`." — arbitrages : **API seule** (pas de back-office, pas de worker), conteneur **S**, stockage sur le seau OVH existant | **Livré** : application `mikkoclub-demo-api` en ligne (osc-fr1, conteneur S, PostgreSQL Starter 512M, 14,40 € HT/mois), 16 migrations appliquées, jeu de démonstration en place, page `/demo` publiée et vérifiée contre l'API réelle. `CORS_ORIGINS` corrigé : l'origine réelle du site est `https://www.mikkovisuel.fr`, l'apex servant encore l'ancien portfolio Adobe. Trois correctifs de build côté dépôt de l'application (génération du client Prisma). **Restent à poser par le client** : les variables `STORAGE_S3_*`. Détails section 5.1, tests dans `VALIDATION.md` |

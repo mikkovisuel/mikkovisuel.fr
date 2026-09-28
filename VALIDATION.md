@@ -959,6 +959,24 @@ le commit).
 | CSP (Report-Only) | En-tête de `/demo` | ✅ `connect-src 'self' https://mikkoclub-demo-api.osc-fr1.scalingo.io` présent ; seul message console : l'avertissement déjà existant sur `upgrade-insecure-requests` en Report-Only | — | — | 2026-09-27 |
 | Types et lint | `tsc --noEmit`, `eslint` sur les fichiers modifiés, `next build` | ✅ Sans erreur | Lien `<a>` vers une page du site | ✅ Signalé par ESLint (`no-html-link-for-pages`), corrigé en `<Link>` | 2026-09-27 |
 
+## Mise en ligne de l'API de démonstration et publication de /demo (2026-09-28)
+
+`tsc --noEmit`, lint et `npm run build` propres. Vérifié en navigateur contre l'**API réellement déployée** sur Scalingo (et non plus une API locale), depuis `http://localhost:3000`, origine présente dans `CORS_ORIGINS`.
+
+| Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |
+|---|---|---|---|---|---|
+| Domaine réellement servi | Quel domaine sert le site ? | ✅ `www.mikkovisuel.fr` est le seul domaine déclaré sur Scalingo et répond 200 avec l'en-tête de l'application | Apex `mikkovisuel.fr` | ✅ Sert encore l'ancien portfolio Adobe (`cdn.myportfolio.com`, `server: Varnish`, 404 sur HEAD) — l'origine fournie par leur guide aurait bloqué tous les appels de la démo | 2026-09-28 |
+| Déploiement de l'API | `git push` de la branche vers `mikkoclub-demo-api` | ✅ `success` en 3 min 21 après trois correctifs de build (voir ci-dessous), image 1,2 Gio | Client Prisma jamais généré | ✅ Trois échecs successifs réellement observés : `nest build` sans client généré, puis « Command "prisma" not found » (`scalingo-prebuild` tourne avant l'installation), puis « @prisma/client did not initialize yet » au démarrage (l'élagage recrée le dossier pnpm et efface les fichiers générés) | 2026-09-28 |
+| Santé de l'API | `GET /api/health/ready` | ✅ `{"status":"ok","database":"up"}` | — | — | 2026-09-28 |
+| Migrations | `prisma migrate deploy` en conteneur ponctuel | ✅ « All migrations have been successfully applied » — 16 migrations sur base vierge | Séparateur `--` omis dans `scalingo run` | ✅ « flag provided but not defined: -filter » — la CLI Scalingo interceptait `--filter`, rien n'a été exécuté | 2026-09-28 |
+| Jeu de démonstration | `node apps/api/dist/seed/cli.js --demo` | ✅ 8 membres dont 2 VIP, 4 soirées, 6 réservations, 5 photos et 2 vidéos, 8 tables, 3 badges, 1 sondage, 5 invités, groupe à 2 établissements | Stockage non configuré | ✅ Averti explicitement au démarrage et au remplissage : « STORAGE_DRIVER=local : les photos seront perdues au prochain redeploiement » — les 14 fichiers sont écrits sur le disque du conteneur | 2026-09-28 |
+| Conteneur | Taille demandée | ✅ `web: 1 × S`, `worker: 0` — 14,40 € HT/mois avec la base | — | — | 2026-09-28 |
+| Démo `/demo` contre l'API réelle | Ouverture de `/demo`, puis « Essayer la démo » | ✅ Écran de connexion avec bandeau « Démonstration · club et données fictifs », puis accueil connecté affichant les **données réellement semées** (soirée « SOLSTICE — Kaya », actualités « il y a 4 min », offre du moment, fidélité) | Contenu figé dans le bundle ? | ✅ Écarté : aucune de ces chaînes n'est présente dans `public/demo/_expo/.../entry-*.js` — les données viennent bien du serveur | 2026-09-28 |
+| CORS depuis une origine autorisée | `fetch` vers l'API depuis `http://localhost:3000` | ✅ 200 et corps lu — la requête inter-origines aboutit | — | — | 2026-09-28 |
+| Erreurs console de la démo | Console de `/demo` | ✅ Seul message : l'avertissement préexistant sur `upgrade-insecure-requests` en Report-Only | — | — | 2026-09-28 |
+
+**Refus d'environnement rencontré** : la recopie des identifiants S3 du site vers l'application de démonstration a été refusée (écriture de secrets d'un magasin vers un autre). Les variables `STORAGE_S3_*` restent donc à poser manuellement — voir « Points restant ouverts ».
+
 ## Points restant ouverts pour une prochaine passe de validation
 
 - Glisser-déposer et `<select>` natif du Kanban Prospection (limite outil, voir ci-dessus).
@@ -1035,4 +1053,8 @@ le commit).
 - **Rendu mobile du pense-bête** (2026-08-27) : seul le rendu desktop a été observé en navigateur.
 - **Garde serveur « on ne modifie que ses propres messages »** (2026-09-25) : vérifiée par lecture de code, pas exercée de bout en bout. L'interface ne propose pas le bouton sur un message du client, et une soumission forcée du formulaire avec l'identifiant d'un message client n'a pas abouti (action jamais invoquée, message inchangé en base) — mais aucune requête n'a réellement atteint la garde elle-même. La seule façon de l'atteindre depuis cette session aurait été de retirer temporairement le contrôle d'affichage, ce que la protection de l'environnement refuse à juste titre. À confirmer le jour où un harnais de tests automatisés permettra d'appeler l'action directement.
 - **Rendu mobile des nouvelles pop-up et des formulaires d'édition de la section Réseaux** (2026-09-25) : seul le rendu desktop a été observé en navigateur.
+- **Stockage des médias de la démo** (2026-09-28) : `STORAGE_DRIVER` et les quatre `STORAGE_S3_*` ne sont pas posées sur `mikkoclub-demo-api`. Les 5 photos et 2 vidéos du jeu de démonstration sont sur le disque du conteneur et **disparaîtront au prochain redéploiement** ; il faudra relancer le remplissage après avoir posé les variables. Non testé : la démo une fois branchée sur un stockage S3.
+- **Mot de passe public de la démo** (2026-09-28) : `Motdepasse123` figure dans le dépôt de l'application, pour le compte propriétaire comme pour le compte membre. Le changer a été retenu, mais reste à faire — et le bouton « Réinitialiser la démo » du back-office le rétablirait, puisqu'il rejoue le jeu de démonstration. À confirmer le jour où le back-office sera déployé.
+- **Démo `/demo` en ligne sur www.mikkovisuel.fr** (2026-09-28) : vérifiée depuis `http://localhost:3000` contre l'API réelle, pas encore depuis le domaine de production au moment de la rédaction. Les galeries photos et vidéos de la démo n'ont pas été ouvertes une à une.
+- **Campagnes programmées de la démo** (2026-09-28) : le processus `worker` est à zéro instance, aucun planificateur ne tourne. Un écran montrant une campagne programmée resterait figé, sans erreur visible. Non exercé.
 - **Démo `/demo` contre l'API de démonstration réelle** (2026-09-27) : non exercée, l'API de démonstration n'est pas encore en ligne sur Scalingo. Testée contre une API locale identique. À vérifier après sa mise en ligne : chargement de la configuration, « Essayer la démo », photos de la galerie.
