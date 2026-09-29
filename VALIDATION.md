@@ -995,6 +995,21 @@ le commit).
 2. **Seau OVH dédié à la démo**, avec sa propre règle CORS et ses propres identifiants — règle du même coup le partage d'identifiants avec un service dont le mot de passe est public.
 3. **Faire transiter les octets par l'API** au lieu de rediriger (changement dans le dépôt de l'application). C'est le correctif durable pour une démo **web** : l'application mobile native ignore le CORS, le navigateur non. Les médias de démonstration pèsent quelques kilo-octets, le coût serait nul.
 
+## Import de document réparé et téléchargement explicite (2026-09-29)
+
+`tsc --noEmit`, lint et `npm run build` propres. Exercé en navigateur sur `/admin/administratif` et sur une fiche tâche (les deux variantes du composant de sélection de fichier), données de test supprimées après coup.
+
+| Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |
+|---|---|---|---|---|---|
+| Ouverture du sélecteur | Clic sur « Choisir un fichier » | ✅ `showPicker()` appelé une fois, champ natif toujours masqué, aucun message | Navigateur refusant d'ouvrir la fenêtre (`NotAllowedError` simulée) | ✅ Le champ natif est dévoilé et le message s'affiche : « Votre navigateur a refusé d'ouvrir la fenêtre de sélection… » — avant, le clic ne produisait **rien** | 2026-09-29 |
+| Envoi sans fichier | — | — | « Ajouter le document » avec client et type saisis, sans PDF | ✅ **Défaut trouvé et corrigé** : rien ne se passait du tout (champ requis invisible, que Chrome refuse de soumettre sans pouvoir le mettre en évidence). Désormais le champ est dévoilé avec « Choisissez d'abord un fichier » et la modale reste ouverte | 2026-09-29 |
+| Import complet | PDF choisi puis envoyé | ✅ Le nom s'affiche, le repli éventuel se referme, la modale se ferme et le document apparaît dans la liste | — | — | 2026-09-29 |
+| Variante glisser-déposer | Survol puis dépôt d'un fichier sur la zone (fiche tâche) | ✅ Surlignage pendant le survol, fichier listé après le dépôt — le passage de `<label>` à `<button type="button">` n'a rien cassé | — | — | 2026-09-29 |
+| Bouton « Télécharger » | Lignes de `/admin/administratif` | ✅ 5 boutons libellés rendus (documents clients et documents de société), avec l'attribut `download` | — | — | 2026-09-29 |
+| Journaux de production | Recherche de la trace des tentatives du client | ✅ **Aucune** : ni requête, ni erreur au moment du signalement — ce qui a orienté vers un échec côté navigateur, confirmé ensuite | Erreurs `Server Reference ID … Received "x"` | ✅ Écartées : même motif depuis le 2026-09-21 à 02 h, 04 h et 01 h du matin, valeurs « x » et « y » — un robot qui sonde les actions serveur, sans rapport avec le signalement | 2026-09-29 |
+
+**Non reproduit** : la panne exacte du client (sélecteur qui ne s'ouvre pas sur Chrome bureau) n'a pas pu être reproduite ici — le parcours fonctionnait déjà en local avant correction. Le correctif ne prouve donc pas la cause racine ; il garantit qu'aucun refus du navigateur ne peut plus bloquer l'import sans le dire.
+
 ## Points restant ouverts pour une prochaine passe de validation
 
 - Glisser-déposer et `<select>` natif du Kanban Prospection (limite outil, voir ci-dessus).
@@ -1074,5 +1089,6 @@ le commit).
 - **Images de la galerie de la démo** (2026-09-28) : **cassées en ligne**, faute d'en-tête CORS sur le seau OVH (voir la section dédiée). Le reste de la démo — soirées, réservations, coupons, fidélité, infos pratiques, avis — fonctionne. Les vidéos n'ont pas été testées séparément : elles empruntent le même chemin et échoueront de la même façon.
 - **Mot de passe public de la démo** (2026-09-28) : `Motdepasse123` figure dans le dépôt de l'application, pour le compte propriétaire comme pour le compte membre. Le changer a été retenu, mais reste à faire — et le bouton « Réinitialiser la démo » du back-office le rétablirait, puisqu'il rejoue le jeu de démonstration. À confirmer le jour où le back-office sera déployé.
 - **Démo `/demo` en ligne sur www.mikkovisuel.fr** (2026-09-28) : vérifiée depuis `http://localhost:3000` contre l'API réelle, pas encore depuis le domaine de production au moment de la rédaction. Les galeries photos et vidéos de la démo n'ont pas été ouvertes une à une.
+- **Cause racine du sélecteur de fichier bloqué chez le client** (2026-09-29) : non identifiée. Non reproduite en local ni dans le navigateur intégré ; les journaux de production ne portent aucune trace des tentatives. Pistes non vérifiées faute d'accès à sa machine : une fenêtre de sélection restée active dans Chrome (l'ouverture suivante est alors ignorée en silence jusqu'au rechargement de l'onglet), ou une extension interceptant le clic. À confirmer au prochain signalement — le repli affiche désormais un message qui permettra de trancher.
 - **Campagnes programmées de la démo** (2026-09-28) : le processus `worker` est à zéro instance, aucun planificateur ne tourne. Un écran montrant une campagne programmée resterait figé, sans erreur visible. Non exercé.
 - **Démo `/demo` contre l'API de démonstration réelle** (2026-09-27) : non exercée, l'API de démonstration n'est pas encore en ligne sur Scalingo. Testée contre une API locale identique. À vérifier après sa mise en ligne : chargement de la configuration, « Essayer la démo », photos de la galerie.

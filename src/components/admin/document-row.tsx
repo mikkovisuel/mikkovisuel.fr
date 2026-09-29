@@ -27,6 +27,12 @@ const SENT_AT_FORMATTER = new Intl.DateTimeFormat("fr-FR", {
 const ICON_BUTTON =
   "flex h-8 w-8 items-center justify-center rounded-full border border-line text-ink-muted transition-colors hover:border-accent hover:bg-accent hover:text-accent-ink";
 
+// Le téléchargement porte son libellé, contrairement aux autres commandes de
+// la ligne (demande du 2026-09-29) : c'est le geste le plus courant sur une
+// facture, et une icône seule ne se devine pas.
+const LABELLED_BUTTON =
+  "inline-flex h-8 items-center gap-1.5 rounded-full border border-line px-3 text-sm text-ink-muted transition-colors hover:border-accent hover:bg-accent hover:text-accent-ink";
+
 interface DocumentRowProps {
   document: {
     id: string;
@@ -171,11 +177,11 @@ export function DocumentRow({
         )}
         <a
           href={`/api/fichiers/documents/${document.id}`}
-          title="Télécharger"
-          aria-label="Télécharger"
-          className={ICON_BUTTON}
+          download={document.fileName}
+          className={LABELLED_BUTTON}
         >
           <DownloadSimple size={16} weight="regular" />
+          Télécharger
         </a>
         {deleteAction && (
           <DeleteButton

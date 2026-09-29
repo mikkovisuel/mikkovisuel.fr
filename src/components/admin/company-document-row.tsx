@@ -5,6 +5,9 @@ import { deleteCompanyDocument } from "@/lib/actions/company-documents";
 const ICON_BUTTON =
   "flex h-8 w-8 items-center justify-center rounded-full border border-line text-ink-muted transition-colors hover:border-accent hover:bg-accent hover:text-accent-ink";
 
+const LABELLED_BUTTON =
+  "inline-flex h-8 items-center gap-1.5 rounded-full border border-line px-3 text-sm text-ink-muted transition-colors hover:border-accent hover:bg-accent hover:text-accent-ink";
+
 // Consultation/téléchargement/suppression uniquement (demande du
 // 2026-07-31) — pas de client, pas de montant, pas de statut : ces
 // documents n'ont explicitement "pas d'affectation".
@@ -21,11 +24,11 @@ export function CompanyDocumentRow({
       <div className="flex shrink-0 items-center gap-2">
         <a
           href={`/api/fichiers/documents-societe/${document.id}`}
-          title="Télécharger"
-          aria-label="Télécharger"
-          className={ICON_BUTTON}
+          download={document.fileName}
+          className={LABELLED_BUTTON}
         >
           <DownloadSimple size={16} weight="regular" />
+          Télécharger
         </a>
         <DeleteButton
           action={deleteCompanyDocument.bind(null, document.id)}

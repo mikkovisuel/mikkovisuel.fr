@@ -33,6 +33,31 @@ export function FilePicker({
   const id = useId();
   const [files, setFiles] = useState<File[]>([]);
   const [isDraggingOver, setIsDraggingOver] = useState(false);
+  // Motif du repli sur le champ natif, ou `null` quand tout va bien. Deux
+  // cas, tous deux silencieux sans ça : le navigateur refuse d'ouvrir le
+  // sélecteur, ou il refuse de soumettre un champ requis resté vide qu'il ne
+  // peut pas mettre en évidence puisqu'il est masqué.
+  const [fallback, setFallback] = useState<null | "picker" | "empty">(null);
+
+  // Signalé le 2026-09-29 : « j'appuie et rien ne se passe ». Le déclencheur
+  // était un `<label for>` vers un champ masqué — quand Chrome refuse
+  // d'ouvrir le sélecteur (un autre sélecteur resté actif, une extension),
+  // le clic ne produit rien et n'émet aucune erreur visible. On ouvre donc
+  // nous-mêmes, pour pouvoir constater l'échec et proposer une issue.
+  function openPicker() {
+    const input = document.getElementById(id) as HTMLInputElement | null;
+    if (!input) {
+      setFallback("picker");
+      return;
+    }
+    try {
+      if (typeof input.showPicker === "function") input.showPicker();
+      else input.click();
+      setFallback(null);
+    } catch {
+      setFallback("picker");
+    }
+  }
 
   function syncInput(next: File[]) {
     setFiles(next);
@@ -44,6 +69,7 @@ export function FilePicker({
   }
 
   function addFiles(selected: File[]) {
+    if (selected.length > 0) setFallback(null);
     syncInput(multiple ? [...files, ...selected] : selected);
   }
 
@@ -56,12 +82,15 @@ export function FilePicker({
         multiple={multiple}
         required={required}
         accept={accept}
-        className="sr-only"
+        aria-label={multiple ? "Fichiers" : "Fichier"}
+        onInvalid={() => setFallback("empty")}
+        className={fallback ? "mt-1 block text-sm text-ink" : "sr-only"}
         onChange={(event) => addFiles(Array.from(event.target.files ?? []))}
       />
       {dropzone ? (
-        <label
-          htmlFor={id}
+        <button
+          type="button"
+          onClick={openPicker}
           onDragOver={(event) => {
             event.preventDefault();
             setIsDraggingOver(true);
@@ -85,15 +114,27 @@ export function FilePicker({
               {multiple ? "choisissez des fichiers" : "choisissez un fichier"}
             </span>
           </span>
-        </label>
+        </button>
       ) : (
-        <label
-          htmlFor={id}
+        <button
+          type="button"
+          onClick={openPicker}
           className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-line px-4 py-2 text-sm text-ink transition-colors hover:border-accent"
         >
           <UploadSimple size={15} weight="regular" className="text-accent" />
           {multiple ? "Choisir des fichiers" : "Choisir un fichier"}
-        </label>
+        </button>
+      )}
+      {fallback === "picker" && (
+        <p className="mt-1.5 text-xs text-danger">
+          Votre navigateur a refusé d&apos;ouvrir la fenêtre de sélection. Utilisez le champ
+          ci-dessus, ou rechargez la page et réessayez.
+        </p>
+      )}
+      {fallback === "empty" && (
+        <p className="mt-1.5 text-xs text-danger">
+          Choisissez d&apos;abord un fichier, avec le champ ci-dessus.
+        </p>
       )}
       {helperText && <p className="mt-1.5 text-xs text-ink-muted">{helperText}</p>}
       {files.length > 0 && (

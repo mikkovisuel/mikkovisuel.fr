@@ -2282,6 +2282,30 @@ l'URL signée renvoie bien `200 image/jpeg`, mais sans
 `VALIDATION.md` : une règle CORS sur le seau, un seau dédié à la démo, ou
 faire transiter les octets par l'API plutôt que rediriger.
 
+### 4.13 Import de document réparé et téléchargement explicite (2026-09-29)
+
+Signalement du client : « Je n'arrive plus à rentrer de factures, j'appuie
+sur importer le doc mais rien ne se passe », et demande d'un bouton
+« télécharger » quand des PDF sont affichés.
+
+**Le choix du fichier ne dépend plus d'un `<label>`.** Le sélecteur était
+déclenché par un `<label for>` pointant vers un champ masqué : quand le
+navigateur refuse d'ouvrir la fenêtre de sélection — un autre sélecteur resté
+actif, une extension — le clic ne produit **rien**, sans message ni erreur.
+Le déclencheur est désormais un bouton qui appelle `showPicker()` lui-même :
+l'échec devient visible, le champ natif est dévoilé en repli, et l'import
+reste possible quoi qu'il arrive.
+
+**Défaut voisin corrigé au passage** : un envoi **sans fichier** ne faisait
+rien non plus. Le champ requis étant invisible, le navigateur refusait de
+soumettre sans pouvoir le signaler. Le champ est maintenant dévoilé avec
+« Choisissez d'abord un fichier ».
+
+**Bouton « Télécharger » libellé** sur les lignes d'Administratif (documents
+clients et documents de société), là où une icône seule ne se devinait pas.
+Les autres commandes de la ligne restent en icône : le téléchargement est le
+geste le plus courant, il mérite son mot.
+
 ## Passe de nettoyage du code (2026-09-22)
 
 Demande du client : "fais une passe globale sur le code et nettoie tout,
@@ -3028,3 +3052,4 @@ Le client a explicitement délégué ces choix :
 | 2026-09-25 | "NOUVELLE ACTION doit être un bouton à côté de nouvelle publication : ouverture de la pop up de création. Fais une passe mais tout dans la section réseau doit être modifiable, éditable et peut être supprimé." | **Livré** : "Nouvelle action" devient un bouton en tête de Réseaux ouvrant une pop-up (le formulaire qui occupait l'onglet "À faire" est retiré), et chaque action se modifie dans la même pop-up. Passe d'éditabilité sur toute la section : notes internes, messages de l'échange, groupes de hashtags, modèles de texte, chiffres mensuels, modèles de routines et nom/lieu d'un plan appliqué deviennent modifiables ; tout reste supprimable. Deux limites assumées : le message d'un client se supprime mais ne se réécrit pas (garde côté serveur), et la date d'un plan déjà appliqué ne se change pas depuis son suivi. Détails section 4.12, tests dans `VALIDATION.md` |
 | 2026-09-27 | "Et si je la mettais en ligne sur mon site ?" (la démo de l'application club) — arbitrages : démo servie **sous mikkovisuel.fr/demo** (plutôt qu'un sous-domaine et une application Scalingo de plus), présentée par une **page dédiée à l'offre** | **Livré** : page `/application-club`, lien « App club » dans l'en-tête et bandeau sur l'accueil, démo statique sous `/demo` avec réécritures et CSP, ancres de l'en-tête corrigées pour les pages hors accueil. Mise en ligne à faire **après** l'API de démonstration (voir §5) |
 | 2026-09-28 | "Mettez en ligne l'API de démonstration sur Scalingo, en suivant docs/scalingo.md § 0. J'y ai ajouté `https://mikkovisuel.fr` dans `CORS_ORIGINS`." — arbitrages : **API seule** (pas de back-office, pas de worker), conteneur **S**, stockage sur le seau OVH existant | **Livré** : application `mikkoclub-demo-api` en ligne (osc-fr1, conteneur S, PostgreSQL Starter 512M, 14,40 € HT/mois), 16 migrations appliquées, jeu de démonstration en place, page `/demo` publiée et vérifiée contre l'API réelle. `CORS_ORIGINS` corrigé : l'origine réelle du site est `https://www.mikkovisuel.fr`, l'apex servant encore l'ancien portfolio Adobe. Trois correctifs de build côté dépôt de l'application (génération du client Prisma). **Restent à poser par le client** : les variables `STORAGE_S3_*`. Détails section 5.1, tests dans `VALIDATION.md` |
+| 2026-09-29 | "Je n'arrive plus a rentrer de factures, j'appui sur importer le doc mais rien ne se passe. De plus, peux tu ajouter un bouton « télécharger » lorsque des doc pdf sont affichés ?" | **Livré** : le choix du fichier ne passe plus par un `<label>` vers un champ masqué mais par un bouton qui appelle `showPicker()` — en cas de refus du navigateur, le champ natif est dévoilé avec un message au lieu d'un silence. Défaut voisin corrigé : un envoi sans fichier ne faisait rien du tout (champ requis invisible, que le navigateur ne pouvait pas signaler). Bouton « Télécharger » libellé sur les lignes d'Administratif. Détails section 4.13, tests dans `VALIDATION.md` |
