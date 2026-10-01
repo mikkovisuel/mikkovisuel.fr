@@ -39,25 +39,61 @@ export function FilePicker({
   // peut pas mettre en évidence puisqu'il est masqué.
   const [fallback, setFallback] = useState<null | "picker" | "empty">(null);
 
-  // Signalé le 2026-09-29 : « j'appuie et rien ne se passe ». Le déclencheur
-  // était un `<label for>` vers un champ masqué — quand Chrome refuse
-  // d'ouvrir le sélecteur (un autre sélecteur resté actif, une extension),
-  // le clic ne produit rien et n'émet aucune erreur visible. On ouvre donc
-  // nous-mêmes, pour pouvoir constater l'échec et proposer une issue.
+  // Signalé le 2026-09-29, depuis l'application installée (fenêtre
+  // « standalone ») : « je clique, rien ne se passe ». Le sélecteur ne
+  // s'ouvre pas et aucune erreur n'est levée — il n'y a donc rien à
+  // rattraper par un try/catch. On constate l'échec autrement : quand la
+  // fenêtre de sélection s'ouvre, la page perd le focus et le champ finit
+  // par émettre `change` ou `cancel`. Si rien de tout cela n'arrive, c'est
+  // qu'elle ne s'est pas ouverte, et on dévoile le champ natif.
   function openPicker() {
     const input = document.getElementById(id) as HTMLInputElement | null;
     if (!input) {
       setFallback("picker");
       return;
     }
+
+    let settled = false;
+    const markSettled = () => {
+      settled = true;
+    };
+    input.addEventListener("change", markSettled, { once: true });
+    input.addEventListener("cancel", markSettled, { once: true });
+
     try {
       if (typeof input.showPicker === "function") input.showPicker();
       else input.click();
       setFallback(null);
     } catch {
       setFallback("picker");
+      return;
     }
+
+    window.setTimeout(() => {
+      input.removeEventListener("change", markSettled);
+      input.removeEventListener("cancel", markSettled);
+      // `hasFocus()` reste vrai tant qu'aucune fenêtre système n'a pris la
+      // main : conjugué à l'absence de `change`/`cancel`, c'est le signe que
+      // rien ne s'est ouvert.
+      if (!settled && document.hasFocus()) setFallback("picker");
+    }, 1200);
   }
+
+  // Glisser-déposer accepté aussi sur le bouton compact, pas seulement sur
+  // la grande zone : c'est le seul chemin qui ne dépend d'aucune fenêtre
+  // système, donc le dernier recours quand elle refuse de s'ouvrir.
+  const dropHandlers = {
+    onDragOver: (event: React.DragEvent) => {
+      event.preventDefault();
+      setIsDraggingOver(true);
+    },
+    onDragLeave: () => setIsDraggingOver(false),
+    onDrop: (event: React.DragEvent) => {
+      event.preventDefault();
+      setIsDraggingOver(false);
+      addFiles(Array.from(event.dataTransfer.files));
+    },
+  };
 
   function syncInput(next: File[]) {
     setFiles(next);
@@ -91,17 +127,8 @@ export function FilePicker({
         <button
           type="button"
           onClick={openPicker}
-          onDragOver={(event) => {
-            event.preventDefault();
-            setIsDraggingOver(true);
-          }}
-          onDragLeave={() => setIsDraggingOver(false)}
-          onDrop={(event) => {
-            event.preventDefault();
-            setIsDraggingOver(false);
-            addFiles(Array.from(event.dataTransfer.files));
-          }}
-          className={`flex cursor-pointer flex-col items-center gap-2 rounded-2xl border-2 border-dashed px-6 py-10 text-center transition-colors ${
+          {...dropHandlers}
+          className={`flex w-full cursor-pointer flex-col items-center gap-2 rounded-2xl border-2 border-dashed px-6 py-10 text-center transition-colors ${
             isDraggingOver
               ? "border-accent bg-accent/10"
               : "border-line hover:border-accent hover:bg-surface-elevated"
@@ -119,7 +146,10 @@ export function FilePicker({
         <button
           type="button"
           onClick={openPicker}
-          className="inline-flex cursor-pointer items-center gap-2 rounded-full border border-line px-4 py-2 text-sm text-ink transition-colors hover:border-accent"
+          {...dropHandlers}
+          className={`inline-flex cursor-pointer items-center gap-2 rounded-full border px-4 py-2 text-sm text-ink transition-colors ${
+            isDraggingOver ? "border-accent bg-accent/10" : "border-line hover:border-accent"
+          }`}
         >
           <UploadSimple size={15} weight="regular" className="text-accent" />
           {multiple ? "Choisir des fichiers" : "Choisir un fichier"}
@@ -127,8 +157,8 @@ export function FilePicker({
       )}
       {fallback === "picker" && (
         <p className="mt-1.5 text-xs text-danger">
-          Votre navigateur a refusé d&apos;ouvrir la fenêtre de sélection. Utilisez le champ
-          ci-dessus, ou rechargez la page et réessayez.
+          La fenêtre de sélection ne s&apos;est pas ouverte. Utilisez le champ ci-dessus, ou
+          glissez votre fichier directement sur le bouton.
         </p>
       )}
       {fallback === "empty" && (

@@ -2290,11 +2290,22 @@ sur importer le doc mais rien ne se passe », et demande d'un bouton
 
 **Le choix du fichier ne dépend plus d'un `<label>`.** Le sélecteur était
 déclenché par un `<label for>` pointant vers un champ masqué : quand le
-navigateur refuse d'ouvrir la fenêtre de sélection — un autre sélecteur resté
-actif, une extension — le clic ne produit **rien**, sans message ni erreur.
-Le déclencheur est désormais un bouton qui appelle `showPicker()` lui-même :
-l'échec devient visible, le champ natif est dévoilé en repli, et l'import
-reste possible quoi qu'il arrive.
+navigateur n'ouvre pas la fenêtre de sélection, le clic ne produit **rien**,
+sans message ni erreur. Le déclencheur est désormais un bouton qui appelle
+`showPicker()` lui-même.
+
+**Le cas réel était l'application installée** (fenêtre « standalone », et non
+un onglet Chrome) : la fenêtre de sélection ne s'ouvre pas, et **aucune
+erreur n'est levée** — il n'y a donc rien à rattraper. Vérifié au passage
+dans un Chromium ordinaire : `showPicker()` sur un champ masqué ouvre bien la
+fenêtre, le champ masqué n'est pas en cause. L'échec est donc constaté
+autrement : si, une seconde après le clic, la page a toujours le focus et que
+le champ n'a émis ni `change` ni `cancel`, c'est que rien ne s'est ouvert. Le
+champ natif est alors dévoilé, avec un message et deux issues.
+
+**Deuxième chemin, qui ne dépend d'aucune fenêtre système** : le bouton
+compact accepte désormais le glisser-déposer, comme la grande zone des
+livrables. C'est le dernier recours si même le champ natif reste muet.
 
 **Défaut voisin corrigé au passage** : un envoi **sans fichier** ne faisait
 rien non plus. Le champ requis étant invisible, le navigateur refusait de
@@ -3053,3 +3064,4 @@ Le client a explicitement délégué ces choix :
 | 2026-09-27 | "Et si je la mettais en ligne sur mon site ?" (la démo de l'application club) — arbitrages : démo servie **sous mikkovisuel.fr/demo** (plutôt qu'un sous-domaine et une application Scalingo de plus), présentée par une **page dédiée à l'offre** | **Livré** : page `/application-club`, lien « App club » dans l'en-tête et bandeau sur l'accueil, démo statique sous `/demo` avec réécritures et CSP, ancres de l'en-tête corrigées pour les pages hors accueil. Mise en ligne à faire **après** l'API de démonstration (voir §5) |
 | 2026-09-28 | "Mettez en ligne l'API de démonstration sur Scalingo, en suivant docs/scalingo.md § 0. J'y ai ajouté `https://mikkovisuel.fr` dans `CORS_ORIGINS`." — arbitrages : **API seule** (pas de back-office, pas de worker), conteneur **S**, stockage sur le seau OVH existant | **Livré** : application `mikkoclub-demo-api` en ligne (osc-fr1, conteneur S, PostgreSQL Starter 512M, 14,40 € HT/mois), 16 migrations appliquées, jeu de démonstration en place, page `/demo` publiée et vérifiée contre l'API réelle. `CORS_ORIGINS` corrigé : l'origine réelle du site est `https://www.mikkovisuel.fr`, l'apex servant encore l'ancien portfolio Adobe. Trois correctifs de build côté dépôt de l'application (génération du client Prisma). **Restent à poser par le client** : les variables `STORAGE_S3_*`. Détails section 5.1, tests dans `VALIDATION.md` |
 | 2026-09-29 | "Je n'arrive plus a rentrer de factures, j'appui sur importer le doc mais rien ne se passe. De plus, peux tu ajouter un bouton « télécharger » lorsque des doc pdf sont affichés ?" | **Livré** : le choix du fichier ne passe plus par un `<label>` vers un champ masqué mais par un bouton qui appelle `showPicker()` — en cas de refus du navigateur, le champ natif est dévoilé avec un message au lieu d'un silence. Défaut voisin corrigé : un envoi sans fichier ne faisait rien du tout (champ requis invisible, que le navigateur ne pouvait pas signaler). Bouton « Télécharger » libellé sur les lignes d'Administratif. Détails section 4.13, tests dans `VALIDATION.md` |
+| 2026-10-01 | "Choisir un fichier ne fonctionne pas — je clique, rien ne se passe… A non c'est que je suis dans l'appli" | **Livré** : la panne venait de l'**application installée** (fenêtre « standalone »), où la fenêtre de sélection ne s'ouvre pas et ne lève aucune erreur. Le composant détecte désormais ce cas (focus conservé et aucun `change`/`cancel` après une seconde), dévoile le champ natif avec un message, et accepte le glisser-déposer sur le bouton compact — un chemin qui ne dépend d'aucune fenêtre système. Détails section 4.13, tests dans `VALIDATION.md` |

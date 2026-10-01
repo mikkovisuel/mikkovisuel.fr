@@ -1010,6 +1010,21 @@ le commit).
 
 **Non reproduit** : la panne exacte du client (sélecteur qui ne s'ouvre pas sur Chrome bureau) n'a pas pu être reproduite ici — le parcours fonctionnait déjà en local avant correction. Le correctif ne prouve donc pas la cause racine ; il garantit qu'aucun refus du navigateur ne peut plus bloquer l'import sans le dire.
 
+## Sélecteur de fichier dans l'application installée (2026-10-01)
+
+`tsc --noEmit`, lint et `npm run build` propres. Le client a précisé travailler depuis l'**application installée** (fenêtre « standalone »), pas un onglet Chrome — ce qui explique l'échec et invalide la première hypothèse.
+
+| Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |
+|---|---|---|---|---|---|
+| Le champ masqué est-il en cause ? | `showPicker()` sur un champ `sr-only`, clic réel dans Chromium | ✅ **La fenêtre s'ouvre** — confirmé par l'événement `cancel` reçu après Échap. Le champ masqué n'est donc pas le problème, l'hypothèse de la veille est écartée | — | — | 2026-10-01 |
+| Détection d'une fenêtre qui ne s'ouvre pas | `showPicker()` neutralisé, page gardant le focus | ✅ Après 1,2 s : champ natif dévoilé et message « La fenêtre de sélection ne s'est pas ouverte. Utilisez le champ ci-dessus, ou glissez votre fichier directement sur le bouton. » | Faux positif quand la fenêtre s'ouvre vraiment | ✅ Écarté : `cancel` émis 300 ms après l'ouverture → aucun repli affiché, le champ reste masqué | 2026-10-01 |
+| Page sans le focus système | Même scénario, page n'ayant pas le focus | ✅ Aucun repli — la condition exige le focus, donc pas de message intempestif quand l'utilisateur a simplement changé de fenêtre | — | — | 2026-10-01 |
+| Glisser-déposer sur le bouton compact | Survol puis dépôt d'un PDF sur « Choisir un fichier » | ✅ Surlignage pendant le survol, fichier listé, champ natif synchronisé (`ZZ-depose.pdf`) | — | — | 2026-10-01 |
+| Import complet par dépôt | Envoi du fichier déposé | ✅ Modale fermée, document présent dans la liste — le chemin de secours mène bien au bout | — | — | 2026-10-01 |
+| Code réellement déployé | Recherche de `showPicker` dans le conteneur en production | ✅ Présent — le correctif de la veille tournait bien, ce qui a permis de conclure que l'appel n'échoue pas mais n'ouvre rien | — | — | 2026-10-01 |
+
+**Non reproduit** : l'échec lui-même, faute d'application installée pilotable depuis cette session. Les trois issues (détection, champ natif, glisser-déposer) ont chacune été exercées séparément.
+
 ## Points restant ouverts pour une prochaine passe de validation
 
 - Glisser-déposer et `<select>` natif du Kanban Prospection (limite outil, voir ci-dessus).
@@ -1089,6 +1104,6 @@ le commit).
 - **Images de la galerie de la démo** (2026-09-28) : **cassées en ligne**, faute d'en-tête CORS sur le seau OVH (voir la section dédiée). Le reste de la démo — soirées, réservations, coupons, fidélité, infos pratiques, avis — fonctionne. Les vidéos n'ont pas été testées séparément : elles empruntent le même chemin et échoueront de la même façon.
 - **Mot de passe public de la démo** (2026-09-28) : `Motdepasse123` figure dans le dépôt de l'application, pour le compte propriétaire comme pour le compte membre. Le changer a été retenu, mais reste à faire — et le bouton « Réinitialiser la démo » du back-office le rétablirait, puisqu'il rejoue le jeu de démonstration. À confirmer le jour où le back-office sera déployé.
 - **Démo `/demo` en ligne sur www.mikkovisuel.fr** (2026-09-28) : vérifiée depuis `http://localhost:3000` contre l'API réelle, pas encore depuis le domaine de production au moment de la rédaction. Les galeries photos et vidéos de la démo n'ont pas été ouvertes une à une.
-- **Cause racine du sélecteur de fichier bloqué chez le client** (2026-09-29) : non identifiée. Non reproduite en local ni dans le navigateur intégré ; les journaux de production ne portent aucune trace des tentatives. Pistes non vérifiées faute d'accès à sa machine : une fenêtre de sélection restée active dans Chrome (l'ouverture suivante est alors ignorée en silence jusqu'au rechargement de l'onglet), ou une extension interceptant le clic. À confirmer au prochain signalement — le repli affiche désormais un message qui permettra de trancher.
+- **Cause racine du sélecteur de fichier bloqué chez le client** (2026-09-29, précisé le 2026-10-01) : l'environnement est l'**application installée** (fenêtre « standalone »), où la fenêtre de sélection ne s'ouvre pas sans lever d'erreur. Le pourquoi exact reste inconnu (limitation de Chrome en mode standalone, ou fenêtre système rendue derrière). Contourné plutôt que corrigé : détection + champ natif + glisser-déposer. Reste non identifiée : Non reproduite en local ni dans le navigateur intégré ; les journaux de production ne portent aucune trace des tentatives. Pistes non vérifiées faute d'accès à sa machine : une fenêtre de sélection restée active dans Chrome (l'ouverture suivante est alors ignorée en silence jusqu'au rechargement de l'onglet), ou une extension interceptant le clic. À confirmer au prochain signalement — le repli affiche désormais un message qui permettra de trancher.
 - **Campagnes programmées de la démo** (2026-09-28) : le processus `worker` est à zéro instance, aucun planificateur ne tourne. Un écran montrant une campagne programmée resterait figé, sans erreur visible. Non exercé.
 - **Démo `/demo` contre l'API de démonstration réelle** (2026-09-27) : non exercée, l'API de démonstration n'est pas encore en ligne sur Scalingo. Testée contre une API locale identique. À vérifier après sa mise en ligne : chargement de la configuration, « Essayer la démo », photos de la galerie.
