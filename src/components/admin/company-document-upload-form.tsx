@@ -48,7 +48,8 @@ export function CompanyDocumentUploadForm() {
           name="file"
           accept="application/pdf,image/png,image/jpeg"
           required
-          helperText="PDF, JPG ou PNG · 20 Mo max"
+          dropzone
+          helperText="PDF, JPG ou PNG · 20 Mo max. Vous pouvez aussi déposer le fichier directement sur la zone."
         />
       </div>
       <button

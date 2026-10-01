@@ -1025,6 +1025,17 @@ le commit).
 
 **Non reproduit** : l'échec lui-même, faute d'application installée pilotable depuis cette session. Les trois issues (détection, champ natif, glisser-déposer) ont chacune été exercées séparément.
 
+### Zone de dépôt sur les formulaires de document (2026-10-01, même journée)
+
+La détection est restée muette chez le client — aucun message, alors que le code était bien déployé. Par élimination, la fenêtre de sélection s'ouvre **derrière** celle de l'application : la page perd le focus, la condition de détection n'est donc jamais remplie, et rien n'apparaît à l'écran. D'où le passage à une zone de dépôt, qui n'appelle aucune fenêtre système.
+
+| Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |
+|---|---|---|---|---|---|
+| Zone de dépôt « Nouveau document » | Ouverture de la fenêtre d'ajout | ✅ Grande zone en pointillés sur toute la largeur (420 × 134 px à cette taille de fenêtre), texte « Glissez vos fichiers ici, ou choisissez un fichier » et aide « PDF · 20 Mo max. Vous pouvez aussi déposer le fichier directement sur la zone. » | — | — | 2026-10-01 |
+| Dépôt d'un PDF | Survol puis dépôt sur la zone | ✅ Surlignage pendant le survol, fichier listé sous la zone, champ natif synchronisé | — | — | 2026-10-01 |
+| Import complet par dépôt | Client et type choisis, puis envoi | ✅ Fenêtre fermée, document présent dans la liste — aucune fenêtre système sollicitée de bout en bout | — | — | 2026-10-01 |
+| Documents de société | Même formulaire sur la même page | ✅ Passé à la zone de dépôt également, par cohérence d'écran | — | — | 2026-10-01 |
+
 ## Points restant ouverts pour une prochaine passe de validation
 
 - Glisser-déposer et `<select>` natif du Kanban Prospection (limite outil, voir ci-dessus).

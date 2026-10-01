@@ -152,9 +152,20 @@ export function DocumentUploadForm({
         )}
       </div>
 
-      <div className="flex flex-col gap-2">
+      {/* Zone de dépôt plutôt que bouton compact (demande du 2026-10-01) :
+          dans l'application installée, la fenêtre de sélection ne s'ouvre
+          pas, et déposer le fichier est le seul geste qui ne dépende
+          d'aucune fenêtre système. */}
+      <div className="flex flex-col gap-2 sm:col-span-2">
         <span className="text-sm font-medium text-ink">Fichier (PDF)</span>
-        <FilePicker key={resetKey} name="file" accept="application/pdf" required />
+        <FilePicker
+          key={resetKey}
+          name="file"
+          accept="application/pdf"
+          required
+          dropzone
+          helperText="PDF · 20 Mo max. Vous pouvez aussi déposer le fichier directement sur la zone."
+        />
       </div>
 
       {state?.error && (
