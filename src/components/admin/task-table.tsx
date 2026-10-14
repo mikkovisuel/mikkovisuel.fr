@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import Link from "next/link";
 import { CaretUp, CaretDown } from "@phosphor-icons/react";
-import { TaskTableRow } from "@/components/admin/task-table-row";
+import { TaskTableRow, TaskCard } from "@/components/admin/task-table-row";
 import { bulkSetTaskStatus, bulkArchiveTasks } from "@/lib/actions/tasks";
 import type { TaskStatusSlug } from "@/lib/dropdown-lists";
 import type { TaskSortField, TaskSortDir } from "@/lib/tasks";
@@ -162,7 +162,19 @@ export function TaskTable({
           </button>
         </div>
       )}
-      <div className="overflow-x-auto rounded-2xl border border-line">
+      {/* Téléphone : cartes. Le tri reste accessible par « Filtres et tri ». */}
+      <ul className="grid gap-3 sm:hidden">
+        {tasks.map((task) => (
+          <TaskCard
+            key={task.id}
+            task={task}
+            statusOptions={statusOptions}
+            selected={selectedIds.has(task.id)}
+            onToggleSelect={() => toggleSelect(task.id)}
+          />
+        ))}
+      </ul>
+      <div className="hidden overflow-x-auto rounded-2xl border border-line sm:block">
         <table className="w-full min-w-[680px] border-collapse text-sm">
           <thead>
             <tr className="border-b border-line text-left text-xs font-medium uppercase tracking-wide text-ink-muted">

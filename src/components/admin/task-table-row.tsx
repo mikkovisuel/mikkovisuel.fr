@@ -190,3 +190,89 @@ export function TaskTableRow({
     </>
   );
 }
+
+// Version carte, pour le téléphone (2026-10-14) : le tableau à six colonnes
+// y devenait illisible — colonnes coupées, et chaque ligne haute de 250 px
+// parce que le titre s'enroulait dans une colonne étroite. Mêmes
+// informations et mêmes commandes, empilées dans l'ordre de lecture : titre,
+// client, dates, statut.
+export function TaskCard({
+  task,
+  statusOptions,
+  selected = false,
+  onToggleSelect,
+}: {
+  task: TaskTableTask;
+  statusOptions: { slug: string; label: string }[];
+  selected?: boolean;
+  onToggleSelect?: () => void;
+}) {
+  const overdue = isTaskOverdue(task);
+  const dueToday = isTaskDueToday(task);
+  const isTimerRunning = task.timeEntries.some((entry) => entry.endedAt === null);
+
+  return (
+    <li className={`rounded-2xl border border-line p-4 ${selected ? "bg-accent/5" : ""}`}>
+      <div className="flex items-start gap-3">
+        <input
+          type="checkbox"
+          aria-label={`Sélectionner ${task.title}`}
+          checked={selected}
+          onChange={onToggleSelect}
+          className="mt-1 h-4 w-4 shrink-0 accent-accent"
+        />
+        <div className="min-w-0 flex-1">
+          <Link href={`/admin/taches/${task.id}`} className="font-medium text-ink hover:underline">
+            {task.title}
+          </Link>
+          <p className="mt-1 text-sm text-ink-muted">
+            <Link href={`/admin/clients/${task.clientId}`} className="transition-colors hover:text-ink">
+              {task.client.name}
+            </Link>
+            {task.internal && " · interne"}
+          </p>
+          <p className="mt-1 text-xs text-ink-muted">
+            {task.dueDate ? (
+              <span
+                className={
+                  overdue
+                    ? "font-medium text-danger"
+                    : dueToday
+                      ? "font-bold text-blue-600 dark:text-blue-400"
+                      : undefined
+                }
+              >
+                Échéance {taskDateFormatterShort.format(task.dueDate)}
+                {overdue && " · en retard"}
+              </span>
+            ) : (
+              "Sans échéance"
+            )}
+            {task.eventDate && ` · évènement ${taskDateFormatterShort.format(task.eventDate)}`}
+          </p>
+          {task.refusalReason && (
+            <p className="mt-1 text-xs text-danger">Motif de refus : {task.refusalReason}</p>
+          )}
+        </div>
+      </div>
+      <div className="mt-3 flex flex-wrap items-center gap-2 pl-7">
+        <TaskStatusSelect
+          taskId={task.id}
+          currentSlug={task.status.slug}
+          currentColor={task.status.color}
+          statuses={statusOptions}
+        />
+        <TaskPinButton taskId={task.id} pinned={task.pinnedAt !== null} />
+        <TaskTimerIconButton taskId={task.id} isRunning={isTimerRunning} />
+        <AttachmentBadge attachmentCount={task._count?.attachments} deliverableCount={task._count?.deliverables} />
+        {overdue && (
+          <form action={sendTaskReminder.bind(null, task.id)}>
+            <button type="submit" className="text-xs text-ink-muted underline decoration-dotted underline-offset-2 hover:text-ink">
+              Rappel
+            </button>
+          </form>
+        )}
+      </div>
+    </li>
+  );
+}

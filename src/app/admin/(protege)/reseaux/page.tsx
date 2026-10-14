@@ -507,7 +507,7 @@ export default async function SocialPostsPage({
           </form>
         </FilterMenu>
 
-        <nav className="flex gap-2">
+        <nav className="flex flex-wrap gap-2">
           {(["liste", "calendrier", "grille", "afaire"] as const).map((option) => {
             const params = new URLSearchParams(filterParams);
             if (option !== "liste") params.set("vue", option);
@@ -516,7 +516,7 @@ export default async function SocialPostsPage({
               <Link
                 key={option}
                 href={query ? `/admin/reseaux?${query}` : "/admin/reseaux"}
-                className={`rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
+                className={`whitespace-nowrap rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
                   option === view
                     ? "border-accent bg-accent text-accent-ink"
                     : "border-line text-ink-muted hover:text-ink"
