@@ -45,8 +45,8 @@ export function GlobalSearchBar() {
     : false;
 
   return (
-    <div ref={containerRef} className="relative w-full max-w-xs">
-      <div className="flex items-center gap-2 rounded-full border border-line bg-surface-elevated px-3 py-1.5">
+    <div ref={containerRef} className="relative w-full">
+      <div className="flex items-center gap-2 rounded-lg bg-ink/[0.07] px-2.5 py-1.5">
         <MagnifyingGlass size={16} className="shrink-0 text-ink-muted" />
         <input
           type="text"
@@ -62,7 +62,7 @@ export function GlobalSearchBar() {
       </div>
 
       {open && query.trim() && (
-        <div className="absolute right-0 z-20 mt-2 w-80 max-h-96 overflow-y-auto rounded-2xl border border-line bg-surface p-2 shadow-lg">
+        <div className="absolute left-0 z-30 mt-2 w-80 max-w-[calc(100vw-2rem)] max-h-96 overflow-y-auto rounded-2xl border border-line bg-surface p-2 shadow-lg">
           {!results ? (
             <p className="px-3 py-2 text-sm text-ink-muted">Recherche...</p>
           ) : !hasAnyResult ? (

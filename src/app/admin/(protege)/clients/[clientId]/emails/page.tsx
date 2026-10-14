@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import {
-  ArrowLeft,
   Envelope,
   EnvelopeOpen,
   EnvelopeSimple,
@@ -13,6 +12,7 @@ import { db } from "@/lib/db";
 import { searchThreadsForEmails, GmailNotConnectedError } from "@/lib/gmail";
 import { sendNewMessage } from "@/lib/actions/gmail-messages";
 import { EmailComposer } from "@/components/admin/email-composer";
+import { PageToolbar, PAGE_BODY } from "@/components/admin/page-toolbar";
 
 export const metadata: Metadata = {
   title: "Emails — Admin Mikko Visuel",
@@ -63,137 +63,131 @@ export default async function ClientEmailsPage({
   }
 
   return (
-    <div className="px-4 py-10 sm:px-6 lg:px-8 2xl:px-12">
-      <Link
-        href={`/admin/clients/${client.id}`}
-        className="inline-flex items-center gap-2 text-sm text-ink-muted transition-colors hover:text-ink"
-      >
-        <ArrowLeft size={16} weight="regular" />
-        Retour à {client.name}
-      </Link>
+    <>
+      <PageToolbar
+        title={`Emails — ${client.name}`}
+        back={{ href: `/admin/clients/${client.id}`, label: `Retour à ${client.name}` }}
+      />
+      <div className={PAGE_BODY}>
+        {notConnected && (
+          <div className="mt-8 flex flex-col items-start gap-3 rounded-2xl border border-line p-6">
+            <p className="text-sm text-ink-muted">
+              Gmail n&apos;est pas encore connecté à l&apos;admin.
+            </p>
+            <Link
+              href="/admin/reglages"
+              className="rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-accent-ink transition-transform active:scale-[0.98]"
+            >
+              Connecter Gmail
+            </Link>
+          </div>
+        )}
 
-      <h1 className="mt-4 font-display text-2xl font-medium tracking-tight text-ink">
-        Emails — {client.name}
-      </h1>
+        {loadError && (
+          <div className="mt-8 flex items-center gap-2 text-sm text-danger">
+            <WarningCircle size={16} weight="fill" />
+            Impossible de charger les emails pour le moment.
+          </div>
+        )}
 
-      {notConnected && (
-        <div className="mt-8 flex flex-col items-start gap-3 rounded-2xl border border-line p-6">
-          <p className="text-sm text-ink-muted">
-            Gmail n&apos;est pas encore connecté à l&apos;admin.
-          </p>
-          <Link
-            href="/admin/reglages"
-            className="rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-accent-ink transition-transform active:scale-[0.98]"
-          >
-            Connecter Gmail
-          </Link>
-        </div>
-      )}
+        {!notConnected && !loadError && (
+          <>
+            {emails.length > 0 && (
+              <form className="mt-8 flex flex-wrap items-end gap-3">
+                <div className="flex flex-col gap-2">
+                  <label htmlFor="q" className="text-sm font-medium text-ink">
+                    Rechercher
+                  </label>
+                  <input
+                    id="q"
+                    name="q"
+                    type="search"
+                    defaultValue={q ?? ""}
+                    placeholder="Mot-clé dans l'objet ou le corps du message"
+                    className="w-72 rounded-xl border border-line bg-surface-elevated px-3 py-2.5 text-sm text-ink placeholder:text-ink-muted/70 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-accent-ink transition-transform active:scale-[0.98]"
+                >
+                  Filtrer
+                </button>
+                {q && (
+                  <Link
+                    href={`/admin/clients/${client.id}/emails`}
+                    className="text-sm text-ink-muted transition-colors hover:text-ink"
+                  >
+                    Réinitialiser
+                  </Link>
+                )}
+              </form>
+            )}
 
-      {loadError && (
-        <div className="mt-8 flex items-center gap-2 text-sm text-danger">
-          <WarningCircle size={16} weight="fill" />
-          Impossible de charger les emails pour le moment.
-        </div>
-      )}
+            {emails.length === 0 ? (
+              <p className="mt-8 text-sm text-ink-muted">
+                Ce client n&apos;a pas encore de compte de connexion (aucune adresse email à
+                rechercher).
+              </p>
+            ) : threads.length === 0 ? (
+              <p className="mt-8 text-sm text-ink-muted">
+                {q ? "Aucun email ne correspond à cette recherche." : "Aucun email trouvé avec ce client."}
+              </p>
+            ) : (
+              <div className="mt-8 divide-y divide-line rounded-2xl border border-line">
+                {threads.map((thread) => (
+                  <Link
+                    key={thread.id}
+                    href={`/admin/clients/${client.id}/emails/${thread.id}`}
+                    className="flex flex-col gap-1 px-6 py-4 transition-colors hover:bg-surface-elevated"
+                  >
+                    <div className="flex items-center justify-between gap-3">
+                      <span className="flex items-center gap-2 font-medium text-ink">
+                        {thread.isUnread ? (
+                          <Envelope
+                            size={16}
+                            weight="fill"
+                            className="shrink-0 text-accent"
+                            aria-label="Non lu"
+                          />
+                        ) : (
+                          <EnvelopeOpen
+                            size={16}
+                            weight="regular"
+                            className="shrink-0 text-ink-muted"
+                            aria-label="Lu"
+                          />
+                        )}
+                        {thread.subject}
+                      </span>
+                      <span className="shrink-0 text-xs text-ink-muted">
+                        {thread.lastMessageDate ? DATE_FORMATTER.format(thread.lastMessageDate) : ""}
+                      </span>
+                    </div>
+                    <p className="truncate pl-6 text-sm text-ink-muted">
+                      {thread.lastMessageFrom} — {thread.snippet}
+                    </p>
+                  </Link>
+                ))}
+              </div>
+            )}
 
-      {!notConnected && !loadError && (
-        <>
-          {emails.length > 0 && (
-            <form className="mt-8 flex flex-wrap items-end gap-3">
-              <div className="flex flex-col gap-2">
-                <label htmlFor="q" className="text-sm font-medium text-ink">
-                  Rechercher
-                </label>
-                <input
-                  id="q"
-                  name="q"
-                  type="search"
-                  defaultValue={q ?? ""}
-                  placeholder="Mot-clé dans l'objet ou le corps du message"
-                  className="w-72 rounded-xl border border-line bg-surface-elevated px-3 py-2.5 text-sm text-ink placeholder:text-ink-muted/70 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
+            <section className="mt-12 border-t border-line pt-8">
+              <h2 className="flex items-center gap-2 text-sm font-medium text-ink-muted">
+                <EnvelopeSimple size={16} weight="regular" />
+                Nouveau message
+              </h2>
+              <div className="mt-4">
+                <EmailComposer
+                  action={sendNewMessageForThisClient}
+                  toDefaultValue={emails[0]}
+                  submitLabel="Envoyer"
                 />
               </div>
-              <button
-                type="submit"
-                className="rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-accent-ink transition-transform active:scale-[0.98]"
-              >
-                Filtrer
-              </button>
-              {q && (
-                <Link
-                  href={`/admin/clients/${client.id}/emails`}
-                  className="text-sm text-ink-muted transition-colors hover:text-ink"
-                >
-                  Réinitialiser
-                </Link>
-              )}
-            </form>
-          )}
-
-          {emails.length === 0 ? (
-            <p className="mt-8 text-sm text-ink-muted">
-              Ce client n&apos;a pas encore de compte de connexion (aucune adresse email à
-              rechercher).
-            </p>
-          ) : threads.length === 0 ? (
-            <p className="mt-8 text-sm text-ink-muted">
-              {q ? "Aucun email ne correspond à cette recherche." : "Aucun email trouvé avec ce client."}
-            </p>
-          ) : (
-            <div className="mt-8 divide-y divide-line rounded-2xl border border-line">
-              {threads.map((thread) => (
-                <Link
-                  key={thread.id}
-                  href={`/admin/clients/${client.id}/emails/${thread.id}`}
-                  className="flex flex-col gap-1 px-6 py-4 transition-colors hover:bg-surface-elevated"
-                >
-                  <div className="flex items-center justify-between gap-3">
-                    <span className="flex items-center gap-2 font-medium text-ink">
-                      {thread.isUnread ? (
-                        <Envelope
-                          size={16}
-                          weight="fill"
-                          className="shrink-0 text-accent"
-                          aria-label="Non lu"
-                        />
-                      ) : (
-                        <EnvelopeOpen
-                          size={16}
-                          weight="regular"
-                          className="shrink-0 text-ink-muted"
-                          aria-label="Lu"
-                        />
-                      )}
-                      {thread.subject}
-                    </span>
-                    <span className="shrink-0 text-xs text-ink-muted">
-                      {thread.lastMessageDate ? DATE_FORMATTER.format(thread.lastMessageDate) : ""}
-                    </span>
-                  </div>
-                  <p className="truncate pl-6 text-sm text-ink-muted">
-                    {thread.lastMessageFrom} — {thread.snippet}
-                  </p>
-                </Link>
-              ))}
-            </div>
-          )}
-
-          <section className="mt-12 border-t border-line pt-8">
-            <h2 className="flex items-center gap-2 text-sm font-medium text-ink-muted">
-              <EnvelopeSimple size={16} weight="regular" />
-              Nouveau message
-            </h2>
-            <div className="mt-4">
-              <EmailComposer
-                action={sendNewMessageForThisClient}
-                toDefaultValue={emails[0]}
-                submitLabel="Envoyer"
-              />
-            </div>
-          </section>
-        </>
-      )}
-    </div>
+            </section>
+          </>
+        )}
+      </div>
+    </>
   );
 }

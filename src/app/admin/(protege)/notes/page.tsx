@@ -3,6 +3,7 @@ import { verifyAdminSession } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { NotesApp } from "@/components/admin/notes-app";
 import { ACTIVE_CLIENTS } from "@/lib/clients";
+import { PageToolbar, PAGE_BODY } from "@/components/admin/page-toolbar";
 
 export const metadata: Metadata = {
   title: "Notes — Admin Mikko Visuel",
@@ -39,29 +40,28 @@ export default async function AdminNotesPage() {
   ]);
 
   return (
-    <div className="px-4 py-10 sm:px-6 lg:px-8 2xl:px-12">
-      <h1 className="font-display text-2xl font-semibold text-ink">Notes</h1>
-      <p className="mt-1 text-sm text-ink-muted">
-        Bloc-notes interne — jamais visible depuis l&apos;espace client.
-      </p>
-      <div className="mt-6">
-        <NotesApp
-          initialFolders={folders.map((f) => ({ id: f.id, name: f.name }))}
-          initialNotes={notes.map((n) => ({
-            id: n.id,
-            title: n.title,
-            content: n.content,
-            pinned: n.pinned,
-            folderId: n.folderId,
-            clientId: n.clientId,
-            prospectId: n.prospectId,
-            reminderAt: n.reminderAt ? n.reminderAt.toISOString() : null,
-            updatedAt: n.updatedAt.toISOString(),
-          }))}
-          clients={clients.map((c) => ({ id: c.id, name: c.name }))}
-          prospects={prospects.map((p) => ({ id: p.id, name: p.name }))}
-        />
+    <>
+      <PageToolbar title="Notes" subtitle="Bloc-notes interne — jamais visible depuis l'espace client" />
+      <div className={PAGE_BODY}>
+        <div className="mt-6">
+          <NotesApp
+            initialFolders={folders.map((f) => ({ id: f.id, name: f.name }))}
+            initialNotes={notes.map((n) => ({
+              id: n.id,
+              title: n.title,
+              content: n.content,
+              pinned: n.pinned,
+              folderId: n.folderId,
+              clientId: n.clientId,
+              prospectId: n.prospectId,
+              reminderAt: n.reminderAt ? n.reminderAt.toISOString() : null,
+              updatedAt: n.updatedAt.toISOString(),
+            }))}
+            clients={clients.map((c) => ({ id: c.id, name: c.name }))}
+            prospects={prospects.map((p) => ({ id: p.id, name: p.name }))}
+          />
+        </div>
       </div>
-    </div>
+    </>
   );
 }

@@ -33,6 +33,8 @@ export function ClientInfoForm({
   avatarForm,
   defaultValues,
   categoryOptions,
+  back,
+  actions,
 }: {
   action: (state: ClientFormState, formData: FormData) => Promise<ClientFormState>;
   clientId: string;
@@ -41,6 +43,10 @@ export function ClientInfoForm({
   archivedBanner: React.ReactNode;
   prospectBanner: React.ReactNode;
   avatarForm: React.ReactNode;
+  /** Lien de retour, en tête de la barre d'outils (refonte macOS). */
+  back?: React.ReactNode;
+  /** Commandes secondaires de la fiche, avant « Enregistrer ». */
+  actions?: React.ReactNode;
   defaultValues: {
     name: string;
     raisonSociale: string | null;
@@ -62,14 +68,17 @@ export function ClientInfoForm({
 
   return (
     <>
-      <div className="sticky top-0 z-10 -mx-4 mt-4 flex flex-wrap items-center justify-between gap-3 bg-surface/95 px-4 py-3 backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
-        <div className="flex min-w-0 items-center gap-3">
-          <ClientAvatar clientId={clientId} name={clientName} hasAvatar={hasAvatar} size="md" />
-          <h1 className="font-display text-2xl font-medium tracking-tight text-ink">
-            {clientName}
-          </h1>
+      {/* Barre d'outils de la fiche (refonte macOS, 2026-10-14) : ce bandeau
+          collant tient lieu de `PageToolbar` — deux barres collantes l'une
+          sur l'autre se chevaucheraient. Il occupe toute la largeur. */}
+      <div className="sticky top-0 z-20 -mx-4 flex min-h-[52px] flex-wrap items-center justify-between gap-3 border-b border-line bg-surface/90 px-4 py-2 backdrop-blur-xl sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8 2xl:-mx-12 2xl:px-12">
+        <div className="flex min-w-0 items-center gap-2.5">
+          {back}
+          <ClientAvatar clientId={clientId} name={clientName} hasAvatar={hasAvatar} size="sm" />
+          <h1 className="truncate text-[17px] font-semibold text-ink">{clientName}</h1>
         </div>
         <div className="flex flex-wrap items-center gap-3">
+          {actions}
           {/* Le bouton "Emails" qui vivait ici a été retiré le 2026-07-31
               (demande explicite) — l'onglet Emails reste accessible via
               /admin/clients/[id]/emails, juste plus depuis ce bandeau. */}

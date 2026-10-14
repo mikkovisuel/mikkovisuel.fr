@@ -11,7 +11,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { AttachmentBadge } from "@/components/attachment-badge";
 import { sendTaskReminder } from "@/lib/actions/tasks";
 import { isTaskOverdue, isTaskDueToday, taskDateFormatterShort } from "@/lib/tasks";
-import { sumTaskTimeMs } from "@/lib/time-tracking";
+import { sumTaskTimeMs, formatDurationShort } from "@/lib/time-tracking";
 
 interface TaskTableTask {
   /** Tâche interne (demandée depuis une publication réseaux). */
@@ -52,11 +52,12 @@ export function TaskTableRow({
   const dueToday = isTaskDueToday(task);
   const hasDetails = task.types.length > 0 || task.formats.length > 0 || task.estimatedMinutes !== null;
   const isTimerRunning = task.timeEntries.some((entry) => entry.endedAt === null);
+  const spentMs = sumTaskTimeMs(task.timeEntries);
 
   return (
     <>
-      <tr className={selected ? "bg-accent/5" : undefined}>
-        <td className="w-8 py-3 pl-6 align-top">
+      <tr className={`group ${selected ? "bg-accent/5" : ""}`}>
+        <td className="w-8 py-2.5 pl-4 align-middle sm:pl-6 lg:pl-8 2xl:pl-12">
           <input
             type="checkbox"
             aria-label={`Sélectionner ${task.title}`}
@@ -65,7 +66,7 @@ export function TaskTableRow({
             className="h-4 w-4 accent-accent"
           />
         </td>
-        <td className="w-8 py-3 align-top">
+        <td className="w-8 py-2.5 align-middle">
           <button
             type="button"
             onClick={() => setExpanded((prev) => !prev)}
@@ -76,10 +77,49 @@ export function TaskTableRow({
             {expanded ? <CaretDown size={12} weight="bold" /> : <CaretRight size={12} weight="bold" />}
           </button>
         </td>
-        <td className="whitespace-nowrap px-4 py-3 align-top text-ink-muted">
-          {task.eventDate ? taskDateFormatterShort.format(task.eventDate) : "—"}
+        <td className="min-w-[18rem] px-4 py-2.5 align-middle">
+          <div className="flex items-center gap-2">
+            <Link href={`/admin/taches/${task.id}`} className="font-medium text-ink hover:underline">
+              {task.title}
+            </Link>
+            {task.internal && (
+              <span
+                title="Tâche interne demandée depuis une publication réseaux — invisible du client"
+                className="rounded-full border border-line px-2 py-0.5 text-[11px] text-ink-muted"
+              >
+                Interne
+              </span>
+            )}
+            <AttachmentBadge
+              attachmentCount={task._count?.attachments}
+              deliverableCount={task._count?.deliverables}
+            />
+            {/* Épingle et chrono, comme les drapeaux de Mail : toujours
+                visibles quand ils sont actifs, sinon au survol de la ligne
+                ou au clavier — aucune commande ne disparaît. */}
+            <span
+              className={`ml-auto flex shrink-0 items-center gap-0.5 transition-opacity ${
+                task.pinnedAt !== null || isTimerRunning
+                  ? ""
+                  : "opacity-0 group-hover:opacity-100 focus-within:opacity-100"
+              }`}
+            >
+              <TaskPinButton taskId={task.id} pinned={task.pinnedAt !== null} />
+              <TaskTimerIconButton taskId={task.id} isRunning={isTimerRunning} />
+            </span>
+          </div>
+          {task.refusalReason && (
+            <p className="mt-1 max-w-xs truncate text-xs text-danger" title={task.refusalReason}>
+              Motif de refus : {task.refusalReason}
+            </p>
+          )}
         </td>
-        <td className="whitespace-nowrap px-4 py-3 align-top">
+        <td className="whitespace-nowrap px-4 py-2.5 align-middle">
+          <Link href={`/admin/clients/${task.clientId}`} className="text-ink-muted transition-colors hover:text-ink">
+            {task.client.name}
+          </Link>
+        </td>
+        <td className="whitespace-nowrap px-4 py-2.5 align-middle">
           {task.dueDate ? (
             <span
               className={
@@ -106,38 +146,10 @@ export function TaskTableRow({
             <span className="text-ink-muted">—</span>
           )}
         </td>
-        <td className="px-4 py-3 align-top">
-          <Link href={`/admin/clients/${task.clientId}`} className="text-ink-muted transition-colors hover:text-ink">
-            {task.client.name}
-          </Link>
+        <td className="whitespace-nowrap px-4 py-2.5 align-middle text-ink-muted">
+          {task.eventDate ? taskDateFormatterShort.format(task.eventDate) : "—"}
         </td>
-        <td className="px-4 py-3 align-top">
-          <div className="flex items-center gap-2">
-            <TaskPinButton taskId={task.id} pinned={task.pinnedAt !== null} />
-            <TaskTimerIconButton taskId={task.id} isRunning={isTimerRunning} />
-            <Link href={`/admin/taches/${task.id}`} className="font-medium text-ink hover:underline">
-              {task.title}
-            </Link>
-            {task.internal && (
-              <span
-                title="Tâche interne demandée depuis une publication réseaux — invisible du client"
-                className="rounded-full border border-line px-2 py-0.5 text-[11px] text-ink-muted"
-              >
-                Interne
-              </span>
-            )}
-            <AttachmentBadge
-              attachmentCount={task._count?.attachments}
-              deliverableCount={task._count?.deliverables}
-            />
-          </div>
-          {task.refusalReason && (
-            <p className="mt-1 max-w-xs truncate text-xs text-danger" title={task.refusalReason}>
-              Motif de refus : {task.refusalReason}
-            </p>
-          )}
-        </td>
-        <td className="px-4 py-3 pr-6 align-top">
+        <td className="px-4 py-2.5 align-middle">
           <TaskStatusSelect
             taskId={task.id}
             currentSlug={task.status.slug}
@@ -145,10 +157,13 @@ export function TaskTableRow({
             statuses={statusOptions}
           />
         </td>
+        <td className="whitespace-nowrap px-4 py-2.5 pr-4 text-right align-middle tabular-nums text-ink-muted sm:pr-6 lg:pr-8 2xl:pr-12">
+          {spentMs > 0 ? formatDurationShort(spentMs) : "—"}
+        </td>
       </tr>
       {expanded && (
         <tr className="bg-surface/60">
-          <td colSpan={7} className="px-4 py-3 pl-12">
+          <td colSpan={8} className="px-4 py-3 pl-12 lg:pl-16">
             {hasDetails ? (
               <div className="flex flex-wrap gap-6">
                 {task.types.length > 0 && (

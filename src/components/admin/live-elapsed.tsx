@@ -15,5 +15,9 @@ export function LiveElapsed({ startedAt }: { startedAt: string }) {
   }, []);
 
   const elapsedMs = now - new Date(startedAt).getTime();
-  return <>{formatElapsedClock(elapsedMs)}</>;
+  // Le serveur et le navigateur ne lisent pas l'heure à la même seconde :
+  // l'écart est attendu, et sans cette mention React reconstruisait toute la
+  // mise en page côté navigateur à chaque chargement tant qu'un chrono
+  // tournait (constaté le 2026-10-14).
+  return <span suppressHydrationWarning>{formatElapsedClock(elapsedMs)}</span>;
 }

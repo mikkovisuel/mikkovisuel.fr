@@ -29,6 +29,7 @@
   /* Separate from --color-accent: error/refusal copy needs to read as a
      warning regardless of what the brand accent color is. */
   --color-danger: #dc2626;
+  --color-sidebar: #ececf0;
 }
 
 .dark {
@@ -44,6 +45,7 @@
   --color-brand-purple: #84239f;
   --color-brand-teal: #1e8993;
   --color-danger: #f87171;
+  --color-sidebar: #2a2a2e;
 }
 
 @theme inline {
@@ -58,6 +60,7 @@
   --color-brand-purple: var(--color-brand-purple);
   --color-brand-teal: var(--color-brand-teal);
   --color-danger: var(--color-danger);
+  --color-sidebar: var(--color-sidebar);
   --font-display: var(--font-clash-display);
   --font-body: var(--font-manrope);
 }
@@ -304,4 +307,149 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   accent-color: var(--color-accent);
   width: 1rem;
   height: 1rem;
+}
+
+/* ------------------------------------------------------------------------
+   Back-office, refonte « macOS » (2026-10-14)
+
+   Tout est porté par la classe `admin-macos`, posée sur la racine du layout
+   admin : le site public et l'espace client gardent leur identité (Clash
+   Display, Manrope, boutons en pilule). Le principe est de changer le
+   langage visuel à la source — palette, police, rayons — pour que les
+   trente écrans et leurs fonctions suivent sans être réécrits un à un.
+   ------------------------------------------------------------------------ */
+.admin-macos {
+  --color-surface: #ffffff;
+  --color-surface-elevated: #f5f5f7;
+  --color-ink: #1d1d1f;
+  --color-ink-muted: #6e6e73;
+  --color-line: rgba(0, 0, 0, 0.1);
+  --color-sidebar: #ececf0;
+  --color-danger: #d70015;
+  /* Police système d'Apple (SF Pro) ; les titres comme le texte courant. */
+  --font-clash-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", sans-serif;
+  --font-manrope: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
+  /* Rayons resserrés : 8 px pour les champs, 12 px pour les cartes et les
+     fenêtres, au lieu des 12 et 16 px plus « web » du site. */
+  --radius-xl: 8px;
+  --radius-2xl: 12px;
+  font-family: var(--font-manrope);
+  font-size: 14px;
+  -webkit-font-smoothing: antialiased;
+}
+
+.dark .admin-macos {
+  --color-surface: #1e1e20;
+  --color-surface-elevated: #2c2c2e;
+  --color-ink: #f5f5f7;
+  --color-ink-muted: #98989d;
+  --color-line: rgba(255, 255, 255, 0.1);
+  --color-sidebar: #2a2a2e;
+  --color-danger: #ff6961;
+}
+
+/* Titres de page : gras et serrés, comme les grands titres de macOS.
+   Hors calque, donc prioritaire sur `font-medium`. */
+.admin-macos h1 {
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+/* Boutons et champs en pilule → coins de 8 px, la forme des commandes macOS.
+   Les pastilles d'information (statuts, compteurs, avatars) sont des
+   `span`/`div` : elles restent rondes. */
+.admin-macos :is(button, a, select, input, textarea, summary).rounded-full {
+  border-radius: 8px;
+}
+
+/* Statut d'une tâche : pastille avec point de couleur, comme dans la
+   maquette. C'est toujours un menu déroulant natif (le statut se change d'un
+   clic), simplement débarrassé de sa flèche et de sa bordure. */
+.admin-macos select.status-pill {
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  border-radius: 9999px;
+  border-color: transparent;
+  height: 22px;
+  padding: 0 10px 0 20px;
+  font-size: 11.5px;
+  line-height: 22px;
+  background-image: radial-gradient(circle, currentColor 3px, transparent 3.5px);
+  background-repeat: no-repeat;
+  background-position: 6px center;
+  background-size: 10px 10px;
+}
+.admin-macos select.status-pill:hover {
+  filter: brightness(0.97);
+  box-shadow: inset 0 0 0 0.5px currentColor;
+}
+
+/* Bouton principal : noir en mode clair, avec l'icône en jaune Mikko — comme
+   la maquette ; il reste jaune en mode sombre. Ne vise que les boutons et
+   liens pleins `bg-accent`, pas les pastilles ni les survols. */
+.admin-macos :is(a, button).bg-accent {
+  background-color: #1d1d1f;
+  color: #ffffff;
+}
+.admin-macos :is(a, button).bg-accent svg {
+  color: var(--color-accent);
+}
+.dark .admin-macos :is(a, button).bg-accent {
+  background-color: var(--color-accent);
+  color: var(--color-accent-ink);
+}
+.dark .admin-macos :is(a, button).bg-accent svg {
+  color: var(--color-accent-ink);
+}
+
+/* Les menus déroulants et fenêtres modales s'ombrent comme sur Mac. */
+.admin-macos dialog,
+.admin-macos .shadow-lg {
+  box-shadow:
+    0 0 0 0.5px rgba(0, 0, 0, 0.12),
+    0 12px 32px rgba(0, 0, 0, 0.18);
+}
+
+/* Commande segmentée (Liste / Kanban / Calendrier…) : le conteneur porte la
+   classe `segmented`, l'onglet courant `aria-current="page"`. Hors de
+   l'admin, la classe n'a aucun effet. */
+.admin-macos .segmented {
+  display: inline-flex;
+  border-color: transparent;
+  gap: 2px;
+  padding: 2px;
+  border-radius: 9px;
+  background: color-mix(in srgb, var(--color-ink) 8%, transparent);
+}
+.admin-macos .segmented > a {
+  border-color: transparent;
+  background: transparent;
+  border-radius: 7px;
+  padding: 4px 14px;
+  font-size: 13px;
+  white-space: nowrap;
+  color: var(--color-ink);
+}
+.admin-macos .segmented > a[aria-current="page"] {
+  background: var(--color-surface);
+  color: var(--color-ink);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.14),
+    0 0 0 0.5px rgba(0, 0, 0, 0.06);
+}
+.dark .admin-macos .segmented > a[aria-current="page"] {
+  background: #636366;
+}
+
+@layer base {
+  /* Lignes de tableau alternées, comme le Finder ou Mail. En couche de
+     base : une ligne sélectionnée ou survolée (classe utilitaire) garde la
+     priorité. */
+  .admin-macos tbody tr:nth-child(even) {
+    background-color: color-mix(in srgb, var(--color-ink) 3%, transparent);
+  }
+  .admin-macos thead th {
+    font-size: 11px;
+  }
 }

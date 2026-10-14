@@ -5,6 +5,7 @@ import { db } from "@/lib/db";
 import { AUDIT_ACTION_LABELS, type AuditAction } from "@/lib/audit-log";
 import { AuditLogFeed } from "@/components/admin/audit-log-feed";
 import { FilterMenu } from "@/components/admin/filter-menu";
+import { PageToolbar, PAGE_BODY } from "@/components/admin/page-toolbar";
 
 export const metadata: Metadata = {
   title: "Audit — Admin Mikko Visuel",
@@ -29,56 +30,57 @@ export default async function AuditLogPage({
   const actions = Object.keys(AUDIT_ACTION_LABELS) as AuditAction[];
 
   return (
-    <div className="px-4 py-10 sm:px-6 lg:px-8 2xl:px-12">
-      <h1 className="font-display text-2xl font-medium tracking-tight text-ink">Audit</h1>
-      <p className="mt-2 text-sm text-ink-muted">
-        Journal des actions sensibles : connexions, suppressions définitives, réinitialisations de
-        mot de passe, exports de données, usurpation d&apos;espace client. Les {PAGE_SIZE}{" "}
-        évènements les plus récents.
-      </p>
-
-      <div className="mt-6">
-        <FilterMenu activeCount={action ? 1 : 0} label="Filtres">
-          <form className="grid gap-3">
-            <div className="flex flex-col gap-2">
-              <label htmlFor="action" className="text-sm font-medium text-ink">
-                Type d&apos;action
-              </label>
-              <select
-                id="action"
-                name="action"
-                defaultValue={action ?? ""}
-                className="rounded-xl border border-line bg-surface-elevated px-3 py-2.5 text-sm text-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
-              >
-                <option value="">Toutes les actions</option>
-                {actions.map((value) => (
-                  <option key={value} value={value}>
-                    {AUDIT_ACTION_LABELS[value]}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="flex items-center gap-3 pt-1">
-              <button
-                type="submit"
-                className="rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-accent-ink transition-transform active:scale-[0.98]"
-              >
-                Appliquer
-              </button>
-              {action && (
-                <Link
-                  href="/admin/audit"
-                  className="text-sm text-ink-muted transition-colors hover:text-ink"
+    <>
+      <PageToolbar title="Audit" />
+      <div className={PAGE_BODY}>
+        <p className="text-sm text-ink-muted">
+          Journal des actions sensibles : connexions, suppressions définitives, réinitialisations de
+          mot de passe, exports de données, usurpation d&apos;espace client. Les {PAGE_SIZE}{" "}
+          évènements les plus récents.
+        </p>
+        <div className="mt-6">
+          <FilterMenu activeCount={action ? 1 : 0} label="Filtres">
+            <form className="grid gap-3">
+              <div className="flex flex-col gap-2">
+                <label htmlFor="action" className="text-sm font-medium text-ink">
+                  Type d&apos;action
+                </label>
+                <select
+                  id="action"
+                  name="action"
+                  defaultValue={action ?? ""}
+                  className="rounded-xl border border-line bg-surface-elevated px-3 py-2.5 text-sm text-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
                 >
-                  Réinitialiser
-                </Link>
-              )}
-            </div>
-          </form>
-        </FilterMenu>
-      </div>
+                  <option value="">Toutes les actions</option>
+                  {actions.map((value) => (
+                    <option key={value} value={value}>
+                      {AUDIT_ACTION_LABELS[value]}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="flex items-center gap-3 pt-1">
+                <button
+                  type="submit"
+                  className="rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-accent-ink transition-transform active:scale-[0.98]"
+                >
+                  Appliquer
+                </button>
+                {action && (
+                  <Link
+                    href="/admin/audit"
+                    className="text-sm text-ink-muted transition-colors hover:text-ink"
+                  >
+                    Réinitialiser
+                  </Link>
+                )}
+              </div>
+            </form>
+          </FilterMenu>
+        </div>
 
-      <AuditLogFeed entries={entries} />
-    </div>
+        <AuditLogFeed entries={entries} />
+      </div>
+    </>
   );
 }

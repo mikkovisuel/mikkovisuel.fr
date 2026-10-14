@@ -13,6 +13,7 @@ import { InactiveClients } from "@/components/admin/inactive-clients";
 import { ClientLoginJournal } from "@/components/admin/client-login-journal";
 import { InstallPwaCta } from "@/components/install-pwa-cta";
 import { SocialToday } from "@/components/admin/social-today";
+import { PageToolbar, PAGE_BODY } from "@/components/admin/page-toolbar";
 
 const INACTIVE_THRESHOLD_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -191,77 +192,84 @@ export default async function AdminDashboardPage() {
   }));
 
   return (
-    <div className="px-4 py-10 sm:px-6 lg:px-8 2xl:px-12">
-      <h1 className="font-display text-2xl font-medium tracking-tight text-ink">
-        Tableau de bord
-      </h1>
+    <>
+      <PageToolbar
+        title="Tableau de bord"
+        subtitle={new Intl.DateTimeFormat("fr-FR", {
+          weekday: "long",
+          day: "numeric",
+          month: "long",
+          timeZone: "Europe/Paris",
+        }).format(new Date())}
+      />
+      <div className={PAGE_BODY}>
+        <div className="mt-8 grid gap-4 sm:grid-cols-3">
+          <div className="rounded-2xl border border-line p-6">
+            <p className="text-sm text-ink-muted">Clients</p>
+            <p className="mt-2 font-display text-3xl font-medium text-ink">{clientCount}</p>
+          </div>
+          <div className="rounded-2xl border border-line p-6">
+            <p className="text-sm text-ink-muted">Tâches en cours</p>
+            <p className="mt-2 font-display text-3xl font-medium text-ink">{openTaskCount}</p>
+            <p className="mt-1 text-xs text-ink-muted">{taskCount} au total</p>
+            {(overdueCount > 0 || toValidateCount > 0) && (
+              <div className="mt-3 flex flex-col gap-1 text-sm">
+                {overdueCount > 0 && (
+                  <Link
+                    href="/admin/taches?tri=echeance&dir=asc"
+                    className="font-medium text-danger transition-colors hover:underline"
+                  >
+                    {overdueCount} en retard
+                  </Link>
+                )}
+                {toValidateCount > 0 && (
+                  <Link
+                    href="/admin/taches?status=a-valider"
+                    className="text-ink-muted transition-colors hover:text-ink"
+                  >
+                    {toValidateCount} à valider
+                  </Link>
+                )}
+              </div>
+            )}
+          </div>
+          <div className="rounded-2xl border border-line p-6">
+            <p className="text-sm text-ink-muted">Factures en attente</p>
+            <p className="mt-2 font-display text-3xl font-medium text-ink">{unpaidCount}</p>
+          </div>
+        </div>
 
-      <div className="mt-8 grid gap-4 sm:grid-cols-3">
-        <div className="rounded-2xl border border-line p-6">
-          <p className="text-sm text-ink-muted">Clients</p>
-          <p className="mt-2 font-display text-3xl font-medium text-ink">{clientCount}</p>
+        {since && hasActivity && (
+          <RecentActivity
+            since={since}
+            batValidated={batValidated}
+            refused={refused}
+            newRequests={newRequests}
+            newComments={newComments}
+          />
+        )}
+
+        <SocialToday />
+
+        <div className="mt-8 grid gap-4 lg:grid-cols-2">
+          <PinnedTasks tasks={pinnedTasks} />
+          <UpcomingEvents tasks={upcomingEvents} />
+          <StatusBreakdown statuses={statusBreakdown} />
+          <InactiveClients clients={inactiveClients} />
+          <ClientLoginJournal events={loginEvents} />
         </div>
-        <div className="rounded-2xl border border-line p-6">
-          <p className="text-sm text-ink-muted">Tâches en cours</p>
-          <p className="mt-2 font-display text-3xl font-medium text-ink">{openTaskCount}</p>
-          <p className="mt-1 text-xs text-ink-muted">{taskCount} au total</p>
-          {(overdueCount > 0 || toValidateCount > 0) && (
-            <div className="mt-3 flex flex-col gap-1 text-sm">
-              {overdueCount > 0 && (
-                <Link
-                  href="/admin/taches?tri=echeance&dir=asc"
-                  className="font-medium text-danger transition-colors hover:underline"
-                >
-                  {overdueCount} en retard
-                </Link>
-              )}
-              {toValidateCount > 0 && (
-                <Link
-                  href="/admin/taches?status=a-valider"
-                  className="text-ink-muted transition-colors hover:text-ink"
-                >
-                  {toValidateCount} à valider
-                </Link>
-              )}
-            </div>
-          )}
-        </div>
-        <div className="rounded-2xl border border-line p-6">
-          <p className="text-sm text-ink-muted">Factures en attente</p>
-          <p className="mt-2 font-display text-3xl font-medium text-ink">{unpaidCount}</p>
+
+        <div className="mt-12 flex flex-col items-start gap-4 border-t border-line pt-8 sm:flex-row sm:items-center sm:justify-between">
+          <div>
+            <p className="font-medium text-ink">Installer le tableau de bord</p>
+            <p className="mt-1 text-sm text-ink-muted">
+              Ajoutez-le à l&apos;écran d&apos;accueil de votre téléphone ou
+              ordinateur pour y accéder directement, sans navigateur.
+            </p>
+          </div>
+          <InstallPwaCta />
         </div>
       </div>
-
-      {since && hasActivity && (
-        <RecentActivity
-          since={since}
-          batValidated={batValidated}
-          refused={refused}
-          newRequests={newRequests}
-          newComments={newComments}
-        />
-      )}
-
-      <SocialToday />
-
-      <div className="mt-8 grid gap-4 lg:grid-cols-2">
-        <PinnedTasks tasks={pinnedTasks} />
-        <UpcomingEvents tasks={upcomingEvents} />
-        <StatusBreakdown statuses={statusBreakdown} />
-        <InactiveClients clients={inactiveClients} />
-        <ClientLoginJournal events={loginEvents} />
-      </div>
-
-      <div className="mt-12 flex flex-col items-start gap-4 border-t border-line pt-8 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <p className="font-medium text-ink">Installer le tableau de bord</p>
-          <p className="mt-1 text-sm text-ink-muted">
-            Ajoutez-le à l&apos;écran d&apos;accueil de votre téléphone ou
-            ordinateur pour y accéder directement, sans navigateur.
-          </p>
-        </div>
-        <InstallPwaCta />
-      </div>
-    </div>
+    </>
   );
 }

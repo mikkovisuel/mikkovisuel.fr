@@ -19,6 +19,7 @@ import {
   toCalendarDate,
   weekDays,
 } from "@/lib/capacity";
+import { PageToolbar, PAGE_BODY } from "@/components/admin/page-toolbar";
 
 export const metadata: Metadata = {
   title: "Planning de charge — Admin Mikko Visuel",
@@ -357,223 +358,225 @@ export default async function PlanningPage({
   const windowLastSunday = new Date(addWeeks(windowStart, WINDOW_SIZE).getTime() - 86_400_000);
 
   return (
-    <div className="px-4 py-10 sm:px-6 lg:px-8 2xl:px-12" style={STATUS_VARS}>
-      <div className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="font-display text-2xl font-medium tracking-tight text-ink">Planning de charge</h1>
-          <p className="mt-2 max-w-2xl text-sm text-ink-muted">
-            {basis === "echeance"
-              ? "Temps de travail estimé par semaine, selon la date de livraison des tâches — pour repérer une surcharge à l'avance."
-              : "Temps de travail estimé par semaine, selon la date d'évènement des tâches — pour repérer une surcharge à l'avance."}{" "}
-            Client de démonstration exclu, tâches archivées non comptées.
-          </p>
-        </div>
+    <>
+      <PageToolbar title="Planning de charge">
         <CapacityPopup weeks={capacityWeeks} />
-      </div>
+      </PageToolbar>
+      <div className={PAGE_BODY} style={STATUS_VARS}>
+        <p className="max-w-2xl text-sm text-ink-muted">
+          {basis === "echeance"
+            ? "Temps de travail estimé par semaine, selon la date de livraison des tâches — pour repérer une surcharge à l'avance."
+            : "Temps de travail estimé par semaine, selon la date d'évènement des tâches — pour repérer une surcharge à l'avance."}{" "}
+          Client de démonstration exclu, tâches archivées non comptées.
+        </p>
+        {/* Tableau de bord (demande du 2026-08-01) : 4 indicateurs choisis par
+            le client parmi les suggestions proposées, pour une vision globale
+            sans déplier chaque section plus bas. */}
+        <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="rounded-2xl border border-line p-4">
+            <p className="text-xs text-ink-muted">Tâches en retard</p>
+            <p className={`mt-1 text-2xl font-medium ${overdueCount > 0 ? "text-(--status-critical)" : "text-ink"}`}>
+              {overdueCount}
+            </p>
+          </div>
+          <div className="rounded-2xl border border-line p-4">
+            <p className="text-xs text-ink-muted">À risque (30 j)</p>
+            <p className={`mt-1 text-2xl font-medium ${atRiskCount > 0 ? "text-(--status-warning)" : "text-ink"}`}>
+              {atRiskCount}
+            </p>
+          </div>
+          <div className="rounded-2xl border border-line p-4">
+            <p className="text-xs text-ink-muted">Écart moyen (4 sem.)</p>
+            {/* Vert quand le réel est en dessous du prévu (marge, pas de
+                surcharge), rouge dans le cas inverse (demande du 2026-08-01) —
+                l'opposé de "en retard sur le travail". */}
+            <p className="mt-1 text-2xl font-medium text-ink">
+              {avgDeltaMinutes === null ? (
+                "—"
+              ) : (
+                <span className={avgDeltaMinutes > 0 ? "text-(--status-critical)" : "text-(--status-good)"}>
+                  {avgDeltaMinutes > 0 ? "+" : avgDeltaMinutes < 0 ? "−" : ""}
+                  {formatHoursFromMinutes(Math.abs(avgDeltaMinutes))}
+                </span>
+              )}
+            </p>
+          </div>
+          <div className="rounded-2xl border border-line p-4">
+            <p className="text-xs text-ink-muted">Charge non répartie</p>
+            <p className="mt-1 text-2xl font-medium text-ink">{formatHoursFromMinutes(unallocatedMinutes)}</p>
+          </div>
+        </div>
 
-      {/* Tableau de bord (demande du 2026-08-01) : 4 indicateurs choisis par
-          le client parmi les suggestions proposées, pour une vision globale
-          sans déplier chaque section plus bas. */}
-      <div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
-        <div className="rounded-2xl border border-line p-4">
-          <p className="text-xs text-ink-muted">Tâches en retard</p>
-          <p className={`mt-1 text-2xl font-medium ${overdueCount > 0 ? "text-(--status-critical)" : "text-ink"}`}>
-            {overdueCount}
-          </p>
+        {/* Vue semaine / vue jour (demande du 2026-08-01) : la vue jour permet
+            de sélectionner une semaine précise pour voir sa répartition
+            journalière — voir `DailyChart`. */}
+        <div className="segmented mt-4 inline-flex rounded-full border border-line p-1 text-sm">
+          <Link
+            href={hrefFor({ vue: "semaine" })}
+            aria-current={view === "semaine" ? "page" : undefined}
+            className={`rounded-full px-3 py-1.5 transition-colors ${
+              view === "semaine" ? "bg-accent text-accent-ink" : "text-ink-muted hover:text-ink"
+            }`}
+          >
+            Vue semaine
+          </Link>
+          <Link
+            href={hrefFor({ vue: "jour" })}
+            aria-current={view === "jour" ? "page" : undefined}
+            className={`rounded-full px-3 py-1.5 transition-colors ${
+              view === "jour" ? "bg-accent text-accent-ink" : "text-ink-muted hover:text-ink"
+            }`}
+          >
+            Vue jour
+          </Link>
         </div>
-        <div className="rounded-2xl border border-line p-4">
-          <p className="text-xs text-ink-muted">À risque (30 j)</p>
-          <p className={`mt-1 text-2xl font-medium ${atRiskCount > 0 ? "text-(--status-warning)" : "text-ink"}`}>
-            {atRiskCount}
-          </p>
-        </div>
-        <div className="rounded-2xl border border-line p-4">
-          <p className="text-xs text-ink-muted">Écart moyen (4 sem.)</p>
-          {/* Vert quand le réel est en dessous du prévu (marge, pas de
-              surcharge), rouge dans le cas inverse (demande du 2026-08-01) —
-              l'opposé de "en retard sur le travail". */}
-          <p className="mt-1 text-2xl font-medium text-ink">
-            {avgDeltaMinutes === null ? (
-              "—"
-            ) : (
-              <span className={avgDeltaMinutes > 0 ? "text-(--status-critical)" : "text-(--status-good)"}>
-                {avgDeltaMinutes > 0 ? "+" : avgDeltaMinutes < 0 ? "−" : ""}
-                {formatHoursFromMinutes(Math.abs(avgDeltaMinutes))}
+
+        {/* Bascule de la base de calcul (demande du 2026-08-01) : même moteur,
+            juste rattaché à une date différente — voir le commentaire sur
+            `PlanningBasis` plus haut. */}
+        <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+          <div className="segmented inline-flex rounded-full border border-line p-1 text-sm">
+            <Link
+              href={hrefFor({ base: "evenement" })}
+              aria-current={basis === "evenement" ? "page" : undefined}
+              className={`rounded-full px-3 py-1.5 transition-colors ${
+                basis === "evenement" ? "bg-accent text-accent-ink" : "text-ink-muted hover:text-ink"
+              }`}
+            >
+              Par date d&apos;évènement
+            </Link>
+            <Link
+              href={hrefFor({ base: "echeance" })}
+              aria-current={basis === "echeance" ? "page" : undefined}
+              className={`rounded-full px-3 py-1.5 transition-colors ${
+                basis === "echeance" ? "bg-accent text-accent-ink" : "text-ink-muted hover:text-ink"
+              }`}
+            >
+              Par échéance
+            </Link>
+          </div>
+
+          {view === "semaine" ? (
+            /* Navigation entre fenêtres de 16 semaines (demande du 2026-08-01,
+               "avoir le choix des semaines dans les affichages") — décale la
+               fenêtre affichée par blocs entiers plutôt qu'une plage de dates
+               libre, pour rester simple à utiliser au quotidien. */
+            <div className="flex items-center gap-2 text-sm">
+              <Link
+                href={hrefFor({ semaine: weekOffset + 1 })}
+                aria-label="Semaines précédentes"
+                className="rounded-full border border-line p-2 text-ink-muted transition-colors hover:border-accent hover:text-ink"
+              >
+                <CaretLeft size={14} weight="bold" />
+              </Link>
+              <span className="whitespace-nowrap text-ink-muted">
+                {dateFormatter.format(windowStart)} – {dateFormatter.format(windowLastSunday)}
               </span>
-            )}
-          </p>
-        </div>
-        <div className="rounded-2xl border border-line p-4">
-          <p className="text-xs text-ink-muted">Charge non répartie</p>
-          <p className="mt-1 text-2xl font-medium text-ink">{formatHoursFromMinutes(unallocatedMinutes)}</p>
-        </div>
-      </div>
-
-      {/* Vue semaine / vue jour (demande du 2026-08-01) : la vue jour permet
-          de sélectionner une semaine précise pour voir sa répartition
-          journalière — voir `DailyChart`. */}
-      <div className="mt-4 inline-flex rounded-full border border-line p-1 text-sm">
-        <Link
-          href={hrefFor({ vue: "semaine" })}
-          className={`rounded-full px-3 py-1.5 transition-colors ${
-            view === "semaine" ? "bg-accent text-accent-ink" : "text-ink-muted hover:text-ink"
-          }`}
-        >
-          Vue semaine
-        </Link>
-        <Link
-          href={hrefFor({ vue: "jour" })}
-          className={`rounded-full px-3 py-1.5 transition-colors ${
-            view === "jour" ? "bg-accent text-accent-ink" : "text-ink-muted hover:text-ink"
-          }`}
-        >
-          Vue jour
-        </Link>
-      </div>
-
-      {/* Bascule de la base de calcul (demande du 2026-08-01) : même moteur,
-          juste rattaché à une date différente — voir le commentaire sur
-          `PlanningBasis` plus haut. */}
-      <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-        <div className="inline-flex rounded-full border border-line p-1 text-sm">
-          <Link
-            href={hrefFor({ base: "evenement" })}
-            className={`rounded-full px-3 py-1.5 transition-colors ${
-              basis === "evenement" ? "bg-accent text-accent-ink" : "text-ink-muted hover:text-ink"
-            }`}
-          >
-            Par date d&apos;évènement
-          </Link>
-          <Link
-            href={hrefFor({ base: "echeance" })}
-            className={`rounded-full px-3 py-1.5 transition-colors ${
-              basis === "echeance" ? "bg-accent text-accent-ink" : "text-ink-muted hover:text-ink"
-            }`}
-          >
-            Par échéance
-          </Link>
+              <Link
+                href={hrefFor({ semaine: weekOffset - 1 })}
+                aria-label="Semaines suivantes"
+                className="rounded-full border border-line p-2 text-ink-muted transition-colors hover:border-accent hover:text-ink"
+              >
+                <CaretRight size={14} weight="bold" />
+              </Link>
+              {weekOffset !== 0 && (
+                <Link href={hrefFor({ semaine: 0 })} className="text-ink-muted underline hover:text-ink">
+                  Aujourd&apos;hui
+                </Link>
+              )}
+            </div>
+          ) : (
+            /* Navigation d'une semaine à la fois pour la vue jour — "en
+               sélectionnant la semaine" (demande du 2026-08-01), indépendante
+               de la fenêtre de 16 semaines de la vue semaine. */
+            <div className="flex items-center gap-2 text-sm">
+              <Link
+                href={hrefFor({ semaineJour: dayWeekOffset - 1 })}
+                aria-label="Semaine précédente"
+                className="rounded-full border border-line p-2 text-ink-muted transition-colors hover:border-accent hover:text-ink"
+              >
+                <CaretLeft size={14} weight="bold" />
+              </Link>
+              <span className="whitespace-nowrap text-ink-muted">
+                {dateFormatter.format(selectedDayWeekMonday)} – {dateFormatter.format(selectedDayWeekLastDay)}
+              </span>
+              <Link
+                href={hrefFor({ semaineJour: dayWeekOffset + 1 })}
+                aria-label="Semaine suivante"
+                className="rounded-full border border-line p-2 text-ink-muted transition-colors hover:border-accent hover:text-ink"
+              >
+                <CaretRight size={14} weight="bold" />
+              </Link>
+              {dayWeekOffset !== 0 && (
+                <Link href={hrefFor({ semaineJour: 0 })} className="text-ink-muted underline hover:text-ink">
+                  Aujourd&apos;hui
+                </Link>
+              )}
+            </div>
+          )}
         </div>
 
         {view === "semaine" ? (
-          /* Navigation entre fenêtres de 16 semaines (demande du 2026-08-01,
-             "avoir le choix des semaines dans les affichages") — décale la
-             fenêtre affichée par blocs entiers plutôt qu'une plage de dates
-             libre, pour rester simple à utiliser au quotidien. */
-          <div className="flex items-center gap-2 text-sm">
-            <Link
-              href={hrefFor({ semaine: weekOffset + 1 })}
-              aria-label="Semaines précédentes"
-              className="rounded-full border border-line p-2 text-ink-muted transition-colors hover:border-accent hover:text-ink"
-            >
-              <CaretLeft size={14} weight="bold" />
-            </Link>
-            <span className="whitespace-nowrap text-ink-muted">
-              {dateFormatter.format(windowStart)} – {dateFormatter.format(windowLastSunday)}
-            </span>
-            <Link
-              href={hrefFor({ semaine: weekOffset - 1 })}
-              aria-label="Semaines suivantes"
-              className="rounded-full border border-line p-2 text-ink-muted transition-colors hover:border-accent hover:text-ink"
-            >
-              <CaretRight size={14} weight="bold" />
-            </Link>
-            {weekOffset !== 0 && (
-              <Link href={hrefFor({ semaine: 0 })} className="text-ink-muted underline hover:text-ink">
-                Aujourd&apos;hui
-              </Link>
-            )}
-          </div>
-        ) : (
-          /* Navigation d'une semaine à la fois pour la vue jour — "en
-             sélectionnant la semaine" (demande du 2026-08-01), indépendante
-             de la fenêtre de 16 semaines de la vue semaine. */
-          <div className="flex items-center gap-2 text-sm">
-            <Link
-              href={hrefFor({ semaineJour: dayWeekOffset - 1 })}
-              aria-label="Semaine précédente"
-              className="rounded-full border border-line p-2 text-ink-muted transition-colors hover:border-accent hover:text-ink"
-            >
-              <CaretLeft size={14} weight="bold" />
-            </Link>
-            <span className="whitespace-nowrap text-ink-muted">
-              {dateFormatter.format(selectedDayWeekMonday)} – {dateFormatter.format(selectedDayWeekLastDay)}
-            </span>
-            <Link
-              href={hrefFor({ semaineJour: dayWeekOffset + 1 })}
-              aria-label="Semaine suivante"
-              className="rounded-full border border-line p-2 text-ink-muted transition-colors hover:border-accent hover:text-ink"
-            >
-              <CaretRight size={14} weight="bold" />
-            </Link>
-            {dayWeekOffset !== 0 && (
-              <Link href={hrefFor({ semaineJour: 0 })} className="text-ink-muted underline hover:text-ink">
-                Aujourd&apos;hui
-              </Link>
-            )}
-          </div>
-        )}
-      </div>
-
-      {view === "semaine" ? (
-        <>
-          <div className="mt-8">
-            <WorkloadChart data={weekData} averageCapacityMinutes={averageCapacityMinutes} />
-          </div>
-
-          {/* Tendance prévu/réel (demande du 2026-08-01) : le "réel" vient du
-              temps chronométré, indépendant de la base évènement/échéance
-              choisie ci-dessus — voir le commentaire dans TrendChart. */}
-          <div className="mt-6">
-            <h2 className="mb-3 font-display text-lg font-medium tracking-tight text-ink">
-              Tendance : prévu vs réel
-            </h2>
-            <TrendChart data={weekData} />
-          </div>
-        </>
-      ) : (
-        <div className="mt-8">
-          <DailyChart days={dailyEntries} averageDailyCapacityMinutes={averageDailyCapacityMinutes} />
-        </div>
-      )}
-
-      <section className="mt-10 rounded-2xl border border-line p-5">
-        <h2 className="font-display text-lg font-medium tracking-tight text-ink">
-          Charge non répartie
-        </h2>
-        <p className="mt-1 text-sm text-ink-muted">
-          {basis === "echeance"
-            ? "Tâches actives sans échéance — donc absentes du graphique ci-dessus."
-            : "Tâches actives sans date d'évènement — donc absentes du graphique ci-dessus."}
-        </p>
-
-        {unallocatedTasks.length === 0 ? (
-          <p className="mt-4 text-sm text-ink-muted">Aucune tâche non planifiée.</p>
-        ) : (
           <>
-            <p className="mt-4 text-sm text-ink">
-              {unallocatedTasks.length} tâche{unallocatedTasks.length > 1 ? "s" : ""} ·{" "}
-              {formatHoursFromMinutes(unallocatedMinutes)} estimées
-              {unallocatedUnestimated > 0 &&
-                ` (+${unallocatedUnestimated} sans estimation)`}
-            </p>
-            <ul className="mt-3 divide-y divide-line">
-              {unallocatedTasks.map((task) => {
-                const otherDate = basis === "echeance" ? task.eventDate : task.dueDate;
-                return (
-                  <li key={task.id} className="flex items-center justify-between gap-3 py-2 text-sm">
-                    <span className="text-ink">{task.title}</span>
-                    <span className="whitespace-nowrap text-ink-muted">
-                      {task.estimatedMinutes ? formatHoursFromMinutes(task.estimatedMinutes) : "non estimée"}
-                      {otherDate &&
-                        ` · ${basis === "echeance" ? "évènement" : "échéance"} ${dateFormatter.format(otherDate)}`}
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
+            <div className="mt-8">
+              <WorkloadChart data={weekData} averageCapacityMinutes={averageCapacityMinutes} />
+            </div>
+
+            {/* Tendance prévu/réel (demande du 2026-08-01) : le "réel" vient du
+                temps chronométré, indépendant de la base évènement/échéance
+                choisie ci-dessus — voir le commentaire dans TrendChart. */}
+            <div className="mt-6">
+              <h2 className="mb-3 font-display text-lg font-medium tracking-tight text-ink">
+                Tendance : prévu vs réel
+              </h2>
+              <TrendChart data={weekData} />
+            </div>
           </>
+        ) : (
+          <div className="mt-8">
+            <DailyChart days={dailyEntries} averageDailyCapacityMinutes={averageDailyCapacityMinutes} />
+          </div>
         )}
-      </section>
-    </div>
+
+        <section className="mt-10 rounded-2xl border border-line p-5">
+          <h2 className="font-display text-lg font-medium tracking-tight text-ink">
+            Charge non répartie
+          </h2>
+          <p className="mt-1 text-sm text-ink-muted">
+            {basis === "echeance"
+              ? "Tâches actives sans échéance — donc absentes du graphique ci-dessus."
+              : "Tâches actives sans date d'évènement — donc absentes du graphique ci-dessus."}
+          </p>
+
+          {unallocatedTasks.length === 0 ? (
+            <p className="mt-4 text-sm text-ink-muted">Aucune tâche non planifiée.</p>
+          ) : (
+            <>
+              <p className="mt-4 text-sm text-ink">
+                {unallocatedTasks.length} tâche{unallocatedTasks.length > 1 ? "s" : ""} ·{" "}
+                {formatHoursFromMinutes(unallocatedMinutes)} estimées
+                {unallocatedUnestimated > 0 &&
+                  ` (+${unallocatedUnestimated} sans estimation)`}
+              </p>
+              <ul className="mt-3 divide-y divide-line">
+                {unallocatedTasks.map((task) => {
+                  const otherDate = basis === "echeance" ? task.eventDate : task.dueDate;
+                  return (
+                    <li key={task.id} className="flex items-center justify-between gap-3 py-2 text-sm">
+                      <span className="text-ink">{task.title}</span>
+                      <span className="whitespace-nowrap text-ink-muted">
+                        {task.estimatedMinutes ? formatHoursFromMinutes(task.estimatedMinutes) : "non estimée"}
+                        {otherDate &&
+                          ` · ${basis === "echeance" ? "évènement" : "échéance"} ${dateFormatter.format(otherDate)}`}
+                      </span>
+                    </li>
+                  );
+                })}
+              </ul>
+            </>
+          )}
+        </section>
+      </div>
+    </>
   );
 }

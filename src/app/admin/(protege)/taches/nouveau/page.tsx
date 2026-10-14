@@ -5,6 +5,7 @@ import { TaskForm } from "@/components/task-form";
 import { createTaskByAdminAnyClient } from "@/lib/actions/tasks";
 import { TASK_TYPE_LIST_KEY, TASK_FORMAT_LIST_KEY } from "@/lib/dropdown-lists";
 import { ACTIVE_CLIENTS } from "@/lib/clients";
+import { PageToolbar, PAGE_BODY } from "@/components/admin/page-toolbar";
 
 export const metadata: Metadata = {
   title: "Nouvelle tâche — Admin Mikko Visuel",
@@ -26,19 +27,19 @@ export default async function NewTaskPage() {
   ]);
 
   return (
-    <div className="px-4 py-10 sm:px-6 lg:px-8 2xl:px-12">
-      <h1 className="font-display text-2xl font-medium tracking-tight text-ink">
-        Nouvelle tâche
-      </h1>
-      <div className="mt-8 max-w-xl">
-        <TaskForm
-          action={createTaskByAdminAnyClient}
-          typeOptions={typeList?.items ?? []}
-          formatOptions={formatList?.items ?? []}
-          clients={clients.map((client) => ({ id: client.id, name: client.name }))}
-          allowEstimate
-        />
+    <>
+      <PageToolbar title="Nouvelle tâche" back={{ href: "/admin/taches", label: "Retour aux tâches" }} />
+      <div className={PAGE_BODY}>
+        <div className="mt-8 max-w-xl">
+          <TaskForm
+            action={createTaskByAdminAnyClient}
+            typeOptions={typeList?.items ?? []}
+            formatOptions={formatList?.items ?? []}
+            clients={clients.map((client) => ({ id: client.id, name: client.name }))}
+            allowEstimate
+          />
+        </div>
       </div>
-    </div>
+    </>
   );
 }

@@ -20,6 +20,7 @@ import {
   PALETTE_BADGE_CLASSES,
   type PaletteColor,
 } from "@/lib/dropdown-lists";
+import { PageToolbar, PAGE_BODY } from "@/components/admin/page-toolbar";
 
 export const metadata: Metadata = {
   title: "Clients — Admin Mikko Visuel",
@@ -86,9 +87,8 @@ export default async function AdminClientsPage({
   const isFiltered = Boolean(search || categoryId);
 
   return (
-    <div className="px-4 py-10 sm:px-6 lg:px-8 2xl:px-12">
-      <div className="flex items-center justify-between">
-        <h1 className="font-display text-2xl font-medium tracking-tight text-ink">Clients</h1>
+    <>
+      <PageToolbar title="Clients">
         <Link
           href="/admin/clients/nouveau"
           className="inline-flex items-center gap-2 rounded-full bg-accent px-4 py-2 text-sm font-medium text-accent-ink transition-transform active:scale-[0.98]"
@@ -96,113 +96,114 @@ export default async function AdminClientsPage({
           <Plus size={16} weight="bold" />
           Nouveau client
         </Link>
-      </div>
+      </PageToolbar>
+      <div className={PAGE_BODY}>
+        {/* Bascule "en activité" / "archivés" : un client archivé n'est pas
+            supprimé, il reste consultable ici (2026-07-30). */}
+        {(archivedCount > 0 || showArchived) && (
+          <div className="mt-6 flex flex-wrap items-center gap-1.5 text-sm">
+            <Link
+              href="/admin/clients"
+              className={`rounded-full border px-3 py-1 transition-colors ${
+                showArchived
+                  ? "border-line text-ink-muted hover:text-ink"
+                  : "border-accent bg-accent/10 text-ink"
+              }`}
+            >
+              En activité
+            </Link>
+            <Link
+              href="/admin/clients?archives=1"
+              className={`rounded-full border px-3 py-1 transition-colors ${
+                showArchived
+                  ? "border-accent bg-accent/10 text-ink"
+                  : "border-line text-ink-muted hover:text-ink"
+              }`}
+            >
+              Archivés
+              <span className="ml-1.5 text-xs opacity-70">{archivedCount}</span>
+            </Link>
+          </div>
+        )}
 
-      {/* Bascule "en activité" / "archivés" : un client archivé n'est pas
-          supprimé, il reste consultable ici (2026-07-30). */}
-      {(archivedCount > 0 || showArchived) && (
-        <div className="mt-6 flex flex-wrap items-center gap-1.5 text-sm">
-          <Link
-            href="/admin/clients"
-            className={`rounded-full border px-3 py-1 transition-colors ${
-              showArchived
-                ? "border-line text-ink-muted hover:text-ink"
-                : "border-accent bg-accent/10 text-ink"
-            }`}
-          >
-            En activité
-          </Link>
-          <Link
-            href="/admin/clients?archives=1"
-            className={`rounded-full border px-3 py-1 transition-colors ${
-              showArchived
-                ? "border-accent bg-accent/10 text-ink"
-                : "border-line text-ink-muted hover:text-ink"
-            }`}
-          >
-            Archivés
-            <span className="ml-1.5 text-xs opacity-70">{archivedCount}</span>
-          </Link>
+        <div className="mt-6 flex flex-wrap items-center gap-3">
+          <ClientFilterBar
+            search={search}
+            categoryId={categoryId}
+            sortField={sortField}
+            sortDir={sortDir}
+          />
+          <FilterMenu activeCount={categoryId ? 1 : 0}>
+            <div className="grid gap-4">
+              <ClientSortControl
+                sortField={sortField}
+                sortDir={sortDir}
+                search={search}
+                categoryId={categoryId}
+              />
+              <div className="h-px bg-line" />
+              <ClientCategoryFilter
+                search={search}
+                categoryId={categoryId}
+                sortField={sortField}
+                sortDir={sortDir}
+                categories={categories}
+                uncategorizedCount={uncategorizedCount}
+              />
+            </div>
+          </FilterMenu>
         </div>
-      )}
 
-      <div className="mt-6 flex flex-wrap items-center gap-3">
-        <ClientFilterBar
-          search={search}
-          categoryId={categoryId}
-          sortField={sortField}
-          sortDir={sortDir}
-        />
-        <FilterMenu activeCount={categoryId ? 1 : 0}>
-          <div className="grid gap-4">
-            <ClientSortControl
-              sortField={sortField}
-              sortDir={sortDir}
-              search={search}
-              categoryId={categoryId}
-            />
-            <div className="h-px bg-line" />
-            <ClientCategoryFilter
-              search={search}
-              categoryId={categoryId}
-              sortField={sortField}
-              sortDir={sortDir}
-              categories={categories}
-              uncategorizedCount={uncategorizedCount}
-            />
-          </div>
-        </FilterMenu>
-      </div>
-
-      {clients.length === 0 ? (
-        <p className="mt-8 text-sm text-ink-muted">
-          {isFiltered
-            ? "Aucun client ne correspond à cette recherche."
-            : showArchived
-              ? "Aucun client archivé."
-              : "Aucun client pour le moment."}
-        </p>
-      ) : (
-        <>
-          <p className="mt-6 text-sm text-ink-muted">
-            {clients.length} client{clients.length > 1 ? "s" : ""}
-            {isFiltered ? " correspondant" + (clients.length > 1 ? "s" : "") : ""}
+        {clients.length === 0 ? (
+          <p className="mt-8 text-sm text-ink-muted">
+            {isFiltered
+              ? "Aucun client ne correspond à cette recherche."
+              : showArchived
+                ? "Aucun client archivé."
+                : "Aucun client pour le moment."}
           </p>
-          <div className="mt-3 divide-y divide-line rounded-2xl border border-line">
-            {clients.map((client) => (
-              <Link
-                key={client.id}
-                href={`/admin/clients/${client.id}`}
-                className="flex items-center justify-between gap-4 px-6 py-4 transition-colors hover:bg-surface-elevated"
-              >
-                {/* Compteurs de contacts et de tâches retirés le 2026-07-30
-                    (demande du client) : la ligne se limite à l'avatar, au nom
-                    et à la catégorie. Catégorie déplacée en fin de ligne le
-                    2026-07-31 (demande explicite d'alignement à droite) —
-                    auparavant collée au nom, elle produisait une longueur de
-                    ligne irrégulière d'un client à l'autre. */}
-                <div className="flex min-w-0 items-center gap-3">
-                  <ClientAvatar
-                    clientId={client.id}
-                    name={client.name}
-                    hasAvatar={Boolean(client.avatarStorageKey)}
-                  />
-                  <p className="truncate font-medium text-ink">{client.name}</p>
-                </div>
-                {client.category && (
-                  <span
-                    className={`inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${
-                      PALETTE_BADGE_CLASSES[client.category.color as PaletteColor]
-                    }`}
-                  >
-                    {client.category.label}
-                  </span>
-                )}
-              </Link>
-            ))}
-          </div>
-        </>
-      )}
-    </div>
+        ) : (
+          <>
+            <p className="mt-6 text-sm text-ink-muted">
+              {clients.length} client{clients.length > 1 ? "s" : ""}
+              {isFiltered ? " correspondant" + (clients.length > 1 ? "s" : "") : ""}
+            </p>
+            <div className="mt-3 divide-y divide-line rounded-2xl border border-line">
+              {clients.map((client) => (
+                <Link
+                  key={client.id}
+                  href={`/admin/clients/${client.id}`}
+                  className="flex items-center justify-between gap-4 px-6 py-4 transition-colors hover:bg-surface-elevated"
+                >
+                  {/* Compteurs de contacts et de tâches retirés le 2026-07-30
+                      (demande du client) : la ligne se limite à l'avatar, au nom
+                      et à la catégorie. Catégorie déplacée en fin de ligne le
+                      2026-07-31 (demande explicite d'alignement à droite) —
+                      auparavant collée au nom, elle produisait une longueur de
+                      ligne irrégulière d'un client à l'autre. */}
+                  <div className="flex min-w-0 items-center gap-3">
+                    <ClientAvatar
+                      clientId={client.id}
+                      name={client.name}
+                      hasAvatar={Boolean(client.avatarStorageKey)}
+                    />
+                    <p className="truncate font-medium text-ink">{client.name}</p>
+                  </div>
+                  {client.category && (
+                    <span
+                      className={`inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${
+                        PALETTE_BADGE_CLASSES[client.category.color as PaletteColor]
+                      }`}
+                    >
+                      {client.category.label}
+                    </span>
+                  )}
+                </Link>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+    </>
   );
 }

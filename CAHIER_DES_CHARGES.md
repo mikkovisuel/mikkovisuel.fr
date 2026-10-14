@@ -2325,6 +2325,48 @@ clients et documents de société), là où une icône seule ne se devinait pas.
 Les autres commandes de la ligne restent en icône : le téléchargement est le
 geste le plus courant, il mérite son mot.
 
+### 4.14 Refonte « macOS » du back-office (2026-10-14)
+
+Demande du client, après validation de trois maquettes : « refonds les
+affichages bien comme ça, en termes de design uniquement ! Garde toutes les
+fonctionnalités ». Arbitrage : **pas d'inspecteur** à droite de la liste des
+tâches (il aurait changé le comportement du clic) ; tout le reste de la
+maquette est repris.
+
+- **Périmètre** : le back-office seul. Le site public et l'espace client
+  gardent leur identité (Clash Display, Manrope, boutons en pilule). Tout
+  le langage visuel est porté par la classe `admin-macos` du layout admin.
+- **Langage visuel** : police système d'Apple, palette macOS (blanc et gris
+  clairs, ou gris anthracite en mode sombre), coins de 8 px pour les
+  commandes et 12 px pour les cartes, lignes de tableau alternées, ombres de
+  fenêtre. Le bouton principal est noir avec l'icône en jaune Mikko en mode
+  clair, et redevient jaune en mode sombre.
+- **Barre latérale** (ordinateur) à la manière du Finder ou de Mail :
+  recherche, rubriques regroupées (Relation client, Production, Gestion,
+  Configuration), compteurs, chrono en cours, thème et déconnexion. Les
+  écrans de configuration, cachés jusqu'ici sous la roue crantée, y sont
+  visibles ; sur téléphone, la roue reste en place. Dans les Tâches, la barre
+  liste aussi les statuts et les clients avec leur nombre de tâches, comme
+  raccourcis vers les filtres existants. Pas de faux feux de fenêtre :
+  l'application installée a déjà les vrais.
+- **Barre d'outils unifiée** sur les 31 écrans : titre, sous-titre discret
+  et commandes de la page sur une seule ligne collée en haut ; lien de retour
+  en chevron sur les fiches. Sur la fiche client, c'est le bandeau collant
+  existant (avec « Enregistrer ») qui en tient lieu, pour ne pas empiler deux
+  barres collantes.
+- **Commandes segmentées** pour tous les choix de vue (Liste / Kanban /
+  Calendrier…, Détaillé / Bacs, bascules du planning).
+- **Liste des tâches** comme la maquette : tableau bord à bord, colonnes
+  dans l'ordre Tâche / Client / Échéance / Évènement / Statut / Temps, statut
+  en pastille à point de couleur (toujours modifiable d'un clic), colonne
+  **Temps** (le temps chronométré, jusque-là caché dans la ligne dépliable).
+  Épingle et chrono restent visibles quand ils sont actifs, sinon au survol
+  de la ligne.
+- **Aucune fonction retirée** ; un défaut corrigé au passage : le chrono en
+  cours provoquait une reconstruction complète de la page côté navigateur à
+  chaque chargement (écart de lecture de l'heure entre serveur et
+  navigateur).
+
 ## Passe de nettoyage du code (2026-09-22)
 
 Demande du client : "fais une passe globale sur le code et nettoie tout,
@@ -3075,3 +3117,4 @@ Le client a explicitement délégué ces choix :
 | 2026-10-01 | "Choisir un fichier ne fonctionne pas — je clique, rien ne se passe… A non c'est que je suis dans l'appli" | **Livré** : la panne venait de l'**application installée** (fenêtre « standalone »), où la fenêtre de sélection ne s'ouvre pas et ne lève aucune erreur. Le composant détecte désormais ce cas (focus conservé et aucun `change`/`cancel` après une seconde), dévoile le champ natif avec un message, et accepte le glisser-déposer sur le bouton compact — un chemin qui ne dépend d'aucune fenêtre système. Détails section 4.13, tests dans `VALIDATION.md` |
 | 2026-10-01 | "rien ne se passe, peux tu ajouter une zone de dépose comme les livrables ?" | **Livré** : les formulaires d'ajout de document (clients et société) utilisent la grande zone de dépôt des livrables, sur toute la largeur de la fenêtre. Le silence de la détection précédente désigne une fenêtre de sélection qui s'ouvre **derrière** celle de l'application : déposer le fichier contourne entièrement ce mécanisme. Détails section 4.13, tests dans `VALIDATION.md` |
 | 2026-10-14 | "Peux tu améliorer l'affichage, notamment prendre vraiment toute la place de l'écran en largeur sur un mac, et s'adapter facilement au téléphone" — arbitrages : **back-office seul**, **pleine largeur sauf formulaires** | **Livré** : plafond de 1 280 px retiré sur les 26 pages admin, l'en-tête et la navigation (formulaires de création limités à `max-w-5xl`, textes longs et fiches gardent leur largeur de lecture ; audit et liste des e-mails élargis). Navigation : la rubrique active est désormais signalée, et sur téléphone un bouton « rubrique courante » déplie toutes les rubriques avec la recherche globale. Liste des tâches en cartes sur téléphone, pastilles de vue de Réseaux sur une ligne. Tests dans `VALIDATION.md` |
+| 2026-10-14 | "Peux tu me faire un nouveau design mais uniquement pour le côté admin ? Quelque chose de très macOS" puis, après trois maquettes : "refonds les affichages bien comme ça en termes de design uniquement ! Garde toutes les fonctionnalités" — arbitrage : **pas d'inspecteur** à droite des tâches | **Livré** : refonte du back-office seul (site public et espace client inchangés) — police système, palette et rayons macOS, modes clair et sombre ; barre latérale façon Finder avec rubriques groupées, configuration visible, statuts et clients sous « Tâches » ; barre d'outils unifiée sur les 31 écrans ; commandes segmentées ; liste des tâches bord à bord avec statuts en pastilles et colonne Temps. Aucune fonction retirée. Défaut corrigé au passage : le chrono en cours forçait une reconstruction de la page côté navigateur. Détails section 4.14, tests dans `VALIDATION.md` |

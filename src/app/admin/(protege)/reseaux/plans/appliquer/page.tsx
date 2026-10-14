@@ -1,13 +1,12 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "@phosphor-icons/react/dist/ssr";
 import { verifyAdminSession } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { applyPlan } from "@/lib/actions/social-plans";
 import { PlanApplyPreview } from "@/components/admin/social-plan-apply-preview";
 import { describeOffset, fillPlanTemplate, stepDate } from "@/lib/social-plans";
 import { formatDay, formatLabel, formatSchedule, networkLabel } from "@/lib/social-posts";
+import { PageToolbar, PAGE_BODY } from "@/components/admin/page-toolbar";
 
 export const metadata: Metadata = {
   title: "Appliquer un plan — Admin Mikko Visuel",
@@ -75,45 +74,39 @@ export default async function ApplyPlanPage({
   const pastCount = steps.filter((step) => step.past).length;
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-10 sm:px-6 lg:px-8">
-      <Link
-        href="/admin/reseaux/plans"
-        className="inline-flex items-center gap-2 text-sm text-ink-muted transition-colors hover:text-ink"
-      >
-        <ArrowLeft size={16} weight="regular" />
-        Retour aux plans
-      </Link>
-      <h1 className="mt-4 font-display text-2xl font-medium tracking-tight text-ink">{plan.name}</h1>
-      <p className="mt-1 text-sm text-ink-muted">
-        {client.name} · {nom} · {formatDay(eventDate)}
-        {lieu ? ` · ${lieu}` : ""}
-      </p>
-
-      <div className="mt-6 rounded-2xl border border-line p-6">
-        <h2 className="text-xs font-medium uppercase tracking-wide text-ink-muted">
-          Aperçu ({steps.length} étape{steps.length > 1 ? "s" : ""})
-        </h2>
-        <p className="mt-1 text-xs text-ink-muted">
-          Rien n&apos;est créé tant que vous n&apos;avez pas validé.
-          {pastCount > 0
-            ? ` ${pastCount} étape${pastCount > 1 ? "s sont déjà passées et sont décochées" : " est déjà passée et est décochée"} — cochez-la pour la créer quand même.`
-            : ""}
+    <>
+      <PageToolbar title={plan.name} back={{ href: "/admin/reseaux/plans", label: "Retour aux plans" }} />
+      <div className={`${PAGE_BODY} mx-auto max-w-3xl`}>
+        <p className="text-sm text-ink-muted">
+          {client.name} · {nom} · {formatDay(eventDate)}
+          {lieu ? ` · ${lieu}` : ""}
         </p>
-        <div className="mt-4">
-          <PlanApplyPreview
-            action={applyPlan}
-            steps={steps}
-            hidden={{
-              planId: plan.id,
-              clientId: client.id,
-              eventName: nom,
-              eventPlace: lieu ?? "",
-              eventDate: date,
-              sourceTaskId: tacheId ?? "",
-            }}
-          />
+        <div className="mt-6 rounded-2xl border border-line p-6">
+          <h2 className="text-xs font-medium uppercase tracking-wide text-ink-muted">
+            Aperçu ({steps.length} étape{steps.length > 1 ? "s" : ""})
+          </h2>
+          <p className="mt-1 text-xs text-ink-muted">
+            Rien n&apos;est créé tant que vous n&apos;avez pas validé.
+            {pastCount > 0
+              ? ` ${pastCount} étape${pastCount > 1 ? "s sont déjà passées et sont décochées" : " est déjà passée et est décochée"} — cochez-la pour la créer quand même.`
+              : ""}
+          </p>
+          <div className="mt-4">
+            <PlanApplyPreview
+              action={applyPlan}
+              steps={steps}
+              hidden={{
+                planId: plan.id,
+                clientId: client.id,
+                eventName: nom,
+                eventPlace: lieu ?? "",
+                eventDate: date,
+                sourceTaskId: tacheId ?? "",
+              }}
+            />
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

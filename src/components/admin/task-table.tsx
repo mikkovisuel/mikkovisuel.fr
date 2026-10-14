@@ -27,13 +27,16 @@ interface TaskTableTask {
 
 // Colonne de gauche vide (triangle de dépli, voir TaskTableRow) : ni
 // libellé, ni tri, juste l'alignement avec le bouton de chaque ligne.
-const COLUMNS: { label: string; field?: TaskSortField }[] = [
+// Ordre de lecture de la refonte macOS (2026-10-14) : la tâche d'abord, puis
+// à qui, pour quand, où elle en est et le temps passé.
+const COLUMNS: { label: string; field?: TaskSortField; align?: "right" }[] = [
   { label: "" },
-  { label: "Évènement", field: "evenement" },
-  { label: "Échéance", field: "echeance" },
-  { label: "Client", field: "client" },
   { label: "Tâche", field: "tache" },
+  { label: "Client", field: "client" },
+  { label: "Échéance", field: "echeance" },
+  { label: "Évènement", field: "evenement" },
   { label: "Statut", field: "statut" },
+  { label: "Temps", align: "right" },
 ];
 
 function sortHref(
@@ -174,11 +177,13 @@ export function TaskTable({
           />
         ))}
       </ul>
-      <div className="hidden overflow-x-auto rounded-2xl border border-line sm:block">
-        <table className="w-full min-w-[680px] border-collapse text-sm">
+      {/* Bord à bord, comme la liste de Mail : le tableau annule les marges de
+          la page et ses cellules extrêmes les reprennent. */}
+      <div className="-mx-4 hidden overflow-x-auto border-y border-line sm:-mx-6 sm:block lg:-mx-8 2xl:-mx-12">
+        <table className="w-full min-w-[760px] border-collapse text-[13px]">
           <thead>
-            <tr className="border-b border-line text-left text-xs font-medium uppercase tracking-wide text-ink-muted">
-              <th className="w-8 py-3 pl-6 font-medium">
+            <tr className="border-b border-line text-left text-[11px] font-medium text-ink-muted">
+              <th className="w-8 py-2 pl-4 font-medium sm:pl-6 lg:pl-8 2xl:pl-12">
                 <input
                   type="checkbox"
                   aria-label="Tout sélectionner"
@@ -188,7 +193,12 @@ export function TaskTable({
                 />
               </th>
               {COLUMNS.map((column) => (
-                <th key={column.label || "toggle"} className="px-4 py-3 font-medium last:pr-6">
+                <th
+                  key={column.label || "toggle"}
+                  className={`px-4 py-2 font-medium last:pr-4 sm:last:pr-6 lg:last:pr-8 2xl:last:pr-12 ${
+                    column.align === "right" ? "text-right" : ""
+                  }`}
+                >
                   {!column.label ? (
                     <span className="sr-only">Détails</span>
                   ) : column.field ? (

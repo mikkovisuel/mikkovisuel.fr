@@ -26,7 +26,7 @@ export function TaskViewTabs({
   pinnedOnly?: boolean;
 }) {
   return (
-    <nav className="flex flex-wrap gap-2">
+    <nav className="segmented flex flex-wrap gap-2">
       {VIEWS.map((view) => {
         const params = new URLSearchParams();
         if (clientId) params.set("clientId", clientId);
@@ -40,6 +40,7 @@ export function TaskViewTabs({
           <Link
             key={view.value}
             href={query ? `/admin/taches?${query}` : "/admin/taches"}
+            aria-current={isActive ? "page" : undefined}
             className={`rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
               isActive
                 ? "border-accent bg-accent text-accent-ink"

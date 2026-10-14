@@ -30,6 +30,7 @@ import {
   DEFAULT_DOCUMENT_SENT_SUBJECT,
   DEFAULT_DOCUMENT_SENT_BODY,
 } from "@/lib/invoice-email-templates";
+import { PageToolbar, PAGE_BODY } from "@/components/admin/page-toolbar";
 
 export const metadata: Metadata = {
   title: "Administratif — Admin Mikko Visuel",
@@ -329,339 +330,37 @@ export default async function AdminAdministratifPage({
   const finActiveFilterCount = [finClientId, finAnnee, finMois].filter(Boolean).length;
 
   return (
-    <div className="px-4 py-10 sm:px-6 lg:px-8 2xl:px-12">
-      <div className="flex flex-wrap items-center justify-between gap-4">
-        {/* Renommée le 2026-07-31 (demande explicite) : cette section ne
-            couvre que Factures/Devis/Contrats, les documents Commercial/
-            Société vivent dans leur propre section plus bas — le titre
-            générique "Documents" ne le disait pas. */}
-        <h1 className="font-display text-2xl font-medium tracking-tight text-ink">
-          Factures / Devis / Contrats
-        </h1>
+    <>
+      <PageToolbar title="Factures / Devis / Contrats">
         <NewDocumentButton
           clients={clients}
           types={typeList?.items.map((item) => ({ id: item.id, label: item.label })) ?? []}
         />
-      </div>
-
-      {outstandingCents > 0 && (
-        <div className="mt-6 rounded-2xl border border-line bg-surface-elevated p-4">
-          <p className="text-sm text-ink-muted">
-            Encours de paiement :{" "}
-            <span className="font-medium text-ink">{formatAmount(outstandingCents, "EUR")}</span>
-          </p>
-        </div>
-      )}
-
-      <div className="mt-8">
-        <FilterMenu activeCount={activeFilterCount} label="Filtres">
-          <form className="grid gap-3">
-            {/* Filtres Finances (préfixe fin*) reportés en champs cachés :
-                sans ça, appliquer un filtre Documents effacerait un filtre
-                Finances actif plus bas sur la même page. */}
-            {finClientId && <input type="hidden" name="finClientId" value={finClientId} />}
-            {finAnnee && <input type="hidden" name="finAnnee" value={finAnnee} />}
-            {finMois && <input type="hidden" name="finMois" value={finMois} />}
-            <div className="flex flex-col gap-2">
-              <label htmlFor="clientId" className="text-sm font-medium text-ink">
-                Client
-              </label>
-              <select id="clientId" name="clientId" defaultValue={clientId ?? ""} className={selectClass}>
-                <option value="">Tous les clients</option>
-                {clients.map((client) => (
-                  <option key={client.id} value={client.id}>
-                    {client.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <label htmlFor="typeId" className="text-sm font-medium text-ink">
-                Type
-              </label>
-              <select id="typeId" name="typeId" defaultValue={typeId ?? ""} className={selectClass}>
-                <option value="">Tous les types</option>
-                {typeList?.items.map((item) => (
-                  <option key={item.id} value={item.id}>
-                    {item.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <label htmlFor="status" className="text-sm font-medium text-ink">
-                Statut
-              </label>
-              <select id="status" name="status" defaultValue={status ?? ""} className={selectClass}>
-                <option value="">Tous les statuts</option>
-                {STATUS_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div className="flex items-center gap-3 pt-1">
-              <button
-                type="submit"
-                className="rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-accent-ink transition-transform active:scale-[0.98]"
-              >
-                Appliquer
-              </button>
-              {activeFilterCount > 0 && (
-                <Link
-                  href={
-                    finActiveFilterCount > 0
-                      ? `/admin/administratif?${new URLSearchParams({ ...(finClientId ? { finClientId } : {}), ...(finAnnee ? { finAnnee } : {}), ...(finMois ? { finMois } : {}) }).toString()}`
-                      : "/admin/administratif"
-                  }
-                  className="text-sm text-ink-muted transition-colors hover:text-ink"
-                >
-                  Réinitialiser
-                </Link>
-              )}
-            </div>
-          </form>
-        </FilterMenu>
-      </div>
-
-      {/* Bascule "Détaillé" / "Bacs" (demande du 2026-07-31) : la vue
-          détaillée reste celle par défaut (elle porte toutes les actions),
-          "Bacs" est une vue de consultation dense, groupée par type, pour
-          une vision d'ensemble rapide. */}
-      <div className="mt-6 flex gap-2">
-        {[
-          { value: "", label: "Détaillé" },
-          { value: "bacs", label: "Bacs" },
-        ].map((option) => {
-          const params = new URLSearchParams();
-          if (clientId) params.set("clientId", clientId);
-          if (typeId) params.set("typeId", typeId);
-          if (status) params.set("status", status);
-          if (option.value) params.set("vue", option.value);
-          if (finClientId) params.set("finClientId", finClientId);
-          if (finAnnee) params.set("finAnnee", finAnnee);
-          if (finMois) params.set("finMois", finMois);
-          const query = params.toString();
-          const isActive = option.value === (vue ?? "");
-          return (
-            <Link
-              key={option.label}
-              href={query ? `/admin/administratif?${query}` : "/admin/administratif"}
-              className={`rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
-                isActive
-                  ? "border-accent bg-accent text-accent-ink"
-                  : "border-line text-ink-muted hover:text-ink"
-              }`}
-            >
-              {option.label}
-            </Link>
-          );
-        })}
-      </div>
-
-      {documents.length === 0 ? (
-        <p className="mt-8 text-sm text-ink-muted">Aucun document pour le moment.</p>
-      ) : isBinView ? (
-        <DocumentBinView groups={binGroups} />
-      ) : (
-        <>
-          <div className="mt-8 divide-y divide-line rounded-2xl border border-line">
-            {documents.map((doc) => (
-              <DocumentRow
-                key={doc.id}
-                document={doc}
-                showClient
-                billingEmail={doc.client.billingEmail}
-                deleteAction={deleteDocument}
-                companyDocuments={companyDocuments.map((d) => ({ id: d.id, fileName: d.fileName }))}
-                emailSubjectTemplate={settings.documentSentEmailSubject ?? DEFAULT_DOCUMENT_SENT_SUBJECT}
-                emailBodyTemplate={settings.documentSentEmailBody ?? DEFAULT_DOCUMENT_SENT_BODY}
-              />
-            ))}
-          </div>
-          <Pagination
-            basePath="/admin/administratif"
-            currentPage={currentPage}
-            totalPages={totalPages}
-            searchParams={allParams}
-          />
-        </>
-      )}
-
-      {/* Section ajoutée le 2026-07-31 : documents internes sans client
-          associé (K-bis, statuts, plaquettes commerciales...) — simple
-          consultation, pas de montant ni de statut de paiement. */}
-      <section className="mt-12 border-t border-line pt-8">
-        <h2 className="text-sm font-medium text-ink-muted">
-          Documents Commercial / Société ({companyDocuments.length})
-        </h2>
-        <div className="mt-4">
-          <CompanyDocumentUploadForm />
-        </div>
-        {companyDocuments.length > 0 && (
-          <div className="mt-4 flex flex-col gap-6 sm:flex-row sm:gap-8">
-            {Object.values(COMPANY_DOCUMENT_CATEGORY).map((category) => {
-              const items = companyDocuments.filter((doc) => doc.category === category);
-              if (items.length === 0) return null;
-              return (
-                <div key={category} className="flex-1">
-                  <h3 className="text-xs font-medium uppercase tracking-wide text-ink-muted">
-                    {COMPANY_DOCUMENT_CATEGORY_LABELS[category]} ({items.length})
-                  </h3>
-                  <div className="mt-2 divide-y divide-line rounded-2xl border border-line">
-                    {items.map((doc) => (
-                      <CompanyDocumentRow key={doc.id} document={doc} />
-                    ))}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </section>
-
-      {/* Section ajoutée le 2026-07-31 : paiements reçus sans document de
-          facture (acompte par virement, espèces...) — un suivi Client /
-          montant / statut minimal, distinct des Factures ci-dessus. */}
-      <section className="mt-12 border-t border-line pt-8">
-        <h2 className="text-sm font-medium text-ink-muted">
-          Paiements sans facture ({paymentRecords.length})
-        </h2>
-        <div className="mt-4">
-          <PaymentRecordForm clients={clients} />
-        </div>
-        {paymentRecords.length > 0 && (
-          <div className="mt-4 divide-y divide-line rounded-2xl border border-line">
-            {paymentRecords.map((record) => (
-              <PaymentRecordRow
-                key={record.id}
-                record={{
-                  id: record.id,
-                  clientId: record.clientId,
-                  clientName: record.client.name,
-                  label: record.label,
-                  amountCents: record.amountCents,
-                  currency: record.currency,
-                  paymentStatus: record.paymentStatus,
-                  date: record.date.toISOString().slice(0, 10),
-                }}
-              />
-            ))}
-          </div>
-        )}
-      </section>
-
-      {/* Section ajoutée le 2026-09-06 (ex-onglet "Facturation", fusionné
-          ici sur demande explicite) : récapitulatif PDF des tâches
-          terminées d'un client sur un mois donné, pensé comme pièce jointe
-          à une facture faite ailleurs — pas de montant, rien enregistré
-          dans l'app. Voir src/app/api/exports/facturation/route.ts pour la
-          sélection exacte (statut "Terminé", groupé par date d'évènement). */}
-      <section className="mt-12 border-t border-line pt-8">
-        <h2 className="font-display text-lg font-medium text-ink">Récapitulatif mensuel (PDF)</h2>
-        <p className="mt-1 max-w-2xl text-sm text-ink-muted">
-          Génère un récapitulatif PDF des tâches terminées d&apos;un client sur un mois donné, à
-          joindre à la facture. Seules les tâches au statut « Terminé » apparaissent, comptées sur
-          leur date d&apos;évènement.
-        </p>
-
-        <form
-          action="/api/exports/facturation"
-          target="_blank"
-          className="mt-4 grid max-w-3xl gap-4 rounded-2xl border border-line p-6 sm:grid-cols-3"
-        >
-          <div className="flex flex-col gap-2 sm:col-span-3">
-            <label htmlFor="rec-clientId" className="text-sm font-medium text-ink">
-              Client
-            </label>
-            <select id="rec-clientId" name="clientId" required className={selectClass}>
-              <option value="">Choisir un client</option>
-              {billingClients.map((client) => (
-                <option key={client.id} value={client.id}>
-                  {client.name}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <label htmlFor="rec-annee" className="text-sm font-medium text-ink">
-              Année
-            </label>
-            <select id="rec-annee" name="annee" required defaultValue={currentYear} className={selectClass}>
-              {billingYearOptions.map((year) => (
-                <option key={year} value={year}>
-                  {year}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="flex flex-col gap-2 sm:col-span-2">
-            <label htmlFor="rec-mois" className="text-sm font-medium text-ink">
-              Mois
-            </label>
-            <select
-              id="rec-mois"
-              name="mois"
-              required
-              defaultValue={now.getMonth() + 1}
-              className={selectClass}
-            >
-              {MONTH_NAMES.map((label, index) => (
-                <option key={label} value={index + 1}>
-                  {label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="sm:col-span-3">
-            <button
-              type="submit"
-              className="inline-flex items-center gap-2 rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-accent-ink transition-transform active:scale-[0.98]"
-            >
-              <FileText size={16} weight="bold" />
-              Générer le PDF
-            </button>
-          </div>
-        </form>
-      </section>
-
-      {/* Section ajoutée le 2026-09-06 (ex-onglet "Finances", fusionné ici
-          sur demande explicite) : vue consolidée facturé/encaissé, reprise
-          telle quelle de l'ancienne page /admin/finances — filtres sur les
-          paramètres fin* pour ne pas entrer en conflit avec ceux de
-          Factures/Devis/Contrats plus haut sur la même page. */}
-      <section className="mt-12 border-t border-line pt-8">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div>
-            <h2 className="font-display text-lg font-medium text-ink">Finances</h2>
-            <p className="mt-1 max-w-2xl text-sm text-ink-muted">
-              Vue consolidée des factures (hors devis et contrats) et des paiements sans facture,
-              client de démonstration exclu.
+      </PageToolbar>
+      <div className={PAGE_BODY}>
+        {outstandingCents > 0 && (
+          <div className="mt-6 rounded-2xl border border-line bg-surface-elevated p-4">
+            <p className="text-sm text-ink-muted">
+              Encours de paiement :{" "}
+              <span className="font-medium text-ink">{formatAmount(outstandingCents, "EUR")}</span>
             </p>
           </div>
-          <FilterMenu activeCount={finActiveFilterCount} label="Filtres">
+        )}
+
+        <div className="mt-8">
+          <FilterMenu activeCount={activeFilterCount} label="Filtres">
             <form className="grid gap-3">
-              {clientId && <input type="hidden" name="clientId" value={clientId} />}
-              {typeId && <input type="hidden" name="typeId" value={typeId} />}
-              {status && <input type="hidden" name="status" value={status} />}
-              {vue && <input type="hidden" name="vue" value={vue} />}
+              {/* Filtres Finances (préfixe fin*) reportés en champs cachés :
+                  sans ça, appliquer un filtre Documents effacerait un filtre
+                  Finances actif plus bas sur la même page. */}
+              {finClientId && <input type="hidden" name="finClientId" value={finClientId} />}
+              {finAnnee && <input type="hidden" name="finAnnee" value={finAnnee} />}
+              {finMois && <input type="hidden" name="finMois" value={finMois} />}
               <div className="flex flex-col gap-2">
-                <label htmlFor="finClientId" className="text-sm font-medium text-ink">
+                <label htmlFor="clientId" className="text-sm font-medium text-ink">
                   Client
                 </label>
-                <select
-                  id="finClientId"
-                  name="finClientId"
-                  defaultValue={finClientId ?? ""}
-                  className={selectClass}
-                >
+                <select id="clientId" name="clientId" defaultValue={clientId ?? ""} className={selectClass}>
                   <option value="">Tous les clients</option>
                   {clients.map((client) => (
                     <option key={client.id} value={client.id}>
@@ -670,35 +369,35 @@ export default async function AdminAdministratifPage({
                   ))}
                 </select>
               </div>
+
               <div className="flex flex-col gap-2">
-                <label htmlFor="finAnnee" className="text-sm font-medium text-ink">
-                  Année
+                <label htmlFor="typeId" className="text-sm font-medium text-ink">
+                  Type
                 </label>
-                <select id="finAnnee" name="finAnnee" defaultValue={finAnnee ?? ""} className={selectClass}>
-                  <option value="">Toutes les années</option>
-                  {finYearOptions.map((year) => (
-                    <option key={year} value={year}>
-                      {year}
+                <select id="typeId" name="typeId" defaultValue={typeId ?? ""} className={selectClass}>
+                  <option value="">Tous les types</option>
+                  {typeList?.items.map((item) => (
+                    <option key={item.id} value={item.id}>
+                      {item.label}
                     </option>
                   ))}
                 </select>
               </div>
+
               <div className="flex flex-col gap-2">
-                <label htmlFor="finMois" className="text-sm font-medium text-ink">
-                  Mois
+                <label htmlFor="status" className="text-sm font-medium text-ink">
+                  Statut
                 </label>
-                <select id="finMois" name="finMois" defaultValue={finMois ?? ""} className={selectClass}>
-                  <option value="">Tous les mois</option>
-                  {MONTH_NAMES.map((label, index) => (
-                    <option key={label} value={index + 1}>
-                      {label}
+                <select id="status" name="status" defaultValue={status ?? ""} className={selectClass}>
+                  <option value="">Tous les statuts</option>
+                  {STATUS_OPTIONS.map((option) => (
+                    <option key={option.value} value={option.value}>
+                      {option.label}
                     </option>
                   ))}
                 </select>
-                <p className="text-xs text-ink-muted">
-                  Un mois choisi sans année filtre sur l&apos;année en cours.
-                </p>
               </div>
+
               <div className="flex items-center gap-3 pt-1">
                 <button
                   type="submit"
@@ -706,11 +405,11 @@ export default async function AdminAdministratifPage({
                 >
                   Appliquer
                 </button>
-                {finActiveFilterCount > 0 && (
+                {activeFilterCount > 0 && (
                   <Link
                     href={
-                      activeFilterCount > 0 || vue
-                        ? `/admin/administratif?${new URLSearchParams({ ...(clientId ? { clientId } : {}), ...(typeId ? { typeId } : {}), ...(status ? { status } : {}), ...(vue ? { vue } : {}) }).toString()}`
+                      finActiveFilterCount > 0
+                        ? `/admin/administratif?${new URLSearchParams({ ...(finClientId ? { finClientId } : {}), ...(finAnnee ? { finAnnee } : {}), ...(finMois ? { finMois } : {}) }).toString()}`
                         : "/admin/administratif"
                     }
                     className="text-sm text-ink-muted transition-colors hover:text-ink"
@@ -723,58 +422,355 @@ export default async function AdminAdministratifPage({
           </FilterMenu>
         </div>
 
-        {/* Facturé en rouge, encaissé en vert (demande du 2026-07-31) —
-            avant, les deux montants étaient rendus dans la même couleur
-            neutre, sans distinguer d'un coup d'œil ce qui reste dû de ce
-            qui est réglé. */}
-        <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
-          <div className="rounded-2xl border border-line p-5">
-            <p className="text-sm text-ink-muted">Facturé (total)</p>
-            <p className="mt-1 font-display text-2xl font-medium text-danger">{finTotalFormatted}</p>
-          </div>
-          <div className="rounded-2xl border border-line p-5">
-            <p className="text-sm text-ink-muted">Encaissé</p>
-            <p className="mt-1 font-display text-2xl font-medium text-emerald-600 dark:text-emerald-400">
-              {finCollectedFormatted}
-            </p>
-          </div>
-          <div className="rounded-2xl border border-line p-5">
-            <p className="text-sm text-ink-muted">Reste dû</p>
-            <p className="mt-1 font-display text-2xl font-medium text-ink">{finOutstandingFormatted}</p>
-          </div>
+        {/* Bascule "Détaillé" / "Bacs" (demande du 2026-07-31) : la vue
+            détaillée reste celle par défaut (elle porte toutes les actions),
+            "Bacs" est une vue de consultation dense, groupée par type, pour
+            une vision d'ensemble rapide. */}
+        <div className="segmented mt-6 flex gap-2">
+          {[
+            { value: "", label: "Détaillé" },
+            { value: "bacs", label: "Bacs" },
+          ].map((option) => {
+            const params = new URLSearchParams();
+            if (clientId) params.set("clientId", clientId);
+            if (typeId) params.set("typeId", typeId);
+            if (status) params.set("status", status);
+            if (option.value) params.set("vue", option.value);
+            if (finClientId) params.set("finClientId", finClientId);
+            if (finAnnee) params.set("finAnnee", finAnnee);
+            if (finMois) params.set("finMois", finMois);
+            const query = params.toString();
+            const isActive = option.value === (vue ?? "");
+            return (
+              <Link
+                key={option.label}
+                href={query ? `/admin/administratif?${query}` : "/admin/administratif"}
+                aria-current={isActive ? "page" : undefined}
+                className={`rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
+                  isActive
+                    ? "border-accent bg-accent text-accent-ink"
+                    : "border-line text-ink-muted hover:text-ink"
+                }`}
+              >
+                {option.label}
+              </Link>
+            );
+          })}
         </div>
 
-        {finInvoices.length === 0 && finPaymentRecords.length === 0 ? (
-          <p className="mt-8 text-sm text-ink-muted">
-            {finActiveFilterCount > 0
-              ? "Aucune facture ni paiement ne correspond à ce filtre."
-              : "Aucune facture ni paiement pour le moment."}
-          </p>
+        {documents.length === 0 ? (
+          <p className="mt-8 text-sm text-ink-muted">Aucun document pour le moment.</p>
+        ) : isBinView ? (
+          <DocumentBinView groups={binGroups} />
         ) : (
           <>
-            <div className="mt-8">
-              <h3 className="text-sm font-medium text-ink">Facturé vs encaissé, par mois</h3>
-              <FinancesMonthlyChart data={finMonthlyData} currency={finCurrency} />
+            <div className="mt-8 divide-y divide-line rounded-2xl border border-line">
+              {documents.map((doc) => (
+                <DocumentRow
+                  key={doc.id}
+                  document={doc}
+                  showClient
+                  billingEmail={doc.client.billingEmail}
+                  deleteAction={deleteDocument}
+                  companyDocuments={companyDocuments.map((d) => ({ id: d.id, fileName: d.fileName }))}
+                  emailSubjectTemplate={settings.documentSentEmailSubject ?? DEFAULT_DOCUMENT_SENT_SUBJECT}
+                  emailBodyTemplate={settings.documentSentEmailBody ?? DEFAULT_DOCUMENT_SENT_BODY}
+                />
+              ))}
             </div>
-
-            <div className="mt-8">
-              <h3 className="text-sm font-medium text-ink">Par client</h3>
-              <FinancesByClientTable data={finByClientData} currency={finCurrency} />
-            </div>
+            <Pagination
+              basePath="/admin/administratif"
+              currentPage={currentPage}
+              totalPages={totalPages}
+              searchParams={allParams}
+            />
           </>
         )}
 
-        <div className="mt-12 border-t border-line pt-8">
-          <h3 className="font-display text-base font-medium text-ink">Temps &amp; rentabilité</h3>
+        {/* Section ajoutée le 2026-07-31 : documents internes sans client
+            associé (K-bis, statuts, plaquettes commerciales...) — simple
+            consultation, pas de montant ni de statut de paiement. */}
+        <section className="mt-12 border-t border-line pt-8">
+          <h2 className="text-sm font-medium text-ink-muted">
+            Documents Commercial / Société ({companyDocuments.length})
+          </h2>
+          <div className="mt-4">
+            <CompanyDocumentUploadForm />
+          </div>
+          {companyDocuments.length > 0 && (
+            <div className="mt-4 flex flex-col gap-6 sm:flex-row sm:gap-8">
+              {Object.values(COMPANY_DOCUMENT_CATEGORY).map((category) => {
+                const items = companyDocuments.filter((doc) => doc.category === category);
+                if (items.length === 0) return null;
+                return (
+                  <div key={category} className="flex-1">
+                    <h3 className="text-xs font-medium uppercase tracking-wide text-ink-muted">
+                      {COMPANY_DOCUMENT_CATEGORY_LABELS[category]} ({items.length})
+                    </h3>
+                    <div className="mt-2 divide-y divide-line rounded-2xl border border-line">
+                      {items.map((doc) => (
+                        <CompanyDocumentRow key={doc.id} document={doc} />
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </section>
+
+        {/* Section ajoutée le 2026-07-31 : paiements reçus sans document de
+            facture (acompte par virement, espèces...) — un suivi Client /
+            montant / statut minimal, distinct des Factures ci-dessus. */}
+        <section className="mt-12 border-t border-line pt-8">
+          <h2 className="text-sm font-medium text-ink-muted">
+            Paiements sans facture ({paymentRecords.length})
+          </h2>
+          <div className="mt-4">
+            <PaymentRecordForm clients={clients} />
+          </div>
+          {paymentRecords.length > 0 && (
+            <div className="mt-4 divide-y divide-line rounded-2xl border border-line">
+              {paymentRecords.map((record) => (
+                <PaymentRecordRow
+                  key={record.id}
+                  record={{
+                    id: record.id,
+                    clientId: record.clientId,
+                    clientName: record.client.name,
+                    label: record.label,
+                    amountCents: record.amountCents,
+                    currency: record.currency,
+                    paymentStatus: record.paymentStatus,
+                    date: record.date.toISOString().slice(0, 10),
+                  }}
+                />
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* Section ajoutée le 2026-09-06 (ex-onglet "Facturation", fusionné
+            ici sur demande explicite) : récapitulatif PDF des tâches
+            terminées d'un client sur un mois donné, pensé comme pièce jointe
+            à une facture faite ailleurs — pas de montant, rien enregistré
+            dans l'app. Voir src/app/api/exports/facturation/route.ts pour la
+            sélection exacte (statut "Terminé", groupé par date d'évènement). */}
+        <section className="mt-12 border-t border-line pt-8">
+          <h2 className="font-display text-lg font-medium text-ink">Récapitulatif mensuel (PDF)</h2>
           <p className="mt-1 max-w-2xl text-sm text-ink-muted">
-            Temps réellement chronométré sur les tâches, rapproché du montant facturé sur la même
-            période — mêmes filtres client/année/mois que ci-dessus. Le taux horaire n&apos;est
-            affiché que si les deux sont renseignés.
+            Génère un récapitulatif PDF des tâches terminées d&apos;un client sur un mois donné, à
+            joindre à la facture. Seules les tâches au statut « Terminé » apparaissent, comptées sur
+            leur date d&apos;évènement.
           </p>
 
-          <TimeReportTable rows={finTimeRows} currency={finCurrency} />
-        </div>
-      </section>
-    </div>
+          <form
+            action="/api/exports/facturation"
+            target="_blank"
+            className="mt-4 grid max-w-3xl gap-4 rounded-2xl border border-line p-6 sm:grid-cols-3"
+          >
+            <div className="flex flex-col gap-2 sm:col-span-3">
+              <label htmlFor="rec-clientId" className="text-sm font-medium text-ink">
+                Client
+              </label>
+              <select id="rec-clientId" name="clientId" required className={selectClass}>
+                <option value="">Choisir un client</option>
+                {billingClients.map((client) => (
+                  <option key={client.id} value={client.id}>
+                    {client.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex flex-col gap-2">
+              <label htmlFor="rec-annee" className="text-sm font-medium text-ink">
+                Année
+              </label>
+              <select id="rec-annee" name="annee" required defaultValue={currentYear} className={selectClass}>
+                {billingYearOptions.map((year) => (
+                  <option key={year} value={year}>
+                    {year}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="flex flex-col gap-2 sm:col-span-2">
+              <label htmlFor="rec-mois" className="text-sm font-medium text-ink">
+                Mois
+              </label>
+              <select
+                id="rec-mois"
+                name="mois"
+                required
+                defaultValue={now.getMonth() + 1}
+                className={selectClass}
+              >
+                {MONTH_NAMES.map((label, index) => (
+                  <option key={label} value={index + 1}>
+                    {label}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="sm:col-span-3">
+              <button
+                type="submit"
+                className="inline-flex items-center gap-2 rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-accent-ink transition-transform active:scale-[0.98]"
+              >
+                <FileText size={16} weight="bold" />
+                Générer le PDF
+              </button>
+            </div>
+          </form>
+        </section>
+
+        {/* Section ajoutée le 2026-09-06 (ex-onglet "Finances", fusionné ici
+            sur demande explicite) : vue consolidée facturé/encaissé, reprise
+            telle quelle de l'ancienne page /admin/finances — filtres sur les
+            paramètres fin* pour ne pas entrer en conflit avec ceux de
+            Factures/Devis/Contrats plus haut sur la même page. */}
+        <section className="mt-12 border-t border-line pt-8">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <h2 className="font-display text-lg font-medium text-ink">Finances</h2>
+              <p className="mt-1 max-w-2xl text-sm text-ink-muted">
+                Vue consolidée des factures (hors devis et contrats) et des paiements sans facture,
+                client de démonstration exclu.
+              </p>
+            </div>
+            <FilterMenu activeCount={finActiveFilterCount} label="Filtres">
+              <form className="grid gap-3">
+                {clientId && <input type="hidden" name="clientId" value={clientId} />}
+                {typeId && <input type="hidden" name="typeId" value={typeId} />}
+                {status && <input type="hidden" name="status" value={status} />}
+                {vue && <input type="hidden" name="vue" value={vue} />}
+                <div className="flex flex-col gap-2">
+                  <label htmlFor="finClientId" className="text-sm font-medium text-ink">
+                    Client
+                  </label>
+                  <select
+                    id="finClientId"
+                    name="finClientId"
+                    defaultValue={finClientId ?? ""}
+                    className={selectClass}
+                  >
+                    <option value="">Tous les clients</option>
+                    {clients.map((client) => (
+                      <option key={client.id} value={client.id}>
+                        {client.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex flex-col gap-2">
+                  <label htmlFor="finAnnee" className="text-sm font-medium text-ink">
+                    Année
+                  </label>
+                  <select id="finAnnee" name="finAnnee" defaultValue={finAnnee ?? ""} className={selectClass}>
+                    <option value="">Toutes les années</option>
+                    {finYearOptions.map((year) => (
+                      <option key={year} value={year}>
+                        {year}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex flex-col gap-2">
+                  <label htmlFor="finMois" className="text-sm font-medium text-ink">
+                    Mois
+                  </label>
+                  <select id="finMois" name="finMois" defaultValue={finMois ?? ""} className={selectClass}>
+                    <option value="">Tous les mois</option>
+                    {MONTH_NAMES.map((label, index) => (
+                      <option key={label} value={index + 1}>
+                        {label}
+                      </option>
+                    ))}
+                  </select>
+                  <p className="text-xs text-ink-muted">
+                    Un mois choisi sans année filtre sur l&apos;année en cours.
+                  </p>
+                </div>
+                <div className="flex items-center gap-3 pt-1">
+                  <button
+                    type="submit"
+                    className="rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-accent-ink transition-transform active:scale-[0.98]"
+                  >
+                    Appliquer
+                  </button>
+                  {finActiveFilterCount > 0 && (
+                    <Link
+                      href={
+                        activeFilterCount > 0 || vue
+                          ? `/admin/administratif?${new URLSearchParams({ ...(clientId ? { clientId } : {}), ...(typeId ? { typeId } : {}), ...(status ? { status } : {}), ...(vue ? { vue } : {}) }).toString()}`
+                          : "/admin/administratif"
+                      }
+                      className="text-sm text-ink-muted transition-colors hover:text-ink"
+                    >
+                      Réinitialiser
+                    </Link>
+                  )}
+                </div>
+              </form>
+            </FilterMenu>
+          </div>
+
+          {/* Facturé en rouge, encaissé en vert (demande du 2026-07-31) —
+              avant, les deux montants étaient rendus dans la même couleur
+              neutre, sans distinguer d'un coup d'œil ce qui reste dû de ce
+              qui est réglé. */}
+          <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-3">
+            <div className="rounded-2xl border border-line p-5">
+              <p className="text-sm text-ink-muted">Facturé (total)</p>
+              <p className="mt-1 font-display text-2xl font-medium text-danger">{finTotalFormatted}</p>
+            </div>
+            <div className="rounded-2xl border border-line p-5">
+              <p className="text-sm text-ink-muted">Encaissé</p>
+              <p className="mt-1 font-display text-2xl font-medium text-emerald-600 dark:text-emerald-400">
+                {finCollectedFormatted}
+              </p>
+            </div>
+            <div className="rounded-2xl border border-line p-5">
+              <p className="text-sm text-ink-muted">Reste dû</p>
+              <p className="mt-1 font-display text-2xl font-medium text-ink">{finOutstandingFormatted}</p>
+            </div>
+          </div>
+
+          {finInvoices.length === 0 && finPaymentRecords.length === 0 ? (
+            <p className="mt-8 text-sm text-ink-muted">
+              {finActiveFilterCount > 0
+                ? "Aucune facture ni paiement ne correspond à ce filtre."
+                : "Aucune facture ni paiement pour le moment."}
+            </p>
+          ) : (
+            <>
+              <div className="mt-8">
+                <h3 className="text-sm font-medium text-ink">Facturé vs encaissé, par mois</h3>
+                <FinancesMonthlyChart data={finMonthlyData} currency={finCurrency} />
+              </div>
+
+              <div className="mt-8">
+                <h3 className="text-sm font-medium text-ink">Par client</h3>
+                <FinancesByClientTable data={finByClientData} currency={finCurrency} />
+              </div>
+            </>
+          )}
+
+          <div className="mt-12 border-t border-line pt-8">
+            <h3 className="font-display text-base font-medium text-ink">Temps &amp; rentabilité</h3>
+            <p className="mt-1 max-w-2xl text-sm text-ink-muted">
+              Temps réellement chronométré sur les tâches, rapproché du montant facturé sur la même
+              période — mêmes filtres client/année/mois que ci-dessus. Le taux horaire n&apos;est
+              affiché que si les deux sont renseignés.
+            </p>
+
+            <TimeReportTable rows={finTimeRows} currency={finCurrency} />
+          </div>
+        </section>
+      </div>
+    </>
   );
 }

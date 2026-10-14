@@ -27,6 +27,7 @@ import {
 import { ACTIVE_CLIENTS } from "@/lib/clients";
 import { Pagination } from "@/components/admin/pagination";
 import { Scratchpad } from "@/components/admin/scratchpad";
+import { PageToolbar, PAGE_BODY } from "@/components/admin/page-toolbar";
 
 export const metadata: Metadata = {
   title: "Tâches — Admin Mikko Visuel",
@@ -161,29 +162,19 @@ export default async function AdminTasksPage({
     Boolean,
   ).length;
 
+  const openCount = tasks.filter((task) => task.status.slug !== TASK_STATUS.TERMINE).length;
+  const toolbarSubtitle =
+    view === "archivees"
+      ? `${tasks.length} archivée${tasks.length > 1 ? "s" : ""}`
+      : `${openCount} en cours`;
+
   return (
-    <div className="px-4 py-10 sm:px-6 lg:px-8 2xl:px-12">
-      <div className="flex items-center justify-between">
-        <h1 className="font-display text-2xl font-medium tracking-tight text-ink">Tâches</h1>
-        <Link
-          href="/admin/taches/nouveau"
-          className="inline-flex items-center gap-2 rounded-full bg-accent px-4 py-2 text-sm font-medium text-accent-ink transition-transform active:scale-[0.98]"
-        >
-          <Plus size={16} weight="bold" />
-          Nouvelle tâche
-        </Link>
-      </div>
-
-      {/* Au-dessus des 4 vues (liste/kanban/calendrier/archivées) : un
-          pense-bête reste utile quelle que soit la vue affichée. */}
-      <Scratchpad initialItems={scratchpadItems} />
-
-      {/* Le sélecteur de vue (liste/kanban/calendrier...) reste dehors : ce
-          n'est pas un filtre mais un changement d'affichage, et le replier
-          reviendrait à cacher la navigation principale de la page. */}
-      <div className="mt-6 flex flex-wrap items-center justify-between gap-4">
+    <>
+      {/* Barre d'outils unifiée (refonte macOS, 2026-10-14) : le sélecteur de
+          vue, les filtres et la création tiennent sur la ligne du titre. */}
+      <PageToolbar title="Tâches" subtitle={toolbarSubtitle}>
         <TaskViewTabs current={view} clientId={clientId} status={status} pinnedOnly={pinnedOnly} />
-        <FilterMenu activeCount={activeFilterCount}>
+        <FilterMenu compact activeCount={activeFilterCount}>
           <div className="grid gap-4">
             <TaskSortControl
               basePath="/admin/taches"
@@ -331,75 +322,88 @@ export default async function AdminTasksPage({
             </form>
           </div>
         </FilterMenu>
-      </div>
+        <Link
+          href="/admin/taches/nouveau"
+          className="inline-flex items-center gap-2 rounded-full bg-accent px-4 py-2 text-sm font-medium text-accent-ink transition-transform active:scale-[0.98]"
+        >
+          <Plus size={16} weight="bold" />
+          Nouvelle tâche
+        </Link>
+      </PageToolbar>
 
-      {view === "kanban" && <TaskKanbanBoard tasks={tasks} statuses={statusOptions} />}
+      <div className={PAGE_BODY}>
+        {/* Au-dessus des 4 vues (liste/kanban/calendrier/archivées) : un
+            pense-bête reste utile quelle que soit la vue affichée. */}
+        <Scratchpad initialItems={scratchpadItems} />
 
-      {view === "calendrier" && (
-        <TaskCalendarView
-          tasks={tasks}
-          year={calendarYear}
-          month={calendarMonth}
-          clientId={clientId}
-          status={status}
-        />
-      )}
+        {view === "kanban" && <TaskKanbanBoard tasks={tasks} statuses={statusOptions} />}
 
-      {view === "archivees" && <ArchivedTaskList tasks={tasks} />}
+        {view === "calendrier" && (
+          <TaskCalendarView
+            tasks={tasks}
+            year={calendarYear}
+            month={calendarMonth}
+            clientId={clientId}
+            status={status}
+          />
+        )}
 
-      {view === "liste" &&
-        (() => {
-          const activeTasks = paginateDoneOnly
-            ? tasks
-            : tasks.filter((task) => task.status.slug !== TASK_STATUS.TERMINE);
-          const doneTasks = paginateDoneOnly
-            ? doneTasksPaginated
-            : tasks.filter((task) => task.status.slug === TASK_STATUS.TERMINE);
-          const doneCount = paginateDoneOnly ? pageCount : doneTasks.length;
-          const pagination = (
-            <Pagination
-              basePath="/admin/taches"
-              currentPage={currentPage}
-              totalPages={totalPages}
-              searchParams={{ clientId, status, mois, tri, dir, q, type, format, epingle }}
-            />
-          );
-          return (
-            <>
-              <TaskTable
-                tasks={activeTasks}
-                statusOptions={statusOptions}
-                sortField={sortField}
-                sortDir={sortDir}
-                clientId={clientId}
-                status={status}
-                emptyMessage="Aucune tâche en cours."
+        {view === "archivees" && <ArchivedTaskList tasks={tasks} />}
+
+        {view === "liste" &&
+          (() => {
+            const activeTasks = paginateDoneOnly
+              ? tasks
+              : tasks.filter((task) => task.status.slug !== TASK_STATUS.TERMINE);
+            const doneTasks = paginateDoneOnly
+              ? doneTasksPaginated
+              : tasks.filter((task) => task.status.slug === TASK_STATUS.TERMINE);
+            const doneCount = paginateDoneOnly ? pageCount : doneTasks.length;
+            const pagination = (
+              <Pagination
+                basePath="/admin/taches"
+                currentPage={currentPage}
+                totalPages={totalPages}
+                searchParams={{ clientId, status, mois, tri, dir, q, type, format, epingle }}
               />
-              {/* Repliées par défaut (demande du client le 2026-07-30) : les
-                  tâches terminées n'appellent plus d'action et poussaient le
-                  reste de la liste hors de l'écran. Paginées (voir
-                  paginateDoneOnly ci-dessus) sans filtre de statut explicite,
-                  pour garder les tâches actives entièrement visibles tout en
-                  limitant la requête sur l'historique des terminées. */}
-              {doneCount > 0 && (
-                <div className="mt-10">
-                  <CollapsibleSection title="Terminées" count={doneCount}>
-                    <TaskTable
-                      tasks={doneTasks}
-                      statusOptions={statusOptions}
-                      sortField={sortField}
-                      sortDir={sortDir}
-                      clientId={clientId}
-                      status={status}
-                    />
-                    {paginateDoneOnly && pagination}
-                  </CollapsibleSection>
-                </div>
-              )}
-              {!paginateDoneOnly && pagination}
-            </>
-          );
-        })()}
-    </div>
+            );
+            return (
+              <>
+                <TaskTable
+                  tasks={activeTasks}
+                  statusOptions={statusOptions}
+                  sortField={sortField}
+                  sortDir={sortDir}
+                  clientId={clientId}
+                  status={status}
+                  emptyMessage="Aucune tâche en cours."
+                />
+                {/* Repliées par défaut (demande du client le 2026-07-30) : les
+                    tâches terminées n'appellent plus d'action et poussaient le
+                    reste de la liste hors de l'écran. Paginées (voir
+                    paginateDoneOnly ci-dessus) sans filtre de statut explicite,
+                    pour garder les tâches actives entièrement visibles tout en
+                    limitant la requête sur l'historique des terminées. */}
+                {doneCount > 0 && (
+                  <div className="mt-10">
+                    <CollapsibleSection title="Terminées" count={doneCount}>
+                      <TaskTable
+                        tasks={doneTasks}
+                        statusOptions={statusOptions}
+                        sortField={sortField}
+                        sortDir={sortDir}
+                        clientId={clientId}
+                        status={status}
+                      />
+                      {paginateDoneOnly && pagination}
+                    </CollapsibleSection>
+                  </div>
+                )}
+                {!paginateDoneOnly && pagination}
+              </>
+            );
+          })()}
+      </div>
+    </>
   );
 }

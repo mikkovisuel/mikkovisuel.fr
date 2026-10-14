@@ -23,6 +23,7 @@ import {
   DEFAULT_PAYMENT_REMINDER_SUBJECT,
   DEFAULT_PAYMENT_REMINDER_BODY,
 } from "@/lib/invoice-email-templates";
+import { PageToolbar, PAGE_BODY } from "@/components/admin/page-toolbar";
 
 export const metadata: Metadata = {
   title: "Réglages — Admin Mikko Visuel",
@@ -150,195 +151,196 @@ export default async function AdminSettingsPage({
     // cartes — et les deux colonnes sont composées à la main plutôt qu'en
     // grille automatique, pour maîtriser ce qui tombe où au lieu de le
     // laisser au hasard des hauteurs.
-    <div className="mx-auto max-w-6xl px-4 py-10 sm:px-6 lg:px-8">
-      <h1 className="font-display text-2xl font-medium tracking-tight text-ink">Réglages</h1>
-      <p className="mt-2 text-sm text-ink-muted">
-        Paramètres appliqués en direct sur l&apos;ensemble des espaces clients.
-      </p>
-
-      {/* Les trois écrans retirés de la barre principale le 2026-07-31 sont
-          rappelés ici, et pas seulement dans le menu de la roue : une fois
-          sortis de la navigation, ils deviendraient sinon difficiles à
-          retrouver pour qui a l'habitude des onglets. */}
-      <div className="mt-6 grid gap-3 sm:grid-cols-3">
-        {SETTINGS_SHORTCUTS.map(({ href, label, hint, icon: Icon }) => (
-          <Link
-            key={href}
-            href={href}
-            className="flex items-start gap-3 rounded-2xl border border-line p-4 transition-colors hover:border-accent"
-          >
-            <Icon size={18} weight="regular" className="mt-0.5 shrink-0 text-ink-muted" />
-            <span className="min-w-0">
-              <span className="block text-sm font-medium text-ink">{label}</span>
-              <span className="block text-xs text-ink-muted">{hint}</span>
-            </span>
-          </Link>
-        ))}
-      </div>
-
-      {gmail === "connected" && (
-        <div className="mt-6 flex items-center gap-2 rounded-xl border border-accent/40 bg-accent/10 px-4 py-3 text-sm text-ink">
-          <CheckCircle size={16} weight="fill" className="text-accent" />
-          Gmail connecté avec succès.
-        </div>
-      )}
-      {gmail === "error" && (
-        <div className="mt-6 flex items-center gap-2 rounded-xl border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-danger">
-          <WarningCircle size={16} weight="fill" />
-          La connexion à Gmail a échoué. Réessaie, ou vérifie les identifiants Google configurés.
-        </div>
-      )}
-      {gmail === "not-configured" && (
-        <div className="mt-6 flex items-center gap-2 rounded-xl border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-danger">
-          <WarningCircle size={16} weight="fill" />
-          Les identifiants Google (GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET/GOOGLE_REDIRECT_URI) ne
-          sont pas encore configurés côté serveur.
-        </div>
-      )}
-
-      <div className="mt-8 grid items-start gap-6 lg:grid-cols-2">
-        <div className="flex flex-col gap-6">
-          <SettingsCard title="Paramètres généraux">
-            <SettingsForm
-              defaultValues={{
-                deliverableRetentionAfterEventDays: settings.deliverableRetentionAfterEventDays,
-                deliverableRetentionNoDateDays: settings.deliverableRetentionNoDateDays,
-                batWatermarkEnabled: settings.batWatermarkEnabled,
-                popupEnabled: settings.popupEnabled,
-                popupMessage: settings.popupMessage ?? "",
-                prospectReminderDefaultDays: settings.prospectReminderDefaultDays,
-                documentSentEmailSubject: settings.documentSentEmailSubject ?? DEFAULT_DOCUMENT_SENT_SUBJECT,
-                documentSentEmailBody: settings.documentSentEmailBody ?? DEFAULT_DOCUMENT_SENT_BODY,
-                paymentReminderEmailSubject:
-                  settings.paymentReminderEmailSubject ?? DEFAULT_PAYMENT_REMINDER_SUBJECT,
-                paymentReminderEmailBody: settings.paymentReminderEmailBody ?? DEFAULT_PAYMENT_REMINDER_BODY,
-                invoiceEmailCc: settings.invoiceEmailCc ?? "",
-              }}
-            />
-          </SettingsCard>
-
-          <SettingsCard title="Boîte mail">
-            <GmailConnectionCard
-              gmailEmail={admin.gmailEmail}
-              gmailConnectedAt={admin.gmailConnectedAt}
-            />
-          </SettingsCard>
-
-          <SettingsCard
-            title="Mode d'emploi client"
-            description="Guide PDF illustré expliquant chaque onglet de l'espace client, dans la charte du site — à télécharger et transmettre à vos clients."
-          >
-            <a
-              href="/api/exports/guide"
-              className="inline-flex items-center rounded-full border border-line px-5 py-2.5 text-sm text-ink transition-colors hover:border-accent"
+    <>
+      <PageToolbar title="Réglages" />
+      <div className={`${PAGE_BODY} mx-auto max-w-6xl`}>
+        <p className="text-sm text-ink-muted">
+          Paramètres appliqués en direct sur l&apos;ensemble des espaces clients.
+        </p>
+        {/* Les trois écrans retirés de la barre principale le 2026-07-31 sont
+            rappelés ici, et pas seulement dans le menu de la roue : une fois
+            sortis de la navigation, ils deviendraient sinon difficiles à
+            retrouver pour qui a l'habitude des onglets. */}
+        <div className="mt-6 grid gap-3 sm:grid-cols-3">
+          {SETTINGS_SHORTCUTS.map(({ href, label, hint, icon: Icon }) => (
+            <Link
+              key={href}
+              href={href}
+              className="flex items-start gap-3 rounded-2xl border border-line p-4 transition-colors hover:border-accent"
             >
-              Télécharger le mode d&apos;emploi (PDF)
-            </a>
-          </SettingsCard>
+              <Icon size={18} weight="regular" className="mt-0.5 shrink-0 text-ink-muted" />
+              <span className="min-w-0">
+                <span className="block text-sm font-medium text-ink">{label}</span>
+                <span className="block text-xs text-ink-muted">{hint}</span>
+              </span>
+            </Link>
+          ))}
         </div>
 
-        <div className="flex flex-col gap-6">
-          <SettingsCard
-            title="Comptes admin"
-            description="Accès complet, identique pour chaque compte — pas de permissions par module. Un admin ne peut pas révoquer son propre accès."
-          >
-            <AdminAccountsPanel admins={admins} currentAdminId={admin.id} />
-          </SettingsCard>
+        {gmail === "connected" && (
+          <div className="mt-6 flex items-center gap-2 rounded-xl border border-accent/40 bg-accent/10 px-4 py-3 text-sm text-ink">
+            <CheckCircle size={16} weight="fill" className="text-accent" />
+            Gmail connecté avec succès.
+          </div>
+        )}
+        {gmail === "error" && (
+          <div className="mt-6 flex items-center gap-2 rounded-xl border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-danger">
+            <WarningCircle size={16} weight="fill" />
+            La connexion à Gmail a échoué. Réessaie, ou vérifie les identifiants Google configurés.
+          </div>
+        )}
+        {gmail === "not-configured" && (
+          <div className="mt-6 flex items-center gap-2 rounded-xl border border-danger/40 bg-danger/10 px-4 py-3 text-sm text-danger">
+            <WarningCircle size={16} weight="fill" />
+            Les identifiants Google (GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET/GOOGLE_REDIRECT_URI) ne
+            sont pas encore configurés côté serveur.
+          </div>
+        )}
 
-          <SettingsCard
-            title="Sécurité"
-            icon={<ShieldWarning size={18} weight="regular" />}
-            description="Tentatives de connexion échouées (admin et espace client confondus), 7 derniers jours."
-          >
-            {recentFailedAttempts.length === 0 ? (
-              <p className="text-sm text-ink-muted">Aucune tentative échouée récente.</p>
-            ) : (
-              <>
-                <p className="text-sm text-ink">
-                  <span className="font-medium text-danger">{recentFailedAttempts.length}</span>{" "}
-                  tentative{recentFailedAttempts.length > 1 ? "s" : ""} échouée
-                  {recentFailedAttempts.length > 1 ? "s" : ""}
-                  {adminFailedCount > 0 && (
-                    <>
-                      {" "}
-                      dont{" "}
-                      <span className="font-medium text-danger">
-                        {adminFailedCount} sur le compte admin
-                      </span>
-                    </>
-                  )}
-                  .
-                </p>
-                <div className="mt-3 divide-y divide-line rounded-2xl border border-line">
-                  {recentFailedAttempts.map((attempt) => (
-                    <div
-                      key={attempt.id}
-                      className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 text-sm"
-                    >
-                      <span className="text-ink">{attempt.identifier}</span>
-                      <span className="text-xs text-ink-muted">
-                        {SECURITY_DATE_FORMATTER.format(attempt.createdAt)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-          </SettingsCard>
+        <div className="mt-8 grid items-start gap-6 lg:grid-cols-2">
+          <div className="flex flex-col gap-6">
+            <SettingsCard title="Paramètres généraux">
+              <SettingsForm
+                defaultValues={{
+                  deliverableRetentionAfterEventDays: settings.deliverableRetentionAfterEventDays,
+                  deliverableRetentionNoDateDays: settings.deliverableRetentionNoDateDays,
+                  batWatermarkEnabled: settings.batWatermarkEnabled,
+                  popupEnabled: settings.popupEnabled,
+                  popupMessage: settings.popupMessage ?? "",
+                  prospectReminderDefaultDays: settings.prospectReminderDefaultDays,
+                  documentSentEmailSubject: settings.documentSentEmailSubject ?? DEFAULT_DOCUMENT_SENT_SUBJECT,
+                  documentSentEmailBody: settings.documentSentEmailBody ?? DEFAULT_DOCUMENT_SENT_BODY,
+                  paymentReminderEmailSubject:
+                    settings.paymentReminderEmailSubject ?? DEFAULT_PAYMENT_REMINDER_SUBJECT,
+                  paymentReminderEmailBody: settings.paymentReminderEmailBody ?? DEFAULT_PAYMENT_REMINDER_BODY,
+                  invoiceEmailCc: settings.invoiceEmailCc ?? "",
+                }}
+              />
+            </SettingsCard>
 
-          {/* Repliée par défaut : c'est la seule section dont la hauteur
-              croît avec le nombre de clients, et c'est elle qui enterrait
-              les comptes admin et la sécurité dans l'ancienne mise en page. */}
-          <SettingsCard
-            title="Notifications email par profil"
-            description="Vue consolidée des contacts ayant un accès à l'espace client, tous clients confondus. Bascule identique à celle de chaque fiche client — désactivée par défaut pour un nouveau contact, pour éviter de spammer quelqu'un qui n'a pas besoin d'être notifié."
-          >
-            {clients.length === 0 ? (
-              <p className="text-sm text-ink-muted">
-                Aucun accès à l&apos;espace client ouvert pour l&apos;instant.
-              </p>
-            ) : (
-              <CollapsibleSection title="Afficher les profils" count={clients.length}>
-                <div className="flex flex-col gap-6">
-                  {clients.map((client) => (
-                    <div key={client.id}>
-                      <Link
-                        href={`/admin/clients/${client.id}`}
-                        className="text-sm font-medium text-ink transition-colors hover:text-accent"
+            <SettingsCard title="Boîte mail">
+              <GmailConnectionCard
+                gmailEmail={admin.gmailEmail}
+                gmailConnectedAt={admin.gmailConnectedAt}
+              />
+            </SettingsCard>
+
+            <SettingsCard
+              title="Mode d'emploi client"
+              description="Guide PDF illustré expliquant chaque onglet de l'espace client, dans la charte du site — à télécharger et transmettre à vos clients."
+            >
+              <a
+                href="/api/exports/guide"
+                className="inline-flex items-center rounded-full border border-line px-5 py-2.5 text-sm text-ink transition-colors hover:border-accent"
+              >
+                Télécharger le mode d&apos;emploi (PDF)
+              </a>
+            </SettingsCard>
+          </div>
+
+          <div className="flex flex-col gap-6">
+            <SettingsCard
+              title="Comptes admin"
+              description="Accès complet, identique pour chaque compte — pas de permissions par module. Un admin ne peut pas révoquer son propre accès."
+            >
+              <AdminAccountsPanel admins={admins} currentAdminId={admin.id} />
+            </SettingsCard>
+
+            <SettingsCard
+              title="Sécurité"
+              icon={<ShieldWarning size={18} weight="regular" />}
+              description="Tentatives de connexion échouées (admin et espace client confondus), 7 derniers jours."
+            >
+              {recentFailedAttempts.length === 0 ? (
+                <p className="text-sm text-ink-muted">Aucune tentative échouée récente.</p>
+              ) : (
+                <>
+                  <p className="text-sm text-ink">
+                    <span className="font-medium text-danger">{recentFailedAttempts.length}</span>{" "}
+                    tentative{recentFailedAttempts.length > 1 ? "s" : ""} échouée
+                    {recentFailedAttempts.length > 1 ? "s" : ""}
+                    {adminFailedCount > 0 && (
+                      <>
+                        {" "}
+                        dont{" "}
+                        <span className="font-medium text-danger">
+                          {adminFailedCount} sur le compte admin
+                        </span>
+                      </>
+                    )}
+                    .
+                  </p>
+                  <div className="mt-3 divide-y divide-line rounded-2xl border border-line">
+                    {recentFailedAttempts.map((attempt) => (
+                      <div
+                        key={attempt.id}
+                        className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 text-sm"
                       >
-                        {client.name}
-                      </Link>
-                      <div className="mt-2 divide-y divide-line rounded-2xl border border-line">
-                        {client.contacts.map((link) => (
-                          <div
-                            key={link.id}
-                            className="flex flex-wrap items-center justify-between gap-4 px-4 py-3"
-                          >
-                            <div className="min-w-0">
-                              <p className="text-sm text-ink">
-                                {link.contact.name}
-                                {link.contact.role && (
-                                  <span className="text-ink-muted"> · {link.contact.role}</span>
-                                )}
-                              </p>
-                              <p className="text-xs text-ink-muted">{link.contact.email}</p>
-                            </div>
-                            <ClientUserEmailToggle
-                              clientUserId={link.id}
-                              clientId={client.id}
-                              enabled={link.emailNotificationsEnabled}
-                            />
-                          </div>
-                        ))}
+                        <span className="text-ink">{attempt.identifier}</span>
+                        <span className="text-xs text-ink-muted">
+                          {SECURITY_DATE_FORMATTER.format(attempt.createdAt)}
+                        </span>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              </CollapsibleSection>
-            )}
-          </SettingsCard>
+                    ))}
+                  </div>
+                </>
+              )}
+            </SettingsCard>
+
+            {/* Repliée par défaut : c'est la seule section dont la hauteur
+                croît avec le nombre de clients, et c'est elle qui enterrait
+                les comptes admin et la sécurité dans l'ancienne mise en page. */}
+            <SettingsCard
+              title="Notifications email par profil"
+              description="Vue consolidée des contacts ayant un accès à l'espace client, tous clients confondus. Bascule identique à celle de chaque fiche client — désactivée par défaut pour un nouveau contact, pour éviter de spammer quelqu'un qui n'a pas besoin d'être notifié."
+            >
+              {clients.length === 0 ? (
+                <p className="text-sm text-ink-muted">
+                  Aucun accès à l&apos;espace client ouvert pour l&apos;instant.
+                </p>
+              ) : (
+                <CollapsibleSection title="Afficher les profils" count={clients.length}>
+                  <div className="flex flex-col gap-6">
+                    {clients.map((client) => (
+                      <div key={client.id}>
+                        <Link
+                          href={`/admin/clients/${client.id}`}
+                          className="text-sm font-medium text-ink transition-colors hover:text-accent"
+                        >
+                          {client.name}
+                        </Link>
+                        <div className="mt-2 divide-y divide-line rounded-2xl border border-line">
+                          {client.contacts.map((link) => (
+                            <div
+                              key={link.id}
+                              className="flex flex-wrap items-center justify-between gap-4 px-4 py-3"
+                            >
+                              <div className="min-w-0">
+                                <p className="text-sm text-ink">
+                                  {link.contact.name}
+                                  {link.contact.role && (
+                                    <span className="text-ink-muted"> · {link.contact.role}</span>
+                                  )}
+                                </p>
+                                <p className="text-xs text-ink-muted">{link.contact.email}</p>
+                              </div>
+                              <ClientUserEmailToggle
+                                clientUserId={link.id}
+                                clientId={client.id}
+                                enabled={link.emailNotificationsEnabled}
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </CollapsibleSection>
+              )}
+            </SettingsCard>
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

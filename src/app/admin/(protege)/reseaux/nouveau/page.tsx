@@ -1,6 +1,4 @@
 import type { Metadata } from "next";
-import Link from "next/link";
-import { ArrowLeft } from "@phosphor-icons/react/dist/ssr";
 import { verifyAdminSession } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { ACTIVE_CLIENTS } from "@/lib/clients";
@@ -8,6 +6,7 @@ import { SocialPostForm } from "@/components/admin/social-post-form";
 import { createSocialPost } from "@/lib/actions/social-posts";
 import { loadSocialFormLists, loadSocialLibraries } from "@/lib/social-library";
 import { SOCIAL_FORMATS, SOCIAL_NETWORKS, parseParisDateTimeLocal } from "@/lib/social-posts";
+import { PageToolbar, PAGE_BODY } from "@/components/admin/page-toolbar";
 
 export const metadata: Metadata = {
   title: "Nouvelle publication — Admin Mikko Visuel",
@@ -36,37 +35,32 @@ export default async function NewSocialPostPage({
   const { categories, taskTypes } = await loadSocialFormLists();
 
   return (
-    <div className="px-4 py-10 sm:px-6 lg:px-8 2xl:px-12">
-      <Link
-        href="/admin/reseaux"
-        className="inline-flex items-center gap-2 text-sm text-ink-muted transition-colors hover:text-ink"
-      >
-        <ArrowLeft size={16} weight="regular" />
-        Retour aux réseaux sociaux
-      </Link>
-      <h1 className="mt-4 font-display text-2xl font-medium tracking-tight text-ink">Nouvelle publication</h1>
-      <p className="mt-2 text-sm text-ink-muted">
-        Les visuels s&apos;ajoutent juste après, sur la fiche de la publication.
-      </p>
-      <div className="mt-8 max-w-5xl">
-        <SocialPostForm
-          action={createSocialPost}
-          clients={clients}
-          defaultValues={{
-            clientId: clients.some((client) => client.id === clientId) ? clientId : undefined,
-            title: (titre ?? "").slice(0, 160),
-            networks: prefilledNetworks.length > 0 ? prefilledNetworks : ["instagram"],
-            format: SOCIAL_FORMATS.some((item) => item.slug === format) ? format! : "post",
-            caption: "",
-            hashtags: "",
-            scheduledAt: parseParisDateTimeLocal(date) ? date! : "",
-          }}
-          libraries={libraries}
-          categories={categories}
-          taskTypes={taskTypes}
-          submitLabel="Créer la publication"
-        />
+    <>
+      <PageToolbar title="Nouvelle publication" back={{ href: "/admin/reseaux", label: "Retour aux réseaux sociaux" }} />
+      <div className={PAGE_BODY}>
+        <p className="text-sm text-ink-muted">
+          Les visuels s&apos;ajoutent juste après, sur la fiche de la publication.
+        </p>
+        <div className="mt-8 max-w-5xl">
+          <SocialPostForm
+            action={createSocialPost}
+            clients={clients}
+            defaultValues={{
+              clientId: clients.some((client) => client.id === clientId) ? clientId : undefined,
+              title: (titre ?? "").slice(0, 160),
+              networks: prefilledNetworks.length > 0 ? prefilledNetworks : ["instagram"],
+              format: SOCIAL_FORMATS.some((item) => item.slug === format) ? format! : "post",
+              caption: "",
+              hashtags: "",
+              scheduledAt: parseParisDateTimeLocal(date) ? date! : "",
+            }}
+            libraries={libraries}
+            categories={categories}
+            taskTypes={taskTypes}
+            submitLabel="Créer la publication"
+          />
+        </div>
       </div>
-    </div>
+    </>
   );
 }

@@ -27,6 +27,7 @@ import { routineOccurrencesInMonth } from "@/lib/social-routines";
 import { SocialActionsBoard } from "@/components/admin/social-actions-board";
 import { NewSocialActionButton } from "@/components/admin/social-action-buttons";
 import { moveSocialPostToDay } from "@/lib/actions/social-posts";
+import { PageToolbar, PAGE_BODY } from "@/components/admin/page-toolbar";
 
 export const metadata: Metadata = {
   title: "Réseaux sociaux — Admin Mikko Visuel",
@@ -398,236 +399,233 @@ export default async function SocialPostsPage({
     : null;
 
   return (
-    <div className="px-4 py-10 sm:px-6 lg:px-8 2xl:px-12">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="font-display text-2xl font-medium tracking-tight text-ink">Réseaux sociaux</h1>
-          <p className="mt-1 text-sm text-ink-muted">
-            Calendrier éditorial de vos clients : préparation, validation, publication.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
+    <>
+      <PageToolbar title="Réseaux sociaux">
+        <Link
+          href="/admin/reseaux/routines"
+          className="rounded-full border border-line px-5 py-2.5 text-sm text-ink transition-colors hover:border-accent"
+        >
+          Programmation
+        </Link>
+        <Link
+          href="/admin/reseaux/plans"
+          className="rounded-full border border-line px-5 py-2.5 text-sm text-ink transition-colors hover:border-accent"
+        >
+          Plans
+        </Link>
+        {clientId && (
           <Link
-            href="/admin/reseaux/routines"
+            href={`/admin/reseaux/clients/${clientId}`}
             className="rounded-full border border-line px-5 py-2.5 text-sm text-ink transition-colors hover:border-accent"
           >
-            Programmation
+            Réglages du client
           </Link>
-          <Link
-            href="/admin/reseaux/plans"
-            className="rounded-full border border-line px-5 py-2.5 text-sm text-ink transition-colors hover:border-accent"
-          >
-            Plans
-          </Link>
-          {clientId && (
-            <Link
-              href={`/admin/reseaux/clients/${clientId}`}
-              className="rounded-full border border-line px-5 py-2.5 text-sm text-ink transition-colors hover:border-accent"
-            >
-              Réglages du client
-            </Link>
-          )}
-          <NewSocialActionButton
-            clients={clients}
-            defaultDueAt={`${toParisDateTimeLocal(now).slice(0, 10)}T09:00`}
-          />
-          <Link
-            href={clientId ? `/admin/reseaux/nouveau?clientId=${clientId}` : "/admin/reseaux/nouveau"}
-            className="rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-accent-ink transition-transform active:scale-[0.98]"
-          >
-            Nouvelle publication
-          </Link>
-        </div>
-      </div>
-
-      <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
-        <FilterMenu activeCount={activeFilterCount} label="Filtres">
-          <form className="grid gap-3">
-            {view !== "liste" && <input type="hidden" name="vue" value={view} />}
-            <label className="flex flex-col gap-2 text-sm font-medium text-ink">
-              Client
-              <select name="clientId" defaultValue={clientId ?? ""} className={SELECT}>
-                <option value="">Tous les clients</option>
-                {clients.map((client) => (
-                  <option key={client.id} value={client.id}>
-                    {client.name}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="flex flex-col gap-2 text-sm font-medium text-ink">
-              Réseau
-              <select name="reseau" defaultValue={network ?? ""} className={SELECT}>
-                <option value="">Tous les réseaux</option>
-                {SOCIAL_NETWORKS.map((item) => (
-                  <option key={item.slug} value={item.slug}>
-                    {item.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="flex flex-col gap-2 text-sm font-medium text-ink">
-              Statut
-              <select name="statut" defaultValue={status ?? ""} className={SELECT}>
-                <option value="">Tous les statuts</option>
-                {SOCIAL_POST_STATUS_ORDER.map((slug) => (
-                  <option key={slug} value={slug}>
-                    {SOCIAL_POST_STATUS_META[slug].label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label className="flex flex-col gap-2 text-sm font-medium text-ink">
-              Catégorie
-              <select name="categorie" defaultValue={category?.slug ?? ""} className={SELECT}>
-                <option value="">Toutes les catégories</option>
-                {categories.map((item) => (
-                  <option key={item.slug} value={item.slug}>
-                    {item.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <div className="flex items-center gap-3 pt-1">
-              <button
-                type="submit"
-                className="rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-accent-ink transition-transform active:scale-[0.98]"
-              >
-                Appliquer
-              </button>
-              {activeFilterCount > 0 && (
-                <Link
-                  href={view === "liste" ? "/admin/reseaux" : `/admin/reseaux?vue=${view}`}
-                  className="text-sm text-ink-muted transition-colors hover:text-ink"
-                >
-                  Réinitialiser
-                </Link>
-              )}
-            </div>
-          </form>
-        </FilterMenu>
-
-        <nav className="flex flex-wrap gap-2">
-          {(["liste", "calendrier", "grille", "afaire"] as const).map((option) => {
-            const params = new URLSearchParams(filterParams);
-            if (option !== "liste") params.set("vue", option);
-            const query = params.toString();
-            return (
-              <Link
-                key={option}
-                href={query ? `/admin/reseaux?${query}` : "/admin/reseaux"}
-                className={`whitespace-nowrap rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
-                  option === view
-                    ? "border-accent bg-accent text-accent-ink"
-                    : "border-line text-ink-muted hover:text-ink"
-                }`}
-              >
-                {option === "liste"
-                  ? "Liste"
-                  : option === "calendrier"
-                    ? "Calendrier"
-                    : option === "grille"
-                      ? "Grille Instagram"
-                      : `À faire${pendingActionCount > 0 ? ` (${pendingActionCount})` : ""}`}
-              </Link>
-            );
-          })}
-        </nav>
-      </div>
-
-      {monthBalance && (
-        <p className="mt-4 text-sm text-ink-muted">
-          <span className="capitalize">{monthLabel}</span> : {monthBalance.total} publication
-          {monthBalance.total > 1 ? "s" : ""}
-          {monthBalance.counts.map((item) => (
-            <span key={item.label} className={item.count === 0 ? "text-ink-muted/60" : "text-ink"}>
-              {" · "}
-              {item.label} {item.count}
-            </span>
-          ))}
-          {monthBalance.uncategorized > 0 && <span> · Sans catégorie {monthBalance.uncategorized}</span>}
-        </p>
-      )}
-
-      {view === "afaire" ? (
-        <SocialActionsBoard actions={actions} clients={clients} now={now} />
-      ) : view === "grille" ? (
-        <InstagramGrid posts={posts} clientChosen={Boolean(clientId)} />
-      ) : view === "calendrier" ? (
-        <TaskCalendarView
-          tasks={[
-            ...posts.map((post) => {
-            const meta = isSocialPostStatus(post.status) ? SOCIAL_POST_STATUS_META[post.status] : null;
-            return {
-              id: post.id,
-              title: `${post.client.name} · ${post.title}`,
-              // Le calendrier regroupe par jour avec les accesseurs locaux
-              // du serveur (UTC en production) : on lui passe l'heure de
-              // Paris, sinon une publication à 00 h 30 tomberait la veille.
-              eventDate: post.scheduledAt ? toParisWallClockDate(post.scheduledAt) : null,
-              status: { color: meta?.color ?? "slate", label: meta?.label ?? post.status },
-              details: [
-                ...(post.category ? [post.category.label] : []),
-                ...(requestedTaskStatus(post) ? [`Création : ${requestedTaskStatus(post)!.label}`] : []),
-              ],
-            };
-          }),
-            ...ghostEntries,
-            ...actionEntries,
-          ]}
-          onMove={moveSocialPostToDay}
-          year={calendarYear}
-          month={calendarMonth}
-          basePath="/admin/reseaux"
-          taskBasePath="/admin/reseaux"
-          extraParams={{ ...filterParams, vue: "calendrier" }}
-          undatedLabel="Sans date de publication"
+        )}
+        <NewSocialActionButton
+          clients={clients}
+          defaultDueAt={`${toParisDateTimeLocal(now).slice(0, 10)}T09:00`}
         />
-      ) : posts.length === 0 ? (
-        <div className="mt-8 rounded-2xl border border-dashed border-line p-10 text-center">
-          <p className="text-sm text-ink-muted">
-            {activeFilterCount > 0
-              ? "Aucune publication ne correspond à ces filtres."
-              : "Aucune publication pour l'instant. Commencez par en créer une pour un client."}
+        <Link
+          href={clientId ? `/admin/reseaux/nouveau?clientId=${clientId}` : "/admin/reseaux/nouveau"}
+          className="rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-accent-ink transition-transform active:scale-[0.98]"
+        >
+          Nouvelle publication
+        </Link>
+      </PageToolbar>
+      <div className={PAGE_BODY}>
+        <p className="text-sm text-ink-muted">
+          Calendrier éditorial de vos clients : préparation, validation, publication.
+        </p>
+        <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+          <FilterMenu activeCount={activeFilterCount} label="Filtres">
+            <form className="grid gap-3">
+              {view !== "liste" && <input type="hidden" name="vue" value={view} />}
+              <label className="flex flex-col gap-2 text-sm font-medium text-ink">
+                Client
+                <select name="clientId" defaultValue={clientId ?? ""} className={SELECT}>
+                  <option value="">Tous les clients</option>
+                  {clients.map((client) => (
+                    <option key={client.id} value={client.id}>
+                      {client.name}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex flex-col gap-2 text-sm font-medium text-ink">
+                Réseau
+                <select name="reseau" defaultValue={network ?? ""} className={SELECT}>
+                  <option value="">Tous les réseaux</option>
+                  {SOCIAL_NETWORKS.map((item) => (
+                    <option key={item.slug} value={item.slug}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex flex-col gap-2 text-sm font-medium text-ink">
+                Statut
+                <select name="statut" defaultValue={status ?? ""} className={SELECT}>
+                  <option value="">Tous les statuts</option>
+                  {SOCIAL_POST_STATUS_ORDER.map((slug) => (
+                    <option key={slug} value={slug}>
+                      {SOCIAL_POST_STATUS_META[slug].label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="flex flex-col gap-2 text-sm font-medium text-ink">
+                Catégorie
+                <select name="categorie" defaultValue={category?.slug ?? ""} className={SELECT}>
+                  <option value="">Toutes les catégories</option>
+                  {categories.map((item) => (
+                    <option key={item.slug} value={item.slug}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <div className="flex items-center gap-3 pt-1">
+                <button
+                  type="submit"
+                  className="rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-accent-ink transition-transform active:scale-[0.98]"
+                >
+                  Appliquer
+                </button>
+                {activeFilterCount > 0 && (
+                  <Link
+                    href={view === "liste" ? "/admin/reseaux" : `/admin/reseaux?vue=${view}`}
+                    className="text-sm text-ink-muted transition-colors hover:text-ink"
+                  >
+                    Réinitialiser
+                  </Link>
+                )}
+              </div>
+            </form>
+          </FilterMenu>
+
+          <nav className="segmented flex flex-wrap gap-2">
+            {(["liste", "calendrier", "grille", "afaire"] as const).map((option) => {
+              const params = new URLSearchParams(filterParams);
+              if (option !== "liste") params.set("vue", option);
+              const query = params.toString();
+              return (
+                <Link
+                  key={option}
+                  href={query ? `/admin/reseaux?${query}` : "/admin/reseaux"}
+                  aria-current={option === view ? "page" : undefined}
+                  className={`whitespace-nowrap rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
+                    option === view
+                      ? "border-accent bg-accent text-accent-ink"
+                      : "border-line text-ink-muted hover:text-ink"
+                  }`}
+                >
+                  {option === "liste"
+                    ? "Liste"
+                    : option === "calendrier"
+                      ? "Calendrier"
+                      : option === "grille"
+                        ? "Grille Instagram"
+                        : `À faire${pendingActionCount > 0 ? ` (${pendingActionCount})` : ""}`}
+                </Link>
+              );
+            })}
+          </nav>
+        </div>
+
+        {monthBalance && (
+          <p className="mt-4 text-sm text-ink-muted">
+            <span className="capitalize">{monthLabel}</span> : {monthBalance.total} publication
+            {monthBalance.total > 1 ? "s" : ""}
+            {monthBalance.counts.map((item) => (
+              <span key={item.label} className={item.count === 0 ? "text-ink-muted/60" : "text-ink"}>
+                {" · "}
+                {item.label} {item.count}
+              </span>
+            ))}
+            {monthBalance.uncategorized > 0 && <span> · Sans catégorie {monthBalance.uncategorized}</span>}
           </p>
-        </div>
-      ) : (
-        <div className="mt-8 grid gap-8">
-          {toPublishNow.length > 0 && (
-            <section>
-              <h2 className="text-sm font-medium text-ink">À publier maintenant ({toPublishNow.length})</h2>
-              <p className="mt-1 text-xs text-ink-muted">Validées par le client, et leur heure est arrivée.</p>
-              <div className="mt-3">
-                <PostList posts={toPublishNow} now={now} />
-              </div>
-            </section>
-          )}
-          {upcoming.length > 0 && (
-            <section>
-              <h2 className="text-sm font-medium text-ink">En préparation et à venir ({upcoming.length})</h2>
-              <div className="mt-3">
-                <PostList posts={upcoming} now={now} />
-              </div>
-            </section>
-          )}
-          {published.length > 0 && (
-            <section>
-              <h2 className="text-sm font-medium text-ink">
-                Publiées {published.length === PUBLISHED_LIMIT ? `(${PUBLISHED_LIMIT} plus récentes)` : `(${published.length})`}
-              </h2>
-              {published.some((post) => !post.publishedUrl) && (
-                <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
-                  {published.filter((post) => !post.publishedUrl).length} sans lien du post : ouvrez-les pour l&apos;ajouter
-                  (le client et le rapport mensuel en ont besoin).
-                </p>
-              )}
-              <div className="mt-3">
-                <PostList posts={published} now={now} />
-              </div>
-            </section>
-          )}
-        </div>
-      )}
-    </div>
+        )}
+
+        {view === "afaire" ? (
+          <SocialActionsBoard actions={actions} clients={clients} now={now} />
+        ) : view === "grille" ? (
+          <InstagramGrid posts={posts} clientChosen={Boolean(clientId)} />
+        ) : view === "calendrier" ? (
+          <TaskCalendarView
+            tasks={[
+              ...posts.map((post) => {
+              const meta = isSocialPostStatus(post.status) ? SOCIAL_POST_STATUS_META[post.status] : null;
+              return {
+                id: post.id,
+                title: `${post.client.name} · ${post.title}`,
+                // Le calendrier regroupe par jour avec les accesseurs locaux
+                // du serveur (UTC en production) : on lui passe l'heure de
+                // Paris, sinon une publication à 00 h 30 tomberait la veille.
+                eventDate: post.scheduledAt ? toParisWallClockDate(post.scheduledAt) : null,
+                status: { color: meta?.color ?? "slate", label: meta?.label ?? post.status },
+                details: [
+                  ...(post.category ? [post.category.label] : []),
+                  ...(requestedTaskStatus(post) ? [`Création : ${requestedTaskStatus(post)!.label}`] : []),
+                ],
+              };
+            }),
+              ...ghostEntries,
+              ...actionEntries,
+            ]}
+            onMove={moveSocialPostToDay}
+            year={calendarYear}
+            month={calendarMonth}
+            basePath="/admin/reseaux"
+            taskBasePath="/admin/reseaux"
+            extraParams={{ ...filterParams, vue: "calendrier" }}
+            undatedLabel="Sans date de publication"
+          />
+        ) : posts.length === 0 ? (
+          <div className="mt-8 rounded-2xl border border-dashed border-line p-10 text-center">
+            <p className="text-sm text-ink-muted">
+              {activeFilterCount > 0
+                ? "Aucune publication ne correspond à ces filtres."
+                : "Aucune publication pour l'instant. Commencez par en créer une pour un client."}
+            </p>
+          </div>
+        ) : (
+          <div className="mt-8 grid gap-8">
+            {toPublishNow.length > 0 && (
+              <section>
+                <h2 className="text-sm font-medium text-ink">À publier maintenant ({toPublishNow.length})</h2>
+                <p className="mt-1 text-xs text-ink-muted">Validées par le client, et leur heure est arrivée.</p>
+                <div className="mt-3">
+                  <PostList posts={toPublishNow} now={now} />
+                </div>
+              </section>
+            )}
+            {upcoming.length > 0 && (
+              <section>
+                <h2 className="text-sm font-medium text-ink">En préparation et à venir ({upcoming.length})</h2>
+                <div className="mt-3">
+                  <PostList posts={upcoming} now={now} />
+                </div>
+              </section>
+            )}
+            {published.length > 0 && (
+              <section>
+                <h2 className="text-sm font-medium text-ink">
+                  Publiées {published.length === PUBLISHED_LIMIT ? `(${PUBLISHED_LIMIT} plus récentes)` : `(${published.length})`}
+                </h2>
+                {published.some((post) => !post.publishedUrl) && (
+                  <p className="mt-1 text-xs text-amber-600 dark:text-amber-400">
+                    {published.filter((post) => !post.publishedUrl).length} sans lien du post : ouvrez-les pour l&apos;ajouter
+                    (le client et le rapport mensuel en ont besoin).
+                  </p>
+                )}
+                <div className="mt-3">
+                  <PostList posts={published} now={now} />
+                </div>
+              </section>
+            )}
+          </div>
+        )}
+      </div>
+    </>
   );
 }

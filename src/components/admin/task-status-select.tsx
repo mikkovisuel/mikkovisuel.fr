@@ -28,7 +28,7 @@ export function TaskStatusSelect({
           setTaskStatus(taskId, slug);
         });
       }}
-      className={`rounded-full border px-3 py-1.5 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-accent/30 disabled:opacity-60 ${classes}`}
+      className={`status-pill rounded-full border px-3 py-1.5 text-xs font-medium focus:outline-none focus:ring-2 focus:ring-accent/30 disabled:opacity-60 ${classes}`}
     >
       {statuses.map((status) => (
         <option key={status.slug} value={status.slug} className="bg-surface-elevated text-ink">

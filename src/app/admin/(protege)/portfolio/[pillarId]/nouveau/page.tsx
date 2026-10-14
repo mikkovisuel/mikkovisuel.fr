@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
-import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "@phosphor-icons/react/dist/ssr";
 import { verifyAdminSession } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { GalleryForm } from "@/components/admin/gallery-form";
 import { createGallery } from "@/lib/actions/portfolio";
+import { PageToolbar, PAGE_BODY } from "@/components/admin/page-toolbar";
 
 export const metadata: Metadata = {
   title: "Nouvelle galerie — Admin Mikko Visuel",
@@ -25,20 +24,13 @@ export default async function NewGalleryPage({
   const createGalleryForThisPillar = createGallery.bind(null, pillarId);
 
   return (
-    <div className="px-4 py-10 sm:px-6 lg:px-8 2xl:px-12">
-      <Link
-        href={`/admin/portfolio/${pillarId}`}
-        className="inline-flex items-center gap-2 text-sm text-ink-muted transition-colors hover:text-ink"
-      >
-        <ArrowLeft size={16} weight="regular" />
-        Retour à {pillar.title}
-      </Link>
-      <h1 className="mt-4 font-display text-2xl font-medium tracking-tight text-ink">
-        Nouvelle galerie
-      </h1>
-      <div className="mt-8">
-        <GalleryForm action={createGalleryForThisPillar} submitLabel="Créer la galerie" />
+    <>
+      <PageToolbar title="Nouvelle galerie" back={{ href: `/admin/portfolio/${pillarId}`, label: `Retour à ${pillar.title}` }} />
+      <div className={PAGE_BODY}>
+        <div className="mt-8">
+          <GalleryForm action={createGalleryForThisPillar} submitLabel="Créer la galerie" />
+        </div>
       </div>
-    </div>
+    </>
   );
 }

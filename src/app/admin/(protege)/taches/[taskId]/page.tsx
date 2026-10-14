@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "@phosphor-icons/react/dist/ssr";
 import { verifyAdminSession } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { TaskEditForm } from "@/components/admin/task-edit-form";
@@ -48,6 +47,7 @@ import {
 import { isTaskOverdue, taskDateFormatter, taskDateTimeFormatter } from "@/lib/tasks";
 import { buildDeliverablesMailDraft } from "@/lib/mail-draft";
 import { sumTaskTimeMs } from "@/lib/time-tracking";
+import { PageToolbar, PAGE_BODY } from "@/components/admin/page-toolbar";
 
 export const metadata: Metadata = {
   title: "Tâche — Admin Mikko Visuel",
@@ -129,443 +129,422 @@ export default async function TaskDetailPage({
     // affichage client") — élargir le conteneur seul aurait juste étiré
     // chaque champ sur toute la largeur de l'écran, ce qui aurait rendu le
     // formulaire moins lisible, pas plus.
-    <div className="px-4 py-10 sm:px-6 lg:px-8 2xl:px-12">
-      {/* Le retour pointait vers la fiche client, alors qu'on arrive presque
-          toujours ici depuis la liste des tâches (signalé le 2026-07-30).
-          Le client reste accessible juste à côté : c'était le seul lien vers
-          lui sur cette page, le remplacer purement et simplement l'aurait
-          rendu injoignable. */}
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-sm">
-        <Link
-          href="/admin/taches"
-          className="inline-flex items-center gap-2 text-ink-muted transition-colors hover:text-ink"
-        >
-          <ArrowLeft size={16} weight="regular" />
-          Retour aux tâches
-        </Link>
-        <span aria-hidden="true" className="text-ink-muted/40">
-          ·
-        </span>
-        <Link
-          href={`/admin/clients/${task.clientId}`}
-          className="text-ink-muted transition-colors hover:text-ink"
-        >
-          {task.client.name}
-        </Link>
-      </div>
-
-      {task.internal && (
-        <div className="mt-4 rounded-2xl border border-accent/40 bg-accent/5 p-4 text-sm text-ink">
-          <p className="font-medium">Tâche interne — le client ne la voit pas</p>
-          <p className="mt-1 text-ink-muted">
-            Demandée depuis{" "}
-            {task.socialPosts.length > 0
-              ? task.socialPosts.map((post, index) => (
-                  <span key={post.id}>
-                    {index > 0 && ", "}
-                    la publication{" "}
-                    <Link href={`/admin/reseaux/${post.id}`} className="text-ink underline underline-offset-2 hover:text-accent">
-                      {post.title}
-                    </Link>
-                  </span>
-                ))
-              : "une publication réseaux (supprimée depuis)"}
-            . Aucun email ni fichier n&apos;est envoyé au client ; une fois « Terminé », les fichiers finaux image/MP4
-            s&apos;ajoutent aux visuels de la publication.
-          </p>
-          {/* Contexte pour la personne qui produit (2026-09-25) : quand la
-              publication part, et pour quand il faut donc livrer. */}
-          <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-sm">
-            {task.socialPosts.some((post) => post.scheduledAt) && (
-              <p className="text-ink">
-                <span className="text-ink-muted">Publication prévue : </span>
-                {task.socialPosts
-                  .filter((post) => post.scheduledAt)
-                  .map((post) => formatSchedule(post.scheduledAt))
-                  .join(" · ")}
-              </p>
-            )}
-            {task.dueDate && (
-              <p className={isTaskOverdue(task) ? "font-medium text-danger" : "text-ink"}>
-                <span className="text-ink-muted">À livrer avant le </span>
-                {taskDateFormatter.format(task.dueDate)}
-              </p>
-            )}
-          </div>
-        </div>
-      )}
-
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <TaskPinButton taskId={task.id} pinned={task.pinnedAt !== null} />
-          <h1 className="font-display text-2xl font-medium tracking-tight text-ink">
-            {task.title}
-          </h1>
-        </div>
-
-        <div className="flex items-center gap-4">
-          {task.archivedAt ? (
-            <>
-              <span className="text-sm text-ink-muted">
-                Archivée le {taskDateFormatter.format(task.archivedAt)}
-              </span>
-              <form action={unarchiveTask.bind(null, task.id)}>
-                <button
-                  type="submit"
-                  className="text-sm text-ink-muted transition-colors hover:text-ink"
-                >
-                  Désarchiver
-                </button>
-              </form>
-            </>
-          ) : (
-            <form action={archiveTask.bind(null, task.id)}>
+    <>
+      <PageToolbar
+        title={task.title}
+        back={{ href: "/admin/taches", label: "Retour aux tâches" }}
+        subtitle={
+          // Seul lien vers le client sur cette page (2026-07-30) : il reste
+          // à portée, en sous-titre de la barre d'outils.
+          <Link href={`/admin/clients/${task.clientId}`} className="transition-colors hover:text-ink">
+            {task.client.name}
+          </Link>
+        }
+      >
+        <TaskPinButton taskId={task.id} pinned={task.pinnedAt !== null} />
+        {task.archivedAt ? (
+          <>
+            <span className="text-sm text-ink-muted">
+              Archivée le {taskDateFormatter.format(task.archivedAt)}
+            </span>
+            <form action={unarchiveTask.bind(null, task.id)}>
               <button
                 type="submit"
                 className="text-sm text-ink-muted transition-colors hover:text-ink"
               >
-                Archiver
+                Désarchiver
               </button>
             </form>
-          )}
-          <form action={duplicateTask.bind(null, task.id)}>
+          </>
+        ) : (
+          <form action={archiveTask.bind(null, task.id)}>
             <button
               type="submit"
               className="text-sm text-ink-muted transition-colors hover:text-ink"
             >
-              Dupliquer
+              Archiver
             </button>
           </form>
-          <DeleteButton
-            action={deleteTask.bind(null, task.id)}
-            confirmMessage={`Supprimer définitivement "${task.title}" ? Cette action efface aussi tous ses livrables du stockage et ne peut pas être annulée.`}
-          />
-        </div>
-      </div>
-
-      <div className="mt-6 flex flex-wrap items-center gap-3">
-        <TaskStatusSelect
-          taskId={task.id}
-          currentSlug={task.status.slug}
-          currentColor={task.status.color}
-          statuses={statusList?.items ?? []}
+        )}
+        <form action={duplicateTask.bind(null, task.id)}>
+          <button
+            type="submit"
+            className="text-sm text-ink-muted transition-colors hover:text-ink"
+          >
+            Dupliquer
+          </button>
+        </form>
+        <DeleteButton
+          action={deleteTask.bind(null, task.id)}
+          confirmMessage={`Supprimer définitivement "${task.title}" ? Cette action efface aussi tous ses livrables du stockage et ne peut pas être annulée.`}
         />
-        <TaskValidationButton taskId={task.id} currentSlug={task.status.slug} />
-        <TaskTimerButton
-          taskId={task.id}
-          activeEntry={runningEntry ? { startedAt: runningEntry.startedAt.toISOString() } : null}
-        />
-      </div>
+      </PageToolbar>
+      <div className={PAGE_BODY}>
+        {task.internal && (
+          <div className="mt-4 rounded-2xl border border-accent/40 bg-accent/5 p-4 text-sm text-ink">
+            <p className="font-medium">Tâche interne — le client ne la voit pas</p>
+            <p className="mt-1 text-ink-muted">
+              Demandée depuis{" "}
+              {task.socialPosts.length > 0
+                ? task.socialPosts.map((post, index) => (
+                    <span key={post.id}>
+                      {index > 0 && ", "}
+                      la publication{" "}
+                      <Link href={`/admin/reseaux/${post.id}`} className="text-ink underline underline-offset-2 hover:text-accent">
+                        {post.title}
+                      </Link>
+                    </span>
+                  ))
+                : "une publication réseaux (supprimée depuis)"}
+              . Aucun email ni fichier n&apos;est envoyé au client ; une fois « Terminé », les fichiers finaux image/MP4
+              s&apos;ajoutent aux visuels de la publication.
+            </p>
+            {/* Contexte pour la personne qui produit (2026-09-25) : quand la
+                publication part, et pour quand il faut donc livrer. */}
+            <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-sm">
+              {task.socialPosts.some((post) => post.scheduledAt) && (
+                <p className="text-ink">
+                  <span className="text-ink-muted">Publication prévue : </span>
+                  {task.socialPosts
+                    .filter((post) => post.scheduledAt)
+                    .map((post) => formatSchedule(post.scheduledAt))
+                    .join(" · ")}
+                </p>
+              )}
+              {task.dueDate && (
+                <p className={isTaskOverdue(task) ? "font-medium text-danger" : "text-ink"}>
+                  <span className="text-ink-muted">À livrer avant le </span>
+                  {taskDateFormatter.format(task.dueDate)}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
 
-      {task.status.slug === TASK_STATUS.A_VALIDER && (
-        <div className="mt-4">
-          <TaskValidateRefuseButtons taskId={task.id} />
-        </div>
-      )}
-
-      {/* Verrou "avant de travailler" : n'a plus de sens à afficher une fois
-          la tâche sortie de "Nouveau", le blocage ne concerne que le
-          démarrage — voir la garde dans `setTaskStatus`. */}
-      {task.status.slug === TASK_STATUS.NOUVEAU && (
-        <div className="mt-4">
-          <TaskPaymentLockControl
+        <div className="mt-6 flex flex-wrap items-center gap-3">
+          <TaskStatusSelect
             taskId={task.id}
-            kind="travail"
-            clientRequiresPayment={task.client.requirePaymentBeforeWork}
-            lockOverride={task.workLockOverride}
-            paymentConfirmedAt={task.workPaymentConfirmedAt}
+            currentSlug={task.status.slug}
+            currentColor={task.status.color}
+            statuses={statusList?.items ?? []}
+          />
+          <TaskValidationButton taskId={task.id} currentSlug={task.status.slug} />
+          <TaskTimerButton
+            taskId={task.id}
+            activeEntry={runningEntry ? { startedAt: runningEntry.startedAt.toISOString() } : null}
           />
         </div>
-      )}
 
-      {task.refusalReason && (
-        <p className="mt-3 text-sm text-danger">Motif de refus : {task.refusalReason}</p>
-      )}
+        {task.status.slug === TASK_STATUS.A_VALIDER && (
+          <div className="mt-4">
+            <TaskValidateRefuseButtons taskId={task.id} />
+          </div>
+        )}
 
-      {/* Deux colonnes à partir de `xl` (demande du 2026-07-31) : le
-          contenu principal (édition, livrables, pièces jointes,
-          commentaires) à gauche, le suivi (temps, historiques) dans une
-          colonne latérale plus étroite à droite — plutôt qu'un seul long
-          défilement où le suivi se retrouvait mélangé au contenu de
-          travail. */}
-      <div className="mt-8 grid gap-10 xl:grid-cols-[minmax(0,1fr)_20rem]">
-        <div className="flex flex-col gap-12">
-          <div>
-            <TaskEditForm
-              action={updateThisTask}
+        {/* Verrou "avant de travailler" : n'a plus de sens à afficher une fois
+            la tâche sortie de "Nouveau", le blocage ne concerne que le
+            démarrage — voir la garde dans `setTaskStatus`. */}
+        {task.status.slug === TASK_STATUS.NOUVEAU && (
+          <div className="mt-4">
+            <TaskPaymentLockControl
               taskId={task.id}
-              typeOptions={typeList?.items ?? []}
-              formatOptions={formatList?.items ?? []}
-              defaultValues={{
-                title: task.title,
-                description: task.description ?? "",
-                eventDate: toDateInputValue(task.eventDate),
-                dueDate: toDateInputValue(task.dueDate),
-                estimatedMinutes: task.estimatedMinutes?.toString() ?? "",
-                types: task.types.map((type) => type.slug),
-                formats: task.formats.map((format) => format.slug),
-              }}
+              kind="travail"
+              clientRequiresPayment={task.client.requirePaymentBeforeWork}
+              lockOverride={task.workLockOverride}
+              paymentConfirmedAt={task.workPaymentConfirmedAt}
             />
           </div>
+        )}
 
-          <section>
-            <h2 className="text-sm font-medium text-ink-muted">
-              Checklist ({task.checklistItems.filter((item) => item.done).length}/
-              {task.checklistItems.length})
-            </h2>
-            <div className="mt-4">
-              <TaskChecklist
+        {task.refusalReason && (
+          <p className="mt-3 text-sm text-danger">Motif de refus : {task.refusalReason}</p>
+        )}
+
+        {/* Deux colonnes à partir de `xl` (demande du 2026-07-31) : le
+            contenu principal (édition, livrables, pièces jointes,
+            commentaires) à gauche, le suivi (temps, historiques) dans une
+            colonne latérale plus étroite à droite — plutôt qu'un seul long
+            défilement où le suivi se retrouvait mélangé au contenu de
+            travail. */}
+        <div className="mt-8 grid gap-10 xl:grid-cols-[minmax(0,1fr)_20rem]">
+          <div className="flex flex-col gap-12">
+            <div>
+              <TaskEditForm
+                action={updateThisTask}
                 taskId={task.id}
-                initialItems={task.checklistItems.map((item) => ({
-                  id: item.id,
-                  label: item.label,
-                  done: item.done,
-                }))}
-              />
-            </div>
-          </section>
-
-          {/* BAT et livrables finaux séparés en deux panneaux côte à côte
-              (demande du 2026-07-31) — auparavant une seule liste mélangeait
-              les épreuves en attente de validation et le travail
-              définitivement livré, sans distinction visuelle. Un BAT
-              rejoint automatiquement le panneau "Livrables" (et perd son
-              filigrane côté client) dès que la tâche passe au statut "BAT
-              validé" — voir `promoteBatDeliverablesToFinal`. */}
-          <section>
-            <h2 className="text-sm font-medium text-ink-muted">
-              Livrables ({task.deliverables.length})
-            </h2>
-            <div className="mt-4 grid gap-6 sm:grid-cols-2">
-              <div>
-                <h3 className="text-xs font-medium uppercase tracking-wide text-ink-muted">
-                  BAT à valider ({batDeliverables.length})
-                </h3>
-                <div className="mt-3">
-                  {batDeliverables.length > 0 ? (
-                    <FileGrid
-                      files={batDeliverables}
-                      downloadBasePath="/api/fichiers/livrables"
-                      deleteAction={deleteDeliverable}
-                    />
-                  ) : (
-                    <p className="text-sm text-ink-muted">Aucun BAT en attente.</p>
-                  )}
-                </div>
-              </div>
-              <div>
-                <h3 className="text-xs font-medium uppercase tracking-wide text-ink-muted">
-                  Livrables finaux ({finalDeliverables.length})
-                </h3>
-                <div className="mt-3 mb-3">
-                  <TaskPaymentLockControl
-                    taskId={task.id}
-                    kind="livrables"
-                    clientRequiresPayment={task.client.requirePaymentForDeliverables}
-                    lockOverride={task.deliverablesLockOverride}
-                    paymentConfirmedAt={task.deliverablesPaymentConfirmedAt}
-                  />
-                </div>
-                <div className="mt-3">
-                  {finalDeliverables.length > 0 ? (
-                    <FileGrid
-                      files={finalDeliverables}
-                      downloadBasePath="/api/fichiers/livrables"
-                      deleteAction={deleteDeliverable}
-                    />
-                  ) : (
-                    <p className="text-sm text-ink-muted">Aucun livrable final.</p>
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-4">
-              <SendDeliverablesButton
-                taskId={task.id}
-                sentAt={task.deliverablesSentAt}
-                canSend={Boolean(task.client.billingEmail) && finalDeliverables.length > 0}
-                disabledReason={
-                  !task.client.billingEmail
-                    ? "Ajoutez un email de facturation sur la fiche client pour envoyer les livrables"
-                    : "Aucun livrable final à envoyer"
-                }
-                mailDraftHref={
-                  task.client.billingEmail
-                    ? buildDeliverablesMailDraft({
-                        to: task.client.billingEmail,
-                        taskTitle: task.title,
-                        eventDate: task.eventDate,
-                      })
-                    : null
-                }
+                typeOptions={typeList?.items ?? []}
+                formatOptions={formatList?.items ?? []}
+                defaultValues={{
+                  title: task.title,
+                  description: task.description ?? "",
+                  eventDate: toDateInputValue(task.eventDate),
+                  dueDate: toDateInputValue(task.dueDate),
+                  estimatedMinutes: task.estimatedMinutes?.toString() ?? "",
+                  types: task.types.map((type) => type.slug),
+                  formats: task.formats.map((format) => format.slug),
+                }}
               />
             </div>
 
-            {socialReadyCount > 0 && !task.internal && (
-              <div className="mt-4 flex flex-wrap items-center gap-3">
-                <CreatePostFromTaskButton
-                  action={createSocialPostFromTask.bind(null, task.id)}
-                  mediaCount={socialReadyCount}
-                />
-                {task.socialPosts.length > 0 && (
-                  <span className="text-xs text-ink-muted">
-                    Déjà utilisée pour{" "}
-                    {task.socialPosts.map((post, index) => (
-                      <span key={post.id}>
-                        {index > 0 && ", "}
-                        <Link href={`/admin/reseaux/${post.id}`} className="text-ink underline underline-offset-2 hover:text-accent">
-                          {post.title}
-                        </Link>
-                      </span>
-                    ))}
-                  </span>
-                )}
-              </div>
-            )}
-
-            {task.eventDate && plans.some((plan) => plan._count.steps > 0) && (
-              <details className="mt-4">
-                <summary className="cursor-pointer text-sm font-medium text-ink">
-                  Appliquer un plan de communication
-                </summary>
-                <p className="mt-2 text-xs text-ink-muted">
-                  Crée la séquence (J-30, J-7, J+1…) autour de la date d&apos;évènement de cette tâche. Vous verrez
-                  l&apos;aperçu avant que quoi que ce soit ne soit créé.
-                </p>
-                {task.socialPlanRuns.length > 0 && (
-                  <p className="mt-2 text-xs text-ink-muted">
-                    Déjà appliqué :{" "}
-                    {task.socialPlanRuns.map((run, index) => (
-                      <span key={run.id}>
-                        {index > 0 && ", "}
-                        <Link
-                          href={`/admin/reseaux/plans/suivi/${run.id}`}
-                          className="text-ink underline underline-offset-2 hover:text-accent"
-                        >
-                          {run.planName} — {run.eventName}
-                        </Link>
-                      </span>
-                    ))}
-                  </p>
-                )}
-                <div className="mt-3">
-                  <PlanApplyStartForm
-                    plans={plans
-                      .filter((plan) => plan._count.steps > 0)
-                      .map((plan) => ({ id: plan.id, name: plan.name, steps: plan._count.steps }))}
-                    clients={[{ id: task.clientId, name: task.client.name }]}
-                    defaultClientId={task.clientId}
-                    defaultEventName={task.title}
-                    defaultEventDate={toDateInputValue(task.eventDate)}
-                    sourceTaskId={task.id}
-                  />
-                </div>
-              </details>
-            )}
-
-            <div className="mt-4">
-              <DeliverableUploadForm action={uploadDeliverable.bind(null, task.id)} />
-            </div>
-          </section>
-
-          <section>
-            <h2 className="text-sm font-medium text-ink-muted">
-              Pièces jointes ({task.attachments.length})
-            </h2>
-
-            {task.attachments.length > 0 && (
+            <section>
+              <h2 className="text-sm font-medium text-ink-muted">
+                Checklist ({task.checklistItems.filter((item) => item.done).length}/
+                {task.checklistItems.length})
+              </h2>
               <div className="mt-4">
-                <FileGrid
-                  files={task.attachments}
-                  downloadBasePath="/api/fichiers/pieces-jointes"
-                  deleteAction={deleteAttachment}
+                <TaskChecklist
+                  taskId={task.id}
+                  initialItems={task.checklistItems.map((item) => ({
+                    id: item.id,
+                    label: item.label,
+                    done: item.done,
+                  }))}
                 />
               </div>
+            </section>
+
+            {/* BAT et livrables finaux séparés en deux panneaux côte à côte
+                (demande du 2026-07-31) — auparavant une seule liste mélangeait
+                les épreuves en attente de validation et le travail
+                définitivement livré, sans distinction visuelle. Un BAT
+                rejoint automatiquement le panneau "Livrables" (et perd son
+                filigrane côté client) dès que la tâche passe au statut "BAT
+                validé" — voir `promoteBatDeliverablesToFinal`. */}
+            <section>
+              <h2 className="text-sm font-medium text-ink-muted">
+                Livrables ({task.deliverables.length})
+              </h2>
+              <div className="mt-4 grid gap-6 sm:grid-cols-2">
+                <div>
+                  <h3 className="text-xs font-medium uppercase tracking-wide text-ink-muted">
+                    BAT à valider ({batDeliverables.length})
+                  </h3>
+                  <div className="mt-3">
+                    {batDeliverables.length > 0 ? (
+                      <FileGrid
+                        files={batDeliverables}
+                        downloadBasePath="/api/fichiers/livrables"
+                        deleteAction={deleteDeliverable}
+                      />
+                    ) : (
+                      <p className="text-sm text-ink-muted">Aucun BAT en attente.</p>
+                    )}
+                  </div>
+                </div>
+                <div>
+                  <h3 className="text-xs font-medium uppercase tracking-wide text-ink-muted">
+                    Livrables finaux ({finalDeliverables.length})
+                  </h3>
+                  <div className="mt-3 mb-3">
+                    <TaskPaymentLockControl
+                      taskId={task.id}
+                      kind="livrables"
+                      clientRequiresPayment={task.client.requirePaymentForDeliverables}
+                      lockOverride={task.deliverablesLockOverride}
+                      paymentConfirmedAt={task.deliverablesPaymentConfirmedAt}
+                    />
+                  </div>
+                  <div className="mt-3">
+                    {finalDeliverables.length > 0 ? (
+                      <FileGrid
+                        files={finalDeliverables}
+                        downloadBasePath="/api/fichiers/livrables"
+                        deleteAction={deleteDeliverable}
+                      />
+                    ) : (
+                      <p className="text-sm text-ink-muted">Aucun livrable final.</p>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4">
+                <SendDeliverablesButton
+                  taskId={task.id}
+                  sentAt={task.deliverablesSentAt}
+                  canSend={Boolean(task.client.billingEmail) && finalDeliverables.length > 0}
+                  disabledReason={
+                    !task.client.billingEmail
+                      ? "Ajoutez un email de facturation sur la fiche client pour envoyer les livrables"
+                      : "Aucun livrable final à envoyer"
+                  }
+                  mailDraftHref={
+                    task.client.billingEmail
+                      ? buildDeliverablesMailDraft({
+                          to: task.client.billingEmail,
+                          taskTitle: task.title,
+                          eventDate: task.eventDate,
+                        })
+                      : null
+                  }
+                />
+              </div>
+
+              {socialReadyCount > 0 && !task.internal && (
+                <div className="mt-4 flex flex-wrap items-center gap-3">
+                  <CreatePostFromTaskButton
+                    action={createSocialPostFromTask.bind(null, task.id)}
+                    mediaCount={socialReadyCount}
+                  />
+                  {task.socialPosts.length > 0 && (
+                    <span className="text-xs text-ink-muted">
+                      Déjà utilisée pour{" "}
+                      {task.socialPosts.map((post, index) => (
+                        <span key={post.id}>
+                          {index > 0 && ", "}
+                          <Link href={`/admin/reseaux/${post.id}`} className="text-ink underline underline-offset-2 hover:text-accent">
+                            {post.title}
+                          </Link>
+                        </span>
+                      ))}
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {task.eventDate && plans.some((plan) => plan._count.steps > 0) && (
+                <details className="mt-4">
+                  <summary className="cursor-pointer text-sm font-medium text-ink">
+                    Appliquer un plan de communication
+                  </summary>
+                  <p className="mt-2 text-xs text-ink-muted">
+                    Crée la séquence (J-30, J-7, J+1…) autour de la date d&apos;évènement de cette tâche. Vous verrez
+                    l&apos;aperçu avant que quoi que ce soit ne soit créé.
+                  </p>
+                  {task.socialPlanRuns.length > 0 && (
+                    <p className="mt-2 text-xs text-ink-muted">
+                      Déjà appliqué :{" "}
+                      {task.socialPlanRuns.map((run, index) => (
+                        <span key={run.id}>
+                          {index > 0 && ", "}
+                          <Link
+                            href={`/admin/reseaux/plans/suivi/${run.id}`}
+                            className="text-ink underline underline-offset-2 hover:text-accent"
+                          >
+                            {run.planName} — {run.eventName}
+                          </Link>
+                        </span>
+                      ))}
+                    </p>
+                  )}
+                  <div className="mt-3">
+                    <PlanApplyStartForm
+                      plans={plans
+                        .filter((plan) => plan._count.steps > 0)
+                        .map((plan) => ({ id: plan.id, name: plan.name, steps: plan._count.steps }))}
+                      clients={[{ id: task.clientId, name: task.client.name }]}
+                      defaultClientId={task.clientId}
+                      defaultEventName={task.title}
+                      defaultEventDate={toDateInputValue(task.eventDate)}
+                      sourceTaskId={task.id}
+                    />
+                  </div>
+                </details>
+              )}
+
+              <div className="mt-4">
+                <DeliverableUploadForm action={uploadDeliverable.bind(null, task.id)} />
+              </div>
+            </section>
+
+            <section>
+              <h2 className="text-sm font-medium text-ink-muted">
+                Pièces jointes ({task.attachments.length})
+              </h2>
+
+              {task.attachments.length > 0 && (
+                <div className="mt-4">
+                  <FileGrid
+                    files={task.attachments}
+                    downloadBasePath="/api/fichiers/pieces-jointes"
+                    deleteAction={deleteAttachment}
+                  />
+                </div>
+              )}
+
+              <div className="mt-4">
+                <AttachmentUploadForm action={uploadAttachment.bind(null, task.id)} />
+              </div>
+            </section>
+
+            <section>
+              <h2 className="text-sm font-medium text-ink-muted">
+                Commentaires ({task.comments.length})
+              </h2>
+              <div className="mt-4">
+                <TaskCommentThread
+                  comments={task.comments}
+                  currentAuthorType="ADMIN"
+                  action={postAdminComment.bind(null, task.id)}
+                />
+              </div>
+            </section>
+          </div>
+
+          <div className="flex flex-col gap-10">
+            <section>
+              <h2 className="text-sm font-medium text-ink-muted">Temps passé</h2>
+              <div className="mt-4">
+                <TaskTimeGauge spentMs={spentMs} estimatedMinutes={task.estimatedMinutes} />
+              </div>
+              <div className="mt-4">
+                <TaskTimeEntries taskId={task.id} entries={task.timeEntries} />
+              </div>
+            </section>
+
+            {/* Repliées par défaut (demande du 2026-07-31, "Historique des
+                statuts" nommément — le même traitement est appliqué à
+                "Historique des refus" pour rester cohérent, plutôt que
+                d'alléger l'un et laisser l'autre continuer à pousser le reste
+                de la page vers le bas). */}
+            {task.statusHistory.length > 0 && (
+              <section>
+                <CollapsibleSection title="Historique des statuts" count={task.statusHistory.length}>
+                  <ul className="flex flex-col gap-3">
+                    {task.statusHistory.map((entry) => (
+                      <li
+                        key={entry.id}
+                        className="rounded-2xl border border-line bg-surface-elevated p-3 text-sm"
+                      >
+                        <p className="text-xs text-ink-muted">
+                          {taskDateTimeFormatter.format(entry.changedAt)}
+                        </p>
+                        <p className="mt-1 text-ink">
+                          Statut changé en <span className="font-medium">{entry.statusLabel}</span>{" "}
+                          par {entry.changedByName}{" "}
+                          <span className="text-ink-muted">
+                            ({entry.changedByType === "ADMIN" ? "admin" : "client"})
+                          </span>
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                </CollapsibleSection>
+              </section>
             )}
 
-            <div className="mt-4">
-              <AttachmentUploadForm action={uploadAttachment.bind(null, task.id)} />
-            </div>
-          </section>
-
-          <section>
-            <h2 className="text-sm font-medium text-ink-muted">
-              Commentaires ({task.comments.length})
-            </h2>
-            <div className="mt-4">
-              <TaskCommentThread
-                comments={task.comments}
-                currentAuthorType="ADMIN"
-                action={postAdminComment.bind(null, task.id)}
-              />
-            </div>
-          </section>
-        </div>
-
-        <div className="flex flex-col gap-10">
-          <section>
-            <h2 className="text-sm font-medium text-ink-muted">Temps passé</h2>
-            <div className="mt-4">
-              <TaskTimeGauge spentMs={spentMs} estimatedMinutes={task.estimatedMinutes} />
-            </div>
-            <div className="mt-4">
-              <TaskTimeEntries taskId={task.id} entries={task.timeEntries} />
-            </div>
-          </section>
-
-          {/* Repliées par défaut (demande du 2026-07-31, "Historique des
-              statuts" nommément — le même traitement est appliqué à
-              "Historique des refus" pour rester cohérent, plutôt que
-              d'alléger l'un et laisser l'autre continuer à pousser le reste
-              de la page vers le bas). */}
-          {task.statusHistory.length > 0 && (
-            <section>
-              <CollapsibleSection title="Historique des statuts" count={task.statusHistory.length}>
-                <ul className="flex flex-col gap-3">
-                  {task.statusHistory.map((entry) => (
-                    <li
-                      key={entry.id}
-                      className="rounded-2xl border border-line bg-surface-elevated p-3 text-sm"
-                    >
-                      <p className="text-xs text-ink-muted">
-                        {taskDateTimeFormatter.format(entry.changedAt)}
-                      </p>
-                      <p className="mt-1 text-ink">
-                        Statut changé en <span className="font-medium">{entry.statusLabel}</span>{" "}
-                        par {entry.changedByName}{" "}
-                        <span className="text-ink-muted">
-                          ({entry.changedByType === "ADMIN" ? "admin" : "client"})
-                        </span>
-                      </p>
-                    </li>
-                  ))}
-                </ul>
-              </CollapsibleSection>
-            </section>
-          )}
-
-          {task.refusalHistory.length > 0 && (
-            <section>
-              <CollapsibleSection title="Historique des refus" count={task.refusalHistory.length}>
-                <ul className="flex flex-col gap-3">
-                  {task.refusalHistory.map((entry) => (
-                    <li
-                      key={entry.id}
-                      className="rounded-2xl border border-line bg-surface-elevated p-3 text-sm"
-                    >
-                      <p className="text-xs text-ink-muted">
-                        {taskDateFormatter.format(entry.refusedAt)}
-                      </p>
-                      <p className="mt-1 whitespace-pre-wrap text-ink">{entry.reason}</p>
-                    </li>
-                  ))}
-                </ul>
-              </CollapsibleSection>
-            </section>
-          )}
+            {task.refusalHistory.length > 0 && (
+              <section>
+                <CollapsibleSection title="Historique des refus" count={task.refusalHistory.length}>
+                  <ul className="flex flex-col gap-3">
+                    {task.refusalHistory.map((entry) => (
+                      <li
+                        key={entry.id}
+                        className="rounded-2xl border border-line bg-surface-elevated p-3 text-sm"
+                      >
+                        <p className="text-xs text-ink-muted">
+                          {taskDateFormatter.format(entry.refusedAt)}
+                        </p>
+                        <p className="mt-1 whitespace-pre-wrap text-ink">{entry.reason}</p>
+                      </li>
+                    ))}
+                  </ul>
+                </CollapsibleSection>
+              </section>
+            )}
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

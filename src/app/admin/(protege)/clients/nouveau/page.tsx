@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { ClientForm } from "@/components/admin/client-form";
 import { createClient } from "@/lib/actions/clients";
 import { CLIENT_CATEGORY_LIST_KEY } from "@/lib/dropdown-lists";
+import { PageToolbar, PAGE_BODY } from "@/components/admin/page-toolbar";
 
 export const metadata: Metadata = {
   title: "Nouveau client — Admin Mikko Visuel",
@@ -33,28 +34,28 @@ export default async function NewClientPage({
     categoryList?.items.map((item) => ({ id: item.id, label: item.label })) ?? [];
 
   return (
-    <div className="px-4 py-10 sm:px-6 lg:px-8 2xl:px-12">
-      <h1 className="font-display text-2xl font-medium tracking-tight text-ink">
-        Nouveau client
-      </h1>
-      <div className="mt-8 max-w-5xl">
-        <ClientForm
-          action={createClient}
-          categoryOptions={categoryOptions}
-          defaultValues={{
-            name: prefill.nom ?? "",
-            raisonSociale: null,
-            notes: prefill.notes ?? null,
-            address: null,
-            siret: null,
-            vatNumber: null,
-            billingEmail: prefill.email ?? null,
-            driveUrl: null,
-            categoryId: null,
-          }}
-          submitLabel="Créer le client"
-        />
+    <>
+      <PageToolbar title="Nouveau client" back={{ href: "/admin/clients", label: "Retour aux clients" }} />
+      <div className={PAGE_BODY}>
+        <div className="mt-8 max-w-5xl">
+          <ClientForm
+            action={createClient}
+            categoryOptions={categoryOptions}
+            defaultValues={{
+              name: prefill.nom ?? "",
+              raisonSociale: null,
+              notes: prefill.notes ?? null,
+              address: null,
+              siret: null,
+              vatNumber: null,
+              billingEmail: prefill.email ?? null,
+              driveUrl: null,
+              categoryId: null,
+            }}
+            submitLabel="Créer le client"
+          />
+        </div>
       </div>
-    </div>
+    </>
   );
 }

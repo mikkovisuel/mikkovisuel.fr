@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, EnvelopeSimple } from "@phosphor-icons/react/dist/ssr";
+import { CaretLeft, EnvelopeSimple } from "@phosphor-icons/react/dist/ssr";
 import { verifyAdminSession } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { ClientInfoForm } from "@/components/admin/client-info-form";
@@ -166,30 +166,29 @@ export default async function ClientDetailPage({
   );
 
   return (
-    <div className="px-4 py-10 sm:px-6 lg:px-8 2xl:px-12">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <Link
-          href="/admin/clients"
-          className="inline-flex items-center gap-2 text-sm text-ink-muted transition-colors hover:text-ink"
-        >
-          <ArrowLeft size={16} weight="regular" />
-          Retour aux clients
-        </Link>
-        {/* Lien vers la boîte mail Gmail intégrée, déplacé ici le 2026-07-31
-            (demande explicite de retirer le bouton "Emails" du bandeau
-            collant, à côté d'"Enregistrer") — sans ce lien, la page ne mène
-            plus nulle part vers /emails, qui deviendrait inatteignable
-            autrement que par une URL tapée à la main. */}
-        <Link
-          href={`/admin/clients/${client.id}/emails`}
-          className="inline-flex items-center gap-1.5 text-sm text-ink-muted transition-colors hover:text-ink"
-        >
-          <EnvelopeSimple size={14} weight="regular" />
-          Emails
-        </Link>
-      </div>
-
+    <div className="px-4 pb-10 sm:px-6 lg:px-8 2xl:px-12">
       <ClientInfoForm
+        back={
+          <Link
+            href="/admin/clients"
+            aria-label="Retour aux clients"
+            title="Retour aux clients"
+            className="-ml-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-ink-muted transition-colors hover:bg-ink/5 hover:text-ink"
+          >
+            <CaretLeft size={16} weight="bold" />
+          </Link>
+        }
+        actions={
+          // Lien vers la boîte mail Gmail intégrée (2026-07-31) : sans lui,
+          // /emails ne serait plus atteignable que par une URL tapée à la main.
+          <Link
+            href={`/admin/clients/${client.id}/emails`}
+            className="inline-flex items-center gap-1.5 text-sm text-ink-muted transition-colors hover:text-ink"
+          >
+            <EnvelopeSimple size={14} weight="regular" />
+            Emails
+          </Link>
+        }
         action={updateThisClient}
         clientId={client.id}
         clientName={client.name}

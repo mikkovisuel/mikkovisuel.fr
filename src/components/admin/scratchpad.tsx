@@ -30,7 +30,7 @@ export function Scratchpad({ initialItems }: { initialItems: ScratchpadItemData[
   }
 
   return (
-    <div className="mt-6 rounded-2xl border border-line bg-surface-elevated p-4">
+    <div className="rounded-2xl border border-line bg-surface-elevated p-4">
       <div className="flex items-center gap-2 text-sm font-medium text-ink">
         <ListChecks size={16} />
         Pense-bête
