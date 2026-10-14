@@ -29,7 +29,7 @@ export default async function AuditLogPage({
   const actions = Object.keys(AUDIT_ACTION_LABELS) as AuditAction[];
 
   return (
-    <div className="mx-auto max-w-4xl px-4 py-10 sm:px-6 lg:px-8">
+    <div className="px-4 py-10 sm:px-6 lg:px-8 2xl:px-12">
       <h1 className="font-display text-2xl font-medium tracking-tight text-ink">Audit</h1>
       <p className="mt-2 text-sm text-ink-muted">
         Journal des actions sensibles : connexions, suppressions définitives, réinitialisations de

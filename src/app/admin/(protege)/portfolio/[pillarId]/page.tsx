@@ -40,7 +40,7 @@ export default async function PillarDetailPage({
   const deleteThisPillar = deletePillar.bind(null, pillar.id);
 
   return (
-    <div className="mx-auto max-w-7xl 2xl:max-w-[100rem] px-4 py-10 sm:px-6 lg:px-8">
+    <div className="px-4 py-10 sm:px-6 lg:px-8 2xl:px-12">
       <Link
         href="/admin/portfolio"
         className="inline-flex items-center gap-2 text-sm text-ink-muted transition-colors hover:text-ink"

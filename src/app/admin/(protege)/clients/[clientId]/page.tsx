@@ -166,7 +166,7 @@ export default async function ClientDetailPage({
   );
 
   return (
-    <div className="mx-auto max-w-7xl 2xl:max-w-[100rem] px-4 py-10 sm:px-6 lg:px-8">
+    <div className="px-4 py-10 sm:px-6 lg:px-8 2xl:px-12">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <Link
           href="/admin/clients"

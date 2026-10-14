@@ -129,7 +129,7 @@ export default async function TaskDetailPage({
     // affichage client") — élargir le conteneur seul aurait juste étiré
     // chaque champ sur toute la largeur de l'écran, ce qui aurait rendu le
     // formulaire moins lisible, pas plus.
-    <div className="mx-auto max-w-7xl 2xl:max-w-[100rem] px-4 py-10 sm:px-6 lg:px-8">
+    <div className="px-4 py-10 sm:px-6 lg:px-8 2xl:px-12">
       {/* Le retour pointait vers la fiche client, alors qu'on arrive presque
           toujours ici depuis la liste des tâches (signalé le 2026-07-30).
           Le client reste accessible juste à côté : c'était le seul lien vers

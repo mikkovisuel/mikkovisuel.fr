@@ -357,7 +357,7 @@ export default async function PlanningPage({
   const windowLastSunday = new Date(addWeeks(windowStart, WINDOW_SIZE).getTime() - 86_400_000);
 
   return (
-    <div className="mx-auto max-w-7xl 2xl:max-w-[100rem] px-4 py-10 sm:px-6 lg:px-8" style={STATUS_VARS}>
+    <div className="px-4 py-10 sm:px-6 lg:px-8 2xl:px-12" style={STATUS_VARS}>
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
           <h1 className="font-display text-2xl font-medium tracking-tight text-ink">Planning de charge</h1>

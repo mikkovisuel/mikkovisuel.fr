@@ -7,6 +7,7 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { TimerHeaderWidget } from "@/components/admin/timer-header-widget";
 import { GlobalSearchBar } from "@/components/admin/global-search-bar";
 import { SettingsMenu } from "@/components/admin/settings-menu";
+import { AdminNav } from "@/components/admin/admin-nav";
 import { TASK_STATUS } from "@/lib/dropdown-lists";
 import { ACTIVE_TASKS } from "@/lib/tasks";
 import { SOCIAL_POST_STATUS } from "@/lib/social-posts";
@@ -86,7 +87,7 @@ export default async function AdminProtectedLayout({
   return (
     <div className="flex min-h-full flex-1 flex-col">
       <header className="border-b border-line">
-        <div className="mx-auto flex h-16 max-w-7xl 2xl:max-w-[100rem] items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
+        <div className="flex h-16 items-center justify-between gap-4 px-4 sm:px-6 lg:px-8 2xl:px-12">
           <Link href="/admin" className="flex items-center gap-2">
             <BrandLogo className="h-7" />
             <span className="font-display text-lg font-semibold tracking-tight text-ink">
@@ -112,32 +113,19 @@ export default async function AdminProtectedLayout({
             <LogoutButton />
           </div>
         </div>
-        <nav className="mx-auto flex max-w-7xl 2xl:max-w-[100rem] gap-6 overflow-x-auto px-4 pb-3 sm:px-6 lg:px-8">
-          {navLinks.map((link) => {
-            const badgeCount =
+        <AdminNav
+          links={navLinks.map((link) => ({
+            ...link,
+            badge:
               link.href === "/admin/taches"
                 ? openTaskCount
                 : link.href === "/admin/prospection"
                   ? prospectReminderCount
                   : link.href === "/admin/reseaux"
                     ? socialPostsDueCount
-                    : 0;
-            return (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="flex items-center gap-1.5 whitespace-nowrap text-sm text-ink-muted transition-colors hover:text-ink"
-              >
-                {link.label}
-                {badgeCount > 0 && (
-                  <span className="inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-medium text-accent-ink">
-                    {badgeCount}
-                  </span>
-                )}
-              </Link>
-            );
-          })}
-        </nav>
+                    : 0,
+          }))}
+        />
       </header>
       <main className="flex-1">{children}</main>
     </div>

@@ -33,11 +33,11 @@ export default async function NewClientPage({
     categoryList?.items.map((item) => ({ id: item.id, label: item.label })) ?? [];
 
   return (
-    <div className="mx-auto max-w-7xl 2xl:max-w-[100rem] px-4 py-10 sm:px-6 lg:px-8">
+    <div className="px-4 py-10 sm:px-6 lg:px-8 2xl:px-12">
       <h1 className="font-display text-2xl font-medium tracking-tight text-ink">
         Nouveau client
       </h1>
-      <div className="mt-8">
+      <div className="mt-8 max-w-5xl">
         <ClientForm
           action={createClient}
           categoryOptions={categoryOptions}

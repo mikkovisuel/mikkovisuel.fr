@@ -16,7 +16,7 @@ export default async function DropdownListsPage() {
   });
 
   return (
-    <div className="mx-auto max-w-7xl 2xl:max-w-[100rem] px-4 py-10 sm:px-6 lg:px-8">
+    <div className="px-4 py-10 sm:px-6 lg:px-8 2xl:px-12">
       <h1 className="font-display text-2xl font-medium tracking-tight text-ink">
         Listes déroulantes
       </h1>
