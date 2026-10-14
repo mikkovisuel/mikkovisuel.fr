@@ -1,8 +1,8 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState, useTransition } from "react";
 import { WarningCircle, CheckCircle } from "@phosphor-icons/react/dist/ssr";
-import { createAdmin, revokeAdmin } from "@/lib/actions/admin-accounts";
+import { createAdmin, revokeAdmin, resendAdminInvitation } from "@/lib/actions/admin-accounts";
 import { StepUpButton } from "@/components/admin/step-up-button";
 import { useFormSubmit } from "@/lib/use-form-submit";
 
@@ -19,6 +19,28 @@ const LOGIN_FORMATTER = new Intl.DateTimeFormat("fr-FR", {
   hour: "2-digit",
   minute: "2-digit",
 });
+
+// Renvoi d'une invitation restée sans suite (2026-10-14) : sans lui, un
+// lien expiré laissait le compte bloqué, l'adresse ne pouvant plus être
+// réinvitée.
+function ResendInvitationButton({ adminId }: { adminId: string }) {
+  const [pending, startTransition] = useTransition();
+  const [result, setResult] = useState<{ error?: string; resent?: boolean }>();
+  return (
+    <span className="flex items-center gap-2">
+      <button
+        type="button"
+        disabled={pending}
+        onClick={() => startTransition(async () => setResult(await resendAdminInvitation(adminId)))}
+        className="text-xs text-ink-muted underline underline-offset-2 transition-colors hover:text-ink disabled:opacity-60"
+      >
+        {pending ? "Envoi..." : "Renvoyer l'invitation"}
+      </button>
+      {result?.resent && <span className="text-xs text-ink-muted">Invitation renvoyée.</span>}
+      {result?.error && <span className="text-xs text-danger">{result.error}</span>}
+    </span>
+  );
+}
 
 export function AdminAccountsPanel({
   admins,
@@ -44,10 +66,13 @@ export function AdminAccountsPanel({
                 {admin.email}
                 {admin.id === currentAdminId && <span className="text-ink-muted"> (vous)</span>}
               </p>
-              <p className="text-xs text-ink-muted">
+              <p className="flex flex-wrap items-center gap-x-2 text-xs text-ink-muted">
                 {admin.lastLoginAt
                   ? `Dernière connexion : ${LOGIN_FORMATTER.format(admin.lastLoginAt)}`
-                  : "Jamais connecté"}
+                  : "Jamais connecté — invitation en attente"}
+                {!admin.lastLoginAt && admin.id !== currentAdminId && (
+                  <ResendInvitationButton adminId={admin.id} />
+                )}
               </p>
             </div>
             {admin.id !== currentAdminId && (
@@ -94,7 +119,9 @@ export function AdminAccountsPanel({
       {state?.success && (
         <div className="mt-2 flex items-center gap-1.5 text-xs text-ink-muted">
           <CheckCircle size={14} weight="fill" className="text-accent" />
-          Invitation envoyée.
+          {state.resent
+            ? "Cette adresse avait déjà une invitation sans suite : un nouveau lien vient de lui être envoyé (valable 7 jours)."
+            : "Invitation envoyée (lien valable 7 jours)."}
         </div>
       )}
     </div>

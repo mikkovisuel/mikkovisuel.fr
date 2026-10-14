@@ -2367,6 +2367,36 @@ maquette est repris.
   chaque chargement (écart de lecture de l'heure entre serveur et
   navigateur).
 
+### 4.15 Invitation d'un administrateur réparée (2026-10-14)
+
+Signalement du client : « J'ai essayé d'inviter un admin, mais impossible de
+faire marcher l'invitation… création de mot de passe impossible ».
+
+Le parcours fonctionnait quand le lien était suivi dans l'heure, mais menait
+à une impasse sinon :
+
+1. le lien d'invitation n'était valable **qu'une heure**, comme un « mot de
+   passe oublié » ;
+2. la page affichait le formulaire normalement, et l'erreur « lien invalide
+   ou expiré » n'apparaissait qu'**après** la saisie du mot de passe, sans
+   issue proposée ;
+3. la même adresse ne pouvait plus être réinvitée : « Un compte admin existe
+   déjà avec cet email », le compte ayant été créé dès le premier envoi.
+
+Corrections :
+
+- **Invitation valable 7 jours.** La réinitialisation de mot de passe garde
+  son heure, qui est la règle pour ce geste.
+- **Renvoi possible tant que le compte n'est pas activé** — bouton
+  « Renvoyer l'invitation » à côté de « Jamais connecté — invitation en
+  attente », ou simplement en ressaisissant l'adresse. Chaque renvoi annule
+  le lien précédent. Un compte **activé** (mot de passe choisi ou connexion
+  faite) reste protégé : « Un compte admin existe déjà ».
+- **La page du lien vérifie le lien dès l'ouverture** (admin et espace
+  client) : expiré, remplacé par un lien plus récent ou déjà utilisé, elle
+  le dit tout de suite et propose une issue (« Recevoir un nouveau lien » ou
+  « Se connecter ») au lieu d'un formulaire inutile.
+
 ## Passe de nettoyage du code (2026-09-22)
 
 Demande du client : "fais une passe globale sur le code et nettoie tout,
@@ -3118,3 +3148,4 @@ Le client a explicitement délégué ces choix :
 | 2026-10-01 | "rien ne se passe, peux tu ajouter une zone de dépose comme les livrables ?" | **Livré** : les formulaires d'ajout de document (clients et société) utilisent la grande zone de dépôt des livrables, sur toute la largeur de la fenêtre. Le silence de la détection précédente désigne une fenêtre de sélection qui s'ouvre **derrière** celle de l'application : déposer le fichier contourne entièrement ce mécanisme. Détails section 4.13, tests dans `VALIDATION.md` |
 | 2026-10-14 | "Peux tu améliorer l'affichage, notamment prendre vraiment toute la place de l'écran en largeur sur un mac, et s'adapter facilement au téléphone" — arbitrages : **back-office seul**, **pleine largeur sauf formulaires** | **Livré** : plafond de 1 280 px retiré sur les 26 pages admin, l'en-tête et la navigation (formulaires de création limités à `max-w-5xl`, textes longs et fiches gardent leur largeur de lecture ; audit et liste des e-mails élargis). Navigation : la rubrique active est désormais signalée, et sur téléphone un bouton « rubrique courante » déplie toutes les rubriques avec la recherche globale. Liste des tâches en cartes sur téléphone, pastilles de vue de Réseaux sur une ligne. Tests dans `VALIDATION.md` |
 | 2026-10-14 | "Peux tu me faire un nouveau design mais uniquement pour le côté admin ? Quelque chose de très macOS" puis, après trois maquettes : "refonds les affichages bien comme ça en termes de design uniquement ! Garde toutes les fonctionnalités" — arbitrage : **pas d'inspecteur** à droite des tâches | **Livré** : refonte du back-office seul (site public et espace client inchangés) — police système, palette et rayons macOS, modes clair et sombre ; barre latérale façon Finder avec rubriques groupées, configuration visible, statuts et clients sous « Tâches » ; barre d'outils unifiée sur les 31 écrans ; commandes segmentées ; liste des tâches bord à bord avec statuts en pastilles et colonne Temps. Aucune fonction retirée. Défaut corrigé au passage : le chrono en cours forçait une reconstruction de la page côté navigateur. Détails section 4.14, tests dans `VALIDATION.md` |
+| 2026-10-14 | "J'ai essayé d'inviter un admin, mais impossible de faire marcher l'invitation… création de mot de passe impossible" | **Livré** : impasse reproduite — lien valable une heure seulement, erreur affichée après la saisie du mot de passe, et adresse impossible à réinviter (« compte existant »). Invitation désormais valable 7 jours ; renvoi possible (bouton « Renvoyer l'invitation » ou nouvelle saisie de l'adresse) tant que le compte n'est pas activé ; la page du lien annonce dès l'ouverture un lien expiré, remplacé ou déjà utilisé et propose une issue (admin et espace client). Détails section 4.15, tests dans `VALIDATION.md` |

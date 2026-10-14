@@ -1069,6 +1069,22 @@ La détection est restée muette chez le client — aucun message, alors que le 
 | Téléphone | Fiche tâche à 390 px | ✅ Pas de barre latérale ; la barre d'outils passe sur deux lignes (retour, titre, client, puis actions) | — | — | 2026-10-14 |
 | Chrono et hydratation | Chrono en cours, chargement d'une page | ✅ Plus d'erreur « Hydration failed » ni de badge « Issues » | Défaut existant mis au jour | ✅ L'heure lue côté serveur et côté navigateur différait d'une seconde : React reconstruisait toute la mise en page à chaque chargement tant qu'un chrono tournait. Corrigé | 2026-10-14 |
 
+## Invitation d'un administrateur (2026-10-14)
+
+`tsc --noEmit`, lint et `npm run build` propres. Parcours rejoué en local de bout en bout, l'invité étant simulé par un navigateur **sans session** ; les liens ont été lus dans le journal d'envoi des e-mails (mode console en développement). Comptes de test supprimés ensuite.
+
+| Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |
+|---|---|---|---|---|---|
+| Parcours d'origine | Invitation → lien suivi aussitôt → mot de passe → connexion | ✅ Fonctionnait déjà : le défaut n'apparaît qu'avec un lien expiré | Lien expiré (reproduit avant correction) | ✅ Impasse confirmée : formulaire affiché normalement, « Ce lien de réinitialisation est invalide ou expiré » seulement après validation, puis nouvelle invitation refusée (« Un compte admin existe déjà avec cet email ») | 2026-10-14 |
+| Durée de l'invitation | Lien émis | ✅ 7,00 jours en base (contre 1 h), e-mail « valable 7 jours » | — | — | 2026-10-14 |
+| Renvoi par bouton | « Renvoyer l'invitation » sur un compte jamais connecté | ✅ « Invitation renvoyée. », un seul lien actif en base (l'ancien retiré) | Compte déjà connecté | ✅ Pas de bouton affiché ; l'action refuse de toute façon un compte activé | 2026-10-14 |
+| Renvoi par nouvelle saisie | Même adresse, invitation restée sans suite | ✅ « Cette adresse avait déjà une invitation sans suite : un nouveau lien vient de lui être envoyé (valable 7 jours). » | Même adresse, compte activé | ✅ « Un compte admin existe déjà avec cet email. » — inchangé | 2026-10-14 |
+| Page du lien — expiré | Ouverture d'un lien expiré | ✅ Pas de formulaire : « Ce lien a expiré. » + « Recevoir un nouveau lien » (vers « Mot de passe oublié ») et l'explication pour un invité | — | — | 2026-10-14 |
+| Page du lien — remplacé | Ouverture du lien précédent après un renvoi | ✅ « Ce lien n'est pas valide — il est peut-être incomplet, ou un lien plus récent l'a remplacé. » | — | — | 2026-10-14 |
+| Page du lien — valide | Nouveau lien | ✅ Formulaire, mot de passe accepté, redirection vers la connexion, **connexion réussie** du compte invité | — | — | 2026-10-14 |
+| Page du lien — déjà utilisé | Réouverture du lien après usage | ✅ « Ce lien a déjà servi : le mot de passe a été choisi. » + « Se connecter » | — | — | 2026-10-14 |
+| Espace client | Lien invalide sur `/espace-client/reinitialiser-mot-de-passe/…` | ✅ Même message, issue vers le « mot de passe oublié » de l'espace client | — | — | 2026-10-14 |
+
 ## Points restant ouverts pour une prochaine passe de validation
 
 - Glisser-déposer et `<select>` natif du Kanban Prospection (limite outil, voir ci-dessus).
