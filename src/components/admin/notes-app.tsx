@@ -648,9 +648,10 @@ export function NotesApp({
               </div>
             </div>
             <div className="flex-1 overflow-y-auto">
-              {/* Colonne de texte centrée comme une page Docs, sans cadre : le
-                  titre en tête, puis le texte. */}
-              <div className="mx-auto w-full max-w-[52rem] px-6 pt-4 sm:px-12">
+              {/* Sans cadre, sur toute la largeur du volet (2026-10-20 :
+                  « la note ne fait pas la largeur ? ») : le titre en tête,
+                  puis le texte. */}
+              <div className="w-full px-6 pt-4 sm:px-10">
                 <input
                   value={selectedNote.title}
                   onChange={(e) => patchNote(selectedNote.id, { title: e.target.value })}

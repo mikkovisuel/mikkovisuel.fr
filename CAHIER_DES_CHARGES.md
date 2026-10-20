@@ -2567,9 +2567,10 @@ aperçu en direct ; rien ne s'applique avant « Enregistrer ». Cinq onglets :
 - Dossiers en pilules comme le tiroir ; recherche en pilule ; lignes de la
   liste à la densité de l'admin, note ouverte en jaune clair.
 - Note ouverte : barre fine d'informations (dossier, affectation, rappel,
-  PDF, épingle, suppression), puis une colonne de texte centrée comme une
-  page Docs — titre en grand, barre de mise en forme arrondie, texte —
-  sans aucun encadré.
+  PDF, épingle, suppression), puis le titre en grand, la barre de mise en
+  forme arrondie et le texte, sans aucun encadré et **sur toute la largeur
+  du volet** (la colonne centrée de 52 rem a été retirée le 2026-10-20 à la
+  demande du client).
 - Téléphone : inchangé dans son principe (dossiers, puis liste, puis note
   en plein écran).
 - Corrigé au passage, sur toutes les pages : un sous-titre long faisait
@@ -3334,3 +3335,4 @@ Le client a explicitement délégué ces choix :
 | 2026-10-20 | (suite) Notes en pleine page, sans encadrés | **Livré** : notes sur toute la feuille façon Google Docs (volets séparés d'un filet, texte en colonne centrée sans cadre, titre en grand, barre de mise en forme arrondie) ; corrigé : le titre de la barre d'outils disparaissait derrière un sous-titre long sur téléphone. Détails section 4.17, tests dans `VALIDATION.md` |
 | 2026-10-20 | "tout ok, code tout" (maquette « Mon affichage » validée) | **Livré** : écran Mon affichage par admin — couleur d'accent (contraste automatique), thème avec « Selon l'appareil », densité, taille du texte, tiroir ; page d'accueil et rubriques visibles/ordonnées ; colonnes visibles/ordonnées sur Tâches, Clients, Prospection, Contacts et tris par défaut ; blocs du tableau de bord ; vues par défaut de 5 pages ; aperçu en direct ; rétablissement. Détails section 4.17, tests dans `VALIDATION.md` |
 | 2026-10-20 | "Fais la livraison 3" | **Livré** : Administratif façon Drive (puces de filtre, cartes « À surveiller », tableau avec commandes au survol, aussi sur la fiche client) ; calendriers Réseaux et Tâches façon Google Agenda (Réseaux : petit mois, clients cochables, actions et routines masquables). Espace client inchangé. Détails section 4.16, tests dans `VALIDATION.md` |
+| 2026-10-20 | "La note ne fait pas la largeur ?" | **Livré** : titre, barre de mise en forme et texte de la note occupent toute la largeur du volet (colonne centrée retirée). |

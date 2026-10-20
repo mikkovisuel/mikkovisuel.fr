@@ -1138,6 +1138,7 @@ Lint, `tsc --noEmit` et `npm run build` propres. Vérifié avec une vraie sessio
 | Colonne de texte | Note avec titre, intertitre et liste | ✅ Titre en grand, barre de mise en forme arrondie, texte centré ; mode sombre lisible | — | — | 2026-10-20 |
 | Enregistrement | Titre modifié au clavier | ✅ « ZZ Idées de contenus janvier » retrouvé en base après 4 s | — | — | 2026-10-20 |
 | Téléphone | Note ouverte à 390 px | ✅ Retour, informations, titre, barre sur deux lignes, texte ; la page tient dans l'écran (844 px) | Sous-titre long dans la barre d'outils | ✅ Défaut constaté (« Notes » invisible) puis corrigé : le titre reste entier, le sous-titre se coupe | 2026-10-20 |
+| Pleine largeur (2026-10-20) | Note longue à 1 512 px, mode sombre | ✅ Texte large de 680 px pour un volet de 680 px (colonne centrée retirée), titre et barre de mise en forme alignés | — | — | 2026-10-20 |
 
 ## Personnalisation « Mon affichage » (2026-10-20)
 
