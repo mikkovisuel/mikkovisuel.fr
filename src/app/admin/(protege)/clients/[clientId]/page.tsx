@@ -606,6 +606,7 @@ export default async function ClientDetailPage({
             {client.paymentRecords.map((record) => (
               <PaymentRecordRow
                 key={record.id}
+                inCard
                 editClients={editClients}
                 record={{
                   id: record.id,

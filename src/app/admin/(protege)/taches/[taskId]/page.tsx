@@ -3,7 +3,14 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { verifyAdminSession } from "@/lib/dal";
 import { db } from "@/lib/db";
-import { TaskEditForm } from "@/components/admin/task-edit-form";
+import {
+  AutosaveChips,
+  AutosaveDate,
+  AutosaveDescription,
+  AutosaveMinutes,
+  AutosaveTitle,
+} from "@/components/admin/task-autosave";
+import { ArrowLeft, DotsThreeVertical } from "@phosphor-icons/react/dist/ssr";
 import { TaskPinButton } from "@/components/admin/task-pin-button";
 import { TaskPaymentLockControl } from "@/components/admin/task-payment-lock-control";
 import { TaskStatusSelect } from "@/components/admin/task-status-select";
@@ -24,7 +31,6 @@ import { FileGrid } from "@/components/file-grid";
 import { TaskCommentThread } from "@/components/task-comment-thread";
 import { CollapsibleSection } from "@/components/admin/collapsible-section";
 import {
-  updateTask,
   archiveTask,
   unarchiveTask,
   deleteTask,
@@ -47,7 +53,6 @@ import {
 import { isTaskOverdue, taskDateFormatter, taskDateTimeFormatter } from "@/lib/tasks";
 import { buildDeliverablesMailDraft } from "@/lib/mail-draft";
 import { sumTaskTimeMs } from "@/lib/time-tracking";
-import { PageToolbar, PAGE_BODY } from "@/components/admin/page-toolbar";
 
 export const metadata: Metadata = {
   title: "Tâche — Admin Mikko Visuel",
@@ -109,7 +114,6 @@ export default async function TaskDetailPage({
 
   if (!task) notFound();
 
-  const updateThisTask = updateTask.bind(null, task.id);
   const runningEntry = task.timeEntries.find((entry) => entry.endedAt === null) ?? null;
   const spentMs = sumTaskTimeMs(task.timeEntries);
 
@@ -122,66 +126,84 @@ export default async function TaskDetailPage({
     10,
   );
 
+  const H2 = "text-base font-medium text-ink";
+  const PANEL_LABEL = "pt-1.5 text-sm text-ink-muted";
+  const MENU_ITEM = "w-full rounded-lg px-3 py-2 text-left text-sm text-ink transition-colors hover:bg-ink/[0.06]";
+
+  // Écran d'une tâche façon Gmail / Agenda (maquette B validée le
+  // 2026-10-20) : le travail au centre (description, checklist, livrables,
+  // fichiers du client, commentaires), et à droite un panneau « Détails »
+  // modifiable champ par champ, enregistré automatiquement, suivi du temps
+  // passé et de l'historique. Toutes les fonctions de l'ancien écran restent.
   return (
-    // Passé de `max-w-2xl` (une seule colonne étroite) à la largeur
-    // standard de l'app, avec un vrai contenu en deux colonnes à partir de
-    // `xl` (demande du 2026-07-31, "sur toute la largeur, exemple :
-    // affichage client") — élargir le conteneur seul aurait juste étiré
-    // chaque champ sur toute la largeur de l'écran, ce qui aurait rendu le
-    // formulaire moins lisible, pas plus.
     <>
-      <PageToolbar
-        title={task.title}
-        back={{ href: "/admin/taches", label: "Retour aux tâches" }}
-        subtitle={
-          // Seul lien vers le client sur cette page (2026-07-30) : il reste
-          // à portée, en sous-titre de la barre d'outils.
-          <Link href={`/admin/clients/${task.clientId}`} className="transition-colors hover:text-ink">
-            {task.client.name}
-          </Link>
-        }
-      >
-        <TaskPinButton taskId={task.id} pinned={task.pinnedAt !== null} />
-        {task.archivedAt ? (
-          <>
-            <span className="text-sm text-ink-muted">
-              Archivée le {taskDateFormatter.format(task.archivedAt)}
-            </span>
-            <form action={unarchiveTask.bind(null, task.id)}>
-              <button
-                type="submit"
-                className="text-sm text-ink-muted transition-colors hover:text-ink"
-              >
-                Désarchiver
-              </button>
-            </form>
-          </>
-        ) : (
-          <form action={archiveTask.bind(null, task.id)}>
-            <button
-              type="submit"
-              className="text-sm text-ink-muted transition-colors hover:text-ink"
+      <div className="z-20 flex flex-wrap items-center lg:sticky lg:top-0 gap-x-3 gap-y-2 border-b border-line bg-surface px-4 py-2 sm:px-6 lg:rounded-t-2xl lg:px-8">
+        <Link
+          href="/admin/taches"
+          aria-label="Retour aux tâches"
+          title="Retour aux tâches"
+          className="-ml-2 flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-ink/[0.08] hover:text-ink"
+        >
+          <ArrowLeft size={20} />
+        </Link>
+        <AutosaveTitle taskId={task.id} value={task.title} />
+        <Link
+          href={`/admin/clients/${task.clientId}`}
+          className="inline-flex h-7 shrink-0 items-center rounded-full bg-select px-3 text-xs font-medium text-ink transition-colors hover:brightness-95"
+        >
+          {task.client.name}
+        </Link>
+        <div className="ml-auto flex flex-wrap items-center gap-2">
+          <TaskValidationButton taskId={task.id} currentSlug={task.status.slug} />
+          <TaskTimerButton
+            taskId={task.id}
+            activeEntry={runningEntry ? { startedAt: runningEntry.startedAt.toISOString() } : null}
+          />
+          <TaskPinButton taskId={task.id} pinned={task.pinnedAt !== null} />
+          {/* Gestes rares rangés derrière « ⋮ ». */}
+          <details className="relative">
+            <summary
+              aria-label="Plus d'actions"
+              className="flex h-9 w-9 cursor-pointer list-none items-center justify-center rounded-full text-ink-muted hover:bg-ink/[0.08] [&::-webkit-details-marker]:hidden"
             >
-              Archiver
-            </button>
-          </form>
-        )}
-        <form action={duplicateTask.bind(null, task.id)}>
-          <button
-            type="submit"
-            className="text-sm text-ink-muted transition-colors hover:text-ink"
-          >
-            Dupliquer
-          </button>
-        </form>
-        <DeleteButton
-          action={deleteTask.bind(null, task.id)}
-          confirmMessage={`Supprimer définitivement "${task.title}" ? Cette action efface aussi tous ses livrables du stockage et ne peut pas être annulée.`}
-        />
-      </PageToolbar>
-      <div className={PAGE_BODY}>
+              <DotsThreeVertical size={20} weight="bold" />
+            </summary>
+            <div className="absolute right-0 z-30 mt-2 flex w-56 flex-col rounded-xl bg-surface p-2 shadow-lg">
+              <form action={duplicateTask.bind(null, task.id)}>
+                <button type="submit" className={MENU_ITEM}>
+                  Dupliquer
+                </button>
+              </form>
+              <form action={(task.archivedAt ? unarchiveTask : archiveTask).bind(null, task.id)}>
+                <button type="submit" className={MENU_ITEM}>
+                  {task.archivedAt ? "Désarchiver" : "Archiver"}
+                </button>
+              </form>
+              <div className="px-3 py-2">
+                <DeleteButton
+                  action={deleteTask.bind(null, task.id)}
+                  confirmMessage={`Supprimer définitivement "${task.title}" ? Cette action efface aussi tous ses livrables du stockage et ne peut pas être annulée.`}
+                />
+              </div>
+            </div>
+          </details>
+        </div>
+      </div>
+
+      {/* Trois blocs : le travail, les détails, le suivi. Sur ordinateur
+          (1 200 px et plus), le travail à gauche sur toute la hauteur et les
+          deux autres l'un sous l'autre à droite ; plus étroit, les détails
+          d'abord, puis le travail, puis le suivi. */}
+      <div className="grid min-[1200px]:grid-cols-[minmax(0,1fr)_22rem] min-[1200px]:grid-rows-[auto_1fr]">
+        {/* Le travail. */}
+        <div className="order-2 flex min-w-0 flex-col gap-10 px-4 py-6 sm:px-6 lg:px-8 min-[1200px]:order-none min-[1200px]:col-start-1 min-[1200px]:row-span-2 min-[1200px]:row-start-1">
+          {task.archivedAt && (
+            <p className="rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-ink">
+              Tâche archivée le {taskDateFormatter.format(task.archivedAt)} — « ⋮ » pour la désarchiver.
+            </p>
+          )}
         {task.internal && (
-          <div className="mt-4 rounded-2xl border border-accent/40 bg-accent/5 p-4 text-sm text-ink">
+          <div className="rounded-2xl border border-accent/40 bg-accent/5 p-4 text-sm text-ink">
             <p className="font-medium">Tâche interne — le client ne la voit pas</p>
             <p className="mt-1 text-ink-muted">
               Demandée depuis{" "}
@@ -221,77 +243,27 @@ export default async function TaskDetailPage({
           </div>
         )}
 
-        <div className="mt-6 flex flex-wrap items-center gap-3">
-          <TaskStatusSelect
-            taskId={task.id}
-            currentSlug={task.status.slug}
-            currentColor={task.status.color}
-            statuses={statusList?.items ?? []}
-          />
-          <TaskValidationButton taskId={task.id} currentSlug={task.status.slug} />
-          <TaskTimerButton
-            taskId={task.id}
-            activeEntry={runningEntry ? { startedAt: runningEntry.startedAt.toISOString() } : null}
-          />
-        </div>
 
-        {task.status.slug === TASK_STATUS.A_VALIDER && (
-          <div className="mt-4">
-            <TaskValidateRefuseButtons taskId={task.id} />
-          </div>
-        )}
+          {task.status.slug === TASK_STATUS.A_VALIDER && <TaskValidateRefuseButtons taskId={task.id} />}
+          {task.refusalReason && (
+            <p className="rounded-xl bg-red-500/10 px-4 py-3 text-sm text-danger">Motif de refus : {task.refusalReason}</p>
+          )}
 
-        {/* Verrou "avant de travailler" : n'a plus de sens à afficher une fois
-            la tâche sortie de "Nouveau", le blocage ne concerne que le
-            démarrage — voir la garde dans `setTaskStatus`. */}
-        {task.status.slug === TASK_STATUS.NOUVEAU && (
-          <div className="mt-4">
-            <TaskPaymentLockControl
-              taskId={task.id}
-              kind="travail"
-              clientRequiresPayment={task.client.requirePaymentBeforeWork}
-              lockOverride={task.workLockOverride}
-              paymentConfirmedAt={task.workPaymentConfirmedAt}
-            />
-          </div>
-        )}
-
-        {task.refusalReason && (
-          <p className="mt-3 text-sm text-danger">Motif de refus : {task.refusalReason}</p>
-        )}
-
-        {/* Deux colonnes à partir de `xl` (demande du 2026-07-31) : le
-            contenu principal (édition, livrables, pièces jointes,
-            commentaires) à gauche, le suivi (temps, historiques) dans une
-            colonne latérale plus étroite à droite — plutôt qu'un seul long
-            défilement où le suivi se retrouvait mélangé au contenu de
-            travail. */}
-        <div className="mt-8 grid gap-10 xl:grid-cols-[minmax(0,1fr)_20rem]">
-          <div className="flex flex-col gap-12">
-            <div>
-              <TaskEditForm
-                action={updateThisTask}
-                taskId={task.id}
-                typeOptions={typeList?.items ?? []}
-                formatOptions={formatList?.items ?? []}
-                defaultValues={{
-                  title: task.title,
-                  description: task.description ?? "",
-                  eventDate: toDateInputValue(task.eventDate),
-                  dueDate: toDateInputValue(task.dueDate),
-                  estimatedMinutes: task.estimatedMinutes?.toString() ?? "",
-                  types: task.types.map((type) => type.slug),
-                  formats: task.formats.map((format) => format.slug),
-                }}
-              />
+          <section>
+            <h2 className={H2}>Description</h2>
+            <div className="mt-2">
+              <AutosaveDescription taskId={task.id} value={task.description ?? ""} />
             </div>
+          </section>
 
-            <section>
-              <h2 className="text-sm font-medium text-ink-muted">
-                Checklist ({task.checklistItems.filter((item) => item.done).length}/
-                {task.checklistItems.length})
-              </h2>
-              <div className="mt-4">
+          <section>
+            <h2 className={H2}>
+              Checklist{" "}
+              <span className="font-normal text-ink-muted">
+                {task.checklistItems.filter((item) => item.done).length}/{task.checklistItems.length}
+              </span>
+            </h2>
+            <div className="mt-3">
                 <TaskChecklist
                   taskId={task.id}
                   initialItems={task.checklistItems.map((item) => ({
@@ -300,21 +272,16 @@ export default async function TaskDetailPage({
                     done: item.done,
                   }))}
                 />
-              </div>
-            </section>
+            </div>
+          </section>
 
-            {/* BAT et livrables finaux séparés en deux panneaux côte à côte
-                (demande du 2026-07-31) — auparavant une seule liste mélangeait
-                les épreuves en attente de validation et le travail
-                définitivement livré, sans distinction visuelle. Un BAT
-                rejoint automatiquement le panneau "Livrables" (et perd son
-                filigrane côté client) dès que la tâche passe au statut "BAT
-                validé" — voir `promoteBatDeliverablesToFinal`. */}
-            <section>
-              <h2 className="text-sm font-medium text-ink-muted">
-                Livrables ({task.deliverables.length})
-              </h2>
-              <div className="mt-4 grid gap-6 sm:grid-cols-2">
+          {/* BAT et livrables finaux côte à côte (2026-07-31) ; un BAT passe
+              dans les finaux dès « BAT validé » (`promoteBatDeliverablesToFinal`). */}
+          <section>
+            <h2 className={H2}>
+              Livrables <span className="font-normal text-ink-muted">({task.deliverables.length})</span>
+            </h2>
+              <div className="mt-3 grid gap-6 sm:grid-cols-2">
                 <div>
                   <h3 className="text-xs font-medium uppercase tracking-wide text-ink-muted">
                     BAT à valider ({batDeliverables.length})
@@ -445,13 +412,12 @@ export default async function TaskDetailPage({
               <div className="mt-4">
                 <DeliverableUploadForm action={uploadDeliverable.bind(null, task.id)} />
               </div>
-            </section>
+          </section>
 
-            <section>
-              <h2 className="text-sm font-medium text-ink-muted">
-                Pièces jointes ({task.attachments.length})
-              </h2>
-
+          <section>
+            <h2 className={H2}>
+              Pièces jointes <span className="font-normal text-ink-muted">({task.attachments.length})</span>
+            </h2>
               {task.attachments.length > 0 && (
                 <div className="mt-4">
                   <FileGrid
@@ -465,46 +431,116 @@ export default async function TaskDetailPage({
               <div className="mt-4">
                 <AttachmentUploadForm action={uploadAttachment.bind(null, task.id)} />
               </div>
-            </section>
+          </section>
 
-            <section>
-              <h2 className="text-sm font-medium text-ink-muted">
-                Commentaires ({task.comments.length})
-              </h2>
+          <section>
+            <h2 className={H2}>
+              Commentaires <span className="font-normal text-ink-muted">({task.comments.length})</span>
+            </h2>
+            <div className="mt-3">
+              <TaskCommentThread
+                comments={task.comments}
+                currentAuthorType="ADMIN"
+                action={postAdminComment.bind(null, task.id)}
+              />
+            </div>
+          </section>
+        </div>
+
+        {/* Panneau « Détails », enregistrement automatique champ par champ. Sur
+            téléphone et écran moyen, il passe en tête : statut et dates
+            sont ce qu'on consulte d'abord. */}
+        <aside className="order-1 flex min-w-0 flex-col gap-6 border-b border-line bg-surface-elevated/40 px-4 py-6 sm:px-6 min-[1200px]:order-none min-[1200px]:col-start-2 min-[1200px]:row-start-1 min-[1200px]:border-b-0 min-[1200px]:border-l min-[1200px]:px-5">
+          <section>
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-muted">Détails</h2>
+            <dl className="mt-3 grid grid-cols-[6.5rem_minmax(0,1fr)] items-start gap-x-3 gap-y-3">
+              <dt className={PANEL_LABEL}>Statut</dt>
+              <dd className="pt-0.5">
+                <TaskStatusSelect
+                  taskId={task.id}
+                  currentSlug={task.status.slug}
+                  currentColor={task.status.color}
+                  statuses={statusList?.items ?? []}
+                />
+              </dd>
+              <dt className={PANEL_LABEL}>Client</dt>
+              <dd className="pt-1.5 text-sm">
+                <Link href={`/admin/clients/${task.clientId}`} className="text-ink hover:underline">
+                  {task.client.name} ›
+                </Link>
+              </dd>
+              <dt className={PANEL_LABEL}>Évènement</dt>
+              <dd>
+                <AutosaveDate taskId={task.id} field="eventDate" value={toDateInputValue(task.eventDate)} label="Date de l'évènement" />
+              </dd>
+              <dt className={PANEL_LABEL}>Échéance</dt>
+              <dd>
+                <AutosaveDate taskId={task.id} field="dueDate" value={toDateInputValue(task.dueDate)} label="Échéance (livraison)" />
+              </dd>
+              <dt className={PANEL_LABEL}>Temps estimé</dt>
+              <dd>
+                <AutosaveMinutes taskId={task.id} value={task.estimatedMinutes} />
+              </dd>
+              <dt className={PANEL_LABEL}>Type</dt>
+              <dd className="pt-1">
+                <AutosaveChips
+                  taskId={task.id}
+                  field="types"
+                  label="Type"
+                  options={typeList?.items ?? []}
+                  value={task.types.map((type) => type.slug)}
+                />
+              </dd>
+              <dt className={PANEL_LABEL}>Formats</dt>
+              <dd className="pt-1">
+                <AutosaveChips
+                  taskId={task.id}
+                  field="formats"
+                  label="Formats"
+                  options={formatList?.items ?? []}
+                  value={task.formats.map((format) => format.slug)}
+                />
+              </dd>
+            </dl>
+            {/* Verrou « avant de travailler » : n'a de sens qu'au statut
+                « Nouveau » (voir la garde dans `setTaskStatus`). */}
+            {task.status.slug === TASK_STATUS.NOUVEAU && (
               <div className="mt-4">
-                <TaskCommentThread
-                  comments={task.comments}
-                  currentAuthorType="ADMIN"
-                  action={postAdminComment.bind(null, task.id)}
+                <TaskPaymentLockControl
+                  taskId={task.id}
+                  kind="travail"
+                  clientRequiresPayment={task.client.requirePaymentBeforeWork}
+                  lockOverride={task.workLockOverride}
+                  paymentConfirmedAt={task.workPaymentConfirmedAt}
                 />
               </div>
-            </section>
-          </div>
+            )}
+          </section>
 
-          <div className="flex flex-col gap-10">
-            <section>
-              <h2 className="text-sm font-medium text-ink-muted">Temps passé</h2>
-              <div className="mt-4">
-                <TaskTimeGauge spentMs={spentMs} estimatedMinutes={task.estimatedMinutes} />
-              </div>
-              <div className="mt-4">
-                <TaskTimeEntries taskId={task.id} entries={task.timeEntries} />
-              </div>
-            </section>
+        </aside>
 
-            {/* Repliées par défaut (demande du 2026-07-31, "Historique des
-                statuts" nommément — le même traitement est appliqué à
-                "Historique des refus" pour rester cohérent, plutôt que
-                d'alléger l'un et laisser l'autre continuer à pousser le reste
-                de la page vers le bas). */}
-            {task.statusHistory.length > 0 && (
-              <section>
-                <CollapsibleSection title="Historique des statuts" count={task.statusHistory.length}>
+        {/* Le suivi : temps passé et historique. */}
+        <aside className="order-3 flex min-w-0 flex-col gap-6 border-t border-line bg-surface-elevated/40 px-4 py-6 sm:px-6 min-[1200px]:order-none min-[1200px]:col-start-2 min-[1200px]:row-start-2 min-[1200px]:border-l min-[1200px]:px-5 lg:rounded-br-2xl">
+          <section>
+            <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-muted">Temps passé</h2>
+            <div className="mt-3">
+              <TaskTimeGauge spentMs={spentMs} estimatedMinutes={task.estimatedMinutes} />
+            </div>
+            <div className="mt-4">
+              <TaskTimeEntries taskId={task.id} entries={task.timeEntries} />
+            </div>
+          </section>
+
+          {(task.statusHistory.length > 0 || task.refusalHistory.length > 0) && (
+            <section className="flex flex-col gap-4 border-t border-line pt-5">
+              <h2 className="text-xs font-semibold uppercase tracking-wider text-ink-muted">Historique</h2>
+              {task.statusHistory.length > 0 && (
+                <CollapsibleSection title="Statuts" count={task.statusHistory.length}>
                   <ul className="flex flex-col gap-3">
                     {task.statusHistory.map((entry) => (
                       <li
                         key={entry.id}
-                        className="rounded-2xl border border-line bg-surface-elevated p-3 text-sm"
+                        className="border-l-2 border-line pl-3 text-sm"
                       >
                         <p className="text-xs text-ink-muted">
                           {taskDateTimeFormatter.format(entry.changedAt)}
@@ -520,17 +556,14 @@ export default async function TaskDetailPage({
                     ))}
                   </ul>
                 </CollapsibleSection>
-              </section>
-            )}
-
-            {task.refusalHistory.length > 0 && (
-              <section>
-                <CollapsibleSection title="Historique des refus" count={task.refusalHistory.length}>
+              )}
+              {task.refusalHistory.length > 0 && (
+                <CollapsibleSection title="Refus" count={task.refusalHistory.length}>
                   <ul className="flex flex-col gap-3">
                     {task.refusalHistory.map((entry) => (
                       <li
                         key={entry.id}
-                        className="rounded-2xl border border-line bg-surface-elevated p-3 text-sm"
+                        className="border-l-2 border-danger/40 pl-3 text-sm"
                       >
                         <p className="text-xs text-ink-muted">
                           {taskDateFormatter.format(entry.refusedAt)}
@@ -540,10 +573,10 @@ export default async function TaskDetailPage({
                     ))}
                   </ul>
                 </CollapsibleSection>
-              </section>
-            )}
-          </div>
-        </div>
+              )}
+            </section>
+          )}
+        </aside>
       </div>
     </>
   );

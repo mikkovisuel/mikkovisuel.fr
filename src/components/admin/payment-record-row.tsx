@@ -16,6 +16,7 @@ const ICON_BUTTON =
 export function PaymentRecordRow({
   record,
   editClients,
+  inCard = false,
 }: {
   record: {
     id: string;
@@ -30,7 +31,50 @@ export function PaymentRecordRow({
   };
   /** Clients proposés par « Modifier » (2026-10-20). Absent : pas de bouton. */
   editClients?: { id: string; name: string }[];
+  /** Dans la carte de la fiche client (2026-10-20, « s'affiche pas très
+   * bien ») : une seule ligne, sans le nom du client (c'est sa fiche) ni les
+   * marges de bord de page. */
+  inCard?: boolean;
 }) {
+  const actions = (
+    <>
+      <form
+        action={setPaymentRecordStatus.bind(null, record.id, record.paymentStatus === "paid" ? "unpaid" : "paid")}
+      >
+        <button
+          type="submit"
+          title={record.paymentStatus === "paid" ? "Marquer comme impayé" : "Marquer comme payé"}
+          aria-label={record.paymentStatus === "paid" ? "Marquer comme impayé" : "Marquer comme payé"}
+          className={ICON_BUTTON}
+        >
+          <CurrencyCircleDollar size={16} weight={record.paymentStatus === "paid" ? "fill" : "regular"} />
+        </button>
+      </form>
+      {editClients && <EditPaymentRecordButton record={record} clients={editClients} />}
+      <DeleteButton
+        action={deletePaymentRecord.bind(null, record.id)}
+        confirmMessage={`Supprimer ce suivi de paiement pour ${record.clientName} ?`}
+        label="Supprimer"
+        icon={<Trash size={16} weight="regular" />}
+        className={`${ICON_BUTTON} hover:border-danger hover:bg-danger hover:text-white`}
+      />
+    </>
+  );
+
+  if (inCard) {
+    return (
+      <div className="ws-row group flex flex-wrap items-center gap-x-4 gap-y-1 px-4 py-1.5">
+        <span className="min-w-0 flex-1 truncate text-sm font-medium text-ink">{record.label || "Paiement"}</span>
+        <span className="text-sm tabular-nums text-ink">{formatAmount(record.amountCents, record.currency)}</span>
+        <PaymentStatusBadge status={record.paymentStatus === "paid" ? "paid" : "unpaid"} />
+        <PaymentRecordDateField recordId={record.id} date={record.date} />
+        <div className="flex shrink-0 items-center gap-1 transition-opacity focus-within:opacity-100 sm:opacity-0 sm:group-hover:opacity-100 [&_.rounded-full]:border-transparent">
+          {actions}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="ws-row flex flex-wrap items-center justify-between gap-3 px-4 py-2 sm:px-6 lg:px-8 2xl:px-12">
       <div className="min-w-0">
@@ -51,32 +95,7 @@ export function PaymentRecordRow({
           <PaymentRecordDateField recordId={record.id} date={record.date} />
         </div>
       </div>
-      <div className="flex shrink-0 items-center gap-2">
-        <form
-          action={setPaymentRecordStatus.bind(
-            null,
-            record.id,
-            record.paymentStatus === "paid" ? "unpaid" : "paid",
-          )}
-        >
-          <button
-            type="submit"
-            title={record.paymentStatus === "paid" ? "Marquer comme impayé" : "Marquer comme payé"}
-            aria-label={record.paymentStatus === "paid" ? "Marquer comme impayé" : "Marquer comme payé"}
-            className={ICON_BUTTON}
-          >
-            <CurrencyCircleDollar size={16} weight={record.paymentStatus === "paid" ? "fill" : "regular"} />
-          </button>
-        </form>
-        {editClients && <EditPaymentRecordButton record={record} clients={editClients} />}
-        <DeleteButton
-          action={deletePaymentRecord.bind(null, record.id)}
-          confirmMessage={`Supprimer ce suivi de paiement pour ${record.clientName} ?`}
-          label="Supprimer"
-          icon={<Trash size={16} weight="regular" />}
-          className={`${ICON_BUTTON} hover:border-danger hover:bg-danger hover:text-white`}
-        />
-      </div>
+      <div className="flex shrink-0 items-center gap-2">{actions}</div>
     </div>
   );
 }

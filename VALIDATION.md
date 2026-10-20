@@ -1185,6 +1185,20 @@ Lint, `tsc --noEmit` et `npm run build` propres. Rejoué dans Chrome sans interf
 | Téléphone | Fiche à 390 px | ✅ Pas de défilement horizontal (390/390), logo à côté du nom, colonnes empilées | — | — | 2026-10-20 |
 | Débordement de colonne (signalé) | Fiche type Bokao's (adresse sur 2 lignes, SIRET + TVA, 3 contacts « Espace client actif », 8 tâches) à 1 100, 1 280, 1 512 et 1 920 px | ✅ 0 élément hors de la colonne de gauche ; tableau des tâches entier (largeur utile = largeur du tableau) à chaque taille ; 390 px sans défilement horizontal | Défaut reproduit avant correction | ✅ Cartes de gauche larges de 530 px pour une colonne de 352 px à 1 100, 1 280 et 1 440 px — corrigé | 2026-10-20 |
 
+## Écran d'une tâche, panneau Détails et enregistrement automatique (2026-10-20)
+
+Lint, `tsc --noEmit` et `npm run build` propres. Rejoué dans Chrome sans interface avec une vraie session admin sur une tâche factice (checklist 1/3, un commentaire client, type et formats), supprimée ensuite.
+
+| Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |
+|---|---|---|---|---|---|
+| Titre | « … (v2) » puis sortie du champ | ✅ Enregistré en base | Titre vidé | ✅ Ancien titre remis, rien d'enregistré | 2026-10-20 |
+| Description | Texte saisi puis sortie du champ | ✅ Enregistrée en base | — | — | 2026-10-20 |
+| Échéance | 28/10/2026 | ✅ « Enregistré », en base | — | — | 2026-10-20 |
+| Temps estimé | 180 | ✅ En base (160 → 180) | −5 | ✅ « Le temps estimé doit être un nombre de minutes positif. », valeur précédente gardée | 2026-10-20 |
+| Type / formats | Clic sur « Vidéo » | ✅ Puce cochée, `video` ajouté en base à côté de `flyer` | — | — | 2026-10-20 |
+| Disposition | 1 512 px | ✅ Travail à gauche, Détails puis Temps passé à droite | 390 px | ✅ Ordre Détails > travail > Temps passé, pas de défilement horizontal | 2026-10-20 |
+| Paiements sans facture (fiche client) | 2 paiements | ✅ Une ligne chacun : libellé, montant, statut, date ; boutons au survol | — | — | 2026-10-20 |
+
 ## Points restant ouverts pour une prochaine passe de validation
 
 - Glisser-déposer et `<select>` natif du Kanban Prospection (limite outil, voir ci-dessus).
@@ -1274,3 +1288,4 @@ Lint, `tsc --noEmit` et `npm run build` propres. Rejoué dans Chrome sans interf
 - **Mon affichage** (2026-10-20) : le glisser-déposer à la souris n'a pas été rejoué (les flèches, même fonction, l'ont été) ; la page d'accueil après une vraie connexion par mot de passe non rejouée (mot de passe local inconnu) ; colonnes de la Prospection vérifiées en compilation seulement, faute de prospect dans le jeu de test final.
 - **Livraison 3** (2026-10-20) : glisser-déposer d'une publication dans le nouveau calendrier non rejoué (même composant de dépôt qu'avant) ; vue Bacs et calendrier des Tâches vus en compilation seulement ; routines prévues absentes du jeu de test.
 - **Fiche client** (2026-10-20) : changement du logo dans sa nouvelle fenêtre, archivage et suppression depuis le menu ⋮ non rejoués (composants d'origine, déplacés) ; « Voir son espace client » non vu faute de contact avec espace actif.
+- **Écran d'une tâche** (2026-10-20) : l'alerte de capacité à l'échéance n'a pas été vue (pas de capacité saisie en local) ; dupliquer / archiver / supprimer depuis « ⋮ », validation/refus et verrou « avant de travailler » non rejoués (composants d'origine, déplacés).

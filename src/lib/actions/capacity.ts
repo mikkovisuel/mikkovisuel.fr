@@ -48,7 +48,7 @@ export async function setWeekCapacity(
 }
 
 // Vérification live de la capacité à une échéance candidate, appelée depuis
-// TaskEditForm à chaque changement du champ "Échéance" — voir
+// `AutosaveDate` (écran d'une tâche) à chaque changement du champ "Échéance" — voir
 // src/lib/capacity.ts pour le calcul.
 export async function checkTaskDueDateCapacity(
   dueDateIso: string,

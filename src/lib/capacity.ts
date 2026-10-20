@@ -118,7 +118,7 @@ export interface DueDateCapacityCheck {
 }
 
 // Vérification complète pour une échéance candidate — utilisée par le
-// formulaire de tâche (TaskEditForm) à chaque changement de date. La
+// formulaire de tâche (`AutosaveDate`, écran d'une tâche) à chaque changement de date. La
 // période considérée va d'aujourd'hui à la date choisie inclus : c'est tout
 // le travail qu'il reste à absorber avant cette échéance.
 export async function checkDueDateCapacity(

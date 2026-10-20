@@ -3,6 +3,7 @@
 import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import type { Prisma } from "@/generated/prisma/client";
 import { db } from "@/lib/db";
 import { verifyAdminSession, verifyClientSession, assertNotDemo } from "@/lib/dal";
 import { sendEmail, getAdminEmails } from "@/lib/email/service";
@@ -274,51 +275,72 @@ export async function createTaskByAdminAnyClient(
   redirect("/admin/taches");
 }
 
-export async function updateTask(
+/** Champs modifiables un à un depuis l'écran d'une tâche (2026-10-20,
+ * refonte « panneau Détails » : enregistrement automatique champ par champ,
+ * sans quitter la page). Remplace l'ancienne action `updateTask` (fiche entière),
+ * avec les mêmes règles de validation. */
+export type TaskField = "title" | "description" | "eventDate" | "dueDate" | "estimatedMinutes" | "types" | "formats";
+
+export async function updateTaskField(
   taskId: string,
-  _prev: TaskFormState,
-  formData: FormData,
-): Promise<TaskFormState> {
+  field: TaskField,
+  value: string | string[],
+): Promise<{ error?: string; ok?: boolean }> {
   await verifyAdminSession();
-
-  const parsed = TaskSchema.safeParse({
-    title: formData.get("title"),
-    description: formData.get("description"),
-    eventDate: formData.get("eventDate"),
-    types: formData.getAll("types"),
-    formats: formData.getAll("formats"),
-  });
-  if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Formulaire invalide." };
-  }
-
-  const dueDateRaw = formData.get("dueDate");
-  const estimated = parseEstimatedMinutes(formData);
-  if ("error" in estimated) return { error: estimated.error };
-
   const task = await db.task.findUnique({ where: { id: taskId } });
   if (!task) return { error: "Tâche introuvable." };
 
-  const [typeIds, formatIds] = await Promise.all([
-    getDropdownItemIds(TASK_TYPE_LIST_KEY, parsed.data.types),
-    getDropdownItemIds(TASK_FORMAT_LIST_KEY, parsed.data.formats),
-  ]);
+  const text = typeof value === "string" ? value.trim() : "";
+  const date = (raw: string) => {
+    if (!raw) return { value: null as Date | null };
+    const parsed = new Date(raw);
+    return Number.isNaN(parsed.getTime()) ? { error: "Date invalide." } : { value: parsed };
+  };
 
-  await db.task.update({
-    where: { id: taskId },
-    data: {
-      title: parsed.data.title,
-      description: parsed.data.description,
-      eventDate: parsed.data.eventDate ? new Date(parsed.data.eventDate) : null,
-      dueDate: typeof dueDateRaw === "string" && dueDateRaw ? new Date(dueDateRaw) : null,
-      estimatedMinutes: estimated.value,
-      types: { set: typeIds },
-      formats: { set: formatIds },
-    },
-  });
+  let data: Prisma.TaskUpdateInput;
+  switch (field) {
+    case "title":
+      if (!text) return { error: "Le titre est requis." };
+      if (text.length > 300) return { error: "Titre trop long (300 caractères au plus)." };
+      data = { title: text };
+      break;
+    case "description":
+      data = { description: text };
+      break;
+    case "eventDate":
+    case "dueDate": {
+      const parsed = date(text);
+      if ("error" in parsed) return { error: parsed.error };
+      data = { [field]: parsed.value };
+      break;
+    }
+    case "estimatedMinutes": {
+      if (!text) {
+        data = { estimatedMinutes: null };
+        break;
+      }
+      const minutes = Number.parseInt(text, 10);
+      if (!Number.isInteger(minutes) || minutes < 0 || String(minutes) !== text) {
+        return { error: "Le temps estimé doit être un nombre de minutes positif." };
+      }
+      data = { estimatedMinutes: minutes };
+      break;
+    }
+    case "types":
+    case "formats": {
+      const slugs = Array.isArray(value) ? value.filter((slug) => typeof slug === "string") : [];
+      const ids = await getDropdownItemIds(field === "types" ? TASK_TYPE_LIST_KEY : TASK_FORMAT_LIST_KEY, slugs);
+      data = { [field]: { set: ids } };
+      break;
+    }
+    default:
+      return { error: "Champ inconnu." };
+  }
 
+  await db.task.update({ where: { id: taskId }, data });
   revalidateTaskPaths(task.clientId);
-  redirect("/admin/taches");
+  revalidatePath(`/admin/taches/${taskId}`);
+  return { ok: true };
 }
 
 async function notifyClientUsersOfNewTaskToValidate(taskId: string) {
