@@ -2507,6 +2507,23 @@ Administratif, puis les notes ; la personnalisation suit sa validation.
   « Préparer le mail » prend une icône d'enveloppe pour ne pas se confondre
   avec le crayon « Modifier ».
 
+**Notes pleine page — livrées le 2026-10-20**, disposition « Google Docs » :
+
+- L'application de notes occupe toute la feuille sous la barre d'outils :
+  plus de cadre, de fond propre ni de marges autour ; les trois volets
+  (dossiers, liste, note) ne sont séparés que d'un filet.
+- Dossiers en pilules comme le tiroir ; recherche en pilule ; lignes de la
+  liste à la densité de l'admin, note ouverte en jaune clair.
+- Note ouverte : barre fine d'informations (dossier, affectation, rappel,
+  PDF, épingle, suppression), puis une colonne de texte centrée comme une
+  page Docs — titre en grand, barre de mise en forme arrondie, texte —
+  sans aucun encadré.
+- Téléphone : inchangé dans son principe (dossiers, puis liste, puis note
+  en plein écran).
+- Corrigé au passage, sur toutes les pages : un sous-titre long faisait
+  disparaître le titre de la barre d'outils sur téléphone ; c'est désormais
+  le sous-titre qui se coupe.
+
 ## Passe de nettoyage du code (2026-09-22)
 
 Demande du client : "fais une passe globale sur le code et nettoie tout,
@@ -3262,3 +3279,4 @@ Le client a explicitement délégué ces choix :
 | 2026-10-20 | "Transformer l'interface en design Google Workspace, s'inspirer à fond de Google Drive, Gmail, Google Agenda… Ne pas toucher le site vitrine, les espaces clients… Vraiment que l'admin. Repenser la structure visuelle des données, plus compacte" — arbitrages : **jaune Mikko**, **Compact 32 px** par défaut, **statuts en onglets** | **Livraison 1 livrée** (coquille) : barre du haut avec recherche en pilule, tiroir avec bouton « Nouveau » contextuel et mode icônes, feuille blanche arrondie, Roboto auto-hébergée, palette Material clair/sombre ; configuration de retour sous la roue crantée ; remplace la refonte macOS. Livraisons 2 (listes compactes, densité par admin) et 3 (Administratif façon Drive, Réseaux façon Agenda) à suivre. Détails section 4.16, tests dans `VALIDATION.md` |
 | 2026-10-20 | "Ajouter des fonctions d'édition dans la partie administratif sur tous les items… pouvoir corriger si je me suis trompé" ; "une personnalisation complète du logiciel par profil admin… couleurs, affichages, afficher ou non des colonnes… un logiciel entièrement configurable visuellement" ; "Améliorer le système de note, qu'il prenne vraiment toute la page, pas de système d'encadrés" ; "Lance la livraison 2" — arbitrages : livraison 2 d'abord, puis édition, puis notes ; documents engagés **modifiables avec alerte** et trace d'audit ; personnalisation **proposée avant d'être codée** ; notes **façon Google Docs** | **Inscrit** (section 4.17) pour l'édition, la personnalisation et les notes. **Livraison 2 livrée** : densité des listes par admin (Compacte 32 px par défaut, Par défaut, Confortable) dans la roue crantée, profil d'affichage `Admin.preferences` ; onglets de statut des Tâches façon Gmail (remplacent les statuts du tiroir) ; lignes, survol et sélection façon Gmail sur Tâches, Clients, Prospection et Contacts. Détails section 4.16, tests dans `VALIDATION.md` |
 | 2026-10-20 | (suite) Édition des éléments de la page Administratif | **Livré** : bouton « Modifier » sur les factures/devis/contrats (nom, client, type, montant, échéance, période mensuelle, remplacement du PDF), les paiements sans facture (client, montant, libellé, date) et les documents de la société (nom, catégorie, fichier), sur la page Administratif et la fiche client ; devis signé ou facture payée en ligne : avertissement à confirmer ; chaque modification au journal d'audit avec l'avant/après ; aucun e-mail au client. Détails section 4.17, tests dans `VALIDATION.md` |
+| 2026-10-20 | (suite) Notes en pleine page, sans encadrés | **Livré** : notes sur toute la feuille façon Google Docs (volets séparés d'un filet, texte en colonne centrée sans cadre, titre en grand, barre de mise en forme arrondie) ; corrigé : le titre de la barre d'outils disparaissait derrière un sous-titre long sur téléphone. Détails section 4.17, tests dans `VALIDATION.md` |

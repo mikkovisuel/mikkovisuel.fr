@@ -3,7 +3,7 @@ import { verifyAdminSession } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { NotesApp } from "@/components/admin/notes-app";
 import { ACTIVE_CLIENTS } from "@/lib/clients";
-import { PageToolbar, PAGE_BODY } from "@/components/admin/page-toolbar";
+import { PageToolbar } from "@/components/admin/page-toolbar";
 
 export const metadata: Metadata = {
   title: "Notes — Admin Mikko Visuel",
@@ -42,9 +42,8 @@ export default async function AdminNotesPage() {
   return (
     <>
       <PageToolbar title="Notes" subtitle="Bloc-notes interne — jamais visible depuis l'espace client" />
-      <div className={PAGE_BODY}>
-        <div className="mt-6">
-          <NotesApp
+      {/* Pleine page (2026-10-20) : pas de marges ni de cadre autour. */}
+      <NotesApp
             initialFolders={folders.map((f) => ({ id: f.id, name: f.name }))}
             initialNotes={notes.map((n) => ({
               id: n.id,
@@ -60,8 +59,6 @@ export default async function AdminNotesPage() {
             clients={clients.map((c) => ({ id: c.id, name: c.name }))}
             prospects={prospects.map((p) => ({ id: p.id, name: p.name }))}
           />
-        </div>
-      </div>
     </>
   );
 }

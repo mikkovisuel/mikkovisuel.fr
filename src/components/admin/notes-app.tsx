@@ -294,33 +294,39 @@ export function NotesApp({
           : (folders.find((f) => f.id === view.folderId)?.name ?? "Dossier");
 
   return (
-    <div className="flex h-[calc(100vh-8rem)] overflow-hidden rounded-xl border border-line bg-surface-elevated">
+    // Pleine page façon Google Docs (demande du 2026-10-20 : « qu'il prenne
+    // vraiment toute la page, pas de système d'encadrés ») : l'application
+    // occupe toute la feuille sous la barre d'outils, sans bordure ni fond
+    // propre ; les volets ne sont séparés que d'un filet. Hauteur = écran
+    // moins la barre du haut (64 px), la barre d'outils (57 px) et, sur
+    // ordinateur, la marge basse de la feuille (16 px).
+    <div className="flex h-[calc(100dvh-121px)] overflow-hidden bg-surface lg:h-[calc(100dvh-137px)] lg:rounded-b-2xl">
       {/* Dossiers */}
       <aside
-        className={`w-full shrink-0 flex-col gap-1 overflow-y-auto border-r border-line p-3 md:flex md:w-56 ${
+        className={`w-full shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-line py-3 pr-3 md:flex md:w-60 ${
           mobilePane === "folders" ? "flex" : "hidden"
         }`}
       >
         <button
           onClick={() => selectView({ type: "all" })}
-          className={`rounded-md px-2.5 py-1.5 text-left text-sm transition-colors ${
-            view.type === "all" ? "bg-accent text-accent-ink" : "text-ink hover:bg-surface"
+          className={`flex h-8 items-center rounded-r-full pl-4 pr-3 text-left text-sm transition-colors ${
+            view.type === "all" ? "bg-select font-semibold text-ink" : "text-ink hover:bg-ink/[0.08]"
           }`}
         >
           Toutes les notes
         </button>
         <button
           onClick={() => selectView({ type: "pinned" })}
-          className={`flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-left text-sm transition-colors ${
-            view.type === "pinned" ? "bg-accent text-accent-ink" : "text-ink hover:bg-surface"
+          className={`flex items-center gap-1.5 flex h-8 items-center rounded-r-full pl-4 pr-3 text-left text-sm transition-colors ${
+            view.type === "pinned" ? "bg-select font-semibold text-ink" : "text-ink hover:bg-ink/[0.08]"
           }`}
         >
           <PushPin size={14} weight="fill" /> Épinglées
         </button>
         <button
           onClick={() => selectView({ type: "reminders" })}
-          className={`flex items-center justify-between rounded-md px-2.5 py-1.5 text-left text-sm transition-colors ${
-            view.type === "reminders" ? "bg-accent text-accent-ink" : "text-ink hover:bg-surface"
+          className={`flex items-center justify-between flex h-8 items-center rounded-r-full pl-4 pr-3 text-left text-sm transition-colors ${
+            view.type === "reminders" ? "bg-select font-semibold text-ink" : "text-ink hover:bg-ink/[0.08]"
           }`}
         >
           <span className="flex items-center gap-1.5">
@@ -329,7 +335,7 @@ export function NotesApp({
           {dueReminderCount > 0 && (
             <span
               className={`inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-medium ${
-                view.type === "reminders" ? "bg-accent-ink/20 text-accent-ink" : "bg-accent text-accent-ink"
+                "bg-accent text-accent-ink"
               }`}
             >
               {dueReminderCount}
@@ -337,8 +343,8 @@ export function NotesApp({
           )}
         </button>
 
-        <div className="mt-3 mb-1 flex items-center justify-between px-2.5">
-          <span className="text-xs font-medium uppercase tracking-wide text-ink-muted">Dossiers</span>
+        <div className="mb-1 mt-4 flex items-center justify-between pl-4 pr-1">
+          <span className="text-xs font-medium text-ink-muted">Dossiers</span>
           <button
             onClick={() => setIsAddingFolder(true)}
             aria-label="Nouveau dossier"
@@ -368,10 +374,10 @@ export function NotesApp({
           ) : (
             <div
               key={folder.id}
-              className={`group flex items-center justify-between rounded-md px-2.5 py-1.5 text-sm transition-colors ${
+              className={`group flex h-8 items-center justify-between rounded-r-full pl-4 pr-3 text-sm transition-colors ${
                 view.type === "folder" && view.folderId === folder.id
-                  ? "bg-accent text-accent-ink"
-                  : "text-ink hover:bg-surface"
+                  ? "bg-select font-semibold text-ink"
+                  : "text-ink hover:bg-ink/[0.08]"
               }`}
             >
               <button
@@ -429,11 +435,11 @@ export function NotesApp({
 
       {/* Liste des notes */}
       <section
-        className={`w-full shrink-0 flex-col border-r border-line md:flex md:w-80 ${
+        className={`w-full shrink-0 flex-col border-r border-line md:flex md:w-72 xl:w-80 ${
           mobilePane === "list" ? "flex" : "hidden"
         }`}
       >
-        <div className="space-y-2 border-b border-line p-3">
+        <div className="space-y-2 border-b border-line px-4 py-3">
           <button
             onClick={() => setMobilePane("folders")}
             className="flex items-center gap-1 text-sm text-ink-muted hover:text-ink md:hidden"
@@ -453,20 +459,20 @@ export function NotesApp({
           <div className="relative">
             <MagnifyingGlass
               size={14}
-              className="pointer-events-none absolute left-2 top-1/2 -translate-y-1/2 text-ink-muted"
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted"
             />
             <input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Rechercher"
-              className="w-full rounded-md border border-line bg-surface py-1.5 pl-7 pr-2 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent"
+              className="h-9 w-full rounded-full bg-search pl-8 pr-3 text-sm text-ink focus:bg-surface focus:outline-none focus:ring-1 focus:ring-line"
             />
           </div>
           {(clients.length > 0 || prospects.length > 0) && (
             <select
               value={assignmentFilter}
               onChange={(e) => setAssignmentFilter(e.target.value)}
-              className="w-full rounded-md border border-line bg-surface px-2 py-1.5 text-xs text-ink-muted focus:outline-none focus:ring-1 focus:ring-accent"
+              className="h-8 w-full rounded-full border border-line bg-surface px-3 text-xs text-ink-muted focus:outline-none focus:ring-1 focus:ring-accent"
             >
               <option value="">Tous</option>
               {clients.length > 0 && (
@@ -498,8 +504,8 @@ export function NotesApp({
             <li key={note.id}>
               <button
                 onClick={() => selectNote(note.id)}
-                className={`w-full border-b border-line px-3 py-2.5 text-left transition-colors ${
-                  selectedNoteId === note.id ? "bg-surface" : "hover:bg-surface"
+                className={`ws-row w-full border-b border-line px-4 py-2 text-left transition-colors ${
+                  selectedNoteId === note.id ? "bg-select" : ""
                 }`}
               >
                 <div className="flex items-center gap-1.5">
@@ -537,8 +543,8 @@ export function NotesApp({
       >
         {selectedNote ? (
           <>
-            <div className="flex flex-col gap-2 border-b border-line px-4 py-3 md:flex-row md:items-center md:justify-between md:gap-3 md:px-6">
-              <div className="flex items-center gap-3">
+            <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2 md:px-6">
+              <div className="flex items-center gap-3 md:hidden">
                 <button
                   onClick={() => setMobilePane("list")}
                   aria-label="Retour aux notes"
@@ -546,18 +552,12 @@ export function NotesApp({
                 >
                   <CaretLeft size={18} />
                 </button>
-                <input
-                  value={selectedNote.title}
-                  onChange={(e) => patchNote(selectedNote.id, { title: e.target.value })}
-                  placeholder="Titre"
-                  className="min-w-0 flex-1 font-display text-xl font-semibold text-ink focus:outline-none"
-                />
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 <select
                   value={selectedNote.folderId ?? ""}
                   onChange={(e) => patchNote(selectedNote.id, { folderId: e.target.value || null }, true)}
-                  className="min-w-0 max-w-[9rem] rounded-md border border-line bg-surface px-2 py-1 text-xs text-ink-muted focus:outline-none focus:ring-1 focus:ring-accent"
+                  className="h-8 min-w-0 max-w-[10rem] rounded-full border border-line bg-surface px-3 text-xs text-ink-muted focus:outline-none focus:ring-1 focus:ring-accent"
                 >
                   <option value="">Sans dossier</option>
                   {folders.map((folder) => (
@@ -573,7 +573,7 @@ export function NotesApp({
                       const { clientId, prospectId } = decodeAssignment(e.target.value);
                       patchNote(selectedNote.id, { clientId, prospectId }, true);
                     }}
-                    className="min-w-0 max-w-[9rem] rounded-md border border-line bg-surface px-2 py-1 text-xs text-ink-muted focus:outline-none focus:ring-1 focus:ring-accent"
+                    className="h-8 min-w-0 max-w-[10rem] rounded-full border border-line bg-surface px-3 text-xs text-ink-muted focus:outline-none focus:ring-1 focus:ring-accent"
                   >
                     <option value="">Aucune affectation</option>
                     {clients.length > 0 && (
@@ -597,7 +597,7 @@ export function NotesApp({
                   </select>
                 )}
                 <label
-                  className={`flex shrink-0 items-center gap-1.5 rounded-md border px-2 py-1 text-xs ${
+                  className={`flex h-8 shrink-0 items-center gap-1.5 rounded-full border px-3 text-xs ${
                     selectedNote.reminderAt && isReminderDue(selectedNote.reminderAt)
                       ? "border-danger/40 text-danger"
                       : "border-line text-ink-muted"
@@ -623,14 +623,14 @@ export function NotesApp({
                   href={`/api/exports/notes/${selectedNote.id}`}
                   aria-label="Exporter en PDF"
                   title="Exporter en PDF"
-                  className="rounded-md p-1.5 text-ink-muted transition-colors hover:bg-surface hover:text-ink"
+                  className="rounded-full p-2 text-ink-muted transition-colors hover:bg-ink/[0.08] hover:text-ink"
                 >
                   <FilePdf size={16} weight="regular" />
                 </a>
                 <button
                   onClick={() => patchNote(selectedNote.id, { pinned: !selectedNote.pinned }, true)}
                   aria-label={selectedNote.pinned ? "Désépingler" : "Épingler"}
-                  className="rounded-md p-1.5 text-ink-muted hover:bg-surface hover:text-ink"
+                  className="rounded-full p-2 text-ink-muted hover:bg-ink/[0.08] hover:text-ink"
                 >
                   {selectedNote.pinned ? (
                     <PushPinSlash size={16} weight="regular" />
@@ -641,20 +641,31 @@ export function NotesApp({
                 <button
                   onClick={() => handleDeleteNote(selectedNote.id)}
                   aria-label="Supprimer la note"
-                  className="rounded-md p-1.5 text-ink-muted hover:bg-surface hover:text-danger"
+                  className="rounded-full p-2 text-ink-muted hover:bg-ink/[0.08] hover:text-danger"
                 >
                   <Trash size={16} weight="regular" />
                 </button>
               </div>
             </div>
             <div className="flex-1 overflow-y-auto">
+              {/* Colonne de texte centrée comme une page Docs, sans cadre : le
+                  titre en tête, puis le texte. */}
+              <div className="mx-auto w-full max-w-[52rem] px-6 pt-4 sm:px-12">
+                <input
+                  value={selectedNote.title}
+                  onChange={(e) => patchNote(selectedNote.id, { title: e.target.value })}
+                  placeholder="Titre"
+                  aria-label="Titre de la note"
+                  className="w-full bg-transparent text-[28px] font-normal leading-tight text-ink placeholder:text-ink-muted/60 focus:outline-none"
+                />
+              </div>
               <NoteEditor
                 key={selectedNote.id}
                 content={selectedNote.content}
                 onChange={(html) => patchNote(selectedNote.id, { content: html })}
               />
             </div>
-            <div className="border-t border-line px-6 py-2 text-xs text-ink-muted">
+            <div className="px-6 py-1.5 text-center text-xs text-ink-muted">
               Modifié {formatNoteDate(selectedNote.updatedAt)}
             </div>
           </>

@@ -42,8 +42,11 @@ export function PageToolbar({
               <ArrowLeft size={20} />
             </Link>
           )}
-          <h1 className="truncate text-[22px] font-normal leading-7 text-ink">{title}</h1>
-          {subtitle && <span className="shrink-0 text-sm text-ink-muted">{subtitle}</span>}
+          {/* Le titre passe avant le sous-titre : sur un écran étroit, c'est le
+              sous-titre qui se coupe (signalé le 2026-10-20, « Notes »
+              disparaissait derrière son sous-titre). */}
+          <h1 className="max-w-full shrink-0 truncate text-[22px] font-normal leading-7 text-ink">{title}</h1>
+          {subtitle && <span className="min-w-0 truncate text-sm text-ink-muted">{subtitle}</span>}
         </div>
         {children && <div className="ml-auto flex flex-wrap items-center gap-2">{children}</div>}
       </div>

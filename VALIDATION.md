@@ -1128,6 +1128,17 @@ La détection est restée muette chez le client — aucun message, alors que le 
 | Journal d'audit | 5 modifications | ✅ 5 entrées, avec l'avant/après des seuls champs changés | — | — | 2026-10-20 |
 | Fiche client | Client avec un devis et un paiement | ✅ 2 boutons « Modifier » | — | — | 2026-10-20 |
 
+## Notes en pleine page (2026-10-20)
+
+Lint, `tsc --noEmit` et `npm run build` propres. Vérifié avec une vraie session admin sur 3 notes et 2 dossiers factices (supprimés ensuite), à 1 512 px en clair et sombre et à 390 px.
+
+| Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |
+|---|---|---|---|---|---|
+| Pleine page | Ouverture d'une note à 1 512 px | ✅ Aucun cadre ; la feuille est remplie exactement (hauteur de défilement = hauteur visible : 820 px), seule la note défile | — | — | 2026-10-20 |
+| Colonne de texte | Note avec titre, intertitre et liste | ✅ Titre en grand, barre de mise en forme arrondie, texte centré ; mode sombre lisible | — | — | 2026-10-20 |
+| Enregistrement | Titre modifié au clavier | ✅ « ZZ Idées de contenus janvier » retrouvé en base après 4 s | — | — | 2026-10-20 |
+| Téléphone | Note ouverte à 390 px | ✅ Retour, informations, titre, barre sur deux lignes, texte ; la page tient dans l'écran (844 px) | Sous-titre long dans la barre d'outils | ✅ Défaut constaté (« Notes » invisible) puis corrigé : le titre reste entier, le sous-titre se coupe | 2026-10-20 |
+
 ## Points restant ouverts pour une prochaine passe de validation
 
 - Glisser-déposer et `<select>` natif du Kanban Prospection (limite outil, voir ci-dessus).

@@ -282,7 +282,7 @@ function Toolbar({ editor }: { editor: Editor }) {
     // hors de vue dès qu'une note dépassait la hauteur visible — les
     // styles devenaient inatteignables au milieu d'une note longue. Fond
     // opaque obligatoire, sinon le texte défile visiblement dessous.
-    <div className="sticky top-0 z-10 flex flex-wrap items-center gap-1 border-b border-line bg-surface-elevated px-2 py-1.5">
+    <div className="sticky top-0 z-10 mx-auto flex w-[calc(100%-2rem)] max-w-[50rem] flex-wrap items-center gap-1 rounded-3xl bg-search px-3 py-1">
       <ToolbarMenu
         label="Taille du texte"
         active={Boolean(activeHeading)}
@@ -542,7 +542,8 @@ export function NoteEditor({
     onUpdate: ({ editor }) => onChange(editor.getHTML()),
     editorProps: {
       attributes: {
-        class: "note-prose min-h-[50vh] flex-1 px-6 py-4 focus:outline-none",
+        // Colonne centrée, alignée sur le titre (notes pleine page, 2026-10-20).
+        class: "note-prose mx-auto min-h-[50vh] w-full max-w-[52rem] flex-1 px-6 py-4 text-[15px] focus:outline-none sm:px-12",
       },
     },
   });
