@@ -4,7 +4,6 @@ import { FileText } from "@phosphor-icons/react/dist/ssr";
 import { verifyAdminSession } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { NewDocumentButton } from "@/components/admin/new-document-button";
-import { DocumentRow } from "@/components/admin/document-row";
 import { DocumentBinView } from "@/components/admin/document-bin-view";
 import { CompanyDocumentUploadForm } from "@/components/admin/company-document-upload-form";
 import { CompanyDocumentRow } from "@/components/admin/company-document-row";
@@ -31,6 +30,9 @@ import {
   DEFAULT_DOCUMENT_SENT_BODY,
 } from "@/lib/invoice-email-templates";
 import { PageToolbar, PAGE_BODY } from "@/components/admin/page-toolbar";
+import { FilterChips } from "@/components/admin/filter-chips";
+import { DocumentDriveTable, DocumentSuggestions } from "@/components/admin/document-drive-table";
+import { ListBullets, SquaresFour } from "@phosphor-icons/react/dist/ssr";
 import { getMyPreferences } from "@/lib/admin-preferences-server";
 
 export const metadata: Metadata = {
@@ -349,98 +351,38 @@ export default async function AdminAdministratifPage({
         />
       </PageToolbar>
       <div className={PAGE_BODY}>
-        {outstandingCents > 0 && (
-          <div className="mt-6 rounded-2xl border border-line bg-surface-elevated p-4">
-            <p className="text-sm text-ink-muted">
-              Encours de paiement :{" "}
-              <span className="font-medium text-ink">{formatAmount(outstandingCents, "EUR")}</span>
-            </p>
-          </div>
-        )}
-
-        <div className="mt-8">
-          <FilterMenu activeCount={activeFilterCount} label="Filtres">
-            <form className="grid gap-3">
-              {/* Filtres Finances (préfixe fin*) reportés en champs cachés :
-                  sans ça, appliquer un filtre Documents effacerait un filtre
-                  Finances actif plus bas sur la même page. */}
-              {finClientId && <input type="hidden" name="finClientId" value={finClientId} />}
-              {finAnnee && <input type="hidden" name="finAnnee" value={finAnnee} />}
-              {finMois && <input type="hidden" name="finMois" value={finMois} />}
-              <div className="flex flex-col gap-2">
-                <label htmlFor="clientId" className="text-sm font-medium text-ink">
-                  Client
-                </label>
-                <select id="clientId" name="clientId" defaultValue={clientId ?? ""} className={selectClass}>
-                  <option value="">Tous les clients</option>
-                  {clients.map((client) => (
-                    <option key={client.id} value={client.id}>
-                      {client.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <label htmlFor="typeId" className="text-sm font-medium text-ink">
-                  Type
-                </label>
-                <select id="typeId" name="typeId" defaultValue={typeId ?? ""} className={selectClass}>
-                  <option value="">Tous les types</option>
-                  {typeList?.items.map((item) => (
-                    <option key={item.id} value={item.id}>
-                      {item.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="flex flex-col gap-2">
-                <label htmlFor="status" className="text-sm font-medium text-ink">
-                  Statut
-                </label>
-                <select id="status" name="status" defaultValue={status ?? ""} className={selectClass}>
-                  <option value="">Tous les statuts</option>
-                  {STATUS_OPTIONS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="flex items-center gap-3 pt-1">
-                <button
-                  type="submit"
-                  className="rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-accent-ink transition-transform active:scale-[0.98]"
-                >
-                  Appliquer
-                </button>
-                {activeFilterCount > 0 && (
-                  <Link
-                    href={
-                      finActiveFilterCount > 0
-                        ? `/admin/administratif?${new URLSearchParams({ ...(finClientId ? { finClientId } : {}), ...(finAnnee ? { finAnnee } : {}), ...(finMois ? { finMois } : {}) }).toString()}`
-                        : "/admin/administratif"
-                    }
-                    className="text-sm text-ink-muted transition-colors hover:text-ink"
-                  >
-                    Réinitialiser
-                  </Link>
-                )}
-              </div>
-            </form>
-          </FilterMenu>
-        </div>
-
+        {/* Barre de filtres façon Drive (livraison 3 de la refonte Workspace,
+            2026-10-20) : une puce par critère, à côté le choix de la vue. Les
+            filtres Finances (préfixe fin*) et la vue sont conservés. */}
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
+          <FilterChips
+            basePath="/admin/administratif"
+            params={{ clientId, typeId, status, vue, finClientId, finAnnee, finMois }}
+            keepOnReset={["vue", "finClientId", "finAnnee", "finMois"]}
+            filters={[
+              {
+                name: "typeId",
+                label: "Type",
+                allLabel: "Tous les types",
+                options: typeList?.items.map((item) => ({ value: item.id, label: item.label })) ?? [],
+              },
+              {
+                name: "clientId",
+                label: "Client",
+                allLabel: "Tous les clients",
+                options: clients.map((client) => ({ value: client.id, label: client.name })),
+              },
+              { name: "status", label: "Statut", allLabel: "Tous les statuts", options: STATUS_OPTIONS },
+            ]}
+          />
         {/* Bascule "Détaillé" / "Bacs" (demande du 2026-07-31) : la vue
             détaillée reste celle par défaut (elle porte toutes les actions),
             "Bacs" est une vue de consultation dense, groupée par type, pour
             une vision d'ensemble rapide. */}
-        <div className="segmented mt-6 flex gap-2">
+          <div className="segmented">
           {[
-            { value: "detaille", label: "Détaillé" },
-            { value: "bacs", label: "Bacs" },
+            { value: "detaille", label: "Liste", icon: ListBullets },
+            { value: "bacs", label: "Bacs", icon: SquaresFour },
           ].map((option) => {
             const params = new URLSearchParams();
             if (clientId) params.set("clientId", clientId);
@@ -463,11 +405,21 @@ export default async function AdminAdministratifPage({
                     : "border-line text-ink-muted hover:text-ink"
                 }`}
               >
+                <option.icon size={16} aria-hidden />
                 {option.label}
               </Link>
             );
           })}
+          </div>
         </div>
+
+        {/* Encours, en tête de liste comme une ligne d'information Drive. */}
+        {outstandingCents > 0 && (
+          <p className="mt-4 text-sm text-ink-muted">
+            Encours de paiement :{" "}
+            <span className="font-medium text-ink">{formatAmount(outstandingCents, "EUR")}</span>
+          </p>
+        )}
 
         {documents.length === 0 ? (
           <p className="mt-8 text-sm text-ink-muted">Aucun document pour le moment.</p>
@@ -475,21 +427,15 @@ export default async function AdminAdministratifPage({
           <DocumentBinView groups={binGroups} />
         ) : (
           <>
-            <div className="mt-8 divide-y divide-line rounded-2xl border border-line">
-              {documents.map((doc) => (
-                <DocumentRow
-                  key={doc.id}
-                  document={doc}
-                  showClient
-                  billingEmail={doc.client.billingEmail}
-                  deleteAction={deleteDocument}
-                  editOptions={editOptions}
-                  companyDocuments={companyDocuments.map((d) => ({ id: d.id, fileName: d.fileName }))}
-                  emailSubjectTemplate={settings.documentSentEmailSubject ?? DEFAULT_DOCUMENT_SENT_SUBJECT}
-                  emailBodyTemplate={settings.documentSentEmailBody ?? DEFAULT_DOCUMENT_SENT_BODY}
-                />
-              ))}
-            </div>
+            {currentPage === 1 && <DocumentSuggestions documents={documents} />}
+            <DocumentDriveTable
+              documents={documents}
+              deleteAction={deleteDocument}
+              editOptions={editOptions}
+              companyDocuments={companyDocuments.map((d) => ({ id: d.id, fileName: d.fileName }))}
+              emailSubjectTemplate={settings.documentSentEmailSubject ?? DEFAULT_DOCUMENT_SENT_SUBJECT}
+              emailBodyTemplate={settings.documentSentEmailBody ?? DEFAULT_DOCUMENT_SENT_BODY}
+            />
             <Pagination
               basePath="/admin/administratif"
               currentPage={currentPage}
@@ -519,7 +465,7 @@ export default async function AdminAdministratifPage({
                     <h3 className="text-xs font-medium uppercase tracking-wide text-ink-muted">
                       {COMPANY_DOCUMENT_CATEGORY_LABELS[category]} ({items.length})
                     </h3>
-                    <div className="mt-2 divide-y divide-line rounded-2xl border border-line">
+                    <div className="mt-2 divide-y divide-line border-y border-line">
                       {items.map((doc) => (
                         <CompanyDocumentRow key={doc.id} document={doc} />
                       ))}
@@ -542,7 +488,7 @@ export default async function AdminAdministratifPage({
             <PaymentRecordForm clients={clients} />
           </div>
           {paymentRecords.length > 0 && (
-            <div className="mt-4 divide-y divide-line rounded-2xl border border-line">
+            <div className="-mx-4 mt-4 divide-y divide-line border-y border-line sm:-mx-6 lg:-mx-8 2xl:-mx-12">
               {paymentRecords.map((record) => (
                 <PaymentRecordRow
                   key={record.id}

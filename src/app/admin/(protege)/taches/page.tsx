@@ -8,7 +8,7 @@ import { TaskViewTabs, type TaskView } from "@/components/admin/task-view-tabs";
 import { TaskStatusTabs } from "@/components/admin/task-status-tabs";
 import { CollapsibleSection } from "@/components/admin/collapsible-section";
 import { TaskKanbanBoard } from "@/components/admin/task-kanban-board";
-import { TaskCalendarView } from "@/components/admin/task-calendar-view";
+import { AgendaMonthView } from "@/components/admin/agenda-month-view";
 import { ArchivedTaskList } from "@/components/admin/task-archived-list";
 import { TaskSortControl } from "@/components/admin/task-sort-control";
 import { FilterMenu } from "@/components/admin/filter-menu";
@@ -17,6 +17,8 @@ import {
   TASK_STATUS_LIST_KEY,
   TASK_TYPE_LIST_KEY,
   TASK_FORMAT_LIST_KEY,
+  PALETTE_SWATCH_CLASSES,
+  type PaletteColor,
 } from "@/lib/dropdown-lists";
 import {
   buildTaskOrderBy,
@@ -386,12 +388,27 @@ export default async function AdminTasksPage({
         {view === "kanban" && <TaskKanbanBoard tasks={tasks} statuses={statusOptions} />}
 
         {view === "calendrier" && (
-          <TaskCalendarView
-            tasks={tasks}
+          // Calendrier façon Google Agenda (livraison 3, 2026-10-20), point
+          // de la couleur du statut.
+          <AgendaMonthView
+            items={tasks.map((task) => ({
+              id: task.id,
+              title: task.title,
+              date: task.eventDate,
+              dotClass:
+                PALETTE_SWATCH_CLASSES[task.status.color as PaletteColor] ?? PALETTE_SWATCH_CLASSES.slate,
+              href: `/admin/taches/${task.id}`,
+              tooltip: `${task.client.name} · ${task.status.label}`,
+            }))}
             year={calendarYear}
             month={calendarMonth}
-            clientId={clientId}
-            status={status}
+            basePath="/admin/taches"
+            params={{
+              vue: "calendrier",
+              ...(clientId ? { clientId } : {}),
+              ...(status ? { status } : {}),
+            }}
+            undatedLabel="Sans date d'évènement"
           />
         )}
 

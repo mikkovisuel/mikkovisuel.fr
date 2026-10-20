@@ -2458,7 +2458,31 @@ Livraison en trois temps :
    - **Clients, prospects, contacts** : listes bord à bord, même hauteur de
      ligne et même survol (la boîte arrondie autour des listes disparaît).
    - Aucune fonction retirée.
-3. **Administratif façon Drive et Réseaux façon Agenda** — à faire.
+3. **Administratif façon Drive et Réseaux façon Agenda** — livrée le
+   2026-10-20 :
+   - **Administratif** : puces de filtre (Type, Client, Statut ; puce
+     active jaune clair et cochée, « Effacer les filtres »), choix de vue
+     Liste / Bacs en icônes, encours en ligne d'information ; cartes « À
+     surveiller » (4 impayés au plus, retards d'abord, ouvrent le PDF) ;
+     tableau Nom / Client / Type / Montant / Statut / Échéance / Envoyé avec
+     pastilles (Payée, En attente, En retard, Signé, Sans montant) et
+     commandes au survol de la ligne (les mêmes qu'avant). Sur téléphone, les
+     cartes défilent sur le côté et les lignes détaillées d'avant restent.
+     La fiche client utilise le même tableau. Paiements sans facture et
+     documents société en listes bord à bord.
+   - **Réseaux, vue Calendrier, façon Google Agenda** : barre « Aujourd'hui
+     ‹ › mois », grille à filets, jours voisins en gris, jour courant dans
+     un rond d'accent, évènements sur une ligne (point couleur du client,
+     heure, titre, infobulle client/statut/catégorie), « N autres » au-delà
+     de trois, glisser-déposer conservé. Panneau de gauche : petit mois,
+     **clients cochables** (couleur de chacun, l'état reste dans l'URL :
+     `masquer=`), « Afficher aussi » Actions à cocher et Routines prévues
+     (`actions=0`, `routines=0`).
+   - **Tâches, vue Calendrier** : même calendrier, point de la couleur du
+     statut. L'espace client garde son calendrier d'origine (périmètre :
+     admin seulement).
+   - Corrigé au passage : « Accepté et signé » s'affichait en jaune sur
+     blanc, peu lisible ; désormais en vert.
 
 ### 4.17 Demandes du 2026-10-20 (en attente)
 
@@ -3309,3 +3333,4 @@ Le client a explicitement délégué ces choix :
 | 2026-10-20 | (suite) Édition des éléments de la page Administratif | **Livré** : bouton « Modifier » sur les factures/devis/contrats (nom, client, type, montant, échéance, période mensuelle, remplacement du PDF), les paiements sans facture (client, montant, libellé, date) et les documents de la société (nom, catégorie, fichier), sur la page Administratif et la fiche client ; devis signé ou facture payée en ligne : avertissement à confirmer ; chaque modification au journal d'audit avec l'avant/après ; aucun e-mail au client. Détails section 4.17, tests dans `VALIDATION.md` |
 | 2026-10-20 | (suite) Notes en pleine page, sans encadrés | **Livré** : notes sur toute la feuille façon Google Docs (volets séparés d'un filet, texte en colonne centrée sans cadre, titre en grand, barre de mise en forme arrondie) ; corrigé : le titre de la barre d'outils disparaissait derrière un sous-titre long sur téléphone. Détails section 4.17, tests dans `VALIDATION.md` |
 | 2026-10-20 | "tout ok, code tout" (maquette « Mon affichage » validée) | **Livré** : écran Mon affichage par admin — couleur d'accent (contraste automatique), thème avec « Selon l'appareil », densité, taille du texte, tiroir ; page d'accueil et rubriques visibles/ordonnées ; colonnes visibles/ordonnées sur Tâches, Clients, Prospection, Contacts et tris par défaut ; blocs du tableau de bord ; vues par défaut de 5 pages ; aperçu en direct ; rétablissement. Détails section 4.17, tests dans `VALIDATION.md` |
+| 2026-10-20 | "Fais la livraison 3" | **Livré** : Administratif façon Drive (puces de filtre, cartes « À surveiller », tableau avec commandes au survol, aussi sur la fiche client) ; calendriers Réseaux et Tâches façon Google Agenda (Réseaux : petit mois, clients cochables, actions et routines masquables). Espace client inchangé. Détails section 4.16, tests dans `VALIDATION.md` |

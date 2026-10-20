@@ -17,7 +17,7 @@ import { ImpersonateButton } from "@/components/admin/impersonate-button";
 import { TaskTable } from "@/components/admin/task-table";
 import { CollapsibleSection } from "@/components/admin/collapsible-section";
 import { MonthlyRecapButton } from "@/components/admin/monthly-recap-button";
-import { DocumentRow } from "@/components/admin/document-row";
+import { DocumentDriveTable } from "@/components/admin/document-drive-table";
 import { PaymentRecordRow } from "@/components/admin/payment-record-row";
 import { FileGrid } from "@/components/file-grid";
 import { deleteDocument } from "@/lib/actions/files";
@@ -416,20 +416,18 @@ export default async function ClientDetailPage({
         </h2>
 
         {client.documents.length > 0 ? (
-          <div className="mt-4 divide-y divide-line rounded-2xl border border-line">
-            {client.documents.map((doc) => (
-              <DocumentRow
-                key={doc.id}
-                document={doc}
-                billingEmail={client.billingEmail}
-                deleteAction={deleteDocument}
-                editOptions={editOptions}
-                companyDocuments={companyDocuments.map((d) => ({ id: d.id, fileName: d.fileName }))}
-                emailSubjectTemplate={settings.documentSentEmailSubject ?? DEFAULT_DOCUMENT_SENT_SUBJECT}
-                emailBodyTemplate={settings.documentSentEmailBody ?? DEFAULT_DOCUMENT_SENT_BODY}
-              />
-            ))}
-          </div>
+          <DocumentDriveTable
+            showClient={false}
+            documents={client.documents.map((doc) => ({
+              ...doc,
+              client: { name: client.name, billingEmail: client.billingEmail },
+            }))}
+            deleteAction={deleteDocument}
+            editOptions={editOptions}
+            companyDocuments={companyDocuments.map((d) => ({ id: d.id, fileName: d.fileName }))}
+            emailSubjectTemplate={settings.documentSentEmailSubject ?? DEFAULT_DOCUMENT_SENT_SUBJECT}
+            emailBodyTemplate={settings.documentSentEmailBody ?? DEFAULT_DOCUMENT_SENT_BODY}
+          />
         ) : (
           <p className="mt-1 text-sm text-ink-muted">
             Aucun document pour ce client. Ajoutez-en un depuis{" "}
@@ -450,7 +448,7 @@ export default async function ClientDetailPage({
           <h2 className="text-sm font-medium text-ink-muted">
             Paiements sans facture ({client.paymentRecords.length})
           </h2>
-          <div className="mt-4 divide-y divide-line rounded-2xl border border-line">
+          <div className="-mx-4 mt-4 divide-y divide-line border-y border-line sm:-mx-6 lg:-mx-8 2xl:-mx-12">
             {client.paymentRecords.map((record) => (
               <PaymentRecordRow
                 key={record.id}

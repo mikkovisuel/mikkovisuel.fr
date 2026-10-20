@@ -8,7 +8,7 @@ import { EXCLUDE_DEMO_CLIENT } from "@/lib/clients";
 import { PALETTE_SWATCH_CLASSES, SOCIAL_CATEGORY_LIST_KEY, type PaletteColor } from "@/lib/dropdown-lists";
 import { FilterMenu } from "@/components/admin/filter-menu";
 import { StatusBadge } from "@/components/status-badge";
-import { TaskCalendarView } from "@/components/admin/task-calendar-view";
+import { AgendaMiniMonth, AgendaMonthView } from "@/components/admin/agenda-month-view";
 import {
   SOCIAL_NETWORKS,
   SOCIAL_POST_STATUS,
@@ -212,6 +212,17 @@ function InstagramGrid({ posts, clientChosen }: { posts: PostRow[]; clientChosen
   );
 }
 
+const AGENDA_COLORS = [
+  "bg-orange-600",
+  "bg-green-700",
+  "bg-blue-600",
+  "bg-purple-600",
+  "bg-pink-600",
+  "bg-teal-600",
+  "bg-amber-600",
+  "bg-indigo-600",
+];
+
 export default async function SocialPostsPage({
   searchParams,
 }: {
@@ -222,11 +233,15 @@ export default async function SocialPostsPage({
     categorie?: string;
     vue?: string;
     mois?: string;
+    /** Calendrier façon Agenda : clients décochés, actions et routines masquées. */
+    masquer?: string;
+    actions?: string;
+    routines?: string;
   }>;
 }) {
   await verifyAdminSession();
   const params = await searchParams;
-  const { clientId, reseau, statut, categorie, mois } = params;
+  const { clientId, reseau, statut, categorie, mois, masquer, actions: actionsParam, routines: routinesParam } = params;
   // Vue par défaut du profil (« Mon affichage », 2026-10-20), seulement en
   // arrivant sur la page sans aucun paramètre.
   const vue = params.vue ?? (Object.keys(params).length === 0 ? (await getMyPreferences()).views.reseaux : undefined);
@@ -295,6 +310,34 @@ export default async function SocialPostsPage({
     return [parisNow.getFullYear(), parisNow.getMonth()];
   })();
 
+  // Calendrier façon Agenda (2026-10-20) : un client décoché, les actions ou
+  // les routines masquées restent dans l'URL, avec la vue et les filtres.
+  const hiddenClients = (masquer ?? "").split(",").filter(Boolean);
+  const showActions = actionsParam !== "0";
+  const showRoutines = routinesParam !== "0";
+  const calendarParams: Record<string, string> = {
+    ...filterParams,
+    vue: "calendrier",
+    ...(hiddenClients.length ? { masquer: hiddenClients.join(",") } : {}),
+    ...(showActions ? {} : { actions: "0" }),
+    ...(showRoutines ? {} : { routines: "0" }),
+  };
+  const calendarHref = (overrides: Record<string, string | undefined>) => {
+    const search = new URLSearchParams(calendarParams);
+    for (const [key, value] of Object.entries(overrides)) {
+      if (value) search.set(key, value);
+      else search.delete(key);
+    }
+    if (mois) search.set("mois", mois);
+    return `/admin/reseaux?${search.toString()}`;
+  };
+  // Couleur d'un client, stable tant que la liste des clients ne change pas
+  // (ordre alphabétique), comme la couleur d'un agenda.
+  const clientColor = (id: string) => {
+    const index = clients.findIndex((client) => client.id === id);
+    return AGENDA_COLORS[(index === -1 ? 0 : index) % AGENDA_COLORS.length];
+  };
+
   // Mois affiché, bornes en heure de Paris (calendrier, cases fantômes,
   // équilibre du mois).
   const pad = (n: number) => String(n).padStart(2, "0");
@@ -360,6 +403,8 @@ export default async function SocialPostsPage({
                   status: { color: "slate", label: routine.createsDraft ? "Brouillon prévu" : "À préparer" },
                   href: `/admin/reseaux/nouveau?${params.toString()}`,
                   ghost: true,
+                  clientId: client.id,
+                  routineTitle: routine.title,
                 };
               });
           });
@@ -382,6 +427,8 @@ export default async function SocialPostsPage({
             },
             details: action.client ? [action.client.name] : ["Interne"],
             href: "/admin/reseaux?vue=afaire",
+            clientId: action.client?.id ?? null,
+            done: Boolean(action.doneAt),
           }))
       : [];
 
@@ -556,35 +603,130 @@ export default async function SocialPostsPage({
         ) : view === "grille" ? (
           <InstagramGrid posts={posts} clientChosen={Boolean(clientId)} />
         ) : view === "calendrier" ? (
-          <TaskCalendarView
-            tasks={[
-              ...posts.map((post) => {
-              const meta = isSocialPostStatus(post.status) ? SOCIAL_POST_STATUS_META[post.status] : null;
-              return {
-                id: post.id,
-                title: `${post.client.name} · ${post.title}`,
-                // Le calendrier regroupe par jour avec les accesseurs locaux
-                // du serveur (UTC en production) : on lui passe l'heure de
-                // Paris, sinon une publication à 00 h 30 tomberait la veille.
-                eventDate: post.scheduledAt ? toParisWallClockDate(post.scheduledAt) : null,
-                status: { color: meta?.color ?? "slate", label: meta?.label ?? post.status },
-                details: [
-                  ...(post.category ? [post.category.label] : []),
-                  ...(requestedTaskStatus(post) ? [`Création : ${requestedTaskStatus(post)!.label}`] : []),
-                ],
-              };
-            }),
-              ...ghostEntries,
-              ...actionEntries,
-            ]}
-            onMove={moveSocialPostToDay}
-            year={calendarYear}
-            month={calendarMonth}
-            basePath="/admin/reseaux"
-            taskBasePath="/admin/reseaux"
-            extraParams={{ ...filterParams, vue: "calendrier" }}
-            undatedLabel="Sans date de publication"
-          />
+          // Calendrier façon Google Agenda (livraison 3 de la refonte
+          // Workspace, 2026-10-20) : panneau de gauche avec le petit mois, les
+          // clients comme des agendas qu'on coche et les éléments facultatifs.
+          <div className="mt-2 lg:grid lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-6">
+            <aside className="mt-4 hidden flex-col gap-6 lg:flex">
+              <AgendaMiniMonth
+                year={calendarYear}
+                month={calendarMonth}
+                basePath="/admin/reseaux"
+                params={calendarParams}
+              />
+              {!clientId && clients.length > 0 && (
+                <div>
+                  <p className="pb-1 pl-2 text-sm font-medium text-ink">Clients</p>
+                  {clients.map((client) => {
+                    const shown = !hiddenClients.includes(client.id);
+                    return (
+                      <Link
+                        key={client.id}
+                        href={calendarHref({
+                          masquer: (shown
+                            ? [...hiddenClients, client.id]
+                            : hiddenClients.filter((id) => id !== client.id)
+                          ).join(","),
+                        })}
+                        role="checkbox"
+                        aria-checked={shown}
+                        className="flex h-8 items-center gap-3 rounded-full px-2 text-sm text-ink transition-colors hover:bg-ink/[0.06]"
+                      >
+                        <span
+                          className={`flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[3px] border-2 text-white ${
+                            shown ? `${clientColor(client.id)} border-transparent` : "border-ink-muted"
+                          }`}
+                        >
+                          {shown && <Check size={12} weight="bold" />}
+                        </span>
+                        <span className="truncate">{client.name}</span>
+                      </Link>
+                    );
+                  })}
+                </div>
+              )}
+              <div>
+                <p className="pb-1 pl-2 text-sm font-medium text-ink">Afficher aussi</p>
+                {[
+                  { key: "actions", label: "Actions à cocher", shown: showActions },
+                  { key: "routines", label: "Routines prévues", shown: showRoutines },
+                ].map((option) => (
+                  <Link
+                    key={option.key}
+                    href={calendarHref({ [option.key]: option.shown ? "0" : undefined })}
+                    role="checkbox"
+                    aria-checked={option.shown}
+                    className="flex h-8 items-center gap-3 rounded-full px-2 text-sm text-ink transition-colors hover:bg-ink/[0.06]"
+                  >
+                    <span
+                      className={`flex h-[18px] w-[18px] shrink-0 items-center justify-center rounded-[3px] border-2 ${
+                        option.shown ? "border-transparent bg-ink-muted text-surface" : "border-ink-muted"
+                      }`}
+                    >
+                      {option.shown && <Check size={12} weight="bold" />}
+                    </span>
+                    {option.label}
+                  </Link>
+                ))}
+              </div>
+            </aside>
+            <AgendaMonthView
+              items={[
+                ...posts
+                  .filter((post) => !hiddenClients.includes(post.clientId))
+                  .map((post) => {
+                    const meta = isSocialPostStatus(post.status) ? SOCIAL_POST_STATUS_META[post.status] : null;
+                    // Le calendrier regroupe par jour avec les accesseurs
+                    // locaux : on lui passe l'heure de Paris, sinon une
+                    // publication à 00 h 30 tomberait la veille.
+                    const date = post.scheduledAt ? toParisWallClockDate(post.scheduledAt) : null;
+                    return {
+                      id: post.id,
+                      title: post.title,
+                      date,
+                      time: date ? `${pad(date.getHours())}:${pad(date.getMinutes())}` : undefined,
+                      dotClass: clientColor(post.clientId),
+                      href: `/admin/reseaux/${post.id}`,
+                      tooltip: [
+                        post.client.name,
+                        meta?.label ?? post.status,
+                        post.category?.label,
+                        requestedTaskStatus(post) ? `Création : ${requestedTaskStatus(post)!.label}` : null,
+                      ]
+                        .filter(Boolean)
+                        .join(" · "),
+                    };
+                  }),
+                ...(showRoutines ? ghostEntries : [])
+                  .filter((entry) => !hiddenClients.includes(entry.clientId))
+                  .map((entry) => ({
+                    id: entry.id,
+                    title: `Routine · ${entry.routineTitle}`,
+                    date: entry.eventDate,
+                    dotClass: clientColor(entry.clientId),
+                    href: entry.href,
+                    tooltip: `${entry.title} — ${entry.status.label}`,
+                    ghost: true,
+                  })),
+                ...(showActions ? actionEntries : [])
+                  .filter((entry) => !entry.clientId || !hiddenClients.includes(entry.clientId))
+                  .map((entry) => ({
+                    id: entry.id,
+                    title: entry.title,
+                    date: entry.eventDate,
+                    dotClass: entry.done ? "bg-emerald-600" : "bg-slate-500",
+                    href: entry.href,
+                    tooltip: `${entry.status.label} · ${entry.details.join(", ")}`,
+                  })),
+              ]}
+              onMove={moveSocialPostToDay}
+              year={calendarYear}
+              month={calendarMonth}
+              basePath="/admin/reseaux"
+              params={calendarParams}
+              undatedLabel="Sans date de publication"
+            />
+          </div>
         ) : posts.length === 0 ? (
           <div className="mt-8 rounded-2xl border border-dashed border-line p-10 text-center">
             <p className="text-sm text-ink-muted">

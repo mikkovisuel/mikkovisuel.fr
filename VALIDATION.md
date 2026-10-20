@@ -1156,6 +1156,20 @@ Lint, `tsc --noEmit` et `npm run build` propres. Rejoué dans Chrome sans interf
 | Rétablir | Bouton avec confirmation | ✅ « Réglages par défaut rétablis. », profil `{}`, thème `system` | — | — | 2026-10-20 |
 | Téléphone | Onglet Listes et colonnes à 390 px | ✅ Pas de défilement horizontal (390/390), flèches monter/descendre visibles | — | — | 2026-10-20 |
 
+## Refonte « Google Workspace » — livraison 3, Administratif façon Drive et calendriers façon Agenda (2026-10-20)
+
+Lint, `tsc --noEmit` et `npm run build` propres. Rejoué dans Chrome sans interface avec une vraie session admin sur un jeu factice (4 clients, 5 documents dont une facture en retard, un devis signé et une facture mensuelle, 18 publications, 2 actions), supprimé ensuite.
+
+| Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |
+|---|---|---|---|---|---|
+| Puces de filtre | Statut → « En attente de paiement » | ✅ URL `status=unpaid` (vue conservée), 3 lignes sur 5, puce cochée avec le libellé choisi | — | — | 2026-10-20 |
+| Cartes « À surveiller » | 3 impayés | ✅ Retard en premier (rouge), puis signé et en attente ; montant et client | Page 2 de la liste | ✅ Cartes affichées sur la première page seulement (code) | 2026-10-20 |
+| Tableau | 5 documents | ✅ Pastilles justes : Payée, Signé, Payée, En attente, En retard ; « mensuelle 08/2026 » ; « Non envoyé » | Commandes hors survol | ✅ Invisibles (opacité 0) mais présentes (11 commandes) ; « Modifier » ouvre bien sa fenêtre | 2026-10-20 |
+| Téléphone | Administratif à 390 px | ✅ Pas de défilement horizontal (390/390), cartes en bandeau, lignes détaillées avec toutes leurs commandes | — | — | 2026-10-20 |
+| Calendrier Réseaux | Octobre 2026 | ✅ 18 éléments, couleur par client, heure, « 1 autre » le 18, jour courant entouré, mode sombre lisible | Client décoché (SASU Sajj) | ✅ 18 → 14 éléments, case décochée, `masquer=` dans l'URL | 2026-10-20 |
+| Afficher aussi | Actions à cocher décoché | ✅ « Rapport mensuel » retiré, `actions=0`, le client décoché le reste | — | — | 2026-10-20 |
+| Espace client | — | — | Calendrier de l'espace client | ✅ Composant d'origine inchangé (`TaskCalendarView`), seul l'admin utilise le nouveau | 2026-10-20 |
+
 ## Points restant ouverts pour une prochaine passe de validation
 
 - Glisser-déposer et `<select>` natif du Kanban Prospection (limite outil, voir ci-dessus).
@@ -1243,3 +1257,4 @@ Lint, `tsc --noEmit` et `npm run build` propres. Rejoué dans Chrome sans interf
 - **Coquille Workspace avec données** (2026-10-20) : la base locale ne contenait aucune donnée métier ; compteurs du tiroir, raccourcis statuts/clients sous « Tâches », chrono dans la barre du haut et résultats de la recherche n'ont pas été revus visuellement dans le nouveau style (logique inchangée). À regarder en production.
 - **Édition Administratif, remplacement du PDF d'une facture** (2026-10-20) : le remplacement a été exercé sur un document société (même code) mais pas sur une facture ; le refus d'un fichier non PDF n'a pas été rejoué dans la fenêtre (même contrôle que l'ajout).
 - **Mon affichage** (2026-10-20) : le glisser-déposer à la souris n'a pas été rejoué (les flèches, même fonction, l'ont été) ; la page d'accueil après une vraie connexion par mot de passe non rejouée (mot de passe local inconnu) ; colonnes de la Prospection vérifiées en compilation seulement, faute de prospect dans le jeu de test final.
+- **Livraison 3** (2026-10-20) : glisser-déposer d'une publication dans le nouveau calendrier non rejoué (même composant de dépôt qu'avant) ; vue Bacs et calendrier des Tâches vus en compilation seulement ; routines prévues absentes du jeu de test.

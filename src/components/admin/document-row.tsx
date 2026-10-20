@@ -122,13 +122,42 @@ export function DocumentRow({
             : "Non envoyé"}
         </p>
         {document.type.slug === DOCUMENT_TYPE.DEVIS && document.acceptedAt && (
-          <p className="mt-1 text-sm text-accent">
+          <p className="mt-1 text-sm text-emerald-700 dark:text-emerald-400">
             Accepté et signé le {SENT_AT_FORMATTER.format(document.acceptedAt)}
             {document.acceptedByName && ` par ${document.acceptedByName}`}
           </p>
         )}
       </div>
       <div className="flex shrink-0 flex-wrap items-center gap-2">
+        <DocumentActions
+          document={document}
+          billingEmail={billingEmail}
+          deleteAction={deleteAction}
+          companyDocuments={companyDocuments}
+          emailSubjectTemplate={emailSubjectTemplate}
+          emailBodyTemplate={emailBodyTemplate}
+          editOptions={editOptions}
+        />
+      </div>
+    </div>
+  );
+}
+
+/** Commandes d'un document (payé, relance, envoi, brouillon, téléchargement,
+ * modification, suppression), partagées par la ligne détaillée et par le
+ * tableau façon Drive (2026-10-20). `compact` : téléchargement en icône. */
+export function DocumentActions({
+  document,
+  billingEmail,
+  deleteAction,
+  companyDocuments = [],
+  emailSubjectTemplate = DEFAULT_DOCUMENT_SENT_SUBJECT,
+  emailBodyTemplate = DEFAULT_DOCUMENT_SENT_BODY,
+  editOptions,
+  compact = false,
+}: Omit<DocumentRowProps, "showClient"> & { compact?: boolean }) {
+  return (
+    <>
         {document.amountCents !== null && (
           <form
             action={setDocumentPaymentStatus.bind(
@@ -178,15 +207,17 @@ export function DocumentRow({
             </a>
           </>
         ) : (
-          <span className="text-xs text-ink-muted">Pas d&apos;email de facturation</span>
+          !compact && <span className="text-xs text-ink-muted">Pas d&apos;email de facturation</span>
         )}
         <a
           href={`/api/fichiers/documents/${document.id}`}
           download={document.fileName}
-          className={LABELLED_BUTTON}
+          title="Télécharger"
+          aria-label={compact ? "Télécharger" : undefined}
+          className={compact ? ICON_BUTTON : LABELLED_BUTTON}
         >
           <DownloadSimple size={16} weight="regular" />
-          Télécharger
+          {!compact && "Télécharger"}
         </a>
         {editOptions && (
           <EditDocumentButton document={document} clients={editOptions.clients} types={editOptions.types} />
@@ -200,7 +231,6 @@ export function DocumentRow({
             className={`${ICON_BUTTON} hover:border-danger hover:bg-danger hover:text-white`}
           />
         )}
-      </div>
-    </div>
+    </>
   );
 }

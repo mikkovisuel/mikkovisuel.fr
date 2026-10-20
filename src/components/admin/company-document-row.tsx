@@ -1,4 +1,4 @@
-import { DownloadSimple, Trash } from "@phosphor-icons/react/dist/ssr";
+import { DownloadSimple, FileText, Trash } from "@phosphor-icons/react/dist/ssr";
 import { DeleteButton } from "@/components/admin/delete-button";
 import { deleteCompanyDocument } from "@/lib/actions/company-documents";
 import { EditCompanyDocumentButton } from "@/components/admin/administratif-edit-dialogs";
@@ -18,9 +18,12 @@ export function CompanyDocumentRow({
   document: { id: string; fileName: string; category: string; uploadedAt: Date };
 }) {
   return (
-    <div className="flex items-center justify-between gap-3 px-6 py-3">
+    <div className="ws-row flex items-center justify-between gap-3 px-2">
       <div className="min-w-0">
-        <p className="truncate font-medium text-ink">{document.fileName}</p>
+        <p className="flex min-w-0 items-center gap-2 font-medium text-ink">
+          <FileText size={20} weight="fill" className="shrink-0 text-ink-muted" aria-hidden />
+          <span className="truncate">{document.fileName}</span>
+        </p>
       </div>
       <div className="flex shrink-0 items-center gap-2">
         <a
