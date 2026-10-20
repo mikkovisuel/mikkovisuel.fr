@@ -1198,6 +1198,7 @@ Lint, `tsc --noEmit` et `npm run build` propres. Rejoué dans Chrome sans interf
 | Type / formats | Clic sur « Vidéo » | ✅ Puce cochée, `video` ajouté en base à côté de `flyer` | — | — | 2026-10-20 |
 | Disposition | 1 512 px | ✅ Travail à gauche, Détails puis Temps passé à droite | 390 px | ✅ Ordre Détails > travail > Temps passé, pas de défilement horizontal | 2026-10-20 |
 | Paiements sans facture (fiche client) | 2 paiements | ✅ Une ligne chacun : libellé, montant, statut, date ; boutons au survol | — | — | 2026-10-20 |
+| Paiements sans facture (Administratif) | 3 paiements de 2 clients | ✅ Tableau Client / Libellé / Montant / Statut / Date, « — » si pas de libellé ; boutons masqués hors survol (opacité 0), « Modifier » ouvre « Modifier le paiement » | — | — | 2026-10-20 |
 
 ## Points restant ouverts pour une prochaine passe de validation
 

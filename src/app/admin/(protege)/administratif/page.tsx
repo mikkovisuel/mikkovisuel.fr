@@ -8,7 +8,7 @@ import { DocumentBinView } from "@/components/admin/document-bin-view";
 import { CompanyDocumentUploadForm } from "@/components/admin/company-document-upload-form";
 import { CompanyDocumentRow } from "@/components/admin/company-document-row";
 import { PaymentRecordForm } from "@/components/admin/payment-record-form";
-import { PaymentRecordRow } from "@/components/admin/payment-record-row";
+import { PaymentRecordsTable } from "@/components/admin/payment-record-row";
 import { FilterMenu } from "@/components/admin/filter-menu";
 import { FinancesMonthlyChart } from "@/components/admin/finances-monthly-chart";
 import { FinancesByClientTable } from "@/components/admin/finances-by-client-table";
@@ -449,8 +449,8 @@ export default async function AdminAdministratifPage({
             associé (K-bis, statuts, plaquettes commerciales...) — simple
             consultation, pas de montant ni de statut de paiement. */}
         <section className="mt-12 border-t border-line pt-8">
-          <h2 className="text-sm font-medium text-ink-muted">
-            Documents Commercial / Société ({companyDocuments.length})
+          <h2 className="text-lg font-medium text-ink">
+            Documents Commercial / Société <span className="font-normal text-ink-muted">({companyDocuments.length})</span>
           </h2>
           <div className="mt-4">
             <CompanyDocumentUploadForm />
@@ -481,31 +481,26 @@ export default async function AdminAdministratifPage({
             facture (acompte par virement, espèces...) — un suivi Client /
             montant / statut minimal, distinct des Factures ci-dessus. */}
         <section className="mt-12 border-t border-line pt-8">
-          <h2 className="text-sm font-medium text-ink-muted">
-            Paiements sans facture ({paymentRecords.length})
+          <h2 className="text-lg font-medium text-ink">
+            Paiements sans facture <span className="font-normal text-ink-muted">({paymentRecords.length})</span>
           </h2>
           <div className="mt-4">
             <PaymentRecordForm clients={clients} />
           </div>
           {paymentRecords.length > 0 && (
-            <div className="-mx-4 mt-4 divide-y divide-line border-y border-line sm:-mx-6 lg:-mx-8 2xl:-mx-12">
-              {paymentRecords.map((record) => (
-                <PaymentRecordRow
-                  key={record.id}
-                  editClients={billingClients}
-                  record={{
-                    id: record.id,
-                    clientId: record.clientId,
-                    clientName: record.client.name,
-                    label: record.label,
-                    amountCents: record.amountCents,
-                    currency: record.currency,
-                    paymentStatus: record.paymentStatus,
-                    date: record.date.toISOString().slice(0, 10),
-                  }}
-                />
-              ))}
-            </div>
+            <PaymentRecordsTable
+              editClients={billingClients}
+              records={paymentRecords.map((record) => ({
+                id: record.id,
+                clientId: record.clientId,
+                clientName: record.client.name,
+                label: record.label,
+                amountCents: record.amountCents,
+                currency: record.currency,
+                paymentStatus: record.paymentStatus,
+                date: record.date.toISOString().slice(0, 10),
+              }))}
+            />
           )}
         </section>
 
