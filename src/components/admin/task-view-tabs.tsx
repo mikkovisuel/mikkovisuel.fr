@@ -32,14 +32,16 @@ export function TaskViewTabs({
         if (clientId) params.set("clientId", clientId);
         if (status) params.set("status", status);
         if (pinnedOnly) params.set("epingle", "1");
-        if (view.value !== "liste") params.set("vue", view.value);
+        // Toujours explicite : sans `vue`, la page ouvre la vue par défaut
+        // du profil, qui n'est pas forcément la liste (2026-10-20).
+        params.set("vue", view.value);
         const query = params.toString();
         const isActive = view.value === current;
 
         return (
           <Link
             key={view.value}
-            href={query ? `/admin/taches?${query}` : "/admin/taches"}
+            href={`/admin/taches?${query}`}
             aria-current={isActive ? "page" : undefined}
             className={`rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
               isActive

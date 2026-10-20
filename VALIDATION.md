@@ -1139,6 +1139,23 @@ Lint, `tsc --noEmit` et `npm run build` propres. Vérifié avec une vraie sessio
 | Enregistrement | Titre modifié au clavier | ✅ « ZZ Idées de contenus janvier » retrouvé en base après 4 s | — | — | 2026-10-20 |
 | Téléphone | Note ouverte à 390 px | ✅ Retour, informations, titre, barre sur deux lignes, texte ; la page tient dans l'écran (844 px) | Sous-titre long dans la barre d'outils | ✅ Défaut constaté (« Notes » invisible) puis corrigé : le titre reste entier, le sous-titre se coupe | 2026-10-20 |
 
+## Personnalisation « Mon affichage » (2026-10-20)
+
+Lint, `tsc --noEmit` et `npm run build` propres. Rejoué dans Chrome sans interface avec une vraie session admin sur un jeu factice (3 clients, 9 tâches, 3 contacts), supprimé ensuite et profil remis à vide.
+
+| Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |
+|---|---|---|---|---|---|
+| Enregistrement | Bleu, Sombre, Grande, Portfolio masqué, accueil Tâches, Clients descendu, Évènement masqué, Type affiché, Statut monté de 2, « Installer » masqué, Chiffres descendus, Tâches en Kanban | ✅ « Réglages enregistrés. », profil complet en base, thème `dark` | Profil corrompu en base (types faux, couleur « red; background:url(x) », clés inconnues, chemin « ../../etc ») | ✅ Les 9 pages en HTTP 200 ; couleur ignorée, densité Compacte, pas de taille de texte, colonnes et vue par défaut ; les valeurs valides restent (Tâches masquée, Statut en tête) | 2026-10-20 |
+| Couleur et texte | Pages admin après enregistrement | ✅ `--color-accent:#8ab4f8`, texte noir posé dessus (contraste), `html{font-size:112.5%}` | — | — | 2026-10-20 |
+| Colonnes Tâches | `?vue=liste` | ✅ Tâche, Client, Statut, Échéance, Temps, Type — Évènement masqué | — | — | 2026-10-20 |
+| Colonnes Contacts | Email masqué / visible | ✅ Lien `mailto:` absent / présent | — | — | 2026-10-20 |
+| Clients | « Ajouté le » en tête, tri Date d'ajout décroissant | ✅ Colonne affichée, plus récent en premier | — | — | 2026-10-20 |
+| Vue par défaut | `/admin/taches` sans paramètre | ✅ Kanban actif | Bouton « Liste » | ✅ Lien `?vue=liste`, la liste s'ouvre bien | 2026-10-20 |
+| Navigation | Tiroir | ✅ Portfolio absent, Contacts avant Clients, logo vers `/admin/taches` | — | — | 2026-10-20 |
+| Tableau de bord | Blocs | ✅ « Installer » absent, ordre respecté | — | — | 2026-10-20 |
+| Rétablir | Bouton avec confirmation | ✅ « Réglages par défaut rétablis. », profil `{}`, thème `system` | — | — | 2026-10-20 |
+| Téléphone | Onglet Listes et colonnes à 390 px | ✅ Pas de défilement horizontal (390/390), flèches monter/descendre visibles | — | — | 2026-10-20 |
+
 ## Points restant ouverts pour une prochaine passe de validation
 
 - Glisser-déposer et `<select>` natif du Kanban Prospection (limite outil, voir ci-dessus).
@@ -1225,3 +1242,4 @@ Lint, `tsc --noEmit` et `npm run build` propres. Vérifié avec une vraie sessio
 - **Démo `/demo` contre l'API de démonstration réelle** (2026-09-27) : non exercée, l'API de démonstration n'est pas encore en ligne sur Scalingo. Testée contre une API locale identique. À vérifier après sa mise en ligne : chargement de la configuration, « Essayer la démo », photos de la galerie.
 - **Coquille Workspace avec données** (2026-10-20) : la base locale ne contenait aucune donnée métier ; compteurs du tiroir, raccourcis statuts/clients sous « Tâches », chrono dans la barre du haut et résultats de la recherche n'ont pas été revus visuellement dans le nouveau style (logique inchangée). À regarder en production.
 - **Édition Administratif, remplacement du PDF d'une facture** (2026-10-20) : le remplacement a été exercé sur un document société (même code) mais pas sur une facture ; le refus d'un fichier non PDF n'a pas été rejoué dans la fenêtre (même contrôle que l'ajout).
+- **Mon affichage** (2026-10-20) : le glisser-déposer à la souris n'a pas été rejoué (les flèches, même fonction, l'ont été) ; la page d'accueil après une vraie connexion par mot de passe non rejouée (mot de passe local inconnu) ; colonnes de la Prospection vérifiées en compilation seulement, faute de prospect dans le jeu de test final.

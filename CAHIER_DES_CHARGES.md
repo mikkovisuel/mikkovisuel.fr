@@ -2482,6 +2482,34 @@ Livraison en trois temps :
 Ordre convenu : livraison 2 de la refonte Workspace, puis l'édition
 Administratif, puis les notes ; la personnalisation suit sa validation.
 
+**Personnalisation « Mon affichage » — livrée le 2026-10-20** (maquette
+validée : « tout ok, code tout »). Écran `/admin/mon-affichage`, ouvert par
+la pastille du compte ou la roue crantée, propre à l'admin connecté, avec un
+aperçu en direct ; rien ne s'applique avant « Enregistrer ». Cinq onglets :
+
+- **Apparence** : couleur d'accent (8 teintes ou couleur libre ; texte posé
+  dessus en noir ou blanc selon le contraste, teinte de sélection
+  calculée), thème Clair / Sombre / Selon l'appareil, densité des listes,
+  taille du texte (Petite / Normale / Grande), tiroir déplié ou en icônes
+  au démarrage, compteurs, raccourcis clients sous « Tâches ».
+- **Navigation** : page d'accueil (logo et arrivée après connexion),
+  rubriques du tiroir visibles et leur ordre à l'intérieur de chaque groupe.
+- **Listes et colonnes** : pour Tâches (dont Type et Formats, nouvelles
+  colonnes facultatives), Clients (Catégorie, Ajouté le), Prospection et
+  Contacts — colonnes visibles et leur ordre (la colonne principale reste
+  toujours affichée) ; tri par défaut pour Tâches, Clients et Contacts.
+- **Tableau de bord** : blocs visibles et leur ordre.
+- **Vues par défaut** : Tâches, Réseaux, Prospection, Administratif,
+  Planning. La vue par défaut s'applique en arrivant sur la page sans
+  paramètre ; les boutons de vue portent désormais toujours leur vue
+  (`vue=liste`, `vue=detaille`, `vue=semaine`…).
+- **Rétablir les réglages par défaut** remet le profil à zéro (thème selon
+  l'appareil).
+- Garde-fous : profil relu et filtré côté serveur à l'enregistrement comme
+  à la lecture (valeur inconnue = défaut), taille limitée, toujours le
+  profil de l'admin connecté. **Masquer n'est pas interdire** : rappelé à
+  l'écran, les droits d'accès restent un chantier distinct.
+
 **Édition Administratif — livrée le 2026-10-20.** Bouton « Modifier »
 (crayon) sur chaque ligne, page Administratif et fiche client :
 
@@ -3280,3 +3308,4 @@ Le client a explicitement délégué ces choix :
 | 2026-10-20 | "Ajouter des fonctions d'édition dans la partie administratif sur tous les items… pouvoir corriger si je me suis trompé" ; "une personnalisation complète du logiciel par profil admin… couleurs, affichages, afficher ou non des colonnes… un logiciel entièrement configurable visuellement" ; "Améliorer le système de note, qu'il prenne vraiment toute la page, pas de système d'encadrés" ; "Lance la livraison 2" — arbitrages : livraison 2 d'abord, puis édition, puis notes ; documents engagés **modifiables avec alerte** et trace d'audit ; personnalisation **proposée avant d'être codée** ; notes **façon Google Docs** | **Inscrit** (section 4.17) pour l'édition, la personnalisation et les notes. **Livraison 2 livrée** : densité des listes par admin (Compacte 32 px par défaut, Par défaut, Confortable) dans la roue crantée, profil d'affichage `Admin.preferences` ; onglets de statut des Tâches façon Gmail (remplacent les statuts du tiroir) ; lignes, survol et sélection façon Gmail sur Tâches, Clients, Prospection et Contacts. Détails section 4.16, tests dans `VALIDATION.md` |
 | 2026-10-20 | (suite) Édition des éléments de la page Administratif | **Livré** : bouton « Modifier » sur les factures/devis/contrats (nom, client, type, montant, échéance, période mensuelle, remplacement du PDF), les paiements sans facture (client, montant, libellé, date) et les documents de la société (nom, catégorie, fichier), sur la page Administratif et la fiche client ; devis signé ou facture payée en ligne : avertissement à confirmer ; chaque modification au journal d'audit avec l'avant/après ; aucun e-mail au client. Détails section 4.17, tests dans `VALIDATION.md` |
 | 2026-10-20 | (suite) Notes en pleine page, sans encadrés | **Livré** : notes sur toute la feuille façon Google Docs (volets séparés d'un filet, texte en colonne centrée sans cadre, titre en grand, barre de mise en forme arrondie) ; corrigé : le titre de la barre d'outils disparaissait derrière un sous-titre long sur téléphone. Détails section 4.17, tests dans `VALIDATION.md` |
+| 2026-10-20 | "tout ok, code tout" (maquette « Mon affichage » validée) | **Livré** : écran Mon affichage par admin — couleur d'accent (contraste automatique), thème avec « Selon l'appareil », densité, taille du texte, tiroir ; page d'accueil et rubriques visibles/ordonnées ; colonnes visibles/ordonnées sur Tâches, Clients, Prospection, Contacts et tris par défaut ; blocs du tableau de bord ; vues par défaut de 5 pages ; aperçu en direct ; rétablissement. Détails section 4.17, tests dans `VALIDATION.md` |

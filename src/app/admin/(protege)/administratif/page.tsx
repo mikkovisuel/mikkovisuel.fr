@@ -31,6 +31,7 @@ import {
   DEFAULT_DOCUMENT_SENT_BODY,
 } from "@/lib/invoice-email-templates";
 import { PageToolbar, PAGE_BODY } from "@/components/admin/page-toolbar";
+import { getMyPreferences } from "@/lib/admin-preferences-server";
 
 export const metadata: Metadata = {
   title: "Administratif — Admin Mikko Visuel",
@@ -95,7 +96,11 @@ export default async function AdminAdministratifPage({
   }>;
 }) {
   await verifyAdminSession();
-  const { clientId, typeId, status, vue, page, finClientId, finAnnee, finMois } = await searchParams;
+  const params = await searchParams;
+  const { clientId, typeId, status, page, finClientId, finAnnee, finMois } = params;
+  // Vue par défaut du profil (« Mon affichage », 2026-10-20), seulement en
+  // arrivant sur la page sans aucun paramètre.
+  const vue = params.vue ?? (Object.keys(params).length === 0 ? (await getMyPreferences()).views.administratif : undefined);
   const isBinView = vue === "bacs";
   const currentPage = Math.max(1, Number(page) || 1);
 
@@ -434,23 +439,23 @@ export default async function AdminAdministratifPage({
             une vision d'ensemble rapide. */}
         <div className="segmented mt-6 flex gap-2">
           {[
-            { value: "", label: "Détaillé" },
+            { value: "detaille", label: "Détaillé" },
             { value: "bacs", label: "Bacs" },
           ].map((option) => {
             const params = new URLSearchParams();
             if (clientId) params.set("clientId", clientId);
             if (typeId) params.set("typeId", typeId);
             if (status) params.set("status", status);
-            if (option.value) params.set("vue", option.value);
+            params.set("vue", option.value);
             if (finClientId) params.set("finClientId", finClientId);
             if (finAnnee) params.set("finAnnee", finAnnee);
             if (finMois) params.set("finMois", finMois);
             const query = params.toString();
-            const isActive = option.value === (vue ?? "");
+            const isActive = option.value === (isBinView ? "bacs" : "detaille");
             return (
               <Link
                 key={option.label}
-                href={query ? `/admin/administratif?${query}` : "/admin/administratif"}
+                href={`/admin/administratif?${query}`}
                 aria-current={isActive ? "page" : undefined}
                 className={`rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
                   isActive

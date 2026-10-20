@@ -20,6 +20,7 @@ import {
   weekDays,
 } from "@/lib/capacity";
 import { PageToolbar, PAGE_BODY } from "@/components/admin/page-toolbar";
+import { getMyPreferences } from "@/lib/admin-preferences-server";
 
 export const metadata: Metadata = {
   title: "Planning de charge — Admin Mikko Visuel",
@@ -69,7 +70,11 @@ export default async function PlanningPage({
   searchParams: Promise<{ base?: string; semaine?: string; vue?: string; semaineJour?: string }>;
 }) {
   await verifyAdminSession();
-  const { base, semaine, vue, semaineJour } = await searchParams;
+  const params = await searchParams;
+  const { base, semaine, semaineJour } = params;
+  // Vue par défaut du profil (« Mon affichage », 2026-10-20), seulement en
+  // arrivant sur la page sans aucun paramètre.
+  const vue = params.vue ?? (Object.keys(params).length === 0 ? (await getMyPreferences()).views.planning : undefined);
   const view: PlanningView = vue === "jour" ? "jour" : "semaine";
   // Échéance par défaut (demande du 2026-08-01) : ce qu'il faut surveiller en
   // priorité, c'est quand une tâche doit être livrée, pas seulement quand
@@ -349,7 +354,8 @@ export default async function PlanningPage({
     const params = new URLSearchParams();
     if (nextBase === "evenement") params.set("base", "evenement");
     if (nextOffset !== 0) params.set("semaine", String(nextOffset));
-    if (nextView === "jour") params.set("vue", "jour");
+    // Toujours explicite : sans `vue`, la page ouvre la vue par défaut du profil.
+    params.set("vue", nextView);
     if (nextDayOffset !== 0) params.set("semaineJour", String(nextDayOffset));
     const query = params.toString();
     return query ? `/admin/planning?${query}` : "/admin/planning";

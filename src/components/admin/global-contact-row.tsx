@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState } from "react";
+import { Fragment, useActionState, useState } from "react";
 import { PencilSimple, Phone, EnvelopeSimple, Trash, WarningCircle } from "@phosphor-icons/react/dist/ssr";
 import { ContactAccessBadge } from "@/components/admin/contact-access-badge";
 import { ContactEditForm } from "@/components/admin/contact-edit-form";
@@ -15,6 +15,18 @@ import { useFormSubmit } from "@/lib/use-form-submit";
 // "modifier" qui déplie `ContactEditForm` juste en dessous, sur le modèle
 // de `ContactCard` de la fiche client (auparavant cette page était en
 // lecture seule, l'édition n'existait que depuis la fiche client).
+const COLUMN_WIDTHS: Record<string, string> = {
+  email: "minmax(0,1.4fr)",
+  telephone: "minmax(0,1fr)",
+  client: "minmax(0,1fr)",
+  acces: "auto",
+};
+
+/** Grille de la ligne : nom, colonnes choisies, boutons. */
+function gridTemplate(columns: string[]) {
+  return ["minmax(0,1.2fr)", ...columns.map((key) => COLUMN_WIDTHS[key]).filter(Boolean), "auto"].join(" ");
+}
+
 export function GlobalContactRow({
   contact,
   clientName,
@@ -23,6 +35,7 @@ export function GlobalContactRow({
   editAction,
   deleteAction,
   linkedClientNames,
+  columns = ["email", "telephone", "client", "acces"],
 }: {
   contact: { id: string; name: string; email: string | null; phone: string | null; role: string | null };
   clientName: string;
@@ -37,6 +50,9 @@ export function GlobalContactRow({
    * avertir avant suppression si ce n'est pas que celui-ci (la suppression
    * est en cascade, elle les retirerait tous d'un coup). */
   linkedClientNames: string[];
+  /** Colonnes visibles, dans l'ordre (« Mon affichage », 2026-10-20). Le nom
+   * et les boutons restent toujours affichés. */
+  columns?: string[];
 }) {
   const [editing, setEditing] = useState(false);
   const [deleting, setDeleting] = useState(false);
@@ -45,48 +61,72 @@ export function GlobalContactRow({
 
   return (
     <div className="ws-row flex flex-col justify-center px-4 sm:px-6 lg:px-8 2xl:px-12">
-      <div className="grid grid-cols-1 items-center gap-x-4 gap-y-1 sm:grid-cols-[minmax(0,1.2fr)_minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_auto_auto]">
+      <div
+        className="grid grid-cols-1 items-center gap-x-4 gap-y-1 sm:[grid-template-columns:var(--contact-cols)]"
+        style={{ "--contact-cols": gridTemplate(columns) } as React.CSSProperties}
+      >
         <p className="flex items-center gap-2 truncate font-medium text-ink">
           {contact.name}
           {contact.role && <span className="truncate text-sm text-ink-muted">· {contact.role}</span>}
         </p>
-        {contact.email ? (
-          <a
-            href={`mailto:${contact.email}`}
-            className="flex items-center gap-1.5 truncate text-sm text-ink-muted transition-colors hover:text-ink"
-          >
-            <EnvelopeSimple size={14} weight="regular" className="shrink-0" />
-            <span className="truncate">{contact.email}</span>
-          </a>
-        ) : (
-          <span className="text-sm text-ink-muted">—</span>
-        )}
-        {contact.phone ? (
-          <a
-            href={`tel:${contact.phone.replace(/\s/g, "")}`}
-            className="flex items-center gap-1.5 truncate text-sm text-ink-muted transition-colors hover:text-ink"
-          >
-            <Phone size={14} weight="regular" className="shrink-0" />
-            <span className="truncate">{contact.phone}</span>
-          </a>
-        ) : (
-          <span className="text-sm text-ink-muted">—</span>
-        )}
-        <a
-          href={clientHref}
-          className="truncate text-sm text-ink-muted transition-colors hover:text-ink"
-        >
-          {clientName}
-        </a>
-        {/* Largeur fixe (pas seulement `truncate`) : ce badge est dans une
-            colonne `auto`, dont la largeur suit sinon le texte de CE badge
-            précis (3 libellés de longueurs différentes) — chaque ligne de
-            la grille étant indépendante des autres (pas de grille CSS
-            partagée entre lignes), un badge plus court ou plus long décalait
-            toutes les colonnes précédentes d'une ligne à l'autre. */}
-        <div className="w-44">
-          <ContactAccessBadge state={accessState} />
-        </div>
+        {/* Colonnes dans l'ordre du profil. */}
+        {columns.map((column) => (
+          {
+          email: (
+            <Fragment key="email">
+            {contact.email ? (
+              <a
+                href={`mailto:${contact.email}`}
+                className="flex items-center gap-1.5 truncate text-sm text-ink-muted transition-colors hover:text-ink"
+              >
+                <EnvelopeSimple size={14} weight="regular" className="shrink-0" />
+                <span className="truncate">{contact.email}</span>
+              </a>
+            ) : (
+              <span className="text-sm text-ink-muted">—</span>
+            )}
+            </Fragment>
+          ),
+          telephone: (
+            <Fragment key="telephone">
+            {contact.phone ? (
+              <a
+                href={`tel:${contact.phone.replace(/\s/g, "")}`}
+                className="flex items-center gap-1.5 truncate text-sm text-ink-muted transition-colors hover:text-ink"
+              >
+                <Phone size={14} weight="regular" className="shrink-0" />
+                <span className="truncate">{contact.phone}</span>
+              </a>
+            ) : (
+              <span className="text-sm text-ink-muted">—</span>
+            )}
+            </Fragment>
+          ),
+          client: (
+            <Fragment key="client">
+            <a
+              href={clientHref}
+              className="truncate text-sm text-ink-muted transition-colors hover:text-ink"
+            >
+              {clientName}
+            </a>
+            </Fragment>
+          ),
+          acces: (
+            <Fragment key="acces">
+            {/* Largeur fixe (pas seulement `truncate`) : ce badge est dans une
+                colonne `auto`, dont la largeur suit sinon le texte de CE badge
+                précis (3 libellés de longueurs différentes) — chaque ligne de
+                la grille étant indépendante des autres (pas de grille CSS
+                partagée entre lignes), un badge plus court ou plus long décalait
+                toutes les colonnes précédentes d'une ligne à l'autre. */}
+            <div className="w-44">
+              <ContactAccessBadge state={accessState} />
+            </div>
+            </Fragment>
+          ),
+          } as Record<string, React.ReactNode>
+        )[column] ?? null)}
         {/* Les deux boutons (modifier, supprimer) sont toujours rendus
             ensemble ici — jamais l'un sans l'autre selon une condition —
             pour que cette colonne garde la même largeur sur toutes les

@@ -105,7 +105,9 @@ export async function stopImpersonation() {
   if (adminSession) {
     const admin = await db.admin.findUnique({ where: { id: adminSession.subjectId } });
     if (admin) {
-      await setThemeCookie(admin.themePreference === "dark" ? "dark" : "light");
+      await setThemeCookie(
+        admin.themePreference === "dark" ? "dark" : admin.themePreference === "system" ? "system" : "light",
+      );
     }
   }
 

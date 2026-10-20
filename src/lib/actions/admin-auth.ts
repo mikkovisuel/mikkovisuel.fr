@@ -7,6 +7,7 @@ import { createSession } from "@/lib/session";
 import { isRateLimited, recordLoginAttempt } from "@/lib/rate-limit";
 import { getClientIp } from "@/lib/request-ip";
 import { setThemeCookie } from "@/lib/actions/theme";
+import { NAV_ITEMS, parseAdminPreferences } from "@/lib/admin-preferences";
 import { logAuditEvent } from "@/lib/audit-log";
 import { LoginSchema, type LoginFormState } from "@/lib/validation/auth";
 
@@ -56,7 +57,9 @@ export async function adminLogin(
   });
 
   await createSession("ADMIN", admin.id);
-  await setThemeCookie(admin.themePreference === "dark" ? "dark" : "light");
+  await setThemeCookie(
+    admin.themePreference === "dark" ? "dark" : admin.themePreference === "system" ? "system" : "light",
+  );
   // `previousLoginAt` becomes the cursor the dashboard's "depuis votre
   // dernière connexion" panel compares against — captured here, before
   // `lastLoginAt` gets overwritten with this session's login time.
@@ -64,5 +67,7 @@ export async function adminLogin(
     where: { id: admin.id },
     data: { previousLoginAt: admin.lastLoginAt, lastLoginAt: new Date() },
   });
-  redirect("/admin");
+  // Page d'accueil choisie dans « Mon affichage » (2026-10-20).
+  const home = parseAdminPreferences(admin.preferences).home;
+  redirect(NAV_ITEMS.find((item) => item.key === home)?.href ?? "/admin");
 }

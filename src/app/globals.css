@@ -353,8 +353,25 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   --radius-xl: 8px;
   --radius-2xl: 16px;
   font-family: var(--font-roboto), Arial, sans-serif;
-  font-size: 14px;
+  /* En rem : suit la taille du texte choisie dans « Mon affichage ». */
+  font-size: 0.875rem;
   letter-spacing: 0.1px;
+  /* Accent foncé : barre de l'onglet courant, lisible sur fond blanc. */
+  --color-accent-strong: color-mix(in srgb, var(--color-accent) 82%, #000);
+}
+
+/* Couleur d'accent choisie par l'admin (« Mon affichage », 2026-10-20) : le
+   layout pose --color-accent et --color-accent-ink en style ; la teinte de
+   sélection en découle. */
+.admin-workspace[data-accent] {
+  --color-select: color-mix(in srgb, var(--color-accent) 32%, #fff);
+}
+/* Sur fond sombre, l'accent foncé disparaît : l'accent tel quel. */
+.dark .admin-workspace {
+  --color-accent-strong: var(--color-accent);
+}
+.dark .admin-workspace[data-accent] {
+  --color-select: color-mix(in srgb, var(--color-accent) 22%, transparent);
 }
 
 .dark .admin-workspace {
@@ -429,7 +446,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   scrollbar-width: none;
   background: transparent;
 }
-.admin-workspace .segmented > a {
+.admin-workspace .segmented > :is(a, button) {
   display: inline-flex;
   align-items: center;
   gap: 6px;
@@ -444,17 +461,17 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   font-weight: 500;
   white-space: nowrap;
 }
-.admin-workspace .segmented > a:first-child {
+.admin-workspace .segmented > :is(a, button):first-child {
   border-left: 0;
 }
-.admin-workspace .segmented > a:hover {
+.admin-workspace .segmented > :is(a, button):hover {
   background: color-mix(in srgb, var(--color-ink) 8%, transparent);
 }
-.admin-workspace .segmented > a[aria-current="page"] {
+.admin-workspace .segmented > :is(a, button):is([aria-current="page"], [aria-pressed="true"]) {
   background: var(--color-select);
   color: var(--color-ink);
 }
-.admin-workspace .segmented > a[aria-current="page"]::before {
+.admin-workspace .segmented > :is(a, button):is([aria-current="page"], [aria-pressed="true"])::before {
   content: "✓";
   font-size: 13px;
 }

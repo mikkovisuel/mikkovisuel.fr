@@ -25,19 +25,20 @@ interface TaskTableTask {
   _count?: { deliverables: number; attachments: number };
 }
 
-// Colonne de gauche vide (triangle de dépli, voir TaskTableRow) : ni
-// libellé, ni tri, juste l'alignement avec le bouton de chaque ligne.
-// Ordre de lecture de la refonte macOS (2026-10-14) : la tâche d'abord, puis
-// à qui, pour quand, où elle en est et le temps passé.
-const COLUMNS: { label: string; field?: TaskSortField; align?: "right" }[] = [
-  { label: "" },
-  { label: "Tâche", field: "tache" },
-  { label: "Client", field: "client" },
-  { label: "Échéance", field: "echeance" },
-  { label: "Évènement", field: "evenement" },
-  { label: "Statut", field: "statut" },
-  { label: "Temps", align: "right" },
-];
+// Colonnes facultatives, dans l'ordre et la visibilité choisis par l'admin
+// (« Mon affichage », 2026-10-20). « Tâche » est toujours affichée, précédée
+// de la case de sélection et du triangle de dépli. Ordre d'origine (refonte
+// macOS, 2026-10-14) : à qui, pour quand, où elle en est et le temps passé.
+export const TASK_COLUMN_DEFS: Record<string, { label: string; field?: TaskSortField; align?: "right" }> = {
+  client: { label: "Client", field: "client" },
+  echeance: { label: "Échéance", field: "echeance" },
+  evenement: { label: "Évènement", field: "evenement" },
+  statut: { label: "Statut", field: "statut" },
+  temps: { label: "Temps", align: "right" },
+  type: { label: "Type" },
+  formats: { label: "Formats" },
+};
+export const DEFAULT_TASK_COLUMNS = ["client", "echeance", "evenement", "statut", "temps"];
 
 function sortHref(
   field: TaskSortField,
@@ -77,6 +78,7 @@ export function TaskTable({
   status,
   emptyMessage = "Aucune tâche pour le moment.",
   basePath = "/admin/taches",
+  columns = DEFAULT_TASK_COLUMNS,
 }: {
   tasks: TaskTableTask[];
   statusOptions: { slug: string; label: string }[];
@@ -88,7 +90,10 @@ export function TaskTable({
   /** Page cible des liens de tri. La fiche client réutilise ce tableau et
    * doit rester sur elle-même plutôt que renvoyer vers /admin/taches. */
   basePath?: string;
+  /** Colonnes facultatives visibles, dans l'ordre (profil de l'admin). */
+  columns?: string[];
 }) {
+  const shownColumns = columns.filter((key) => key in TASK_COLUMN_DEFS);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkStatusKey, setBulkStatusKey] = useState(0);
   const [isPending, startTransition] = useTransition();
@@ -196,16 +201,15 @@ export function TaskTable({
                   className="h-4 w-4 accent-accent"
                 />
               </th>
-              {COLUMNS.map((column) => (
+              <th className="px-0 py-2">
+                <span className="sr-only">Détails</span>
+              </th>
+              {[{ key: "tache", label: "Tâche", field: "tache" as TaskSortField, align: undefined }, ...shownColumns.map((key) => ({ key, ...TASK_COLUMN_DEFS[key] }))].map((column) => (
                 <th
-                  key={column.label || "toggle"}
-                  className={`px-4 py-2 font-medium last:pr-4 sm:last:pr-6 lg:last:pr-8 2xl:last:pr-12 ${
-                    column.align === "right" ? "text-right" : ""
-                  }`}
+                  key={column.key}
+                  className={`px-4 py-2 font-medium ${column.align === "right" ? "text-right" : ""}`}
                 >
-                  {!column.label ? (
-                    <span className="sr-only">Détails</span>
-                  ) : column.field ? (
+                  {column.field ? (
                     <Link
                       href={sortHref(column.field, sortField, sortDir, basePath, clientId, status)}
                       className="inline-flex items-center gap-1 transition-colors hover:text-ink"
@@ -223,6 +227,8 @@ export function TaskTable({
                   )}
                 </th>
               ))}
+              {/* Marge de droite, alignée sur celle de la page. */}
+              <th aria-hidden className="w-0 pr-0 sm:pr-2 lg:pr-4 2xl:pr-8" />
             </tr>
           </thead>
           <tbody className="divide-y divide-line">
@@ -233,6 +239,7 @@ export function TaskTable({
                 statusOptions={statusOptions}
                 selected={selectedIds.has(task.id)}
                 onToggleSelect={() => toggleSelect(task.id)}
+                columns={shownColumns}
               />
             ))}
           </tbody>

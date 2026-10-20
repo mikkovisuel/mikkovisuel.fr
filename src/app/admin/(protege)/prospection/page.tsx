@@ -11,6 +11,8 @@ import { FranceProspectMap } from "@/components/admin/france-prospect-map";
 import { FilterMenu } from "@/components/admin/filter-menu";
 import { buildRegionStats } from "@/lib/prospects";
 import { PageToolbar, PAGE_BODY } from "@/components/admin/page-toolbar";
+import { getMyPreferences } from "@/lib/admin-preferences-server";
+import { visibleColumns } from "@/lib/admin-preferences";
 
 export const metadata: Metadata = {
   title: "Prospection — Admin Mikko Visuel",
@@ -22,8 +24,12 @@ export default async function ProspectionPage({
   searchParams: Promise<{ statusId?: string; q?: string; vue?: string }>;
 }) {
   await verifyAdminSession();
-  const { statusId, q, vue } = await searchParams;
-  const view = vue === "kanban" ? "kanban" : "liste";
+  const params = await searchParams;
+  const { statusId, q, vue } = params;
+  const preferences = await getMyPreferences();
+  // Vue par défaut du profil, en arrivant sans paramètre (2026-10-20).
+  const requestedView = vue ?? (Object.keys(params).length === 0 ? preferences.views.prospection : undefined);
+  const view = requestedView === "kanban" ? "kanban" : "liste";
 
   const [prospects, statusList, allProspectsForMap] = await Promise.all([
     db.prospect.findMany({
@@ -148,12 +154,12 @@ export default async function ProspectionPage({
               const params = new URLSearchParams();
               if (statusId) params.set("statusId", statusId);
               if (q) params.set("q", q);
-              if (option !== "liste") params.set("vue", option);
+              params.set("vue", option);
               const query = params.toString();
               return (
                 <Link
                   key={option}
-                  href={query ? `/admin/prospection?${query}` : "/admin/prospection"}
+                  href={`/admin/prospection?${query}`}
                   aria-current={option === view ? "page" : undefined}
                   className={`rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
                     option === view
@@ -171,7 +177,7 @@ export default async function ProspectionPage({
         {view === "kanban" ? (
           <ProspectKanbanBoard prospects={prospects} statuses={statusOptions} />
         ) : (
-          <ProspectTable prospects={prospects} statuses={statusOptions} />
+          <ProspectTable prospects={prospects} statuses={statusOptions} columns={visibleColumns(preferences, "prospects")} />
         )}
       </div>
     </>

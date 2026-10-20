@@ -16,6 +16,8 @@ import { contactAccessState, type ContactAccessState } from "@/lib/clients";
 import { ACTIVE_CLIENTS } from "@/lib/clients";
 import type { Prisma } from "@/generated/prisma/client";
 import { PageToolbar, PAGE_BODY } from "@/components/admin/page-toolbar";
+import { getMyPreferences } from "@/lib/admin-preferences-server";
+import { visibleColumns } from "@/lib/admin-preferences";
 
 export const metadata: Metadata = {
   title: "Contacts — Admin Mikko Visuel",
@@ -51,7 +53,11 @@ export default async function AdminContactsPage({
   const search = q?.trim() ?? "";
   const access = acces ?? "";
   const clientId = clientFilter ?? "";
-  const sortField: ContactSortField = tri === "date_ajout" ? "date_ajout" : "nom";
+  const preferences = await getMyPreferences();
+  // Tri par défaut du profil (« Mon affichage », 2026-10-20).
+  const requestedSort = tri ?? preferences.sorts.contacts.field;
+  const sortField: ContactSortField = requestedSort === "date_ajout" ? "date_ajout" : "nom";
+  const contactColumns = visibleColumns(preferences, "contacts");
   // Contacts "orphelins" (2026-08-02, "possible de supprimer définitivement
   // un contact ?") : un contact retiré de son dernier client reste en base
   // mais ne s'affiche jusqu'ici nulle part (cette page ne liste que des
@@ -131,7 +137,8 @@ export default async function AdminContactsPage({
     if (next.q) params.set("q", next.q);
     if (next.acces) params.set("acces", next.acces);
     if (next.client) params.set("client", next.client);
-    if (next.tri && next.tri !== "nom") params.set("tri", next.tri);
+    // Toujours explicite : sans `tri`, la page applique le tri du profil.
+    if (next.tri) params.set("tri", next.tri);
     if (next.sansClient) params.set("sansClient", "1");
     const query = params.toString();
     return query ? `/admin/contacts?${query}` : "/admin/contacts";
@@ -349,6 +356,7 @@ export default async function AdminContactsPage({
                         editAction={updateClientContact.bind(null, link.id, link.client.id)}
                         deleteAction={deleteContactPermanently.bind(null, link.contact.id)}
                         linkedClientNames={link.contact.clientLinks.map((l) => l.client.name)}
+                        columns={contactColumns}
                       />
                     );
                   })}

@@ -27,16 +27,19 @@ interface TableProspect {
   convertedClient: { id: string; name: string } | null;
 }
 
-const COLUMNS = [
-  "Ville",
-  "Téléphone",
-  "Email",
-  "Instagram",
-  "WhatsApp",
-  "Activité",
-  "Relance",
-  "Statut",
-];
+// Libellés des colonnes facultatives. Ordre et visibilité : profil de
+// l'admin (« Mon affichage », 2026-10-20) ; « Nom » est toujours affiché.
+const COLUMN_LABELS: Record<string, string> = {
+  ville: "Ville",
+  telephone: "Téléphone",
+  email: "Email",
+  instagram: "Instagram",
+  whatsapp: "WhatsApp",
+  activite: "Activité",
+  relance: "Relance",
+  statut: "Statut",
+};
+const DEFAULT_COLUMNS = Object.keys(COLUMN_LABELS);
 
 // Petite icône de réseau cliquable affichée à côté d'une cellule URL
 // (Instagram/WhatsApp) quand elle est renseignée — la cellule reste éditable
@@ -96,10 +99,14 @@ function CellOpenLink({
 export function ProspectTable({
   prospects,
   statuses,
+  columns: requestedColumns = DEFAULT_COLUMNS,
 }: {
   prospects: TableProspect[];
   statuses: { slug: string; label: string }[];
+  /** Colonnes visibles, dans l'ordre (profil de l'admin). */
+  columns?: string[];
 }) {
+  const columns = requestedColumns.filter((key) => key in COLUMN_LABELS);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkStatusKey, setBulkStatusKey] = useState(0);
   const [isPending, startTransition] = useTransition();
@@ -197,11 +204,12 @@ export function ProspectTable({
                 />
               </th>
               <th className="px-1.5 py-2 font-medium">Nom</th>
-              {COLUMNS.map((label) => (
-                <th key={label} className="px-1.5 py-2 font-medium">
-                  {label}
+              {columns.map((key) => (
+                <th key={key} className="px-1.5 py-2 font-medium">
+                  {COLUMN_LABELS[key]}
                 </th>
               ))}
+              <th aria-hidden className="w-0 pr-2 sm:pr-4 lg:pr-6 2xl:pr-10" />
             </tr>
           </thead>
           <tbody className="divide-y divide-line">
@@ -247,96 +255,128 @@ export function ProspectTable({
                       </Link>
                     )}
                   </td>
-                  <td className="min-w-[5.5rem] py-1">
-                    <ProspectInlineField prospectId={prospect.id} field="city" defaultValue={prospect.city ?? ""} />
-                  </td>
-                  <td className="min-w-[6rem] py-1">
-                    <ProspectInlineField
-                      prospectId={prospect.id}
-                      field="phone"
-                      type="tel"
-                      defaultValue={prospect.phone ?? ""}
-                    />
-                  </td>
-                  <td className="min-w-[9rem] py-1">
-                    <div className="flex items-center gap-0.5">
-                      <ProspectInlineField
-                        prospectId={prospect.id}
-                        field="email"
-                        type="email"
-                        defaultValue={prospect.email ?? ""}
-                      />
-                      {prospect.email && (
-                        <CellOpenLink
-                          href={buildGmailComposeUrl({ to: prospect.email })}
-                          label="Envoyer un mail (Gmail)"
-                          icon={<EnvelopeSimple size={14} weight="regular" />}
+                  {/* Colonnes dans l'ordre et la visibilité du profil (2026-10-20). */}
+                  {columns.map((column) => {
+                    switch (column) {
+                      case "ville":
+                        return (
+                      <td key="ville" className="min-w-[5.5rem] py-1">
+                        <ProspectInlineField prospectId={prospect.id} field="city" defaultValue={prospect.city ?? ""} />
+                      </td>
+                        );
+                      case "telephone":
+                        return (
+                      <td key="telephone" className="min-w-[6rem] py-1">
+                        <ProspectInlineField
+                          prospectId={prospect.id}
+                          field="phone"
+                          type="tel"
+                          defaultValue={prospect.phone ?? ""}
                         />
-                      )}
-                    </div>
-                  </td>
-                  <td className="min-w-[7.5rem] py-1">
-                    <ProspectInlineField
-                      prospectId={prospect.id}
-                      field="instagram"
-                      placeholder="Pseudo"
-                      defaultValue={prospect.instagram ?? ""}
-                    />
-                    <div className="flex items-center gap-0.5">
-                      <ProspectInlineField
-                        prospectId={prospect.id}
-                        field="instagramUrl"
-                        placeholder="Lien"
-                        dense
-                        defaultValue={prospect.instagramUrl ?? ""}
-                      />
-                      {prospect.instagramUrl && (
-                        <CellOpenLink
-                          href={prospect.instagramUrl}
-                          label="Ouvrir le profil Instagram"
-                          icon={<InstagramLogo size={14} weight="regular" />}
+                      </td>
+                        );
+                      case "email":
+                        return (
+                      <td key="email" className="min-w-[9rem] py-1">
+                        <div className="flex items-center gap-0.5">
+                          <ProspectInlineField
+                            prospectId={prospect.id}
+                            field="email"
+                            type="email"
+                            defaultValue={prospect.email ?? ""}
+                          />
+                          {prospect.email && (
+                            <CellOpenLink
+                              href={buildGmailComposeUrl({ to: prospect.email })}
+                              label="Envoyer un mail (Gmail)"
+                              icon={<EnvelopeSimple size={14} weight="regular" />}
+                            />
+                          )}
+                        </div>
+                      </td>
+                        );
+                      case "instagram":
+                        return (
+                      <td key="instagram" className="min-w-[7.5rem] py-1">
+                        <ProspectInlineField
+                          prospectId={prospect.id}
+                          field="instagram"
+                          placeholder="Pseudo"
+                          defaultValue={prospect.instagram ?? ""}
                         />
-                      )}
-                    </div>
-                  </td>
-                  <td className="min-w-[7.5rem] py-1">
-                    <div className="flex items-center gap-0.5">
-                      <ProspectInlineField
-                        prospectId={prospect.id}
-                        field="whatsappUrl"
-                        defaultValue={prospect.whatsappUrl ?? ""}
-                      />
-                      {prospect.whatsappUrl && (
-                        <CellOpenLink
-                          href={prospect.whatsappUrl}
-                          label="Ouvrir la conversation WhatsApp"
-                          icon={<WhatsappLogo size={14} weight="regular" />}
+                        <div className="flex items-center gap-0.5">
+                          <ProspectInlineField
+                            prospectId={prospect.id}
+                            field="instagramUrl"
+                            placeholder="Lien"
+                            dense
+                            defaultValue={prospect.instagramUrl ?? ""}
+                          />
+                          {prospect.instagramUrl && (
+                            <CellOpenLink
+                              href={prospect.instagramUrl}
+                              label="Ouvrir le profil Instagram"
+                              icon={<InstagramLogo size={14} weight="regular" />}
+                            />
+                          )}
+                        </div>
+                      </td>
+                        );
+                      case "whatsapp":
+                        return (
+                      <td key="whatsapp" className="min-w-[7.5rem] py-1">
+                        <div className="flex items-center gap-0.5">
+                          <ProspectInlineField
+                            prospectId={prospect.id}
+                            field="whatsappUrl"
+                            defaultValue={prospect.whatsappUrl ?? ""}
+                          />
+                          {prospect.whatsappUrl && (
+                            <CellOpenLink
+                              href={prospect.whatsappUrl}
+                              label="Ouvrir la conversation WhatsApp"
+                              icon={<WhatsappLogo size={14} weight="regular" />}
+                            />
+                          )}
+                        </div>
+                      </td>
+                        );
+                      case "activite":
+                        return (
+                      <td key="activite" className="min-w-[6.5rem] py-1">
+                        <ProspectInlineField
+                          prospectId={prospect.id}
+                          field="activityLevel"
+                          defaultValue={prospect.activityLevel ?? ""}
                         />
-                      )}
-                    </div>
-                  </td>
-                  <td className="min-w-[6.5rem] py-1">
-                    <ProspectInlineField
-                      prospectId={prospect.id}
-                      field="activityLevel"
-                      defaultValue={prospect.activityLevel ?? ""}
-                    />
-                  </td>
-                  <td className="min-w-[7rem] py-1">
-                    <ProspectReminderField
-                      prospectId={prospect.id}
-                      date={prospect.nextReminderAt ? prospect.nextReminderAt.toISOString().slice(0, 10) : ""}
-                    />
-                    {reminderOverdue && <p className="mt-0.5 text-[10px] font-medium text-danger">En retard</p>}
-                  </td>
-                  <td className="py-1 pr-4 sm:pr-6 lg:pr-8 2xl:pr-12">
-                    <ProspectStatusSelect
-                      prospectId={prospect.id}
-                      currentSlug={prospect.status.slug}
-                      currentColor={prospect.status.color}
-                      statuses={statuses}
-                    />
-                  </td>
+                      </td>
+                        );
+                      case "relance":
+                        return (
+                      <td key="relance" className="min-w-[7rem] py-1">
+                        <ProspectReminderField
+                          prospectId={prospect.id}
+                          date={prospect.nextReminderAt ? prospect.nextReminderAt.toISOString().slice(0, 10) : ""}
+                        />
+                        {reminderOverdue && <p className="mt-0.5 text-[10px] font-medium text-danger">En retard</p>}
+                      </td>
+                        );
+                      case "statut":
+                        return (
+                      <td key="statut" className="py-1">
+                        <ProspectStatusSelect
+                          prospectId={prospect.id}
+                          currentSlug={prospect.status.slug}
+                          currentColor={prospect.status.color}
+                          statuses={statuses}
+                        />
+                      </td>
+                        );
+                      default:
+                        return null;
+                    }
+                  })}
+                  <td aria-hidden className="w-0 pr-2 sm:pr-4 lg:pr-6 2xl:pr-10" />
                 </tr>
               );
             })}

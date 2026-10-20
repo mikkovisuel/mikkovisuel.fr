@@ -29,6 +29,8 @@ import { ACTIVE_CLIENTS } from "@/lib/clients";
 import { Pagination } from "@/components/admin/pagination";
 import { Scratchpad } from "@/components/admin/scratchpad";
 import { PageToolbar, PAGE_BODY } from "@/components/admin/page-toolbar";
+import { getMyPreferences } from "@/lib/admin-preferences-server";
+import { visibleColumns } from "@/lib/admin-preferences";
 
 export const metadata: Metadata = {
   title: "Tâches — Admin Mikko Visuel",
@@ -62,10 +64,23 @@ export default async function AdminTasksPage({
   }>;
 }) {
   await verifyAdminSession();
-  const { clientId, status, vue, mois, tri, dir, q, type, format, epingle, page } = await searchParams;
-  const view: TaskView = VALID_VIEWS.includes(vue as TaskView) ? (vue as TaskView) : "liste";
-  const sortField: TaskSortField = isTaskSortField(tri) ? tri : "evenement";
-  const sortDir: TaskSortDir = dir === "desc" ? "desc" : "asc";
+  const params = await searchParams;
+  const { clientId, status, vue, mois, tri, dir, q, type, format, epingle, page } = params;
+  const preferences = await getMyPreferences();
+  // Vue par défaut du profil (« Mon affichage », 2026-10-20) : seulement en
+  // arrivant sur la page sans aucun paramètre. Un lien qui porte un filtre ou
+  // un tri reste en vue Liste, et l'onglet « Liste » porte `vue=liste`.
+  const requestedView = vue ?? (Object.keys(params).length === 0 ? preferences.views.taches : undefined);
+  const view: TaskView = VALID_VIEWS.includes(requestedView as TaskView) ? (requestedView as TaskView) : "liste";
+  // Tri par défaut du profil quand l'URL n'en impose pas.
+  const sortField: TaskSortField = isTaskSortField(tri)
+    ? tri
+    : isTaskSortField(preferences.sorts.taches.field)
+      ? preferences.sorts.taches.field
+      : "evenement";
+  const sortDir: TaskSortDir =
+    dir === "desc" || dir === "asc" ? dir : tri ? "asc" : preferences.sorts.taches.dir;
+  const taskColumns = visibleColumns(preferences, "taches");
   // Recherche/filtres Type/Format : uniquement pertinents pour la vue Liste
   // (pas de plomberie de propagation vers Kanban/Calendrier/Par client).
   const isListe = view === "liste";
@@ -408,6 +423,7 @@ export default async function AdminTasksPage({
                   sortDir={sortDir}
                   clientId={clientId}
                   status={status}
+                  columns={taskColumns}
                   emptyMessage="Aucune tâche en cours."
                 />
                 {/* Repliées par défaut (demande du client le 2026-07-30) : les
@@ -426,6 +442,7 @@ export default async function AdminTasksPage({
                         sortDir={sortDir}
                         clientId={clientId}
                         status={status}
+                        columns={taskColumns}
                       />
                       {paginateDoneOnly && pagination}
                     </CollapsibleSection>

@@ -28,6 +28,7 @@ import { SocialActionsBoard } from "@/components/admin/social-actions-board";
 import { NewSocialActionButton } from "@/components/admin/social-action-buttons";
 import { moveSocialPostToDay } from "@/lib/actions/social-posts";
 import { PageToolbar, PAGE_BODY } from "@/components/admin/page-toolbar";
+import { getMyPreferences } from "@/lib/admin-preferences-server";
 
 export const metadata: Metadata = {
   title: "Réseaux sociaux — Admin Mikko Visuel",
@@ -224,7 +225,11 @@ export default async function SocialPostsPage({
   }>;
 }) {
   await verifyAdminSession();
-  const { clientId, reseau, statut, categorie, vue, mois } = await searchParams;
+  const params = await searchParams;
+  const { clientId, reseau, statut, categorie, mois } = params;
+  // Vue par défaut du profil (« Mon affichage », 2026-10-20), seulement en
+  // arrivant sur la page sans aucun paramètre.
+  const vue = params.vue ?? (Object.keys(params).length === 0 ? (await getMyPreferences()).views.reseaux : undefined);
   const categories = await db.dropdownItem.findMany({
     where: { list: { key: SOCIAL_CATEGORY_LIST_KEY } },
     select: { id: true, slug: true, label: true },
@@ -506,12 +511,12 @@ export default async function SocialPostsPage({
           <nav className="segmented flex flex-wrap gap-2">
             {(["liste", "calendrier", "grille", "afaire"] as const).map((option) => {
               const params = new URLSearchParams(filterParams);
-              if (option !== "liste") params.set("vue", option);
+              params.set("vue", option);
               const query = params.toString();
               return (
                 <Link
                   key={option}
-                  href={query ? `/admin/reseaux?${query}` : "/admin/reseaux"}
+                  href={`/admin/reseaux?${query}`}
                   aria-current={option === view ? "page" : undefined}
                   className={`whitespace-nowrap rounded-full border px-4 py-2 text-sm font-medium transition-colors ${
                     option === view

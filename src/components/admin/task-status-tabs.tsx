@@ -71,7 +71,7 @@ export function TaskStatusTabs({
             )}
             {/* Barre de l'onglet courant : 3 px arrondis en haut, comme Gmail. */}
             {active && (
-              <span className="absolute inset-x-2 bottom-0 h-[3px] rounded-t-[3px] bg-[#c9d81c]" aria-hidden />
+              <span className="absolute inset-x-2 bottom-0 h-[3px] rounded-t-[3px] bg-[var(--color-accent-strong)]" aria-hidden />
             )}
           </Link>
         );

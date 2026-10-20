@@ -46,6 +46,8 @@ import {
 } from "@/lib/tasks";
 import { contactAccessState, EXCLUDE_DEMO_CLIENT } from "@/lib/clients";
 import { DOCUMENT_TYPE_LIST_KEY } from "@/lib/dropdown-lists";
+import { getMyPreferences } from "@/lib/admin-preferences-server";
+import { visibleColumns } from "@/lib/admin-preferences";
 import { getAppSettings } from "@/lib/settings";
 import {
   DEFAULT_DOCUMENT_SENT_SUBJECT,
@@ -149,6 +151,9 @@ export default async function ClientDetailPage({
   ]);
 
   if (!client) notFound();
+
+  // Colonnes de la liste des tâches choisies dans « Mon affichage ».
+  const taskColumns = visibleColumns(await getMyPreferences(), "taches");
 
   const editOptions = {
     clients: editClients,
@@ -350,6 +355,7 @@ export default async function ClientDetailPage({
                 sortField={sortField}
                 sortDir={sortDir}
                 basePath={`/admin/clients/${client.id}`}
+                columns={taskColumns}
                 emptyMessage={
                   pinnedOnly ? "Aucune tâche épinglée." : "Aucune tâche en cours pour ce client."
                 }
@@ -363,6 +369,7 @@ export default async function ClientDetailPage({
                       sortField={sortField}
                       sortDir={sortDir}
                       basePath={`/admin/clients/${client.id}`}
+                columns={taskColumns}
                     />
                   </CollapsibleSection>
                 </div>

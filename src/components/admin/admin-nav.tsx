@@ -16,6 +16,7 @@ import {
   Users,
 } from "@phosphor-icons/react/dist/ssr";
 import type { Icon } from "@phosphor-icons/react";
+import { NAV_ITEMS } from "@/lib/admin-preferences";
 
 // Navigation du back-office, dans le tiroir de la coquille « Workspace »
 // (2026-10-20, voir `workspace-shell.tsx`).
@@ -67,6 +68,32 @@ const NAV_GROUPS: { title: string | null; items: NavItem[] }[] = [
 
 export type NavBadges = Partial<Record<string, number>>;
 
+/** Réglages « Mon affichage » du tiroir (2026-10-20). */
+export interface NavPreferences {
+  /** Clés de `NAV_ITEMS` dans l'ordre choisi (l'ordre joue dans chaque groupe). */
+  order: string[];
+  hidden: string[];
+  counters: boolean;
+  clientShortcuts: boolean;
+}
+
+const keyOf = (href: string) => NAV_ITEMS.find((item) => item.href === href)?.key ?? href;
+
+/** Groupes du tiroir après masquage et réordonnancement. */
+function arrangedGroups(preferences?: NavPreferences) {
+  if (!preferences) return NAV_GROUPS;
+  const rank = (href: string) => {
+    const index = preferences.order.indexOf(keyOf(href));
+    return index === -1 ? Number.MAX_SAFE_INTEGER : index;
+  };
+  return NAV_GROUPS.map((group) => ({
+    ...group,
+    items: group.items
+      .filter((item) => !preferences.hidden.includes(keyOf(item.href)))
+      .sort((a, b) => rank(a.href) - rank(b.href)),
+  })).filter((group) => group.items.length > 0);
+}
+
 /** Raccourcis affichés sous « Tâches » : filtre client existant de la page. */
 export interface TaskShortcuts {
   clients: { id: string; name: string; count: number }[];
@@ -107,11 +134,15 @@ export function AdminSidebarNav({
   badges,
   taskShortcuts,
   rail = false,
+  preferences,
 }: {
   badges: NavBadges;
   taskShortcuts?: TaskShortcuts;
   rail?: boolean;
+  preferences?: NavPreferences;
 }) {
+  const groups = arrangedGroups(preferences);
+  const showCounters = preferences?.counters ?? true;
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const activeRef = useRef<HTMLAnchorElement>(null);
@@ -122,7 +153,7 @@ export function AdminSidebarNav({
   // ici jusqu'au 2026-10-20, sont devenus les onglets de la liste
   // (`task-status-tabs.tsx`).
   const filtered = Boolean(clientFilter);
-  const showShortcuts = onTasks && !rail && taskShortcuts;
+  const showShortcuts = onTasks && !rail && (preferences?.clientShortcuts ?? true) && taskShortcuts;
 
   // Sur un écran bas, la liste défile : la rubrique active est ramenée
   // dans le champ à chaque changement de page.
@@ -132,7 +163,7 @@ export function AdminSidebarNav({
 
   return (
     <nav aria-label="Navigation principale" className="flex flex-col">
-      {NAV_GROUPS.map((group, groupIndex) => (
+      {groups.map((group, groupIndex) => (
         <div key={group.title ?? "accueil"} className="flex flex-col">
           {group.title &&
             (rail ? (
@@ -157,7 +188,7 @@ export function AdminSidebarNav({
                 >
                   <ItemIcon size={20} weight={active ? "fill" : "regular"} className="shrink-0" />
                   {!rail && <span className="truncate">{label}</span>}
-                  <Badge count={badges[href]} rail={rail} />
+                  {showCounters && <Badge count={badges[href]} rail={rail} />}
                 </Link>
               </div>
             );

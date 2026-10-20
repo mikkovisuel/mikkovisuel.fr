@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useEffect, useRef, useState, useTransition } from "react";
 import { setAdminDensity } from "@/lib/actions/admin-preferences";
 import { DENSITY_OPTIONS, type Density } from "@/lib/admin-preferences";
-import { GearSix, SlidersHorizontal, ListBullets, DownloadSimple, ShieldCheck } from "@phosphor-icons/react/dist/ssr";
+import { PaintBrush, GearSix, SlidersHorizontal, ListBullets, DownloadSimple, ShieldCheck } from "@phosphor-icons/react/dist/ssr";
 
 // Regroupe sous la roue crantée les écrans de configuration et de
 // consultation qui encombraient la navigation principale (demande du client
@@ -19,6 +19,7 @@ import { GearSix, SlidersHorizontal, ListBullets, DownloadSimple, ShieldCheck } 
 // serveur : un menu de navigation doit se refermer au clic à l'extérieur,
 // ce que `<details>` seul ne fait pas. Même schéma que `ColorSelect`.
 const ENTRIES = [
+  { href: "/admin/mon-affichage", label: "Mon affichage", icon: PaintBrush, hint: "Couleur, colonnes, vues, tableau de bord" },
   { href: "/admin/reglages", label: "Réglages", icon: SlidersHorizontal, hint: "Paramètres, comptes, sécurité" },
   { href: "/admin/listes", label: "Listes déroulantes", icon: ListBullets, hint: "Statuts, types, catégories" },
   { href: "/admin/exports", label: "Exports", icon: DownloadSimple, hint: "Sauvegardes et extractions" },

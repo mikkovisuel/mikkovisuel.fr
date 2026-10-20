@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { verifyAdminSession } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { LogoutButton } from "@/components/auth/logout-button";
@@ -6,7 +7,7 @@ import { TimerHeaderWidget } from "@/components/admin/timer-header-widget";
 import { SettingsMenu } from "@/components/admin/settings-menu";
 import { WorkspaceShell } from "@/components/admin/workspace-shell";
 import { roboto } from "./fonts";
-import { parseAdminPreferences } from "@/lib/admin-preferences";
+import { accentStyle, NAV_ITEMS, TEXT_SIZE_OPTIONS, parseAdminPreferences } from "@/lib/admin-preferences";
 import { TASK_STATUS } from "@/lib/dropdown-lists";
 import { ACTIVE_TASKS } from "@/lib/tasks";
 import { SOCIAL_POST_STATUS } from "@/lib/social-posts";
@@ -99,6 +100,8 @@ export default async function AdminProtectedLayout({
 
   const initials = admin.email.slice(0, 1).toUpperCase();
   const preferences = parseAdminPreferences(admin.preferences);
+  const rootPercent = TEXT_SIZE_OPTIONS.find((option) => option.value === preferences.textSize)?.rootPercent ?? 100;
+  const homeHref = NAV_ITEMS.find((item) => item.key === preferences.home)?.href ?? "/admin";
 
   // Coquille « Workspace » (2026-10-20), qui remplace la refonte « macOS ».
   // `admin-workspace` porte la palette, Roboto et les rayons propres à
@@ -107,9 +110,23 @@ export default async function AdminProtectedLayout({
   return (
     <div
       data-density={preferences.density}
+      data-accent={preferences.accent ? "" : undefined}
+      style={accentStyle(preferences.accent)}
       className={`admin-workspace ${roboto.variable} flex min-h-dvh flex-1 flex-col bg-canvas text-ink lg:h-dvh lg:overflow-hidden`}
     >
+      {/* Taille du texte (« Mon affichage ») : la racine du document est
+          agrandie ou réduite tant qu'une page admin est affichée — ce style
+          disparaît avec la mise en page admin. */}
+      {rootPercent !== 100 && <style>{`html{font-size:${rootPercent}%}`}</style>}
       <WorkspaceShell
+        homeHref={homeHref}
+        navPreferences={{
+          order: preferences.nav.order,
+          hidden: preferences.nav.hidden,
+          counters: preferences.drawer.counters,
+          clientShortcuts: preferences.drawer.clientShortcuts,
+        }}
+        drawerExpandedByDefault={preferences.drawer.expanded}
         badges={badges}
         taskShortcuts={taskShortcuts}
         timer={timer}
@@ -118,13 +135,19 @@ export default async function AdminProtectedLayout({
             <ThemeToggle />
             <SettingsMenu density={preferences.density} />
             <LogoutButton iconOnly />
-            <span
-              title={admin.email}
-              aria-label={`Connecté : ${admin.email}`}
-              className="ml-1 inline-flex h-8 w-8 select-none items-center justify-center rounded-full bg-accent text-sm font-medium text-accent-ink"
-            >
-              {initials}
-            </span>
+            {/* Pastille du compte : ouvre « Mon affichage », comme l'avatar
+                Google ouvre la gestion du compte. Dans un `div` : la règle des
+                icônes rondes de la barre ne vise que les liens directs. */}
+            <div>
+              <Link
+                href="/admin/mon-affichage"
+                title={`${admin.email} — Mon affichage`}
+                aria-label={`Mon affichage (${admin.email})`}
+                className="ml-1 inline-flex h-8 w-8 select-none items-center justify-center rounded-full bg-accent text-sm font-medium text-accent-ink"
+              >
+                {initials}
+              </Link>
+            </div>
           </>
         }
       >

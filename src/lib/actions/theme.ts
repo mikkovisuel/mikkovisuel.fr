@@ -7,8 +7,15 @@ import { readSession } from "@/lib/session";
 const THEME_COOKIE = "theme";
 const ONE_YEAR_SECONDS = 60 * 60 * 24 * 365;
 
-export async function setThemeCookie(theme: "light" | "dark") {
+// « system » (2026-10-20, choix « Selon l'appareil » de l'écran Mon
+// affichage) : pas de cookie, le script de démarrage suit alors le réglage
+// de l'appareil.
+export async function setThemeCookie(theme: "light" | "dark" | "system") {
   const cookieStore = await cookies();
+  if (theme === "system") {
+    cookieStore.delete(THEME_COOKIE);
+    return;
+  }
   cookieStore.set(THEME_COOKIE, theme, { path: "/", maxAge: ONE_YEAR_SECONDS });
 }
 

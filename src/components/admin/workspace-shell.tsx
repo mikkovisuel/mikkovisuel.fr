@@ -6,7 +6,12 @@ import { usePathname } from "next/navigation";
 import { List, Plus, X } from "@phosphor-icons/react/dist/ssr";
 import { BrandLogo } from "@/components/brand-logo";
 import { GlobalSearchBar } from "@/components/admin/global-search-bar";
-import { AdminSidebarNav, type NavBadges, type TaskShortcuts } from "@/components/admin/admin-nav";
+import {
+  AdminSidebarNav,
+  type NavBadges,
+  type NavPreferences,
+  type TaskShortcuts,
+} from "@/components/admin/admin-nav";
 
 // Coquille « Workspace » du back-office (2026-10-20), à la manière de Gmail,
 // Drive et Agenda : barre du haut avec la recherche en pilule, tiroir de
@@ -89,12 +94,20 @@ function NewButton({ rail }: { rail: boolean }) {
 }
 
 export function WorkspaceShell({
+  homeHref = "/admin",
+  navPreferences,
+  drawerExpandedByDefault = true,
   badges,
   taskShortcuts,
   timer,
   actions,
   children,
 }: {
+  /** Page ouverte par le logo (« Mon affichage »). */
+  homeHref?: string;
+  navPreferences?: NavPreferences;
+  /** Tiroir déplié tant que l'admin ne l'a pas réduit sur cet appareil. */
+  drawerExpandedByDefault?: boolean;
   badges: NavBadges;
   taskShortcuts: TaskShortcuts;
   /** Chronomètre en cours, s'il y en a un. */
@@ -104,7 +117,7 @@ export function WorkspaceShell({
   children: React.ReactNode;
 }) {
   const pathname = usePathname();
-  const [rail, setRail] = useState(false);
+  const [rail, setRail] = useState(!drawerExpandedByDefault);
   // Le tiroir du téléphone est ouvert *pour une page* : changer de page le
   // referme sans effet à synchroniser (même schéma que l'ancien menu).
   const [openedOn, setOpenedOn] = useState<string | null>(null);
@@ -114,8 +127,10 @@ export function WorkspaceShell({
     // Préférence lue après le montage : le serveur ne connaît pas le
     // stockage du navigateur.
     try {
+      // Choix fait sur cet appareil d'abord, sinon le réglage du profil.
+      const stored = localStorage.getItem(RAIL_KEY);
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setRail(localStorage.getItem(RAIL_KEY) === "1");
+      if (stored !== null) setRail(stored === "1");
     } catch {
       /* stockage indisponible : tiroir déplié */
     }
@@ -149,7 +164,7 @@ export function WorkspaceShell({
             <List size={22} />
           </button>
         </div>
-        <Link href="/admin" className="flex shrink-0 items-center gap-2 pr-2 lg:w-[200px]">
+        <Link href={homeHref} className="flex shrink-0 items-center gap-2 pr-2 lg:w-[200px]">
           <BrandLogo className="h-6" />
           <span className="text-[22px] leading-none text-ink-muted">Admin</span>
         </Link>
@@ -172,7 +187,7 @@ export function WorkspaceShell({
             <NewButton rail={rail} />
           </div>
           <div className={`flex-1 overflow-y-auto pb-4 ${rail ? "w-full px-2" : "pr-3"}`}>
-            <AdminSidebarNav badges={badges} taskShortcuts={taskShortcuts} rail={rail} />
+            <AdminSidebarNav badges={badges} taskShortcuts={taskShortcuts} rail={rail} preferences={navPreferences} />
           </div>
         </aside>
 
@@ -206,7 +221,7 @@ export function WorkspaceShell({
               <NewButton rail={false} />
             </div>
             <div className="flex-1 overflow-y-auto pb-4 pr-3">
-              <AdminSidebarNav badges={badges} taskShortcuts={taskShortcuts} rail={false} />
+              <AdminSidebarNav badges={badges} taskShortcuts={taskShortcuts} rail={false} preferences={navPreferences} />
             </div>
           </div>
         </div>

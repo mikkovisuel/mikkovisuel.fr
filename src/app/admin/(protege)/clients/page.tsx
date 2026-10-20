@@ -21,6 +21,8 @@ import {
   type PaletteColor,
 } from "@/lib/dropdown-lists";
 import { PageToolbar, PAGE_BODY } from "@/components/admin/page-toolbar";
+import { getMyPreferences } from "@/lib/admin-preferences-server";
+import { visibleColumns } from "@/lib/admin-preferences";
 
 export const metadata: Metadata = {
   title: "Clients — Admin Mikko Visuel",
@@ -37,13 +39,28 @@ export default async function AdminClientsPage({
   // depuis la création de cette page. Le contrôle de tri reste inchangé —
   // il suffit de changer quel choix est actif quand l'URL n'en précise
   // aucun.
-  const sortField: ClientSortField = isClientSortField(tri) ? tri : "nom";
+  const preferences = await getMyPreferences();
+  const clientColumns = visibleColumns(preferences, "clients");
+  // Tri par défaut du profil (« Mon affichage », 2026-10-20) quand l'URL
+  // n'en impose pas — « nom » A→Z tant que l'admin n'a rien choisi.
+  const defaultSort = preferences.sorts.clients;
+  const sortField: ClientSortField = isClientSortField(tri)
+    ? tri
+    : isClientSortField(defaultSort.field)
+      ? defaultSort.field
+      : "nom";
   // Direction par défaut dépendante du champ, pas figée à "desc" : "nom"
   // doit s'ouvrir en A→Z (sinon le tri "alphabétique par défaut" afficherait
   // Z→A au premier chargement), alors que "date_ajout" garde son sens
   // d'origine (le plus récent en premier).
   const sortDir: ClientSortDir =
-    dir === "asc" || dir === "desc" ? dir : sortField === "nom" ? "asc" : "desc";
+    dir === "asc" || dir === "desc"
+      ? dir
+      : !tri
+        ? defaultSort.dir
+        : sortField === "nom"
+          ? "asc"
+          : "desc";
   const search = q?.trim() ?? "";
   const categoryId = categorie ?? "";
   const showArchived = archives === "1";
@@ -192,15 +209,24 @@ export default async function AdminClientsPage({
                     />
                     <p className="truncate font-medium text-ink">{client.name}</p>
                   </div>
-                  {client.category && (
+                  <div className="flex shrink-0 items-center gap-4">
+                  {clientColumns.map((column) =>
+                    column === "ajoute" ? (
+                      <span key="ajoute" className="text-xs tabular-nums text-ink-muted">
+                        Ajouté le {new Intl.DateTimeFormat("fr-FR").format(client.createdAt)}
+                      </span>
+                    ) : column === "categorie" && client.category ? (
                     <span
+                      key="categorie"
                       className={`inline-flex shrink-0 items-center rounded-full border px-2 py-0.5 text-[11px] font-medium ${
                         PALETTE_BADGE_CLASSES[client.category.color as PaletteColor]
                       }`}
                     >
                       {client.category.label}
                     </span>
+                    ) : null,
                   )}
+                  </div>
                 </Link>
               ))}
             </div>

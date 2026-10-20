@@ -14,6 +14,8 @@ import { ClientLoginJournal } from "@/components/admin/client-login-journal";
 import { InstallPwaCta } from "@/components/install-pwa-cta";
 import { SocialToday } from "@/components/admin/social-today";
 import { PageToolbar, PAGE_BODY } from "@/components/admin/page-toolbar";
+import { getMyPreferences } from "@/lib/admin-preferences-server";
+import type { DashboardBlockKey } from "@/lib/admin-preferences";
 
 const INACTIVE_THRESHOLD_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -191,19 +193,13 @@ export default async function AdminDashboardPage() {
     loggedInAt: event.loggedInAt,
   }));
 
-  return (
-    <>
-      <PageToolbar
-        title="Tableau de bord"
-        subtitle={new Intl.DateTimeFormat("fr-FR", {
-          weekday: "long",
-          day: "numeric",
-          month: "long",
-          timeZone: "Europe/Paris",
-        }).format(new Date())}
-      />
-      <div className={PAGE_BODY}>
-        <div className="mt-8 grid gap-4 sm:grid-cols-3">
+  // Blocs du tableau de bord (« Mon affichage », 2026-10-20) : chacun peut
+  // être masqué ou déplacé par l'admin.
+  const dashboardBlocks: Record<DashboardBlockKey, { wide: boolean; node: React.ReactNode }> = {
+    chiffres: {
+      wide: true,
+      node: (
+        <div className="grid gap-4 sm:grid-cols-3">
           <div className="rounded-2xl border border-line p-6">
             <p className="text-sm text-ink-muted">Clients</p>
             <p className="mt-2 font-display text-3xl font-medium text-ink">{clientCount}</p>
@@ -238,28 +234,30 @@ export default async function AdminDashboardPage() {
             <p className="mt-2 font-display text-3xl font-medium text-ink">{unpaidCount}</p>
           </div>
         </div>
-
-        {since && hasActivity && (
-          <RecentActivity
-            since={since}
-            batValidated={batValidated}
-            refused={refused}
-            newRequests={newRequests}
-            newComments={newComments}
-          />
-        )}
-
-        <SocialToday />
-
-        <div className="mt-8 grid gap-4 lg:grid-cols-2">
-          <PinnedTasks tasks={pinnedTasks} />
-          <UpcomingEvents tasks={upcomingEvents} />
-          <StatusBreakdown statuses={statusBreakdown} />
-          <InactiveClients clients={inactiveClients} />
-          <ClientLoginJournal events={loginEvents} />
-        </div>
-
-        <div className="mt-12 flex flex-col items-start gap-4 border-t border-line pt-8 sm:flex-row sm:items-center sm:justify-between">
+      ),
+    },
+    activite: {
+      wide: true,
+      node: since && hasActivity ? (
+        <RecentActivity
+          since={since}
+          batValidated={batValidated}
+          refused={refused}
+          newRequests={newRequests}
+          newComments={newComments}
+        />
+      ) : null,
+    },
+    reseaux: { wide: true, node: <SocialToday /> },
+    epinglees: { wide: false, node: <PinnedTasks tasks={pinnedTasks} /> },
+    evenements: { wide: false, node: <UpcomingEvents tasks={upcomingEvents} /> },
+    statuts: { wide: false, node: <StatusBreakdown statuses={statusBreakdown} /> },
+    inactifs: { wide: false, node: <InactiveClients clients={inactiveClients} /> },
+    connexions: { wide: false, node: <ClientLoginJournal events={loginEvents} /> },
+    installer: {
+      wide: true,
+      node: (
+        <div className="flex flex-col items-start gap-4 border-t border-line pt-8 sm:flex-row sm:items-center sm:justify-between">
           <div>
             <p className="font-medium text-ink">Installer le tableau de bord</p>
             <p className="mt-1 text-sm text-ink-muted">
@@ -268,6 +266,36 @@ export default async function AdminDashboardPage() {
             </p>
           </div>
           <InstallPwaCta />
+        </div>
+      ),
+    },
+  };
+  const preferences = await getMyPreferences();
+  const orderedBlocks = preferences.dashboard.order
+    .filter((key) => !preferences.dashboard.hidden.includes(key))
+    .map((key) => ({ key, ...dashboardBlocks[key] }))
+    .filter((block) => block.node !== null);
+
+  return (
+    <>
+      <PageToolbar
+        title="Tableau de bord"
+        subtitle={new Intl.DateTimeFormat("fr-FR", {
+          weekday: "long",
+          day: "numeric",
+          month: "long",
+          timeZone: "Europe/Paris",
+        }).format(new Date())}
+      />
+      <div className={PAGE_BODY}>
+        {/* Blocs dans l'ordre et la visibilité du profil (« Mon affichage »,
+            2026-10-20). Les blocs larges occupent toute la largeur. */}
+        <div className="mt-8 grid gap-4 lg:grid-cols-2">
+          {orderedBlocks.map(({ key, wide, node }) => (
+            <div key={key} className={`min-w-0 *:mt-0 ${wide ? "lg:col-span-2" : ""}`}>
+              {node}
+            </div>
+          ))}
         </div>
       </div>
     </>
