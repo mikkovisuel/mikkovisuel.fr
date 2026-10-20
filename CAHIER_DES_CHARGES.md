@@ -2327,6 +2327,10 @@ geste le plus courant, il mérite son mot.
 
 ### 4.14 Refonte « macOS » du back-office (2026-10-14)
 
+> **Remplacée le 2026-10-20** par la refonte « Workspace » (section 4.16).
+> Restent valables : la barre d'outils unifiée, les commandes segmentées et
+> la liste des tâches décrites ci-dessous, redessinées dans le nouveau style.
+
 Demande du client, après validation de trois maquettes : « refonds les
 affichages bien comme ça, en termes de design uniquement ! Garde toutes les
 fonctionnalités ». Arbitrage : **pas d'inspecteur** à droite de la liste des
@@ -2396,6 +2400,51 @@ Corrections :
   client) : expiré, remplacé par un lien plus récent ou déjà utilisé, elle
   le dit tout de suite et propose une issue (« Recevoir un nouveau lien » ou
   « Se connecter ») au lieu d'un formulaire inutile.
+
+### 4.16 Refonte « Google Workspace » du back-office (2026-10-20)
+
+Demande du client : « Transformer l'interface en design Google Workspace,
+s'inspirer à fond du design Google Drive, Gmail, Google Agenda… une
+application au design qui se confond avec le design Google. Ne pas toucher
+le site vitrine, les espaces clients… Vraiment que l'admin. Repenser la
+structure visuelle des données, quelque chose d'un peu plus compact. »
+Maquettes validées avant de coder. Arbitrages du client : couleur d'action
+**jaune Mikko** (pas le bleu Google), densité par défaut **Compact 32 px**
+(modifiable par profil admin), **statuts des tâches en onglets** façon
+Gmail. Pas de logo ni de nom Google.
+
+Livraison en trois temps :
+
+1. **Coquille Workspace** — livrée le 2026-10-20 :
+   - **Périmètre** : le back-office seul, via la classe `admin-workspace` du
+     layout admin (remplace `admin-macos`). Site public et espace client
+     inchangés.
+   - **Langage visuel** Material Design 3 : fond gris-bleu, contenu sur une
+     feuille blanche arrondie (16 px) qui défile seule sur ordinateur,
+     police **Roboto** servie par le site (pas de téléchargement chez Google
+     au build), titres en 22 px régulier, boutons en pilule, bouton
+     principal jaune, sélection en jaune clair, modes clair et sombre
+     (sombre Material : #131314 / #1e1f20).
+   - **Barre du haut** : bouton menu, logo + « Admin », grande recherche en
+     pilule au centre, chrono en cours, thème, roue crantée (Réglages,
+     Listes, Exports, Audit y retournent, comme les paramètres Google),
+     déconnexion, pastille aux initiales du compte.
+   - **Tiroir** : bouton **« Nouveau »** façon Drive (menu Nouvelle tâche /
+     client / prospect / publication, celle de la rubrique courante en
+     tête), rubriques en pilules de 32 px groupées comme avant, compteurs,
+     statuts et clients sous « Tâches ». Le bouton menu réduit le tiroir à
+     une colonne d'icônes (mémorisé dans le navigateur).
+   - **Téléphone** : la page défile normalement, le tiroir (avec la
+     recherche) s'ouvre par-dessus le contenu et se referme au changement de
+     page.
+   - **Commandes segmentées** au format Material (contour en pilule, segment
+     courant jaune clair coché), lignes de tableau sans alternance, survol
+     léger.
+   - Aucune fonction retirée.
+2. **Listes compactes** — à faire : Tâches façon Gmail (lignes 32 px,
+   onglets de statut, actions au survol), réglage de densité par admin (champ
+   en base), puis clients, prospects et contacts.
+3. **Administratif façon Drive et Réseaux façon Agenda** — à faire.
 
 ## Passe de nettoyage du code (2026-09-22)
 
@@ -3149,3 +3198,4 @@ Le client a explicitement délégué ces choix :
 | 2026-10-14 | "Peux tu améliorer l'affichage, notamment prendre vraiment toute la place de l'écran en largeur sur un mac, et s'adapter facilement au téléphone" — arbitrages : **back-office seul**, **pleine largeur sauf formulaires** | **Livré** : plafond de 1 280 px retiré sur les 26 pages admin, l'en-tête et la navigation (formulaires de création limités à `max-w-5xl`, textes longs et fiches gardent leur largeur de lecture ; audit et liste des e-mails élargis). Navigation : la rubrique active est désormais signalée, et sur téléphone un bouton « rubrique courante » déplie toutes les rubriques avec la recherche globale. Liste des tâches en cartes sur téléphone, pastilles de vue de Réseaux sur une ligne. Tests dans `VALIDATION.md` |
 | 2026-10-14 | "Peux tu me faire un nouveau design mais uniquement pour le côté admin ? Quelque chose de très macOS" puis, après trois maquettes : "refonds les affichages bien comme ça en termes de design uniquement ! Garde toutes les fonctionnalités" — arbitrage : **pas d'inspecteur** à droite des tâches | **Livré** : refonte du back-office seul (site public et espace client inchangés) — police système, palette et rayons macOS, modes clair et sombre ; barre latérale façon Finder avec rubriques groupées, configuration visible, statuts et clients sous « Tâches » ; barre d'outils unifiée sur les 31 écrans ; commandes segmentées ; liste des tâches bord à bord avec statuts en pastilles et colonne Temps. Aucune fonction retirée. Défaut corrigé au passage : le chrono en cours forçait une reconstruction de la page côté navigateur. Détails section 4.14, tests dans `VALIDATION.md` |
 | 2026-10-14 | "J'ai essayé d'inviter un admin, mais impossible de faire marcher l'invitation… création de mot de passe impossible" | **Livré** : impasse reproduite — lien valable une heure seulement, erreur affichée après la saisie du mot de passe, et adresse impossible à réinviter (« compte existant »). Invitation désormais valable 7 jours ; renvoi possible (bouton « Renvoyer l'invitation » ou nouvelle saisie de l'adresse) tant que le compte n'est pas activé ; la page du lien annonce dès l'ouverture un lien expiré, remplacé ou déjà utilisé et propose une issue (admin et espace client). Détails section 4.15, tests dans `VALIDATION.md` |
+| 2026-10-20 | "Transformer l'interface en design Google Workspace, s'inspirer à fond de Google Drive, Gmail, Google Agenda… Ne pas toucher le site vitrine, les espaces clients… Vraiment que l'admin. Repenser la structure visuelle des données, plus compacte" — arbitrages : **jaune Mikko**, **Compact 32 px** par défaut, **statuts en onglets** | **Livraison 1 livrée** (coquille) : barre du haut avec recherche en pilule, tiroir avec bouton « Nouveau » contextuel et mode icônes, feuille blanche arrondie, Roboto auto-hébergée, palette Material clair/sombre ; configuration de retour sous la roue crantée ; remplace la refonte macOS. Livraisons 2 (listes compactes, densité par admin) et 3 (Administratif façon Drive, Réseaux façon Agenda) à suivre. Détails section 4.16, tests dans `VALIDATION.md` |

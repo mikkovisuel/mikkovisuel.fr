@@ -75,7 +75,7 @@ export function ClientInfoForm({
         <div className="flex min-w-0 items-center gap-2.5">
           {back}
           <ClientAvatar clientId={clientId} name={clientName} hasAvatar={hasAvatar} size="sm" />
-          <h1 className="truncate text-[17px] font-semibold text-ink">{clientName}</h1>
+          <h1 className="truncate text-[22px] font-normal leading-7 text-ink">{clientName}</h1>
         </div>
         <div className="flex flex-wrap items-center gap-3">
           {actions}

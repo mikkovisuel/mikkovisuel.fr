@@ -13,7 +13,10 @@ const GROUPS: { key: keyof SearchResults; label: string }[] = [
   { key: "documents", label: "Administratif" },
 ];
 
-export function GlobalSearchBar() {
+/** `workspace` : grande pilule de la barre du haut (refonte du 2026-10-20),
+ * comme le champ de recherche de Gmail et de Drive. */
+export function GlobalSearchBar({ variant = "compact" }: { variant?: "compact" | "workspace" }) {
+  const workspace = variant === "workspace";
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<SearchResults | null>(null);
   const [open, setOpen] = useState(false);
@@ -46,8 +49,14 @@ export function GlobalSearchBar() {
 
   return (
     <div ref={containerRef} className="relative w-full">
-      <div className="flex items-center gap-2 rounded-lg bg-ink/[0.07] px-2.5 py-1.5">
-        <MagnifyingGlass size={16} className="shrink-0 text-ink-muted" />
+      <div
+        className={
+          workspace
+            ? "flex h-12 items-center gap-3 rounded-full bg-search px-4 transition-colors focus-within:bg-surface focus-within:shadow-[0_1px_1px_rgba(65,69,73,0.3),0_1px_3px_1px_rgba(65,69,73,0.15)]"
+            : "flex items-center gap-2 rounded-lg bg-ink/[0.07] px-2.5 py-1.5"
+        }
+      >
+        <MagnifyingGlass size={workspace ? 20 : 16} className="shrink-0 text-ink-muted" />
         <input
           type="text"
           value={query}
@@ -56,13 +65,14 @@ export function GlobalSearchBar() {
             setOpen(true);
           }}
           onFocus={() => setOpen(true)}
-          placeholder="Rechercher..."
-          className="w-full bg-transparent text-sm text-ink placeholder:text-ink-muted/70 focus:outline-none"
+          placeholder={workspace ? "Rechercher dans l’admin" : "Rechercher..."}
+          aria-label="Rechercher dans l'admin"
+          className={`w-full bg-transparent ${workspace ? "text-base" : "text-sm"} text-ink placeholder:text-ink-muted focus:outline-none`}
         />
       </div>
 
       {open && query.trim() && (
-        <div className="absolute left-0 z-30 mt-2 w-80 max-w-[calc(100vw-2rem)] max-h-96 overflow-y-auto rounded-2xl border border-line bg-surface p-2 shadow-lg">
+        <div className={`absolute left-0 z-40 mt-2 max-w-[calc(100vw-2rem)] max-h-96 overflow-y-auto rounded-2xl border border-line bg-surface p-2 shadow-lg ${workspace ? "w-full" : "w-80"}`}>
           {!results ? (
             <p className="px-3 py-2 text-sm text-ink-muted">Recherche...</p>
           ) : !hasAnyResult ? (

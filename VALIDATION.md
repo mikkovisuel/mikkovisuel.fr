@@ -1085,6 +1085,22 @@ La détection est restée muette chez le client — aucun message, alors que le 
 | Page du lien — déjà utilisé | Réouverture du lien après usage | ✅ « Ce lien a déjà servi : le mot de passe a été choisi. » + « Se connecter » | — | — | 2026-10-14 |
 | Espace client | Lien invalide sur `/espace-client/reinitialiser-mot-de-passe/…` | ✅ Même message, issue vers le « mot de passe oublié » de l'espace client | — | — | 2026-10-14 |
 
+## Refonte « Google Workspace » du back-office — livraison 1, coquille (2026-10-20)
+
+`tsc --noEmit`, lint et `npm run build` propres. Vérifié avec une vraie session admin sur la base locale (vide de données métier). Captures à 1 512 px (clair et sombre) et à 390 px (téléphone) avec Chrome sans interface.
+
+| Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |
+|---|---|---|---|---|---|
+| Périmètre | `/admin` avec session | ✅ Classe `admin-workspace` présente, Roboto appliquée | Site public `/`, `/espace-client/connexion`, `/admin/connexion` | ✅ Aucune classe `admin-workspace` : rendu inchangé | 2026-10-20 |
+| Accès | — | — | `/admin` sans session | ✅ 307 vers `/admin/connexion`, la coquille n'est jamais rendue | 2026-10-20 |
+| Barre du haut | Tâches, Clients, Réseaux, tableau de bord | ✅ Menu, logo, recherche en pilule centrée, thème, roue crantée, déconnexion, initiales | — | — | 2026-10-20 |
+| Tiroir | Rubrique active | ✅ Pilule jaune clair en gras collée au bord gauche (Tâches, Clients, Réseaux, Tableau de bord) | Écrans de configuration | ✅ Absents du tiroir, accessibles par la roue crantée | 2026-10-20 |
+| Tiroir réduit | Clic sur le bouton menu à 1 512 px | ✅ Colonne d'icônes de 72 px, séparateurs entre groupes, la feuille s'élargit | — | — | 2026-10-20 |
+| Bouton « Nouveau » | Ouverture depuis Réseaux | ✅ Menu avec « Nouvelle publication » en tête, puis tâche, client, prospect | — | — | 2026-10-20 |
+| Mode sombre | Tableau de bord | ✅ Fond #131314, feuille #1e1f20, sélection jaune atténuée lisible | — | — | 2026-10-20 |
+| Téléphone | Tâches à 390 px | ✅ Pas de tiroir fixe ; barre d'outils et commandes segmentées sur la largeur, sans débordement | Menu ouvert sur Clients | ✅ Tiroir par-dessus le contenu avec voile, recherche et « Nouveau », rubrique courante surlignée | 2026-10-20 |
+| Commandes segmentées | Tâches, Réseaux | ✅ Contour en pilule, segment courant coché en jaune clair | — | — | 2026-10-20 |
+
 ## Points restant ouverts pour une prochaine passe de validation
 
 - Glisser-déposer et `<select>` natif du Kanban Prospection (limite outil, voir ci-dessus).
@@ -1169,3 +1185,4 @@ La détection est restée muette chez le client — aucun message, alors que le 
 - **Affichage téléphone sur un vrai appareil** (2026-10-14) : contrôlé seulement par émulation à 375 px dans le navigateur, pas sur un iPhone. La sélection multiple des tâches en cartes (barre d'actions groupées) n'a pas été exercée.
 - **Campagnes programmées de la démo** (2026-09-28) : le processus `worker` est à zéro instance, aucun planificateur ne tourne. Un écran montrant une campagne programmée resterait figé, sans erreur visible. Non exercé.
 - **Démo `/demo` contre l'API de démonstration réelle** (2026-09-27) : non exercée, l'API de démonstration n'est pas encore en ligne sur Scalingo. Testée contre une API locale identique. À vérifier après sa mise en ligne : chargement de la configuration, « Essayer la démo », photos de la galerie.
+- **Coquille Workspace avec données** (2026-10-20) : la base locale ne contenait aucune donnée métier ; compteurs du tiroir, raccourcis statuts/clients sous « Tâches », chrono dans la barre du haut et résultats de la recherche n'ont pas été revus visuellement dans le nouveau style (logique inchangée). À regarder en production.

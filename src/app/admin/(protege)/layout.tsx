@@ -1,18 +1,17 @@
-import Link from "next/link";
 import { verifyAdminSession } from "@/lib/dal";
 import { db } from "@/lib/db";
-import { BrandLogo } from "@/components/brand-logo";
 import { LogoutButton } from "@/components/auth/logout-button";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { TimerHeaderWidget } from "@/components/admin/timer-header-widget";
-import { GlobalSearchBar } from "@/components/admin/global-search-bar";
 import { SettingsMenu } from "@/components/admin/settings-menu";
-import { AdminMobileNav, AdminSidebarNav } from "@/components/admin/admin-nav";
+import { WorkspaceShell } from "@/components/admin/workspace-shell";
+import { roboto } from "./fonts";
 import { TASK_STATUS } from "@/lib/dropdown-lists";
 import { ACTIVE_TASKS } from "@/lib/tasks";
 import { SOCIAL_POST_STATUS } from "@/lib/social-posts";
 
-// La liste des rubriques et leur regroupement vivent dans
+// La coquille (barre du haut, tiroir, feuille) vit dans
+// `src/components/admin/workspace-shell.tsx`, la liste des rubriques dans
 // `src/components/admin/admin-nav.tsx`.
 
 export default async function AdminProtectedLayout({
@@ -60,7 +59,7 @@ export default async function AdminProtectedLayout({
         ],
       },
     }),
-    // Raccourcis de la barre latérale sous « Tâches » (refonte macOS,
+    // Raccourcis du tiroir sous « Tâches » (depuis la refonte macOS du
     // 2026-10-14) : tâches restant à traiter, par statut et par client. Même
     // périmètre que la pastille « Tâches » ci-dessus.
     db.task.groupBy({
@@ -116,53 +115,37 @@ export default async function AdminProtectedLayout({
     />
   );
 
-  // Refonte « macOS » (2026-10-14) : barre latérale à la manière du Finder
-  // ou de Mail sur ordinateur, en-tête compact sur téléphone et tablette.
-  // `admin-macos` porte la palette, la police système et les rayons propres
-  // à l'admin (voir globals.css) — le site public et l'espace client n'en
-  // héritent pas. Pas de faux feux de fenêtre : dans l'application installée,
-  // macOS dessine déjà les vrais.
-  return (
-    <div className="admin-macos flex min-h-dvh flex-1 bg-surface text-ink">
-      <aside className="sticky top-0 hidden h-dvh w-60 shrink-0 flex-col border-r border-line bg-sidebar lg:flex">
-        <Link href="/admin" className="flex items-center gap-2 px-4 pb-3 pt-5">
-          <BrandLogo className="h-6" />
-          <span className="text-[13px] font-semibold text-ink">Admin</span>
-        </Link>
-        <div className="px-3 pb-2">
-          <GlobalSearchBar />
-        </div>
-        <div className="flex-1 overflow-y-auto px-2 pb-3">
-          <AdminSidebarNav badges={badges} taskShortcuts={taskShortcuts} />
-        </div>
-        {timer && <div className="px-3 pb-3">{timer}</div>}
-        <div className="flex items-center gap-2 border-t border-line px-3 py-3">
-          <span className="min-w-0 flex-1 truncate text-xs text-ink-muted" title={admin.email}>
-            {admin.email}
-          </span>
-          <ThemeToggle />
-          <LogoutButton iconOnly />
-        </div>
-      </aside>
+  const initials = admin.email.slice(0, 1).toUpperCase();
 
-      <div className="flex min-w-0 flex-1 flex-col">
-        <header className="border-b border-line bg-sidebar lg:hidden">
-          <div className="flex h-14 items-center justify-between gap-3 px-4 sm:px-6">
-            <Link href="/admin" className="flex items-center gap-2">
-              <BrandLogo className="h-6" />
-              <span className="text-[13px] font-semibold text-ink">Admin</span>
-            </Link>
-            <div className="flex items-center gap-2">
-              <SettingsMenu />
-              <ThemeToggle />
-              <LogoutButton iconOnly />
-            </div>
-          </div>
-          {timer && <div className="px-4 pb-3 sm:px-6">{timer}</div>}
-          <AdminMobileNav badges={badges} />
-        </header>
-        <main className="flex-1">{children}</main>
-      </div>
+  // Coquille « Workspace » (2026-10-20), qui remplace la refonte « macOS ».
+  // `admin-workspace` porte la palette, Roboto et les rayons propres à
+  // l'admin (voir globals.css) : le site public et l'espace client n'en
+  // héritent pas.
+  return (
+    <div
+      className={`admin-workspace ${roboto.variable} flex min-h-dvh flex-1 flex-col bg-canvas text-ink lg:h-dvh lg:overflow-hidden`}
+    >
+      <WorkspaceShell
+        badges={badges}
+        taskShortcuts={taskShortcuts}
+        timer={timer}
+        actions={
+          <>
+            <ThemeToggle />
+            <SettingsMenu />
+            <LogoutButton iconOnly />
+            <span
+              title={admin.email}
+              aria-label={`Connecté : ${admin.email}`}
+              className="ml-1 inline-flex h-8 w-8 select-none items-center justify-center rounded-full bg-accent text-sm font-medium text-accent-ink"
+            >
+              {initials}
+            </span>
+          </>
+        }
+      >
+        {children}
+      </WorkspaceShell>
     </div>
   );
 }

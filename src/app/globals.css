@@ -30,6 +30,10 @@
      warning regardless of what the brand accent color is. */
   --color-danger: #dc2626;
   --color-sidebar: #ececf0;
+  --color-canvas: #f7f6f3;
+  --color-select: rgba(221, 237, 46, 0.25);
+  --color-search: #ecebe6;
+  --color-outline: #8a8a8a;
 }
 
 .dark {
@@ -46,6 +50,10 @@
   --color-brand-teal: #1e8993;
   --color-danger: #f87171;
   --color-sidebar: #2a2a2e;
+  --color-canvas: #0b0b0d;
+  --color-select: rgba(221, 237, 46, 0.2);
+  --color-search: #1c1c1f;
+  --color-outline: #6b6b6b;
 }
 
 @theme inline {
@@ -61,6 +69,10 @@
   --color-brand-teal: var(--color-brand-teal);
   --color-danger: var(--color-danger);
   --color-sidebar: var(--color-sidebar);
+  --color-canvas: var(--color-canvas);
+  --color-select: var(--color-select);
+  --color-search: var(--color-search);
+  --color-outline: var(--color-outline);
   --font-display: var(--font-clash-display);
   --font-body: var(--font-manrope);
 }
@@ -310,62 +322,80 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 }
 
 /* ------------------------------------------------------------------------
-   Back-office, refonte « macOS » (2026-10-14)
+   Back-office « Workspace » (2026-10-20)
 
-   Tout est porté par la classe `admin-macos`, posée sur la racine du layout
-   admin : le site public et l'espace client gardent leur identité (Clash
-   Display, Manrope, boutons en pilule). Le principe est de changer le
-   langage visuel à la source — palette, police, rayons — pour que les
-   trente écrans et leurs fonctions suivent sans être réécrits un à un.
+   Remplace la refonte « macOS » du 2026-10-14. Le langage de Gmail, Drive et
+   Agenda (Material Design 3) : coquille gris-bleu, feuille blanche arrondie,
+   navigation en pilules, boutons en pilule, Roboto. La couleur d'action
+   reste le jaune Mikko (choix du client), jamais le bleu Google.
+
+   Tout est porté par la classe `admin-workspace`, posée sur la racine du
+   layout admin : le site public et l'espace client n'en héritent pas. Comme
+   pour la refonte précédente, on change le langage à la source — palette,
+   police, rayons — pour que tous les écrans suivent sans réécriture.
    ------------------------------------------------------------------------ */
-.admin-macos {
+.admin-workspace {
+  --color-canvas: #f8fafd;
   --color-surface: #ffffff;
-  --color-surface-elevated: #f5f5f7;
-  --color-ink: #1d1d1f;
-  --color-ink-muted: #6e6e73;
-  --color-line: rgba(0, 0, 0, 0.1);
-  --color-sidebar: #ececf0;
-  --color-danger: #d70015;
-  /* Police système d'Apple (SF Pro) ; les titres comme le texte courant. */
-  --font-clash-display: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Helvetica Neue", sans-serif;
-  --font-manrope: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", sans-serif;
-  /* Rayons resserrés : 8 px pour les champs, 12 px pour les cartes et les
-     fenêtres, au lieu des 12 et 16 px plus « web » du site. */
+  --color-surface-elevated: #f0f4f9;
+  --color-ink: #1f1f1f;
+  --color-ink-muted: #444746;
+  --color-line: #e1e3e1;
+  --color-sidebar: #f8fafd;
+  --color-select: #eef6b3;
+  --color-danger: #b3261e;
+  --color-outline: #747775;
+  --color-search: #e9eef6;
+  /* Roboto partout dans l'admin, titres compris. */
+  --font-clash-display: var(--font-roboto), Arial, sans-serif;
+  --font-manrope: var(--font-roboto), Arial, sans-serif;
+  /* 8 px pour les champs et les puces, 16 px pour les feuilles et les cartes. */
   --radius-xl: 8px;
-  --radius-2xl: 12px;
-  font-family: var(--font-manrope);
+  --radius-2xl: 16px;
+  font-family: var(--font-roboto), Arial, sans-serif;
   font-size: 14px;
-  -webkit-font-smoothing: antialiased;
+  letter-spacing: 0.1px;
 }
 
-.dark .admin-macos {
-  --color-surface: #1e1e20;
-  --color-surface-elevated: #2c2c2e;
-  --color-ink: #f5f5f7;
-  --color-ink-muted: #98989d;
-  --color-line: rgba(255, 255, 255, 0.1);
-  --color-sidebar: #2a2a2e;
-  --color-danger: #ff6961;
+.dark .admin-workspace {
+  --color-canvas: #131314;
+  --color-surface: #1e1f20;
+  --color-surface-elevated: #282a2c;
+  --color-ink: #e3e3e3;
+  --color-ink-muted: #c4c7c5;
+  --color-line: #444746;
+  --color-sidebar: #131314;
+  --color-select: rgba(221, 237, 46, 0.2);
+  --color-danger: #f2b8b5;
+  --color-outline: #8e918f;
+  --color-search: #282a2c;
 }
 
-/* Titres de page : gras et serrés, comme les grands titres de macOS.
-   Hors calque, donc prioritaire sur `font-medium`. */
-.admin-macos h1 {
-  font-weight: 600;
-  letter-spacing: -0.01em;
+/* Icônes de la barre du haut : cercles de 40 px sans bordure, comme les
+   applications Google. Les boutons gardent leur fonction et leur libellé
+   accessible ; seule leur forme change. */
+.admin-workspace .ws-icons > :is(button, a),
+.admin-workspace .ws-icons > :is(div, form) > button {
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-color: transparent;
+  border-radius: 9999px;
+  background: transparent;
+  color: var(--color-ink-muted);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.admin-workspace .ws-icons > :is(button, a):hover,
+.admin-workspace .ws-icons > :is(div, form) > button:hover {
+  background: color-mix(in srgb, var(--color-ink) 8%, transparent);
+  color: var(--color-ink);
 }
 
-/* Boutons et champs en pilule → coins de 8 px, la forme des commandes macOS.
-   Les pastilles d'information (statuts, compteurs, avatars) sont des
-   `span`/`div` : elles restent rondes. */
-.admin-macos :is(button, a, select, input, textarea, summary).rounded-full {
-  border-radius: 8px;
-}
-
-/* Statut d'une tâche : pastille avec point de couleur, comme dans la
-   maquette. C'est toujours un menu déroulant natif (le statut se change d'un
-   clic), simplement débarrassé de sa flèche et de sa bordure. */
-.admin-macos select.status-pill {
+/* Statut d'une tâche : pastille à point de couleur, toujours un menu
+   déroulant natif (le statut se change d'un clic), sans flèche ni bordure. */
+.admin-workspace select.status-pill {
   appearance: none;
   -webkit-appearance: none;
   cursor: pointer;
@@ -373,83 +403,85 @@ input[type="date"]::-webkit-calendar-picker-indicator {
   border-color: transparent;
   height: 22px;
   padding: 0 10px 0 20px;
-  font-size: 11.5px;
+  font-size: 12px;
   line-height: 22px;
   background-image: radial-gradient(circle, currentColor 3px, transparent 3.5px);
   background-repeat: no-repeat;
   background-position: 6px center;
   background-size: 10px 10px;
 }
-.admin-macos select.status-pill:hover {
-  filter: brightness(0.97);
-  box-shadow: inset 0 0 0 0.5px currentColor;
+.admin-workspace select.status-pill:hover {
+  box-shadow: inset 0 0 0 1px currentColor;
 }
 
-/* Bouton principal : noir en mode clair, avec l'icône en jaune Mikko — comme
-   la maquette ; il reste jaune en mode sombre. Ne vise que les boutons et
-   liens pleins `bg-accent`, pas les pastilles ni les survols. */
-.admin-macos :is(a, button).bg-accent {
-  background-color: #1d1d1f;
-  color: #ffffff;
-}
-.admin-macos :is(a, button).bg-accent svg {
-  color: var(--color-accent);
-}
-.dark .admin-macos :is(a, button).bg-accent {
-  background-color: var(--color-accent);
-  color: var(--color-accent-ink);
-}
-.dark .admin-macos :is(a, button).bg-accent svg {
-  color: var(--color-accent-ink);
-}
-
-/* Les menus déroulants et fenêtres modales s'ombrent comme sur Mac. */
-.admin-macos dialog,
-.admin-macos .shadow-lg {
-  box-shadow:
-    0 0 0 0.5px rgba(0, 0, 0, 0.12),
-    0 12px 32px rgba(0, 0, 0, 0.18);
-}
-
-/* Commande segmentée (Liste / Kanban / Calendrier…) : le conteneur porte la
-   classe `segmented`, l'onglet courant `aria-current="page"`. Hors de
-   l'admin, la classe n'a aucun effet. */
-.admin-macos .segmented {
+/* Bouton segmenté Material 3 (Liste / Kanban / Calendrier…) : contour en
+   pilule, segment courant rempli de jaune clair et coché. Le conteneur porte
+   `segmented`, l'onglet courant `aria-current="page"`. */
+.admin-workspace .segmented {
   display: inline-flex;
-  border-color: transparent;
-  gap: 2px;
-  padding: 2px;
-  border-radius: 9px;
+  gap: 0;
+  padding: 0;
+  border: 1px solid var(--color-outline);
+  border-radius: 9999px;
+  flex-wrap: nowrap;
+  max-width: 100%;
+  overflow-x: auto;
+  scrollbar-width: none;
+  background: transparent;
+}
+.admin-workspace .segmented > a {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 16px;
+  border: 0;
+  border-left: 1px solid var(--color-outline);
+  border-radius: 0;
+  background: transparent;
+  color: var(--color-ink);
+  font-size: 14px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+.admin-workspace .segmented > a:first-child {
+  border-left: 0;
+}
+.admin-workspace .segmented > a:hover {
   background: color-mix(in srgb, var(--color-ink) 8%, transparent);
 }
-.admin-macos .segmented > a {
-  border-color: transparent;
-  background: transparent;
-  border-radius: 7px;
-  padding: 4px 14px;
+.admin-workspace .segmented > a[aria-current="page"] {
+  background: var(--color-select);
+  color: var(--color-ink);
+}
+.admin-workspace .segmented > a[aria-current="page"]::before {
+  content: "✓";
   font-size: 13px;
-  white-space: nowrap;
-  color: var(--color-ink);
 }
-.admin-macos .segmented > a[aria-current="page"] {
-  background: var(--color-surface);
-  color: var(--color-ink);
+
+/* Fenêtres modales et menus : élévation Material, coins de dialogue à 28 px. */
+.admin-workspace dialog {
+  border-radius: 28px;
+  border-color: transparent;
   box-shadow:
-    0 1px 2px rgba(0, 0, 0, 0.14),
-    0 0 0 0.5px rgba(0, 0, 0, 0.06);
+    0 1px 3px rgba(0, 0, 0, 0.3),
+    0 4px 8px 3px rgba(0, 0, 0, 0.15);
 }
-.dark .admin-macos .segmented > a[aria-current="page"] {
-  background: #636366;
+.admin-workspace .shadow-lg {
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.3),
+    0 2px 6px 2px rgba(0, 0, 0, 0.15);
 }
 
 @layer base {
-  /* Lignes de tableau alternées, comme le Finder ou Mail. En couche de
-     base : une ligne sélectionnée ou survolée (classe utilitaire) garde la
-     priorité. */
-  .admin-macos tbody tr:nth-child(even) {
-    background-color: color-mix(in srgb, var(--color-ink) 3%, transparent);
+  /* Lignes de tableau : séparées d'un filet, survol en fond léger comme dans
+     Drive. En couche de base : une ligne sélectionnée (classe utilitaire)
+     garde la priorité. */
+  .admin-workspace tbody tr:hover {
+    background-color: color-mix(in srgb, var(--color-ink) 4%, transparent);
   }
-  .admin-macos thead th {
-    font-size: 11px;
+  .admin-workspace thead th {
+    font-size: 13px;
+    font-weight: 500;
   }
 }
