@@ -1,0 +1,16 @@
+#!/bin/sh
+# Bloque un déploiement cassé (feuille de route, point 5, 2026-10-20) : avant
+# chaque `git push` — vers GitHub comme vers Scalingo, qui déploie à la
+# réception — on lance le lint, la vérification des types et les tests
+# automatiques. Si l'un échoue, le push est annulé et rien n'est déployé.
+# Activé par `npm install` (script « prepare » : core.hooksPath=.githooks).
+# En cas d'urgence absolue : `git push --no-verify` contourne la vérification.
+
+echo "Vérifications avant envoi (lint, types, tests)…"
+if ! npm run --silent check; then
+  echo ""
+  echo "✗ Envoi annulé : une vérification a échoué (détails ci-dessus)."
+  echo "  Rien n'a été poussé ni déployé."
+  exit 1
+fi
+echo "✓ Vérifications réussies."

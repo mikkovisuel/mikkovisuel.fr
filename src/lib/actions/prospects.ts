@@ -10,7 +10,7 @@ import { hashPassword } from "@/lib/password";
 import { sendEmailToAdmins, getAdminEmails } from "@/lib/email/service";
 import { escapeHtml } from "@/lib/html-escape";
 import { sendMessage, GmailNotConnectedError } from "@/lib/gmail";
-import { sendClientPasswordResetEmail } from "@/lib/actions/password-reset";
+import { sendClientPasswordResetEmail } from "@/lib/client-password-reset-email";
 import { PROSPECT_STATUS, PROSPECT_STATUS_LIST_KEY, type ProspectStatusSlug } from "@/lib/dropdown-lists";
 import { GmailMessageSchema, type GmailMessageFormState } from "@/lib/validation/gmail-message";
 import {
@@ -272,6 +272,7 @@ export async function setProspectStatus(prospectId: string, statusSlug: Prospect
 // on rejoue l'action unitaire déjà existante pour chaque id plutôt que
 // dupliquer sa logique (log d'activité inclus pour le statut).
 export async function bulkSetProspectStatus(prospectIds: string[], statusSlug: ProspectStatusSlug) {
+  await verifyAdminSession();
   await Promise.all(prospectIds.map((id) => setProspectStatus(id, statusSlug)));
 }
 

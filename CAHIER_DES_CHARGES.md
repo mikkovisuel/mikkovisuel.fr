@@ -2636,6 +2636,42 @@ reçoivent les e-mails, copie à l'adresse « Cc » des e-mails de facturation.
 Tâche planifiée chaque jour à 7 h (ajoutée au créneau des rappels de notes,
 pour rester sous la limite de cinq tâches planifiées Scalingo).
 
+**5. Tests automatiques bloquant un déploiement cassé — livrés le
+2026-10-20.** `npm test` (Vitest, sans base ni navigateur, moins d'une
+seconde) couvre :
+- **les droits d'accès** : chaque action serveur exportée doit vérifier la
+  session, à part une liste courte et commentée d'actions publiques par
+  nature (connexion, mot de passe oublié, formulaire de contact, démo, sortie
+  du mode « voir comme le client ») ;
+- **la connexion et l'invitation** : règles d'accès à l'espace client (accès
+  ouvert + e-mail + mot de passe ; invitation en attente) ;
+- **l'import de fichier** : un faux PDF ou un PNG renommé est refusé ;
+- **le paiement** : verrous livrables / travail, factures en retard,
+  montants, règles de la relance automatique ;
+- les tâches planifiées (secret obligatoire), le profil d'affichage abîmé,
+  l'échappement HTML des e-mails.
+
+Un **crochet Git `pre-push`** (`.githooks/`, activé par `npm install`) lance
+lint + vérification des types + tests avant chaque `git push` — vers GitHub
+comme vers Scalingo, qui déploie à la réception : si une vérification
+échoue, rien n'est envoyé ni déployé. `git push --no-verify` reste possible
+en urgence. Le lint ignore désormais les fichiers générés (démo Expo, client
+Prisma).
+
+**Faille corrigée grâce au premier test** : l'envoi d'un lien de
+réinitialisation de mot de passe client (`sendClientPasswordResetEmail`)
+était une action serveur exportée sans vérification de session et prenant
+l'adresse en paramètre : n'importe qui pouvait se faire envoyer un lien de
+réinitialisation pour le compte d'un client. Fonction sortie des actions
+serveur (`src/lib/client-password-reset-email.ts`), appelée seulement par
+des actions qui vérifient la session. Vérification explicite ajoutée aussi
+aux actions groupées (statut / archivage des tâches, statut des prospects),
+qui ne s'appuyaient que sur l'action qu'elles appellent.
+
+**Bouton « Nouveau » du tiroir** (demande du 2026-10-20) : même pilule que
+« Nouvelle tâche » (hauteur 40 px, sans ombre), icône alignée sur celles du
+menu.
+
 ## Passe de nettoyage du code (2026-09-22)
 
 Demande du client : "fais une passe globale sur le code et nettoie tout,
@@ -3401,4 +3437,5 @@ Le client a explicitement délégué ces choix :
 | 2026-10-20 | "Redesign l'écran des détails de tâches" — deux maquettes ; choix **B, panneau Détails à droite**, **enregistrement automatique** | **Livré** : en-tête avec titre modifiable sur place, client, Mettre en validation, chrono, épingle, menu ⋮ (dupliquer, archiver/désarchiver, supprimer) ; au centre description (sans cadre), checklist, livrables (BAT/finaux, envoi, publication, plan, dépôt), pièces jointes, commentaires ; à droite « Détails » (statut, client, évènement, échéance avec alerte de capacité, temps estimé, type, formats, verrou de paiement « avant de travailler ») enregistrés champ par champ avec « Enregistré » ou l'erreur, puis temps passé et historique (statuts, refus). Sur téléphone : détails, travail, puis suivi. Le formulaire et son bouton « Enregistrer » sont supprimés (`TaskEditForm`, action `updateTask` remplacée par `updateTaskField`). |
 | 2026-10-20 | "L'affichage sans facture sur la page client s'affiche pas très bien" | **Corrigé** : dans la fiche client, chaque paiement sans facture tient sur une ligne (libellé, montant, statut, date) avec ses boutons au survol ; le nom du client (redondant) et les marges de bord de page sont retirés. La page Administratif garde l'affichage d'avant. |
 | 2026-10-20 | "Revoir l'affichage des paiements sans facture dans Administratif" | **Livré** : tableau façon Drive comme les factures (Client, Libellé, Montant, Statut à pastille, Date), commandes au survol (payé/impayé, modifier, supprimer) ; la date se corrige par « Modifier » ; téléphone : lignes d'avant. Titres des sections « Paiements sans facture » et « Documents Commercial / Société » alignés sur les autres. |
-| 2026-10-20 | "Go pour les 5 premiers points de la feuille de route" — 1 travail à deux admins, 2 tableau de bord « Aujourd'hui », 3 raccourcis clavier, 4 relance automatique des factures impayées, 5 tests automatiques bloquant un déploiement cassé ; arbitrages : tâche attribuée par défaut **à l'admin qui la crée** (tâches client et existantes : non attribuées) ; relance auto avec **texte proposé, modifiable, désactivée par défaut** jusqu'à activation par le client ; **tests des règles critiques lancés avant chaque `git push scalingo`**, le déploiement ne part pas si un test échoue | **En cours** |
+| 2026-10-20 | "Go pour les 5 premiers points de la feuille de route" — 1 travail à deux admins, 2 tableau de bord « Aujourd'hui », 3 raccourcis clavier, 4 relance automatique des factures impayées, 5 tests automatiques bloquant un déploiement cassé ; arbitrages : tâche attribuée par défaut **à l'admin qui la crée** (tâches client et existantes : non attribuées) ; relance auto avec **texte proposé, modifiable, désactivée par défaut** jusqu'à activation par le client ; **tests des règles critiques lancés avant chaque `git push scalingo`**, le déploiement ne part pas si un test échoue | **Livré** : les 5 points (section 4.18), plus une faille de sécurité trouvée et corrigée par les tests. |
+| 2026-10-20 | "Aligner le bouton Nouveau et le rendre comme le bouton Nouvelle tâche" | **Livré** : pilule identique, icône alignée sur les icônes du menu (section 4.18). |

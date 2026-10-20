@@ -12,7 +12,7 @@ import { requireFreshAdminPassword, type StepUpFormState } from "@/lib/step-up-a
 import { logAuditEvent } from "@/lib/audit-log";
 import { getClientIp } from "@/lib/request-ip";
 import { destroyAllSessionsForSubject } from "@/lib/session";
-import { sendClientPasswordResetEmail } from "@/lib/actions/password-reset";
+import { sendClientPasswordResetEmail } from "@/lib/client-password-reset-email";
 import {
   ClientSchema,
   ContactCreateSchema,

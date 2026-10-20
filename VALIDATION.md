@@ -1243,6 +1243,14 @@ Rejoué en appelant la tâche planifiée `/api/cron/invoice-reminders` en local 
 | Sécurité | — | — | Appel sans `CRON_SECRET` | ✅ HTTP 401 | 2026-10-20 |
 | Réglages | Page Réglages | ✅ Section, case « Activer » décochée, texte proposé prérempli | — | — | 2026-10-20 |
 
+## Feuille de route — 5. Tests automatiques et blocage au push (2026-10-20)
+
+| Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |
+|---|---|---|---|---|---|
+| Suite de tests | `npm test` | ✅ 209 tests réussis en moins d'une seconde | Premier passage | ✅ 8 actions signalées ; dont **une faille réelle** (lien de réinitialisation client envoyable à n'importe quelle adresse) corrigée, 3 actions groupées renforcées, 4 actions publiques par nature listées | 2026-10-20 |
+| Crochet `pre-push` | Lint + types + tests sans erreur | ✅ Code 0, « Vérifications réussies » | Un test en échec ajouté volontairement | ✅ Code 1, « Envoi annulé… Rien n'a été poussé ni déployé » | 2026-10-20 |
+| Bouton « Nouveau » | Tiroir à 1 512 px | ✅ Pilule de 40 px comme « Nouvelle tâche », icône à 24 px du bord comme celles du menu | — | — | 2026-10-20 |
+
 ## Points restant ouverts pour une prochaine passe de validation
 
 - Glisser-déposer et `<select>` natif du Kanban Prospection (limite outil, voir ci-dessus).

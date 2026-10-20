@@ -65,12 +65,14 @@ function NewButton({ rail }: { rail: boolean }) {
         aria-expanded={open}
         aria-label="Nouveau"
         title={rail ? "Nouveau" : undefined}
-        className={`flex h-14 items-center gap-3 rounded-2xl bg-accent font-medium text-accent-ink shadow-[0_1px_2px_rgba(0,0,0,0.3),0_1px_3px_1px_rgba(0,0,0,0.15)] transition-shadow hover:shadow-[0_1px_3px_rgba(0,0,0,0.3),0_4px_8px_3px_rgba(0,0,0,0.15)] ${
-          rail ? "w-14 justify-center" : "pl-4 pr-6"
+        // Même pilule que « Nouvelle tâche » (demande du 2026-10-20) ; son
+        // icône s'aligne sur celles du menu (marge du tiroir + 16 px).
+        className={`flex h-10 items-center gap-2 rounded-full bg-accent text-sm font-medium text-accent-ink transition-transform active:scale-[0.98] ${
+          rail ? "w-10 justify-center" : "pl-4 pr-5"
         }`}
       >
-        <Plus size={22} weight="bold" className="shrink-0" />
-        {!rail && <span className="text-sm">Nouveau</span>}
+        <Plus size={16} weight="bold" className="shrink-0" />
+        {!rail && <span>Nouveau</span>}
       </button>
       {open && (
         <div
@@ -185,7 +187,7 @@ export function WorkspaceShell({
           className={`hidden shrink-0 flex-col lg:flex ${rail ? "w-[72px] items-center" : "w-64"}`}
           aria-label="Tiroir de navigation"
         >
-          <div className={`pb-4 pt-1 ${rail ? "" : "pl-2"}`}>
+          <div className={`pb-3 pt-1 ${rail ? "" : "pl-2"}`}>
             <NewButton rail={rail} />
           </div>
           <div className={`flex-1 overflow-y-auto pb-4 ${rail ? "w-full px-2" : "pr-3"}`}>

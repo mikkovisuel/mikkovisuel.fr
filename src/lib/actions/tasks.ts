@@ -910,9 +910,11 @@ export async function deleteChecklistItem(id: string) {
 // simplement `setTaskStatus`/`archiveTask` par tâche plutôt que dupliquer
 // leur logique (notifications, historique, jauge de temps remise à zéro...).
 export async function bulkSetTaskStatus(taskIds: string[], statusSlug: TaskStatusSlug) {
+  await verifyAdminSession();
   await Promise.all(taskIds.map((id) => setTaskStatus(id, statusSlug)));
 }
 
 export async function bulkArchiveTasks(taskIds: string[]) {
+  await verifyAdminSession();
   await Promise.all(taskIds.map((id) => archiveTask(id)));
 }

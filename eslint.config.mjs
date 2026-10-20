@@ -12,6 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Démo de l'appli club : fichiers compilés par Expo, pas du code du site.
+    "public/demo/**",
+    // Client Prisma généré.
+    "src/generated/**",
   ]),
   {
     rules: {
