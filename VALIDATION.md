@@ -1200,6 +1200,17 @@ Lint, `tsc --noEmit` et `npm run build` propres. Rejoué dans Chrome sans interf
 | Paiements sans facture (fiche client) | 2 paiements | ✅ Une ligne chacun : libellé, montant, statut, date ; boutons au survol | — | — | 2026-10-20 |
 | Paiements sans facture (Administratif) | 3 paiements de 2 clients | ✅ Tableau Client / Libellé / Montant / Statut / Date, « — » si pas de libellé ; boutons masqués hors survol (opacité 0), « Modifier » ouvre « Modifier le paiement » | — | — | 2026-10-20 |
 
+## Feuille de route — 1. Travail à deux admins (2026-10-20)
+
+Lint, `tsc --noEmit` propres ; migration `assignment` appliquée en local. Rejoué avec une vraie session admin, un second admin factice et 3 tâches (à moi, au second, à personne), supprimés ensuite.
+
+| Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |
+|---|---|---|---|---|---|
+| Attribuer une tâche | Panneau Détails → second admin | ✅ « Enregistré », en base, e-mail « assignment » envoyé au second admin (journal des e-mails : succès) | Admin inconnu | ✅ Refusé par l'action (« Admin introuvable. ») — menu limité aux admins existants | 2026-10-20 |
+| Mes tâches | `moi=1` | ✅ Seules les tâches de l'admin connecté | Tâche réattribuée à l'autre admin | ✅ Disparaît de « Mes tâches » | 2026-10-20 |
+| Action réseaux | « Nouvelle action » | ✅ Responsable proposé = admin connecté, enregistré en base ; aucun e-mail (attribuée à soi-même) | — | — | 2026-10-20 |
+| Mes publications | Bascule sur Réseaux | ✅ Lien `?moi=1`, filtre posts et actions | — | — | 2026-10-20 |
+
 ## Points restant ouverts pour une prochaine passe de validation
 
 - Glisser-déposer et `<select>` natif du Kanban Prospection (limite outil, voir ci-dessus).

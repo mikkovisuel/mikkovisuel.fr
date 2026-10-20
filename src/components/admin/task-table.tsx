@@ -22,6 +22,7 @@ interface TaskTableTask {
   types: { id: string; label: string; color: string }[];
   formats: { id: string; label: string; color: string }[];
   client: { name: string };
+  assignedAdmin?: { email: string } | null;
   _count?: { deliverables: number; attachments: number };
 }
 
@@ -37,8 +38,9 @@ export const TASK_COLUMN_DEFS: Record<string, { label: string; field?: TaskSortF
   temps: { label: "Temps", align: "right" },
   type: { label: "Type" },
   formats: { label: "Formats" },
+  responsable: { label: "Responsable" },
 };
-export const DEFAULT_TASK_COLUMNS = ["client", "echeance", "evenement", "statut", "temps"];
+export const DEFAULT_TASK_COLUMNS = ["client", "echeance", "evenement", "statut", "temps", "responsable"];
 
 function sortHref(
   field: TaskSortField,

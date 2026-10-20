@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { notifyAssignment, readAssigneeFromForm } from "@/lib/assignment";
 import { db } from "@/lib/db";
 import { verifyAdminSession } from "@/lib/dal";
 import { parseParisDateTimeLocal } from "@/lib/social-posts";
@@ -25,7 +26,7 @@ export async function createSocialAction(
   _prev: SocialActionFormState,
   formData: FormData,
 ): Promise<SocialActionFormState> {
-  await verifyAdminSession();
+  const admin = await verifyAdminSession();
   const parsed = SocialActionSchema.safeParse({
     title: formData.get("title"),
     description: formData.get("description") ?? "",
@@ -39,8 +40,20 @@ export async function createSocialAction(
   const clientId = await clientIdFromForm(parsed.data.clientId);
   if (clientId === false) return { error: "Client introuvable." };
 
-  await db.socialAction.create({
-    data: { title: parsed.data.title, description: parsed.data.description || null, dueAt, clientId },
+  // Travail à deux (2026-10-20) : par défaut, attribuée à l'admin qui la crée.
+  const assignee = await readAssigneeFromForm(formData);
+  if ("error" in assignee) return { error: assignee.error };
+  const assignedAdminId = assignee.value === undefined ? admin.id : assignee.value;
+
+  const created = await db.socialAction.create({
+    data: { title: parsed.data.title, description: parsed.data.description || null, dueAt, clientId, assignedAdminId },
+  });
+  await notifyAssignment({
+    kind: "action",
+    title: created.title,
+    path: "/admin/reseaux?vue=afaire",
+    assigneeId: assignedAdminId,
+    byAdmin: { id: admin.id, email: admin.email },
   });
   revalidateActions();
   return { saved: true };
@@ -51,8 +64,11 @@ export async function updateSocialAction(
   _prev: SocialActionFormState,
   formData: FormData,
 ): Promise<SocialActionFormState> {
-  await verifyAdminSession();
-  const existing = await db.socialAction.findUnique({ where: { id: actionId }, select: { id: true } });
+  const admin = await verifyAdminSession();
+  const existing = await db.socialAction.findUnique({
+    where: { id: actionId },
+    select: { id: true, assignedAdminId: true },
+  });
   if (!existing) return { error: "Action introuvable." };
 
   const parsed = SocialActionSchema.safeParse({
@@ -68,10 +84,28 @@ export async function updateSocialAction(
   const clientId = await clientIdFromForm(parsed.data.clientId);
   if (clientId === false) return { error: "Client introuvable." };
 
+  const assignee = await readAssigneeFromForm(formData);
+  if ("error" in assignee) return { error: assignee.error };
+
   await db.socialAction.update({
     where: { id: actionId },
-    data: { title: parsed.data.title, description: parsed.data.description || null, dueAt, clientId },
+    data: {
+      title: parsed.data.title,
+      description: parsed.data.description || null,
+      dueAt,
+      clientId,
+      ...(assignee.value !== undefined ? { assignedAdminId: assignee.value } : {}),
+    },
   });
+  if (assignee.value && assignee.value !== existing.assignedAdminId) {
+    await notifyAssignment({
+      kind: "action",
+      title: parsed.data.title,
+      path: "/admin/reseaux?vue=afaire",
+      assigneeId: assignee.value,
+      byAdmin: { id: admin.id, email: admin.email },
+    });
+  }
   revalidateActions();
   return { saved: true };
 }

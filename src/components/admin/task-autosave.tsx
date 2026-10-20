@@ -274,3 +274,39 @@ export function AutosaveChips({
     </div>
   );
 }
+
+/** Responsable de la tâche (travail à deux admins, 2026-10-20). L'admin
+ * choisi reçoit un e-mail, sauf s'il se l'attribue lui-même. */
+export function AutosaveAssignee({
+  taskId,
+  value,
+  admins,
+}: {
+  taskId: string;
+  value: string | null;
+  admins: { id: string; label: string }[];
+}) {
+  const { state, save } = useFieldSave(taskId, "assignedAdminId");
+  const [selected, setSelected] = useState(value ?? "");
+  return (
+    <div className="min-w-0">
+      <select
+        value={selected}
+        aria-label="Attribuée à"
+        onChange={(event) => {
+          setSelected(event.target.value);
+          save(event.target.value);
+        }}
+        className={DETAIL_INPUT}
+      >
+        <option value="">Non attribuée</option>
+        {admins.map((admin) => (
+          <option key={admin.id} value={admin.id}>
+            {admin.label}
+          </option>
+        ))}
+      </select>
+      <SaveIndicator state={state} />
+    </div>
+  );
+}

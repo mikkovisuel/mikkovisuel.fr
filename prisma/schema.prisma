@@ -47,6 +47,9 @@ model Admin {
 
   uploadedDocuments Document[]
   timeEntries       TaskTimeEntry[]
+  assignedTasks     Task[]          @relation("TaskAssignee")
+  assignedPosts     SocialPost[]    @relation("SocialPostAssignee")
+  assignedActions   SocialAction[]  @relation("SocialActionAssignee")
 }
 
 model Client {
@@ -338,6 +341,11 @@ model Task {
   dueDate                        DateTime?
   createdByType                  String
   createdById                    String
+  // Travail à deux admins (2026-10-20) : responsable de l'élément. `null` =
+  // non attribué. Une tâche créée par un admin lui est attribuée par défaut ;
+  // celles demandées par un client, et l'existant, restent non attribuées.
+  assignedAdminId                String?
+  assignedAdmin                  Admin?       @relation("TaskAssignee", fields: [assignedAdminId], references: [id], onDelete: SetNull)
   refusalReason                  String?
   refusedAt                      DateTime?
   batValidatedAt                 DateTime?
@@ -399,6 +407,7 @@ model Task {
 
   @@index([clientId])
   @@index([statusId])
+  @@index([assignedAdminId])
 }
 
 // Fiche de prospection (CRM léger, /admin/prospection). `statusId` pointe
@@ -1070,6 +1079,11 @@ model SocialPost {
   // uniquement (choix du client, 2026-09-18).
   categoryId          String?
   category            DropdownItem? @relation("SocialPostCategory", fields: [categoryId], references: [id], onDelete: SetNull)
+  // Travail à deux admins (2026-10-20) : responsable de l'élément. `null` =
+  // non attribué. Une tâche créée par un admin lui est attribuée par défaut ;
+  // celles demandées par un client, et l'existant, restent non attribuées.
+  assignedAdminId     String?
+  assignedAdmin       Admin?        @relation("SocialPostAssignee", fields: [assignedAdminId], references: [id], onDelete: SetNull)
   createdAt           DateTime      @default(now())
   updatedAt           DateTime      @updatedAt
 
@@ -1083,6 +1097,7 @@ model SocialPost {
   @@index([scheduledAt])
   @@index([sourceTaskId])
   @@index([categoryId])
+  @@index([assignedAdminId])
 }
 
 // Échange admin ↔ client sur une publication (2026-09-18) — visible des
@@ -1181,6 +1196,12 @@ model SocialAction {
   routineId String?
   routine   SocialRoutine? @relation(fields: [routineId], references: [id], onDelete: SetNull)
 
+  // Travail à deux admins (2026-10-20) : responsable de l'élément. `null` =
+  // non attribué. Une tâche créée par un admin lui est attribuée par défaut ;
+  // celles demandées par un client, et l'existant, restent non attribuées.
+  assignedAdminId String?
+  assignedAdmin   Admin?  @relation("SocialActionAssignee", fields: [assignedAdminId], references: [id], onDelete: SetNull)
+
   createdAt DateTime @default(now())
 
   planItems SocialPlanRunItem[]
@@ -1188,6 +1209,7 @@ model SocialAction {
   @@index([clientId])
   @@index([dueAt])
   @@index([routineId])
+  @@index([assignedAdminId])
 }
 
 // --- Programmation : routines et plans de communication (2026-09-25) -----

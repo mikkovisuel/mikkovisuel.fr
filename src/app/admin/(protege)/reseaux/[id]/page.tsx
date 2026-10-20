@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Trash, WarningCircle } from "@phosphor-icons/react/dist/ssr";
 import { verifyAdminSession } from "@/lib/dal";
+import { listAssignableAdmins } from "@/lib/assignment";
 import { db } from "@/lib/db";
 import { notifiableEmailsFromContacts } from "@/lib/clients";
 import { StatusBadge } from "@/components/status-badge";
@@ -61,6 +62,7 @@ const SECTION_TITLE = "text-xs font-medium uppercase tracking-wide text-ink-mute
 
 export default async function SocialPostDetailPage({ params }: { params: Promise<{ id: string }> }) {
   await verifyAdminSession();
+  const admins = await listAssignableAdmins();
   const { id } = await params;
 
   const post = await db.socialPost.findUnique({
@@ -236,6 +238,8 @@ export default async function SocialPostDetailPage({ params }: { params: Promise
                   clientId={post.clientId}
                   libraries={await loadSocialLibraries([post.clientId])}
                   categories={categories}
+                  admins={admins}
+                  defaultAssigneeId={post.assignedAdminId}
                   defaultValues={{
                     categoryId: post.categoryId ?? undefined,
                     captionVariants: readCaptionVariants(post.captionVariants),

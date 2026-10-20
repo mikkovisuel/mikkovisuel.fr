@@ -43,6 +43,8 @@ export function SocialPostForm({
   clientId: fixedClientId,
   categories = [],
   taskTypes,
+  admins,
+  defaultAssigneeId,
 }: {
   action: (state: SocialPostFormState, formData: FormData) => Promise<SocialPostFormState>;
   /** Sélecteur de client, à la création uniquement. */
@@ -58,6 +60,9 @@ export function SocialPostForm({
   categories?: { id: string; label: string }[];
   /** Types de tâche : affiche la case "Demander une création" (création seulement). */
   taskTypes?: { slug: string; label: string }[];
+  /** Travail à deux admins (2026-10-20) : menu « Attribuée à ». */
+  admins?: { id: string; label: string }[];
+  defaultAssigneeId?: string | null;
 }) {
   const [state, formAction, pending] = useActionState(action, undefined);
   // Évite que React 19 vide le formulaire après une erreur — voir
@@ -150,6 +155,22 @@ export function SocialPostForm({
         />
         <p className="text-xs text-ink-muted">Repère interne, visible aussi par le client.</p>
       </div>
+
+      {admins && admins.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <label htmlFor="assignedAdminId" className={LABEL}>
+            Attribuée à
+          </label>
+          <select id="assignedAdminId" name="assignedAdminId" defaultValue={defaultAssigneeId ?? ""} className={INPUT}>
+            <option value="">Non attribuée</option>
+            {admins.map((admin) => (
+              <option key={admin.id} value={admin.id}>
+                {admin.label}
+              </option>
+            ))}
+          </select>
+        </div>
+      )}
 
       {categories.length > 0 && (
         <div className="flex flex-col gap-2">

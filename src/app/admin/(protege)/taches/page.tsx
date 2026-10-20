@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Plus } from "@phosphor-icons/react/dist/ssr";
+import { Check, Plus } from "@phosphor-icons/react/dist/ssr";
 import { verifyAdminSession } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { TaskTable } from "@/components/admin/task-table";
@@ -63,11 +63,14 @@ export default async function AdminTasksPage({
     format?: string;
     epingle?: string;
     page?: string;
+    /** « Mes tâches » : seulement celles attribuées à l'admin connecté. */
+    moi?: string;
   }>;
 }) {
-  await verifyAdminSession();
+  const me = await verifyAdminSession();
   const params = await searchParams;
-  const { clientId, status, vue, mois, tri, dir, q, type, format, epingle, page } = params;
+  const { clientId, status, vue, mois, tri, dir, q, type, format, epingle, page, moi } = params;
+  const mineOnly = moi === "1";
   const preferences = await getMyPreferences();
   // Vue par défaut du profil (« Mon affichage », 2026-10-20) : seulement en
   // arrivant sur la page sans aucun paramètre. Un lien qui porte un filtre ou
@@ -95,6 +98,7 @@ export default async function AdminTasksPage({
     archivedAt: null,
     ...(clientId ? { clientId } : {}),
     ...(pinnedOnly ? { pinnedAt: { not: null } } : {}),
+    ...(mineOnly ? { assignedAdminId: me.id } : {}),
     ...(q ? { title: { contains: q } } : {}),
     ...(type ? { types: { some: { slug: type } } } : {}),
     ...(format ? { formats: { some: { slug: format } } } : {}),
@@ -106,6 +110,7 @@ export default async function AdminTasksPage({
     ...(clientId ? { clientId } : {}),
     ...(status ? { status: { slug: status } } : {}),
     ...(pinnedOnly ? { pinnedAt: { not: null } } : {}),
+    ...(mineOnly ? { assignedAdminId: me.id } : {}),
     ...(isListe && q ? { title: { contains: q } } : {}),
     ...(isListe && type ? { types: { some: { slug: type } } } : {}),
     ...(isListe && format ? { formats: { some: { slug: format } } } : {}),
@@ -125,6 +130,7 @@ export default async function AdminTasksPage({
     types: true,
     formats: true,
     timeEntries: { select: { startedAt: true, endedAt: true } },
+    assignedAdmin: { select: { email: true } },
     _count: { select: { deliverables: true, attachments: true } },
   } as const;
   const taskOrderBy = buildTaskOrderBy(sortField, sortDir);
@@ -213,6 +219,24 @@ export default async function AdminTasksPage({
       {/* Barre d'outils unifiée (refonte macOS, 2026-10-14) : le sélecteur de
           vue, les filtres et la création tiennent sur la ligne du titre. */}
       <PageToolbar title="Tâches" subtitle={toolbarSubtitle}>
+        {/* Travail à deux admins (2026-10-20) : bascule « Mes tâches ». */}
+        <Link
+          href={(() => {
+            const next = new URLSearchParams();
+            for (const [key, value] of Object.entries({ clientId, status, vue: view, q, type, format, epingle, tri, dir })) {
+              if (value) next.set(key, value);
+            }
+            if (!mineOnly) next.set("moi", "1");
+            return `/admin/taches?${next.toString()}`;
+          })()}
+          aria-pressed={mineOnly}
+          className={`inline-flex h-8 items-center gap-1.5 rounded-lg border px-3 text-sm font-medium transition-colors ${
+            mineOnly ? "border-transparent bg-select text-ink" : "border-[var(--color-outline)] text-ink hover:bg-ink/[0.04]"
+          }`}
+        >
+          {mineOnly && <Check size={16} weight="bold" />}
+          Mes tâches
+        </Link>
         <TaskViewTabs current={view} clientId={clientId} status={status} pinnedOnly={pinnedOnly} />
         <FilterMenu compact activeCount={activeFilterCount}>
           <div className="grid gap-4">
@@ -378,7 +402,7 @@ export default async function AdminTasksPage({
             counts={statusCounts}
             openCount={openTabCount}
             current={status}
-            params={{ clientId, q, type, format, epingle: pinnedOnly ? "1" : undefined, tri, dir }}
+            params={{ clientId, q, type, format, epingle: pinnedOnly ? "1" : undefined, moi: mineOnly ? "1" : undefined, tri, dir }}
           />
         )}
         {/* Au-dessus des 4 vues (liste/kanban/calendrier/archivées) : un

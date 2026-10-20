@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { Prisma } from "@/generated/prisma/client";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { notifyAssignment, readAssigneeFromForm } from "@/lib/assignment";
 import { db } from "@/lib/db";
 import { verifyAdminSession, verifyClientSession, assertNotDemo } from "@/lib/dal";
 import { getStorageAdapter } from "@/lib/storage";
@@ -144,6 +145,10 @@ export async function createSocialPost(
     String(formData.get("taskEventDate") ?? ""),
   );
   if (requestTask && !taskEventDate.success) return { error: "Date de l'évènement invalide." };
+  // Travail à deux (2026-10-20) : par défaut, attribuée à l'admin qui la crée.
+  const assignee = await readAssigneeFromForm(formData);
+  if ("error" in assignee) return { error: assignee.error };
+  const assignedAdminId = assignee.value === undefined ? admin.id : assignee.value;
 
   const post = await db.socialPost.create({
     data: {
@@ -156,7 +161,15 @@ export async function createSocialPost(
       scheduledAt: schedule.value,
       categoryId: category.value,
       captionVariants: variants.value ?? Prisma.DbNull,
+      assignedAdminId,
     },
+  });
+  await notifyAssignment({
+    kind: "post",
+    title: post.title,
+    path: `/admin/reseaux/${post.id}`,
+    assigneeId: assignedAdminId,
+    byAdmin: { id: admin.id, email: admin.email },
   });
 
   if (requestTask) {
@@ -185,7 +198,7 @@ export async function updateSocialPost(
   _prev: SocialPostFormState,
   formData: FormData,
 ): Promise<SocialPostFormState> {
-  await verifyAdminSession();
+  const admin = await verifyAdminSession();
 
   const post = await db.socialPost.findUnique({ where: { id: postId } });
   if (!post) return { error: "Publication introuvable." };
@@ -202,6 +215,8 @@ export async function updateSocialPost(
   if (!variants.ok) return { error: "Texte par réseau trop long (4 000 caractères maximum)." };
 
   const scheduleChanged = (post.scheduledAt?.getTime() ?? null) !== (schedule.value?.getTime() ?? null);
+  const assignee = await readAssigneeFromForm(formData);
+  if ("error" in assignee) return { error: assignee.error };
 
   await db.socialPost.update({
     where: { id: postId },
@@ -216,8 +231,18 @@ export async function updateSocialPost(
       captionVariants: variants.value ?? Prisma.DbNull,
       // Nouvelle date = nouveau rappel à envoyer le moment venu.
       ...(scheduleChanged ? { reminderSentAt: null } : {}),
+      ...(assignee.value !== undefined ? { assignedAdminId: assignee.value } : {}),
     },
   });
+  if (assignee.value && assignee.value !== post.assignedAdminId) {
+    await notifyAssignment({
+      kind: "post",
+      title: parsed.data.title,
+      path: `/admin/reseaux/${postId}`,
+      assigneeId: assignee.value,
+      byAdmin: { id: admin.id, email: admin.email },
+    });
+  }
 
   revalidateSocialPaths(postId);
   return { saved: true };

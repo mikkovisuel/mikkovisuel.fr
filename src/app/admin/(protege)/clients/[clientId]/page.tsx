@@ -108,6 +108,7 @@ export default async function ClientDetailPage({
             // Client) — sans eux la fiche client planterait au rendu.
             timeEntries: { select: { startedAt: true, endedAt: true } },
             client: { select: { name: true } },
+            assignedAdmin: { select: { email: true } },
             // Livrables finaux (jamais les BAT en attente) requis par la
             // nouvelle section dépliable "Livrables disponibles" — voir plus
             // bas. Chargés ici plutôt qu'en requête séparée : les tâches sont

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { FileVideo, Images, NotePencil, Check } from "@phosphor-icons/react/dist/ssr";
 import type { Prisma } from "@/generated/prisma/client";
 import { verifyAdminSession } from "@/lib/dal";
+import { listAssignableAdmins } from "@/lib/assignment";
 import { db } from "@/lib/db";
 import { EXCLUDE_DEMO_CLIENT } from "@/lib/clients";
 import { PALETTE_SWATCH_CLASSES, SOCIAL_CATEGORY_LIST_KEY, type PaletteColor } from "@/lib/dropdown-lists";
@@ -237,10 +238,13 @@ export default async function SocialPostsPage({
     masquer?: string;
     actions?: string;
     routines?: string;
+    /** « Mes publications » : attribuées à l'admin connecté (2026-10-20). */
+    moi?: string;
   }>;
 }) {
-  await verifyAdminSession();
+  const me = await verifyAdminSession();
   const params = await searchParams;
+  const mineOnly = params.moi === "1";
   const { clientId, reseau, statut, categorie, mois, masquer, actions: actionsParam, routines: routinesParam } = params;
   // Vue par défaut du profil (« Mon affichage », 2026-10-20), seulement en
   // arrivant sur la page sans aucun paramètre.
@@ -262,10 +266,11 @@ export default async function SocialPostsPage({
     ...(network ? { networks: { has: network } } : {}),
     ...(status ? { status } : {}),
     ...(category ? { categoryId: category.id } : {}),
+    ...(mineOnly ? { assignedAdminId: me.id } : {}),
   };
 
   const now = new Date();
-  const [posts, clients, actions] = await Promise.all([
+  const [posts, clients, actions, admins] = await Promise.all([
     db.socialPost.findMany({
       where,
       include: POST_ROW_INCLUDE,
@@ -279,10 +284,17 @@ export default async function SocialPostsPage({
     // Actions (2026-09-25) : la liste "À faire" et les cases du calendrier.
     // Les actions faites restent visibles, repliées, pour garder une trace.
     db.socialAction.findMany({
-      where: clientId ? { OR: [{ clientId }, { clientId: null }] } : {},
-      include: { client: { select: { id: true, name: true } } },
+      where: {
+        ...(clientId ? { OR: [{ clientId }, { clientId: null }] } : {}),
+        ...(mineOnly ? { assignedAdminId: me.id } : {}),
+      },
+      include: {
+        client: { select: { id: true, name: true } },
+        assignedAdmin: { select: { id: true, email: true } },
+      },
       orderBy: { dueAt: "asc" },
     }),
+    listAssignableAdmins(),
   ]);
 
   const activeFilterCount = [clientId, network, status, category].filter(Boolean).length;
@@ -291,6 +303,7 @@ export default async function SocialPostsPage({
   if (network) filterParams.reseau = network;
   if (status) filterParams.statut = status;
   if (category) filterParams.categorie = category.slug;
+  if (mineOnly) filterParams.moi = "1";
 
   const toPublishNow = posts.filter(
     (post) => post.status === SOCIAL_POST_STATUS.VALIDE && post.scheduledAt !== null && post.scheduledAt <= now,
@@ -475,6 +488,8 @@ export default async function SocialPostsPage({
         )}
         <NewSocialActionButton
           clients={clients}
+          admins={admins}
+          currentAdminId={me.id}
           defaultDueAt={`${toParisDateTimeLocal(now).slice(0, 10)}T09:00`}
         />
         <Link
@@ -489,6 +504,25 @@ export default async function SocialPostsPage({
           Calendrier éditorial de vos clients : préparation, validation, publication.
         </p>
         <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+          <div className="flex flex-wrap items-center gap-2">
+          {/* Travail à deux admins (2026-10-20) : bascule « Mes publications ». */}
+          <Link
+            href={(() => {
+              const next = new URLSearchParams(filterParams);
+              if (mineOnly) next.delete("moi");
+              else next.set("moi", "1");
+              if (view !== "liste") next.set("vue", view);
+              const query = next.toString();
+              return query ? `/admin/reseaux?${query}` : "/admin/reseaux?vue=liste";
+            })()}
+            aria-pressed={mineOnly}
+            className={`inline-flex h-9 items-center gap-1.5 rounded-lg border px-3 text-sm font-medium transition-colors ${
+              mineOnly ? "border-transparent bg-select text-ink" : "border-[var(--color-outline)] text-ink hover:bg-ink/[0.04]"
+            }`}
+          >
+            {mineOnly && <Check size={16} weight="bold" />}
+            Mes publications
+          </Link>
           <FilterMenu activeCount={activeFilterCount} label="Filtres">
             <form className="grid gap-3">
               {view !== "liste" && <input type="hidden" name="vue" value={view} />}
@@ -554,6 +588,7 @@ export default async function SocialPostsPage({
               </div>
             </form>
           </FilterMenu>
+          </div>
 
           <nav className="segmented flex flex-wrap gap-2">
             {(["liste", "calendrier", "grille", "afaire"] as const).map((option) => {
@@ -599,7 +634,7 @@ export default async function SocialPostsPage({
         )}
 
         {view === "afaire" ? (
-          <SocialActionsBoard actions={actions} clients={clients} now={now} />
+          <SocialActionsBoard actions={actions} clients={clients} now={now} admins={admins} />
         ) : view === "grille" ? (
           <InstagramGrid posts={posts} clientChosen={Boolean(clientId)} />
         ) : view === "calendrier" ? (

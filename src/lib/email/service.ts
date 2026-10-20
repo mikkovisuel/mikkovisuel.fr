@@ -30,7 +30,9 @@ export type EmailTrigger =
   | "social_post_comment"
   | "social_routine_reminder"
   | "social_plan_step_reminder"
-  | "social_media_ready";
+  | "social_media_ready"
+  | "assignment"
+  | "invoice_auto_reminder";
 
 export interface EmailAttachmentInput {
   filename: string;

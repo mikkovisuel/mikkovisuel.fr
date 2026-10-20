@@ -29,6 +29,8 @@ interface TaskTableTask {
   types: { id: string; label: string; color: string }[];
   formats: { id: string; label: string; color: string }[];
   client: { name: string };
+  /** Responsable (travail à deux admins, 2026-10-20). */
+  assignedAdmin?: { email: string } | null;
   _count?: { deliverables: number; attachments: number };
 }
 
@@ -182,6 +184,21 @@ export function TaskTableRow({
               return (
                 <td key="temps" className="whitespace-nowrap px-4 py-2.5 text-right align-middle tabular-nums text-ink-muted">
                   {spentMs > 0 ? formatDurationShort(spentMs) : "—"}
+                </td>
+              );
+            case "responsable":
+              return (
+                <td key="responsable" className="whitespace-nowrap px-4 py-2.5 align-middle">
+                  {task.assignedAdmin ? (
+                    <span className="inline-flex items-center gap-2 text-ink-muted" title={task.assignedAdmin.email}>
+                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-select text-[11px] font-medium text-ink">
+                        {task.assignedAdmin.email.slice(0, 1).toUpperCase()}
+                      </span>
+                      {task.assignedAdmin.email.split("@")[0]}
+                    </span>
+                  ) : (
+                    <span className="text-ink-muted">—</span>
+                  )}
                 </td>
               );
             case "type":

@@ -24,10 +24,13 @@ export function SocialActionForm({
   submitLabel = "Créer l'action",
   resetOnSuccess = true,
   onSuccess,
+  admins,
 }: {
   action: Action;
   clients: { id: string; name: string }[];
-  defaultValues?: { title?: string; description?: string; clientId?: string; dueAt?: string };
+  defaultValues?: { title?: string; description?: string; clientId?: string; dueAt?: string; assignedAdminId?: string | null };
+  /** Travail à deux admins (2026-10-20) : menu « Attribuée à ». */
+  admins?: { id: string; label: string }[];
   submitLabel?: string;
   resetOnSuccess?: boolean;
   /** Appelé après un enregistrement réussi — sert à refermer la modale. */
@@ -73,6 +76,19 @@ export function SocialActionForm({
             ))}
           </select>
         </label>
+        {admins && admins.length > 0 && (
+          <label className={`grid gap-1 ${LABEL}`}>
+            Attribuée à
+            <select name="assignedAdminId" defaultValue={defaultValues?.assignedAdminId ?? ""} className={INPUT}>
+              <option value="">Non attribuée</option>
+              {admins.map((admin) => (
+                <option key={admin.id} value={admin.id}>
+                  {admin.label}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
       </div>
       <textarea
         name="description"

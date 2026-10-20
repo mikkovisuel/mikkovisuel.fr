@@ -2577,6 +2577,28 @@ aperçu en direct ; rien ne s'applique avant « Enregistrer ». Cinq onglets :
   disparaître le titre de la barre d'outils sur téléphone ; c'est désormais
   le sous-titre qui se coupe.
 
+### 4.18 Feuille de route, 5 premiers points (2026-10-20)
+
+**1. Travail à deux admins — livré le 2026-10-20.**
+
+- Champ « Attribuée à » sur les **tâches**, les **publications** et les
+  **actions** réseaux (`assignedAdminId`, un admin ou personne).
+- **Par défaut**, ce qu'un admin crée lui est attribué (tâche, duplication,
+  publication, action). Restent **non attribuées** : les tâches demandées par
+  un client, les tâches de production créées depuis une publication ou un
+  plan de communication (ce sont des demandes à quelqu'un d'autre) et tout
+  l'existant.
+- **Tâche** : « Attribuée à » dans le panneau Détails (enregistrement
+  automatique) ; colonne « Responsable » dans la liste (réglable dans « Mon
+  affichage ») ; bascule **« Mes tâches »** dans la barre d'outils.
+- **Réseaux** : menu « Attribuée à » dans le formulaire d'une publication et
+  dans celui d'une action ; responsable affiché sur les actions ; bascule
+  **« Mes publications »** (filtre aussi les actions, conservé d'une vue à
+  l'autre).
+- **E-mail** à l'admin à qui l'on attribue quelque chose (« On vous a
+  attribué la tâche … », lien direct) — jamais quand on se l'attribue soi-même
+  ni quand on retire l'attribution.
+
 ## Passe de nettoyage du code (2026-09-22)
 
 Demande du client : "fais une passe globale sur le code et nettoie tout,
@@ -3342,3 +3364,4 @@ Le client a explicitement délégué ces choix :
 | 2026-10-20 | "Redesign l'écran des détails de tâches" — deux maquettes ; choix **B, panneau Détails à droite**, **enregistrement automatique** | **Livré** : en-tête avec titre modifiable sur place, client, Mettre en validation, chrono, épingle, menu ⋮ (dupliquer, archiver/désarchiver, supprimer) ; au centre description (sans cadre), checklist, livrables (BAT/finaux, envoi, publication, plan, dépôt), pièces jointes, commentaires ; à droite « Détails » (statut, client, évènement, échéance avec alerte de capacité, temps estimé, type, formats, verrou de paiement « avant de travailler ») enregistrés champ par champ avec « Enregistré » ou l'erreur, puis temps passé et historique (statuts, refus). Sur téléphone : détails, travail, puis suivi. Le formulaire et son bouton « Enregistrer » sont supprimés (`TaskEditForm`, action `updateTask` remplacée par `updateTaskField`). |
 | 2026-10-20 | "L'affichage sans facture sur la page client s'affiche pas très bien" | **Corrigé** : dans la fiche client, chaque paiement sans facture tient sur une ligne (libellé, montant, statut, date) avec ses boutons au survol ; le nom du client (redondant) et les marges de bord de page sont retirés. La page Administratif garde l'affichage d'avant. |
 | 2026-10-20 | "Revoir l'affichage des paiements sans facture dans Administratif" | **Livré** : tableau façon Drive comme les factures (Client, Libellé, Montant, Statut à pastille, Date), commandes au survol (payé/impayé, modifier, supprimer) ; la date se corrige par « Modifier » ; téléphone : lignes d'avant. Titres des sections « Paiements sans facture » et « Documents Commercial / Société » alignés sur les autres. |
+| 2026-10-20 | "Go pour les 5 premiers points de la feuille de route" — 1 travail à deux admins, 2 tableau de bord « Aujourd'hui », 3 raccourcis clavier, 4 relance automatique des factures impayées, 5 tests automatiques bloquant un déploiement cassé ; arbitrages : tâche attribuée par défaut **à l'admin qui la crée** (tâches client et existantes : non attribuées) ; relance auto avec **texte proposé, modifiable, désactivée par défaut** jusqu'à activation par le client ; **tests des règles critiques lancés avant chaque `git push scalingo`**, le déploiement ne part pas si un test échoue | **En cours** |

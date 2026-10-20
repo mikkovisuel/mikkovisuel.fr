@@ -3,7 +3,9 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { verifyAdminSession } from "@/lib/dal";
 import { db } from "@/lib/db";
+import { listAssignableAdmins } from "@/lib/assignment";
 import {
+  AutosaveAssignee,
   AutosaveChips,
   AutosaveDate,
   AutosaveDescription,
@@ -71,7 +73,7 @@ export default async function TaskDetailPage({
   await verifyAdminSession();
   const { taskId } = await params;
 
-  const [task, typeList, formatList, statusList, plans] = await Promise.all([
+  const [task, typeList, formatList, statusList, plans, admins] = await Promise.all([
     db.task.findUnique({
       where: { id: taskId },
       include: {
@@ -110,6 +112,7 @@ export default async function TaskDetailPage({
       include: { _count: { select: { steps: true } } },
       orderBy: { name: "asc" },
     }),
+    listAssignableAdmins(),
   ]);
 
   if (!task) notFound();
@@ -462,6 +465,10 @@ export default async function TaskDetailPage({
                   currentColor={task.status.color}
                   statuses={statusList?.items ?? []}
                 />
+              </dd>
+              <dt className={PANEL_LABEL}>Attribuée à</dt>
+              <dd>
+                <AutosaveAssignee taskId={task.id} value={task.assignedAdminId} admins={admins} />
               </dd>
               <dt className={PANEL_LABEL}>Client</dt>
               <dd className="pt-1.5 text-sm">

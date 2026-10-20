@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { verifyAdminSession } from "@/lib/dal";
+import { listAssignableAdmins } from "@/lib/assignment";
 import { db } from "@/lib/db";
 import { ACTIVE_CLIENTS } from "@/lib/clients";
 import { SocialPostForm } from "@/components/admin/social-post-form";
@@ -20,7 +21,8 @@ export default async function NewSocialPostPage({
   // inconnue est ignorée plutôt que refusée.
   searchParams: Promise<{ clientId?: string; titre?: string; format?: string; reseaux?: string; date?: string }>;
 }) {
-  await verifyAdminSession();
+  const me = await verifyAdminSession();
+  const admins = await listAssignableAdmins();
   const { clientId, titre, format, reseaux, date } = await searchParams;
   const prefilledNetworks = (reseaux ?? "")
     .split(",")
@@ -57,6 +59,8 @@ export default async function NewSocialPostPage({
             libraries={libraries}
             categories={categories}
             taskTypes={taskTypes}
+            admins={admins}
+            defaultAssigneeId={me.id}
             submitLabel="Créer la publication"
           />
         </div>

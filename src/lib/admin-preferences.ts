@@ -89,6 +89,7 @@ export const LIST_COLUMNS = {
       { key: "temps", label: "Temps" },
       { key: "type", label: "Type" },
       { key: "formats", label: "Formats" },
+      { key: "responsable", label: "Responsable" },
     ],
     hiddenByDefault: ["type", "formats"],
   },

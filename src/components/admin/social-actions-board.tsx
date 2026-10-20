@@ -17,6 +17,8 @@ export interface ActionRow {
   doneAt: Date | null;
   client: { id: string; name: string } | null;
   routineId: string | null;
+  /** Responsable (travail à deux admins, 2026-10-20). */
+  assignedAdmin?: { id: string; email: string } | null;
 }
 
 const SECTION = "rounded-2xl border border-line p-6";
@@ -47,7 +49,17 @@ function groupByDay(actions: ActionRow[], now: Date) {
   return groups.filter((group) => group.actions.length > 0);
 }
 
-function ActionItem({ action, clients }: { action: ActionRow; clients: { id: string; name: string }[] }) {
+type AdminOption = { id: string; label: string };
+
+function ActionItem({
+  action,
+  clients,
+  admins,
+}: {
+  action: ActionRow;
+  clients: { id: string; name: string }[];
+  admins?: AdminOption[];
+}) {
   return (
     <li className="flex items-start gap-3 rounded-xl border border-line p-3">
       <div className="pt-0.5">
@@ -59,6 +71,7 @@ function ActionItem({ action, clients }: { action: ActionRow; clients: { id: str
           {formatSchedule(action.dueAt)}
           {action.client ? ` · ${action.client.name}` : " · interne"}
           {action.routineId ? " · routine" : ""}
+          {action.assignedAdmin ? ` · ${action.assignedAdmin.email.split("@")[0]}` : ""}
           {action.doneAt ? ` · fait le ${formatSchedule(action.doneAt)}` : ""}
         </p>
         {action.description && (
@@ -73,7 +86,9 @@ function ActionItem({ action, clients }: { action: ActionRow; clients: { id: str
           description: action.description ?? "",
           clientId: action.client?.id ?? "",
           dueAt: toParisDateTimeLocal(action.dueAt),
+          assignedAdminId: action.assignedAdmin?.id ?? null,
         }}
+        admins={admins}
       />
       <DeleteButton
         action={deleteSocialAction.bind(null, action.id)}
@@ -90,10 +105,12 @@ export function SocialActionsBoard({
   actions,
   clients,
   now,
+  admins,
 }: {
   actions: ActionRow[];
   clients: { id: string; name: string }[];
   now: Date;
+  admins?: AdminOption[];
 }) {
   const todo = actions.filter((action) => !action.doneAt);
   const done = actions.filter((action) => action.doneAt);
@@ -113,7 +130,7 @@ export function SocialActionsBoard({
             </h2>
             <ul className="mt-3 grid gap-2">
               {group.actions.map((action) => (
-                <ActionItem key={action.id} action={action} clients={clients} />
+                <ActionItem key={action.id} action={action} clients={clients} admins={admins} />
               ))}
             </ul>
           </section>
@@ -126,7 +143,7 @@ export function SocialActionsBoard({
             <summary className="cursor-pointer text-sm font-medium text-ink">Faites ({done.length})</summary>
             <ul className="mt-3 grid gap-2">
               {done.slice(0, 50).map((action) => (
-                <ActionItem key={action.id} action={action} clients={clients} />
+                <ActionItem key={action.id} action={action} clients={clients} admins={admins} />
               ))}
             </ul>
           </details>

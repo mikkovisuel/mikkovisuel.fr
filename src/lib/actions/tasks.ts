@@ -4,6 +4,7 @@ import { randomUUID } from "node:crypto";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import type { Prisma } from "@/generated/prisma/client";
+import { notifyAssignment } from "@/lib/assignment";
 import { db } from "@/lib/db";
 import { verifyAdminSession, verifyClientSession, assertNotDemo } from "@/lib/dal";
 import { sendEmail, getAdminEmails } from "@/lib/email/service";
@@ -239,6 +240,8 @@ async function createTaskRecord(
       formats: { connect: formatIds },
       createdByType: "ADMIN",
       createdById: adminId,
+      // Travail à deux (2026-10-20) : attribuée à l'admin qui la crée.
+      assignedAdminId: adminId,
     },
   });
   await logTaskStatusChange(task.id, statusItem, { type: "ADMIN", id: adminId, name: "Mikko" });
@@ -279,14 +282,22 @@ export async function createTaskByAdminAnyClient(
  * refonte « panneau Détails » : enregistrement automatique champ par champ,
  * sans quitter la page). Remplace l'ancienne action `updateTask` (fiche entière),
  * avec les mêmes règles de validation. */
-export type TaskField = "title" | "description" | "eventDate" | "dueDate" | "estimatedMinutes" | "types" | "formats";
+export type TaskField =
+  | "title"
+  | "description"
+  | "eventDate"
+  | "dueDate"
+  | "estimatedMinutes"
+  | "types"
+  | "formats"
+  | "assignedAdminId";
 
 export async function updateTaskField(
   taskId: string,
   field: TaskField,
   value: string | string[],
 ): Promise<{ error?: string; ok?: boolean }> {
-  await verifyAdminSession();
+  const admin = await verifyAdminSession();
   const task = await db.task.findUnique({ where: { id: taskId } });
   if (!task) return { error: "Tâche introuvable." };
 
@@ -333,11 +344,31 @@ export async function updateTaskField(
       data = { [field]: { set: ids } };
       break;
     }
+    case "assignedAdminId": {
+      // Vide = non attribuée. Sinon, un admin existant.
+      if (!text) {
+        data = { assignedAdmin: { disconnect: true } };
+        break;
+      }
+      const assignee = await db.admin.findUnique({ where: { id: text }, select: { id: true } });
+      if (!assignee) return { error: "Admin introuvable." };
+      data = { assignedAdmin: { connect: { id: assignee.id } } };
+      break;
+    }
     default:
       return { error: "Champ inconnu." };
   }
 
   await db.task.update({ where: { id: taskId }, data });
+  if (field === "assignedAdminId" && text && text !== task.assignedAdminId) {
+    await notifyAssignment({
+      kind: "task",
+      title: task.title,
+      path: `/admin/taches/${taskId}`,
+      assigneeId: text,
+      byAdmin: { id: admin.id, email: admin.email },
+    });
+  }
   revalidateTaskPaths(task.clientId);
   revalidatePath(`/admin/taches/${taskId}`);
   return { ok: true };
@@ -831,6 +862,7 @@ export async function duplicateTask(taskId: string) {
       formats: { connect: task.formats.map((format) => ({ id: format.id })) },
       createdByType: "ADMIN",
       createdById: admin.id,
+      assignedAdminId: admin.id,
     },
   });
   await logTaskStatusChange(copy.id, statusItem, { type: "ADMIN", id: admin.id, name: "Mikko" });
