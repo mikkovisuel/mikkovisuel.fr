@@ -195,7 +195,7 @@ export function TaskTable({
       <div
         className={`hidden overflow-x-auto sm:block ${inCard ? "" : "-mx-4 border-y border-line sm:-mx-6 lg:-mx-8 2xl:-mx-12"}`}
       >
-        <table className="ws-list w-full min-w-[760px] border-collapse text-sm">
+        <table className={`ws-list w-full border-collapse text-sm ${inCard ? "min-w-[560px]" : "min-w-[760px]"}`}>
           <thead>
             <tr className="border-b border-line text-left text-xs font-medium text-ink-muted">
               <th className="w-8 py-2 pl-4 font-medium sm:pl-6 lg:pl-8 2xl:pl-12">
@@ -246,6 +246,7 @@ export function TaskTable({
                 selected={selectedIds.has(task.id)}
                 onToggleSelect={() => toggleSelect(task.id)}
                 columns={shownColumns}
+                narrow={inCard}
               />
             ))}
           </tbody>

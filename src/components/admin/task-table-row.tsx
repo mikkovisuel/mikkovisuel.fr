@@ -42,6 +42,7 @@ export function TaskTableRow({
   selected = false,
   onToggleSelect,
   columns = ["client", "echeance", "evenement", "statut", "temps"],
+  narrow = false,
 }: {
   task: TaskTableTask;
   statusOptions: { slug: string; label: string }[];
@@ -49,6 +50,8 @@ export function TaskTableRow({
   onToggleSelect?: () => void;
   /** Colonnes facultatives visibles, dans l'ordre (voir TASK_COLUMN_DEFS). */
   columns?: string[];
+  /** Tableau dans une carte étroite (fiche client) : titre moins large. */
+  narrow?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   const overdue = isTaskOverdue(task);
@@ -80,7 +83,7 @@ export function TaskTableRow({
             {expanded ? <CaretDown size={12} weight="bold" /> : <CaretRight size={12} weight="bold" />}
           </button>
         </td>
-        <td className="min-w-[18rem] px-4 py-2.5 align-middle">
+        <td className={`${narrow ? "min-w-[11rem]" : "min-w-[18rem]"} px-4 py-2.5 align-middle`}>
           <div className="flex items-center gap-2">
             <Link href={`/admin/taches/${task.id}`} className="font-medium text-ink hover:underline">
               {task.title}

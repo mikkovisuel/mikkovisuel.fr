@@ -1183,6 +1183,7 @@ Lint, `tsc --noEmit` et `npm run build` propres. Rejoué dans Chrome sans interf
 | Menu ⋮ | Ouverture | ✅ Rapport PDF, Archiver, Supprimer ce client | — | — | 2026-10-20 |
 | Contacts | Colonne étroite | ✅ Nom, fonction et e-mail sur deux lignes, badge d'accès à droite, sans débordement | — | — | 2026-10-20 |
 | Téléphone | Fiche à 390 px | ✅ Pas de défilement horizontal (390/390), logo à côté du nom, colonnes empilées | — | — | 2026-10-20 |
+| Débordement de colonne (signalé) | Fiche type Bokao's (adresse sur 2 lignes, SIRET + TVA, 3 contacts « Espace client actif », 8 tâches) à 1 100, 1 280, 1 512 et 1 920 px | ✅ 0 élément hors de la colonne de gauche ; tableau des tâches entier (largeur utile = largeur du tableau) à chaque taille ; 390 px sans défilement horizontal | Défaut reproduit avant correction | ✅ Cartes de gauche larges de 530 px pour une colonne de 352 px à 1 100, 1 280 et 1 440 px — corrigé | 2026-10-20 |
 
 ## Points restant ouverts pour une prochaine passe de validation
 

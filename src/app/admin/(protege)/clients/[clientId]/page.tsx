@@ -341,7 +341,7 @@ export default async function ClientDetailPage({
         )}
         {portalContact && (
           <span title={`Ouvrir l'espace client comme ${portalContact.contact.name}`}>
-            <ImpersonateButton clientUserId={portalContact.id} />
+            <ImpersonateButton clientUserId={portalContact.id} pill />
           </span>
         )}
         {/* Gestes rares et sensibles rangés derrière « ⋮ », comme dans
@@ -385,9 +385,16 @@ export default async function ClientDetailPage({
         </p>
       )}
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] 2xl:grid-cols-[minmax(0,26rem)_minmax(0,1fr)]">
-        {/* Colonne de gauche : la fiche en lecture. */}
-        <div className="grid min-w-0 content-start gap-4">
+      {/* Deux colonnes à partir de 1 400 px seulement : en dessous, la colonne
+          de droite n'a pas la place du tableau des tâches (signalé le
+          2026-10-20) ; les blocs de la fiche passent alors en tête, sur deux
+          colonnes, et l'activité prend toute la largeur. */}
+      <div className="mt-6 grid gap-6 min-[1400px]:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] 2xl:grid-cols-[minmax(0,26rem)_minmax(0,1fr)]">
+        {/* Colonne de gauche : la fiche en lecture. `grid-cols-1` (une piste
+            `minmax(0, 1fr)`) : sans elle, la piste unique prenait la largeur
+            du contenu le plus large et débordait sous la colonne de droite
+            (signalé le 2026-10-20 sur une vraie fiche). */}
+        <div className="grid min-w-0 grid-cols-1 content-start gap-4 md:max-[1399px]:grid-cols-2">
           <section className={`${CARD} px-5 py-4`}>
             <div className="flex items-center justify-between">
               <h2 className="text-base font-medium text-ink">Coordonnées</h2>
@@ -488,8 +495,8 @@ export default async function ClientDetailPage({
         </div>
 
         {/* Colonne de droite : l'activité. */}
-        <div className="grid min-w-0 content-start gap-5">
-          <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+        <div className="grid min-w-0 grid-cols-1 content-start gap-5">
+          <div className="grid grid-cols-2 gap-3 2xl:grid-cols-4">
             {[
               { label: "Tâches en cours", value: String(openTaskCount) },
               { label: "En retard", value: String(overdueTaskCount), alert: overdueTaskCount > 0 },
