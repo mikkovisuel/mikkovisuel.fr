@@ -8,7 +8,7 @@ import { TaskViewTabs, type TaskView } from "@/components/admin/task-view-tabs";
 import { TaskStatusTabs } from "@/components/admin/task-status-tabs";
 import { CollapsibleSection } from "@/components/admin/collapsible-section";
 import { TaskKanbanBoard } from "@/components/admin/task-kanban-board";
-import { AgendaMonthView } from "@/components/admin/agenda-month-view";
+import { AgendaMonthView, parseAgendaParams } from "@/components/admin/agenda-month-view";
 import { ArchivedTaskList } from "@/components/admin/task-archived-list";
 import { TaskSortControl } from "@/components/admin/task-sort-control";
 import { FilterMenu } from "@/components/admin/filter-menu";
@@ -56,6 +56,8 @@ export default async function AdminTasksPage({
     status?: string;
     vue?: string;
     mois?: string;
+    cal?: string;
+    jour?: string;
     tri?: string;
     dir?: string;
     q?: string;
@@ -69,7 +71,7 @@ export default async function AdminTasksPage({
 }) {
   const me = await verifyAdminSession();
   const params = await searchParams;
-  const { clientId, status, vue, mois, tri, dir, q, type, format, epingle, page, moi } = params;
+  const { clientId, status, vue, mois, cal, jour, tri, dir, q, type, format, epingle, page, moi } = params;
   const mineOnly = moi === "1";
   const preferences = await getMyPreferences();
   // Vue par défaut du profil (« Mon affichage », 2026-10-20) : seulement en
@@ -199,9 +201,10 @@ export default async function AdminTasksPage({
     formatList?.items.map((item) => ({ slug: item.slug, label: item.label })) ?? [];
 
   const now = new Date();
-  const [moisYear, moisMonth] = mois?.match(/^(\d{4})-(\d{2})$/)?.slice(1) ?? [];
-  const calendarYear = moisYear ? Number(moisYear) : now.getFullYear();
-  const calendarMonth = moisMonth ? Number(moisMonth) - 1 : now.getMonth();
+  // Calendrier : vues Jour / Semaine / Mois (2026-10-20).
+  const { mode: calendarMode, anchor: calendarAnchor } = parseAgendaParams({ cal, jour, mois }, now);
+  const calendarYear = calendarAnchor.getFullYear();
+  const calendarMonth = calendarAnchor.getMonth();
 
   const hasFilters = Boolean(clientId || status || q || type || format || pinnedOnly);
   const activeFilterCount = [clientId, status, q, type, format, pinnedOnly ? "1" : ""].filter(
@@ -424,6 +427,8 @@ export default async function AdminTasksPage({
               href: `/admin/taches/${task.id}`,
               tooltip: `${task.client.name} · ${task.status.label}`,
             }))}
+            mode={calendarMode}
+            anchor={calendarAnchor}
             year={calendarYear}
             month={calendarMonth}
             basePath="/admin/taches"

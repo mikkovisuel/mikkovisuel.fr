@@ -1251,6 +1251,15 @@ Rejoué en appelant la tâche planifiée `/api/cron/invoice-reminders` en local 
 | Crochet `pre-push` | Lint + types + tests sans erreur | ✅ Code 0, « Vérifications réussies » | Un test en échec ajouté volontairement | ✅ Code 1, « Envoi annulé… Rien n'a été poussé ni déployé » | 2026-10-20 |
 | Bouton « Nouveau » | Tiroir à 1 512 px | ✅ Pilule de 40 px comme « Nouvelle tâche », icône à 24 px du bord comme celles du menu | — | — | 2026-10-20 |
 
+## Calendrier : vues Jour / Semaine / Mois et numéros de semaine (2026-10-20)
+
+| Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |
+|---|---|---|---|---|---|
+| Vue Mois | Octobre 2026, 8 publications et une action | ✅ Colonne « S. » (S40 à S44), jour courant entouré, « 1 autre » mène à la journée | — | — | 2026-10-20 |
+| Vue Semaine | Semaine du 19 au 25 octobre | ✅ Titre « 19 oct. – 25 oct. 2026 » + S43, heure au-dessus du titre entier, semaine surlignée dans le petit mois | — | — | 2026-10-20 |
+| Vue Jour | Mardi 20 octobre | ✅ Liste : action, puis 10:30, 15:00, 20:29, avec client et statut | Jour sans rien | ✅ « Rien de prévu ce jour-là. » (code) | 2026-10-20 |
+| Navigation | « Semaine suivante » | ✅ `cal=semaine&jour=2026-10-26` | Ancienne adresse `?mois=2026-10` | ✅ Comprise par `parseAgendaParams` (vue Mois) | 2026-10-20 |
+
 ## Points restant ouverts pour une prochaine passe de validation
 
 - Glisser-déposer et `<select>` natif du Kanban Prospection (limite outil, voir ci-dessus).

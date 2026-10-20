@@ -9,7 +9,12 @@ import { EXCLUDE_DEMO_CLIENT } from "@/lib/clients";
 import { PALETTE_SWATCH_CLASSES, SOCIAL_CATEGORY_LIST_KEY, type PaletteColor } from "@/lib/dropdown-lists";
 import { FilterMenu } from "@/components/admin/filter-menu";
 import { StatusBadge } from "@/components/status-badge";
-import { AgendaMiniMonth, AgendaMonthView } from "@/components/admin/agenda-month-view";
+import {
+  AgendaMiniMonth,
+  AgendaMonthView,
+  agendaRange,
+  parseAgendaParams,
+} from "@/components/admin/agenda-month-view";
 import {
   SOCIAL_NETWORKS,
   SOCIAL_POST_STATUS,
@@ -234,6 +239,9 @@ export default async function SocialPostsPage({
     categorie?: string;
     vue?: string;
     mois?: string;
+    /** Calendrier : vue (mois | semaine | jour) et jour affiché (2026-10-20). */
+    cal?: string;
+    jour?: string;
     /** Calendrier façon Agenda : clients décochés, actions et routines masquées. */
     masquer?: string;
     actions?: string;
@@ -245,7 +253,7 @@ export default async function SocialPostsPage({
   const me = await verifyAdminSession();
   const params = await searchParams;
   const mineOnly = params.moi === "1";
-  const { clientId, reseau, statut, categorie, mois, masquer, actions: actionsParam, routines: routinesParam } = params;
+  const { clientId, reseau, statut, categorie, mois, cal, jour, masquer, actions: actionsParam, routines: routinesParam } = params;
   // Vue par défaut du profil (« Mon affichage », 2026-10-20), seulement en
   // arrivant sur la page sans aucun paramètre.
   const vue = params.vue ?? (Object.keys(params).length === 0 ? (await getMyPreferences()).views.reseaux : undefined);
@@ -316,12 +324,13 @@ export default async function SocialPostsPage({
 
   const pendingActionCount = actions.filter((action) => !action.doneAt).length;
 
-  const [calendarYear, calendarMonth] = (() => {
-    const match = mois ? /^(\d{4})-(\d{2})$/.exec(mois) : null;
-    if (match) return [Number(match[1]), Number(match[2]) - 1];
-    const parisNow = toParisWallClockDate(now);
-    return [parisNow.getFullYear(), parisNow.getMonth()];
-  })();
+  // Période du calendrier (vues Jour / Semaine / Mois, 2026-10-20).
+  const { mode: calendarMode, anchor: calendarAnchor } = parseAgendaParams(
+    { cal, jour, mois },
+    toParisWallClockDate(now),
+  );
+  const calendarYear = calendarAnchor.getFullYear();
+  const calendarMonth = calendarAnchor.getMonth();
 
   // Calendrier façon Agenda (2026-10-20) : un client décoché, les actions ou
   // les routines masquées restent dans l'URL, avec la vue et les filtres.
@@ -341,7 +350,8 @@ export default async function SocialPostsPage({
       if (value) search.set(key, value);
       else search.delete(key);
     }
-    if (mois) search.set("mois", mois);
+    search.set("cal", calendarMode);
+    search.set("jour", `${calendarYear}-${String(calendarMonth + 1).padStart(2, "0")}-${String(calendarAnchor.getDate()).padStart(2, "0")}`);
     return `/admin/reseaux?${search.toString()}`;
   };
   // Couleur d'un client, stable tant que la liste des clients ne change pas
@@ -358,6 +368,21 @@ export default async function SocialPostsPage({
   const monthEnd = parseParisDateTimeLocal(
     calendarMonth === 11 ? `${calendarYear + 1}-01-01T00:00` : `${calendarYear}-${pad(calendarMonth + 2)}-01T00:00`,
   )!;
+  // Bornes de la période affichée, en heure de Paris : routines et actions du
+  // calendrier y sont limitées (la vue Mois déborde sur les semaines voisines).
+  const wallRange = agendaRange(calendarMode, calendarAnchor);
+  const toParis = (date: Date) =>
+    parseParisDateTimeLocal(`${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T00:00`)!;
+  const rangeStart = toParis(wallRange.start);
+  const rangeEnd = toParis(wallRange.end);
+  const rangeMonths = [
+    ...new Map(
+      [wallRange.start, new Date(wallRange.end.getTime() - 86_400_000)].map((date) => [
+        `${date.getFullYear()}-${date.getMonth()}`,
+        [date.getFullYear(), date.getMonth()] as const,
+      ]),
+    ).values(),
+  ];
   const monthLabel = new Intl.DateTimeFormat("fr-FR", { month: "long", year: "numeric", timeZone: "UTC" }).format(
     new Date(Date.UTC(calendarYear, calendarMonth, 1)),
   );
@@ -384,14 +409,16 @@ export default async function SocialPostsPage({
           const monthPosts = await db.socialPost.findMany({
             where: {
               clientId: { in: routines.map((routine) => routine.set.clientId!).filter(Boolean) },
-              scheduledAt: { gte: monthStart, lt: monthEnd },
+              scheduledAt: { gte: rangeStart, lt: rangeEnd },
             },
             select: { clientId: true, scheduledAt: true },
           });
           return routines.flatMap((routine) => {
             const client = routine.set.client;
             if (!client) return [];
-            return routineOccurrencesInMonth(routine, calendarYear, calendarMonth, now)
+            return rangeMonths
+              .flatMap(([year, month]) => routineOccurrencesInMonth(routine, year, month, now))
+              .filter((occurrence) => occurrence >= rangeStart && occurrence < rangeEnd)
               .filter(
                 (occurrence) =>
                   !monthPosts.some(
@@ -429,7 +456,7 @@ export default async function SocialPostsPage({
   const actionEntries =
     view === "calendrier"
       ? actions
-          .filter((action) => action.dueAt >= monthStart && action.dueAt < monthEnd)
+          .filter((action) => action.dueAt >= rangeStart && action.dueAt < rangeEnd)
           .map((action) => ({
             id: `action-${action.id}`,
             title: `${action.doneAt ? "✓ " : ""}${action.title}`,
@@ -644,6 +671,8 @@ export default async function SocialPostsPage({
           <div className="mt-2 lg:grid lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-6">
             <aside className="mt-4 hidden flex-col gap-6 lg:flex">
               <AgendaMiniMonth
+                mode={calendarMode}
+                selected={calendarAnchor}
                 year={calendarYear}
                 month={calendarMonth}
                 basePath="/admin/reseaux"
@@ -755,6 +784,8 @@ export default async function SocialPostsPage({
                   })),
               ]}
               onMove={moveSocialPostToDay}
+              mode={calendarMode}
+              anchor={calendarAnchor}
               year={calendarYear}
               month={calendarMonth}
               basePath="/admin/reseaux"
