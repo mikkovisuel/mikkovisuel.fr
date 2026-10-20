@@ -67,6 +67,7 @@ export function GlobalSearchBar({ variant = "compact" }: { variant?: "compact" |
           onFocus={() => setOpen(true)}
           placeholder={workspace ? "Rechercher dans l’admin" : "Rechercher..."}
           aria-label="Rechercher dans l'admin"
+          data-admin-search=""
           className={`w-full bg-transparent ${workspace ? "text-base" : "text-sm"} text-ink placeholder:text-ink-muted focus:outline-none`}
         />
       </div>

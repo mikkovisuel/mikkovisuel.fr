@@ -2608,6 +2608,15 @@ Retards en rouge. Bascule **« À moi »** (par défaut : ce qui est attribué �
 l'admin connecté ; les factures, sans responsable, y figurent toujours) /
 **« Tout »**.
 
+**3. Raccourcis clavier — livrés le 2026-10-20**, sur le modèle de Gmail :
+⌘K / Ctrl+K ou « / » rechercher ; « n » créer selon la rubrique (tâche,
+client, prospect, publication ; tâche ailleurs) ; « j »/« ↓ » et « k »/« ↑ »
+choisir une ligne d'une liste (liseré d'accent), « Entrée » ou « o »
+l'ouvrir, « x » la cocher ; « g » puis « t », « c », « r », « a », « p », « d »
+pour aller aux Tâches, Clients, Réseaux, Administratif, Prospection, Tableau
+de bord ; « ? » affiche l'aide. Rien ne se déclenche pendant la saisie dans
+un champ ni dans une fenêtre ouverte (sauf ⌘K).
+
 ## Passe de nettoyage du code (2026-09-22)
 
 Demande du client : "fais une passe globale sur le code et nettoie tout,

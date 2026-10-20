@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { List, Plus, X } from "@phosphor-icons/react/dist/ssr";
 import { BrandLogo } from "@/components/brand-logo";
+import { KeyboardShortcuts } from "@/components/admin/keyboard-shortcuts";
 import { GlobalSearchBar } from "@/components/admin/global-search-bar";
 import {
   AdminSidebarNav,
@@ -152,6 +153,7 @@ export function WorkspaceShell({
 
   return (
     <>
+      <KeyboardShortcuts />
       <header className="flex h-16 shrink-0 items-center gap-2 px-2 sm:px-3">
         <div className="ws-icons flex items-center">
           <button

@@ -532,6 +532,13 @@ input[type="date"]::-webkit-calendar-picker-indicator {
     0 1px 3px 1px rgba(60, 64, 67, 0.15);
 }
 
+/* Ligne choisie au clavier (j / k, 2026-10-20) : liseré d'accent à gauche,
+   comme la ligne courante de Gmail. */
+.admin-workspace .ws-list tbody tr[data-kb-active] {
+  background-color: color-mix(in srgb, var(--color-accent) 12%, transparent);
+  box-shadow: inset 4px 0 0 var(--color-accent-strong);
+}
+
 @layer base {
   /* Lignes de tableau : séparées d'un filet, survol en fond léger comme dans
      Drive. En couche de base : une ligne sélectionnée (classe utilitaire)

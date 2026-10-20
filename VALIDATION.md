@@ -1218,6 +1218,18 @@ Lint, `tsc --noEmit` propres ; migration `assignment` appliquée en local. Rejou
 | Bloc « À moi » | Tâche en retard, tâche du jour, action du jour, publication validée passée, facture échue | ✅ 5 lignes, retards en rouge, liens vers la tâche / la publication / Administratif filtré | Tâche du jour attribuée à l'autre admin | ✅ Absente de « À moi », présente dans « Tout » | 2026-10-20 |
 | Cocher une action | Case dans la liste | ✅ L'action disparaît, compteur 5 → 4 | — | — | 2026-10-20 |
 
+## Feuille de route — 3. Raccourcis clavier (2026-10-20)
+
+Touches simulées dans Chrome sans interface, vraie session admin.
+
+| Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |
+|---|---|---|---|---|---|
+| Navigation dans une liste | « j » deux fois puis « Entrée » sur Tâches | ✅ 2e ligne choisie, puis ouverture de la tâche | — | — | 2026-10-20 |
+| Recherche | « / » puis ⌘K | ✅ Champ de recherche sélectionné | « n » tapé dans le champ de recherche | ✅ Aucune création, on reste sur la page | 2026-10-20 |
+| Créer | « n » sur Clients | ✅ `/admin/clients/nouveau` | — | — | 2026-10-20 |
+| Aller à | « g » puis « c » | ✅ `/admin/clients` | — | — | 2026-10-20 |
+| Aide | « ? » | ✅ Fenêtre « Raccourcis clavier » | — | — | 2026-10-20 |
+
 ## Points restant ouverts pour une prochaine passe de validation
 
 - Glisser-déposer et `<select>` natif du Kanban Prospection (limite outil, voir ci-dessus).
