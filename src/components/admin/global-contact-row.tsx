@@ -44,7 +44,7 @@ export function GlobalContactRow({
   const { onSubmit: deleteFormSubmit } = useFormSubmit(deleteFormAction, { pending: deletePending, state: deleteState });
 
   return (
-    <div className="px-6 py-3">
+    <div className="ws-row flex flex-col justify-center px-4 sm:px-6 lg:px-8 2xl:px-12">
       <div className="grid grid-cols-1 items-center gap-x-4 gap-y-1 sm:grid-cols-[minmax(0,1.2fr)_minmax(0,1.4fr)_minmax(0,1fr)_minmax(0,1fr)_auto_auto]">
         <p className="flex items-center gap-2 truncate font-medium text-ink">
           {contact.name}

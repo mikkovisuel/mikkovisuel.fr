@@ -58,6 +58,10 @@ function sortHref(
   return `${basePath}?${params.toString()}`;
 }
 
+// Liste façon Gmail (refonte « Workspace », livraison 2, 2026-10-20) : hauteur
+// de ligne réglée par la densité de l'admin (`ws-list`), survol en relief,
+// sélection en jaune clair.
+//
 // Vue tableau, plus compacte que les cartes empilées d'autrefois : une
 // colonne par information, pour scanner beaucoup de tâches d'un coup d'œil.
 // Type/Formats/Temps sont repliés par ligne (voir TaskTableRow) plutôt que
@@ -129,7 +133,7 @@ export function TaskTable({
   return (
     <div className="mt-8">
       {selectedIds.size > 0 && (
-        <div className="mb-3 flex flex-wrap items-center gap-3 rounded-2xl border border-accent/40 bg-accent/10 px-4 py-3 text-sm">
+        <div className="mb-3 flex min-h-12 flex-wrap items-center gap-3 rounded-3xl bg-select px-4 py-2 text-sm">
           <span className="font-medium text-ink">
             {selectedIds.size} tâche{selectedIds.size > 1 ? "s" : ""} sélectionnée
             {selectedIds.size > 1 ? "s" : ""}
@@ -166,7 +170,7 @@ export function TaskTable({
         </div>
       )}
       {/* Téléphone : cartes. Le tri reste accessible par « Filtres et tri ». */}
-      <ul className="grid gap-3 sm:hidden">
+      <ul className="-mx-4 divide-y divide-line border-y border-line sm:hidden">
         {tasks.map((task) => (
           <TaskCard
             key={task.id}
@@ -180,9 +184,9 @@ export function TaskTable({
       {/* Bord à bord, comme la liste de Mail : le tableau annule les marges de
           la page et ses cellules extrêmes les reprennent. */}
       <div className="-mx-4 hidden overflow-x-auto border-y border-line sm:-mx-6 sm:block lg:-mx-8 2xl:-mx-12">
-        <table className="w-full min-w-[760px] border-collapse text-[13px]">
+        <table className="ws-list w-full min-w-[760px] border-collapse text-sm">
           <thead>
-            <tr className="border-b border-line text-left text-[11px] font-medium text-ink-muted">
+            <tr className="border-b border-line text-left text-xs font-medium text-ink-muted">
               <th className="w-8 py-2 pl-4 font-medium sm:pl-6 lg:pl-8 2xl:pl-12">
                 <input
                   type="checkbox"

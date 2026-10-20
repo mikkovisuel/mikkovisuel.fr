@@ -168,12 +168,14 @@ export default async function AdminClientsPage({
               {clients.length} client{clients.length > 1 ? "s" : ""}
               {isFiltered ? " correspondant" + (clients.length > 1 ? "s" : "") : ""}
             </p>
-            <div className="mt-3 divide-y divide-line rounded-2xl border border-line">
+            {/* Liste bord à bord, hauteur réglée par la densité de l'admin
+                (refonte « Workspace », 2026-10-20). */}
+            <div className="mt-3 -mx-4 divide-y divide-line border-y border-line sm:-mx-6 lg:-mx-8 2xl:-mx-12">
               {clients.map((client) => (
                 <Link
                   key={client.id}
                   href={`/admin/clients/${client.id}`}
-                  className="flex items-center justify-between gap-4 px-6 py-4 transition-colors hover:bg-surface-elevated"
+                  className="ws-row flex items-center justify-between gap-4 px-4 sm:px-6 lg:px-8 2xl:px-12"
                 >
                   {/* Compteurs de contacts et de tâches retirés le 2026-07-30
                       (demande du client) : la ligne se limite à l'avatar, au nom
@@ -186,6 +188,7 @@ export default async function AdminClientsPage({
                       clientId={client.id}
                       name={client.name}
                       hasAvatar={Boolean(client.avatarStorageKey)}
+                      size="sm"
                     />
                     <p className="truncate font-medium text-ink">{client.name}</p>
                   </div>

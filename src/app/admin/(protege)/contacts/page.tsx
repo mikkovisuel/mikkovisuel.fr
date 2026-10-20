@@ -188,7 +188,7 @@ export default async function AdminContactsPage({
             {orphanContacts.length === 0 ? (
               <p className="mt-4 text-sm text-ink-muted">Aucun contact orphelin pour le moment.</p>
             ) : (
-              <div className="mt-3 divide-y divide-line rounded-2xl border border-line">
+              <div className="mt-3 -mx-4 divide-y divide-line border-y border-line sm:-mx-6 lg:-mx-8 2xl:-mx-12">
                 {orphanContacts.map((contact) => (
                   <OrphanContactRow
                     key={contact.id}
@@ -330,7 +330,7 @@ export default async function AdminContactsPage({
                 <p className="mt-6 text-sm text-ink-muted">
                   {contacts.length} contact{contacts.length > 1 ? "s" : ""}
                 </p>
-                <div className="mt-3 divide-y divide-line rounded-2xl border border-line">
+                <div className="mt-3 -mx-4 divide-y divide-line border-y border-line sm:-mx-6 lg:-mx-8 2xl:-mx-12">
                   {contacts.map((link) => {
                     const state: ContactAccessState = contactAccessState(link);
                     return (

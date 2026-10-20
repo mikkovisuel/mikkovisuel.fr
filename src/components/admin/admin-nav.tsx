@@ -16,7 +16,6 @@ import {
   Users,
 } from "@phosphor-icons/react/dist/ssr";
 import type { Icon } from "@phosphor-icons/react";
-import { PALETTE_SWATCH_CLASSES, type PaletteColor } from "@/lib/dropdown-lists";
 
 // Navigation du back-office, dans le tiroir de la coquille « Workspace »
 // (2026-10-20, voir `workspace-shell.tsx`).
@@ -68,9 +67,8 @@ const NAV_GROUPS: { title: string | null; items: NavItem[] }[] = [
 
 export type NavBadges = Partial<Record<string, number>>;
 
-/** Raccourcis affichés sous « Tâches » : filtres existants de la page. */
+/** Raccourcis affichés sous « Tâches » : filtre client existant de la page. */
 export interface TaskShortcuts {
-  statuses: { slug: string; label: string; color: string; count: number }[];
   clients: { id: string; name: string; count: number }[];
 }
 
@@ -118,11 +116,12 @@ export function AdminSidebarNav({
   const searchParams = useSearchParams();
   const activeRef = useRef<HTMLAnchorElement>(null);
   const onTasks = pathname === "/admin/taches";
-  const statusFilter = onTasks ? searchParams.get("status") : null;
   const clientFilter = onTasks ? searchParams.get("clientId") : null;
-  // « Tâches » n'est surligné que sans filtre : quand un statut ou un client
-  // est choisi, c'est son raccourci qui porte la sélection.
-  const filtered = Boolean(statusFilter || clientFilter);
+  // « Tâches » n'est surligné que sans filtre client : quand un client est
+  // choisi, c'est son raccourci qui porte la sélection. Les statuts, listés
+  // ici jusqu'au 2026-10-20, sont devenus les onglets de la liste
+  // (`task-status-tabs.tsx`).
+  const filtered = Boolean(clientFilter);
   const showShortcuts = onTasks && !rail && taskShortcuts;
 
   // Sur un écran bas, la liste défile : la rubrique active est ramenée
@@ -160,25 +159,6 @@ export function AdminSidebarNav({
                   {!rail && <span className="truncate">{label}</span>}
                   <Badge count={badges[href]} rail={rail} />
                 </Link>
-                {/* Statuts sous « Tâches », comme les libellés de Gmail. */}
-                {href === "/admin/taches" &&
-                  showShortcuts &&
-                  taskShortcuts.statuses.map((item) => (
-                    <Link
-                      key={item.slug}
-                      href={`/admin/taches?status=${item.slug}`}
-                      aria-current={statusFilter === item.slug ? "page" : undefined}
-                      className={`${ITEM} ${itemState(statusFilter === item.slug)} rounded-r-full pl-12 pr-4`}
-                    >
-                      <span
-                        className={`h-2.5 w-2.5 shrink-0 rounded-full ${
-                          PALETTE_SWATCH_CLASSES[item.color as PaletteColor] ?? PALETTE_SWATCH_CLASSES.slate
-                        }`}
-                      />
-                      <span className="-ml-1 truncate">{item.label}</span>
-                      <span className="ml-auto text-xs tabular-nums text-ink-muted">{item.count}</span>
-                    </Link>
-                  ))}
               </div>
             );
           })}

@@ -1101,6 +1101,19 @@ La détection est restée muette chez le client — aucun message, alors que le 
 | Téléphone | Tâches à 390 px | ✅ Pas de tiroir fixe ; barre d'outils et commandes segmentées sur la largeur, sans débordement | Menu ouvert sur Clients | ✅ Tiroir par-dessus le contenu avec voile, recherche et « Nouveau », rubrique courante surlignée | 2026-10-20 |
 | Commandes segmentées | Tâches, Réseaux | ✅ Contour en pilule, segment courant coché en jaune clair | — | — | 2026-10-20 |
 
+## Refonte « Google Workspace » — livraison 2, listes compactes (2026-10-20)
+
+`tsc --noEmit`, lint et `npm run build` propres. Migration `admin_preferences` appliquée en local. Vérifié avec une vraie session admin et un jeu factice (5 clients « ZZ », 15 tâches réparties sur 8 statuts, 5 contacts, 5 prospects), supprimé ensuite (base vidée, préférences remises à `{}`).
+
+| Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |
+|---|---|---|---|---|---|
+| Densité des listes | Roue crantée → « Confortable » | ✅ Effet immédiat, ligne de tâche à 48 px (32 px en Compacte), `{"density":"confortable"}` enregistré pour cet admin seul | Valeur inconnue en base (`"xxl"`, plus une clé étrangère) | ✅ Page rendue normalement (HTTP 200), densité retombée sur Compacte ; l'action refuse aussi toute valeur hors liste (`isDensity("xxl")` faux) | 2026-10-20 |
+| Onglets de statut | « Bloqué » | ✅ URL `?status=bloque`, 3 tâches affichées sur 3 attendues, onglet souligné et compteur jaune | Clé en double : un statut s'appelle « En cours » | ✅ Erreur React « two children with the same key » repérée en développement ; premier onglet renommé « À traiter », plus d'erreur | 2026-10-20 |
+| Compteurs des onglets | « À traiter » | ✅ 15 = somme des statuts hors Terminé ; statuts vides grisés | — | — | 2026-10-20 |
+| Tiroir | Tâches | ✅ Statuts retirés (devenus onglets), raccourcis clients conservés avec leur compteur | — | — | 2026-10-20 |
+| Lignes façon Gmail | Tâches, Clients, Contacts (sombre), Prospection | ✅ Listes bord à bord, ombre au survol, sélection jaune clair ; contacts : actions modifier/supprimer intactes | — | — | 2026-10-20 |
+| Téléphone | Tâches à 390 px | ✅ Onglets défilants, cartes sans cadre séparées d'un filet, statut, épingle, chrono et rappel présents | — | — | 2026-10-20 |
+
 ## Points restant ouverts pour une prochaine passe de validation
 
 - Glisser-déposer et `<select>` natif du Kanban Prospection (limite outil, voir ci-dessus).

@@ -146,7 +146,7 @@ export function ProspectTable({
   return (
     <div className="mt-8">
       {selectedIds.size > 0 && (
-        <div className="mb-3 flex flex-wrap items-center gap-3 rounded-2xl border border-accent/40 bg-accent/10 px-4 py-3 text-sm">
+        <div className="mb-3 flex min-h-12 flex-wrap items-center gap-3 rounded-3xl bg-select px-4 py-2 text-sm">
           <span className="font-medium text-ink">
             {selectedIds.size} prospect{selectedIds.size > 1 ? "s" : ""} sélectionné
             {selectedIds.size > 1 ? "s" : ""}
@@ -182,11 +182,12 @@ export function ProspectTable({
           </button>
         </div>
       )}
-      <div className="overflow-x-auto rounded-2xl border border-line">
-        <table className="w-full border-collapse text-xs">
+      {/* Bord à bord comme la liste des tâches (refonte « Workspace », 2026-10-20). */}
+      <div className="-mx-4 overflow-x-auto border-y border-line sm:-mx-6 lg:-mx-8 2xl:-mx-12">
+        <table className="ws-list w-full border-collapse text-[13px]">
           <thead>
-            <tr className="border-b border-line text-left text-[11px] font-medium uppercase tracking-wide text-ink-muted">
-              <th className="w-7 py-2 pl-3 font-medium">
+            <tr className="border-b border-line text-left text-xs font-medium text-ink-muted">
+              <th className="w-7 py-2 pl-4 sm:pl-6 lg:pl-8 2xl:pl-12 font-medium">
                 <input
                   type="checkbox"
                   aria-label="Tout sélectionner"
@@ -207,8 +208,8 @@ export function ProspectTable({
             {prospects.map((prospect) => {
               const reminderOverdue = isProspectReminderOverdue(prospect);
               return (
-                <tr key={prospect.id} className={selectedIds.has(prospect.id) ? "bg-accent/5" : undefined}>
-                  <td className="py-1 pl-3">
+                <tr key={prospect.id} className={selectedIds.has(prospect.id) ? "bg-select" : undefined}>
+                  <td className="py-1 pl-4 sm:pl-6 lg:pl-8 2xl:pl-12">
                     <input
                       type="checkbox"
                       aria-label={`Sélectionner ${prospect.name}`}
@@ -328,7 +329,7 @@ export function ProspectTable({
                     />
                     {reminderOverdue && <p className="mt-0.5 text-[10px] font-medium text-danger">En retard</p>}
                   </td>
-                  <td className="py-1 pr-3">
+                  <td className="py-1 pr-4 sm:pr-6 lg:pr-8 2xl:pr-12">
                     <ProspectStatusSelect
                       prospectId={prospect.id}
                       currentSlug={prospect.status.slug}

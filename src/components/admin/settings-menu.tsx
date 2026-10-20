@@ -1,7 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useTransition } from "react";
+import { setAdminDensity } from "@/lib/actions/admin-preferences";
+import { DENSITY_OPTIONS, type Density } from "@/lib/admin-preferences";
 import { GearSix, SlidersHorizontal, ListBullets, DownloadSimple, ShieldCheck } from "@phosphor-icons/react/dist/ssr";
 
 // Regroupe sous la roue crantée les écrans de configuration et de
@@ -23,8 +25,23 @@ const ENTRIES = [
   { href: "/admin/audit", label: "Audit", icon: ShieldCheck, hint: "Journal des actions sensibles" },
 ];
 
-export function SettingsMenu() {
+// 2026-10-20 : le menu accueille aussi les « paramètres rapides » à la
+// manière de Gmail — la densité des listes, propre à l'admin connecté.
+export function SettingsMenu({ density }: { density: Density }) {
   const [open, setOpen] = useState(false);
+  const [pendingDensity, setPendingDensity] = useState<Density | null>(null);
+  const [, startTransition] = useTransition();
+  const shownDensity = pendingDensity ?? density;
+
+  function chooseDensity(value: Density) {
+    setPendingDensity(value);
+    // Effet immédiat, avant même la réponse du serveur.
+    document.querySelector<HTMLElement>(".admin-workspace")?.setAttribute("data-density", value);
+    startTransition(async () => {
+      await setAdminDensity(value);
+      setPendingDensity(null);
+    });
+  }
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -73,6 +90,25 @@ export function SettingsMenu() {
               </span>
             </Link>
           ))}
+          <div className="mt-1 border-t border-line px-4 pb-2 pt-3">
+            <p className="text-xs font-medium text-ink-muted">Densité des listes</p>
+            <div role="radiogroup" aria-label="Densité des listes" className="mt-2 grid gap-1">
+              {DENSITY_OPTIONS.map((option) => (
+                <label key={option.value} className="flex cursor-pointer items-center gap-3 py-1 text-sm text-ink">
+                  <input
+                    type="radio"
+                    name="admin-density"
+                    value={option.value}
+                    checked={shownDensity === option.value}
+                    onChange={() => chooseDensity(option.value)}
+                    className="h-4 w-4 accent-accent"
+                  />
+                  {option.label}
+                  <span className="ml-auto text-xs text-ink-muted">{option.rowHeight} px</span>
+                </label>
+              ))}
+            </div>
+          </div>
         </div>
       )}
     </div>

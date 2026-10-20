@@ -6,6 +6,7 @@ import { TimerHeaderWidget } from "@/components/admin/timer-header-widget";
 import { SettingsMenu } from "@/components/admin/settings-menu";
 import { WorkspaceShell } from "@/components/admin/workspace-shell";
 import { roboto } from "./fonts";
+import { parseAdminPreferences } from "@/lib/admin-preferences";
 import { TASK_STATUS } from "@/lib/dropdown-lists";
 import { ACTIVE_TASKS } from "@/lib/tasks";
 import { SOCIAL_POST_STATUS } from "@/lib/social-posts";
@@ -24,7 +25,7 @@ export default async function AdminProtectedLayout({
   // Chronomètre visible dans tout l'admin (pas seulement la fiche tâche) —
   // au plus une ligne `endedAt: null` à la fois PAR ADMIN, voir
   // `startTaskTimer` (chaque admin a son propre chrono, indépendant).
-  const [runningEntry, openTaskCount, prospectReminderCount, socialPostsDueCount, tasksByStatus, tasksByClient] = await Promise.all([
+  const [runningEntry, openTaskCount, prospectReminderCount, socialPostsDueCount, tasksByClient] = await Promise.all([
     db.taskTimeEntry.findFirst({
       where: { endedAt: null, startedByAdminId: admin.id },
       include: { task: true },
@@ -59,14 +60,8 @@ export default async function AdminProtectedLayout({
         ],
       },
     }),
-    // Raccourcis du tiroir sous « Tâches » (depuis la refonte macOS du
-    // 2026-10-14) : tâches restant à traiter, par statut et par client. Même
-    // périmètre que la pastille « Tâches » ci-dessus.
-    db.task.groupBy({
-      by: ["statusId"],
-      where: { ...ACTIVE_TASKS, status: { slug: { not: TASK_STATUS.TERMINE } } },
-      _count: { _all: true },
-    }),
+    // Raccourcis clients du tiroir sous « Tâches » : tâches restant à
+    // traiter, même périmètre que la pastille « Tâches » ci-dessus.
     db.task.groupBy({
       by: ["clientId"],
       where: { ...ACTIVE_TASKS, status: { slug: { not: TASK_STATUS.TERMINE } } },
@@ -76,24 +71,11 @@ export default async function AdminProtectedLayout({
     }),
   ]);
 
-  const [statusItems, clientItems] = await Promise.all([
-    db.dropdownItem.findMany({
-      where: { id: { in: tasksByStatus.map((row) => row.statusId) } },
-      select: { id: true, slug: true, label: true, color: true, sortOrder: true },
-      orderBy: { sortOrder: "asc" },
-    }),
-    db.client.findMany({
-      where: { id: { in: tasksByClient.map((row) => row.clientId) } },
-      select: { id: true, name: true },
-    }),
-  ]);
+  const clientItems = await db.client.findMany({
+    where: { id: { in: tasksByClient.map((row) => row.clientId) } },
+    select: { id: true, name: true },
+  });
   const taskShortcuts = {
-    statuses: statusItems.map((item) => ({
-      slug: item.slug,
-      label: item.label,
-      color: item.color,
-      count: tasksByStatus.find((row) => row.statusId === item.id)?._count._all ?? 0,
-    })),
     clients: tasksByClient.flatMap((row) => {
       const client = clientItems.find((item) => item.id === row.clientId);
       return client ? [{ id: client.id, name: client.name, count: row._count._all }] : [];
@@ -116,6 +98,7 @@ export default async function AdminProtectedLayout({
   );
 
   const initials = admin.email.slice(0, 1).toUpperCase();
+  const preferences = parseAdminPreferences(admin.preferences);
 
   // Coquille « Workspace » (2026-10-20), qui remplace la refonte « macOS ».
   // `admin-workspace` porte la palette, Roboto et les rayons propres à
@@ -123,6 +106,7 @@ export default async function AdminProtectedLayout({
   // héritent pas.
   return (
     <div
+      data-density={preferences.density}
       className={`admin-workspace ${roboto.variable} flex min-h-dvh flex-1 flex-col bg-canvas text-ink lg:h-dvh lg:overflow-hidden`}
     >
       <WorkspaceShell
@@ -132,7 +116,7 @@ export default async function AdminProtectedLayout({
         actions={
           <>
             <ThemeToggle />
-            <SettingsMenu />
+            <SettingsMenu density={preferences.density} />
             <LogoutButton iconOnly />
             <span
               title={admin.email}

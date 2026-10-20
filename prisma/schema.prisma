@@ -36,6 +36,12 @@ model Admin {
   gmailEmail           String?
   gmailRefreshTokenEnc String?
   gmailConnectedAt     DateTime?
+  // Profil d'affichage propre à chaque admin (2026-10-20) : densité des
+  // listes pour commencer, puis la personnalisation complète (couleur,
+  // rubriques, colonnes, vues par défaut). Un seul objet JSON lu et validé
+  // par `src/lib/admin-preferences.ts` — une colonne par réglage
+  // multiplierait les migrations pour des réglages purement visuels.
+  preferences          Json      @default("{}")
   createdAt            DateTime  @default(now())
   updatedAt            DateTime  @updatedAt
 

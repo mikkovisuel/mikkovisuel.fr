@@ -56,7 +56,7 @@ export function TaskTableRow({
 
   return (
     <>
-      <tr className={`group ${selected ? "bg-accent/5" : ""}`}>
+      <tr className={`group ${selected ? "bg-select" : ""}`}>
         <td className="w-8 py-2.5 pl-4 align-middle sm:pl-6 lg:pl-8 2xl:pl-12">
           <input
             type="checkbox"
@@ -109,7 +109,7 @@ export function TaskTableRow({
             </span>
           </div>
           {task.refusalReason && (
-            <p className="mt-1 max-w-xs truncate text-xs text-danger" title={task.refusalReason}>
+            <p className="max-w-xs truncate pb-1 text-xs text-danger" title={task.refusalReason}>
               Motif de refus : {task.refusalReason}
             </p>
           )}
@@ -227,7 +227,7 @@ export function TaskCard({
   const isTimerRunning = task.timeEntries.some((entry) => entry.endedAt === null);
 
   return (
-    <li className={`rounded-2xl border border-line p-4 ${selected ? "bg-accent/5" : ""}`}>
+    <li className={`px-4 py-3 ${selected ? "bg-select" : ""}`}>
       <div className="flex items-start gap-3">
         <input
           type="checkbox"

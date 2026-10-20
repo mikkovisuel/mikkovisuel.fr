@@ -5,6 +5,7 @@ import { verifyAdminSession } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { TaskTable } from "@/components/admin/task-table";
 import { TaskViewTabs, type TaskView } from "@/components/admin/task-view-tabs";
+import { TaskStatusTabs } from "@/components/admin/task-status-tabs";
 import { CollapsibleSection } from "@/components/admin/collapsible-section";
 import { TaskKanbanBoard } from "@/components/admin/task-kanban-board";
 import { TaskCalendarView } from "@/components/admin/task-calendar-view";
@@ -71,6 +72,17 @@ export default async function AdminTasksPage({
   const pinnedOnly = epingle === "1";
   const currentPage = Math.max(1, Number(page) || 1);
 
+  // Mêmes filtres, sans le statut : base des compteurs des onglets.
+  const baseWhere = {
+    ...EXCLUDE_DEMO_CLIENT_TASKS,
+    archivedAt: null,
+    ...(clientId ? { clientId } : {}),
+    ...(pinnedOnly ? { pinnedAt: { not: null } } : {}),
+    ...(q ? { title: { contains: q } } : {}),
+    ...(type ? { types: { some: { slug: type } } } : {}),
+    ...(format ? { formats: { some: { slug: format } } } : {}),
+  };
+
   const taskWhere = {
     ...EXCLUDE_DEMO_CLIENT_TASKS,
     archivedAt: view === "archivees" ? { not: null } : null,
@@ -100,7 +112,7 @@ export default async function AdminTasksPage({
   } as const;
   const taskOrderBy = buildTaskOrderBy(sortField, sortDir);
 
-  const [tasks, doneTasksPaginated, pageCount, statusList, typeList, formatList, clients, scratchpadItems] =
+  const [tasks, doneTasksPaginated, pageCount, statusList, typeList, formatList, clients, scratchpadItems, statusGroups] =
     await Promise.all([
       db.task.findMany({
         where: paginateDoneOnly
@@ -141,6 +153,9 @@ export default async function AdminTasksPage({
       }),
       db.client.findMany({ where: ACTIVE_CLIENTS, select: { id: true, name: true }, orderBy: { name: "asc" } }),
       db.scratchpadItem.findMany({ orderBy: { sortOrder: "asc" }, select: { id: true, label: true } }),
+      isListe
+        ? db.task.groupBy({ by: ["statusId"], where: baseWhere, _count: { _all: true } })
+        : Promise.resolve([]),
     ]);
 
   const totalPages = isListe ? Math.max(1, Math.ceil(pageCount / PAGE_SIZE)) : 1;
@@ -148,6 +163,14 @@ export default async function AdminTasksPage({
   const statusOptions =
     statusList?.items.map((item) => ({ slug: item.slug, label: item.label, color: item.color })) ??
     [];
+  const statusCounts: Record<string, number> = {};
+  for (const group of statusGroups) {
+    const item = statusList?.items.find((entry) => entry.id === group.statusId);
+    if (item) statusCounts[item.slug] = group._count._all;
+  }
+  const openTabCount = Object.entries(statusCounts)
+    .filter(([slug]) => slug !== TASK_STATUS.TERMINE)
+    .reduce((sum, [, count]) => sum + count, 0);
   const typeOptions = typeList?.items.map((item) => ({ slug: item.slug, label: item.label })) ?? [];
   const formatOptions =
     formatList?.items.map((item) => ({ slug: item.slug, label: item.label })) ?? [];
@@ -166,7 +189,7 @@ export default async function AdminTasksPage({
   const toolbarSubtitle =
     view === "archivees"
       ? `${tasks.length} archivée${tasks.length > 1 ? "s" : ""}`
-      : `${openCount} en cours`;
+      : `${openCount} à traiter`;
 
   return (
     <>
@@ -332,6 +355,15 @@ export default async function AdminTasksPage({
       </PageToolbar>
 
       <div className={PAGE_BODY}>
+        {isListe && (
+          <TaskStatusTabs
+            statuses={statusOptions}
+            counts={statusCounts}
+            openCount={openTabCount}
+            current={status}
+            params={{ clientId, q, type, format, epingle: pinnedOnly ? "1" : undefined, tri, dir }}
+          />
+        )}
         {/* Au-dessus des 4 vues (liste/kanban/calendrier/archivées) : un
             pense-bête reste utile quelle que soit la vue affichée. */}
         <Scratchpad initialItems={scratchpadItems} />

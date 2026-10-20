@@ -2441,10 +2441,46 @@ Livraison en trois temps :
      courant jaune clair coché), lignes de tableau sans alternance, survol
      léger.
    - Aucune fonction retirée.
-2. **Listes compactes** — à faire : Tâches façon Gmail (lignes 32 px,
-   onglets de statut, actions au survol), réglage de densité par admin (champ
-   en base), puis clients, prospects et contacts.
+2. **Listes compactes** — livrée le 2026-10-20 :
+   - **Densité par admin** : Compacte (32 px, défaut), Par défaut (40 px),
+     Confortable (48 px), choisie dans la roue crantée (« Densité des
+     listes ») comme les paramètres rapides de Gmail. Propre à chaque admin,
+     enregistrée dans son **profil d'affichage** (`Admin.preferences`, JSON)
+     — la même place accueillera la personnalisation complète (§ 4.17). Une
+     valeur inconnue en base retombe sur Compacte.
+   - **Tâches façon Gmail** : onglets de statut sous la barre d'outils
+     (« À traiter » = tout sauf Terminé, puis un onglet par statut avec son
+     compteur, barre jaune sous l'onglet courant). Ils pilotent le filtre
+     `?status=` existant et remplacent les statuts listés dans le tiroir (les
+     clients y restent). Lignes à la hauteur de la densité, ombre au survol,
+     sélection en jaune clair, barre d'actions groupées en pilule. Sur
+     téléphone, cartes sans cadre séparées d'un filet.
+   - **Clients, prospects, contacts** : listes bord à bord, même hauteur de
+     ligne et même survol (la boîte arrondie autour des listes disparaît).
+   - Aucune fonction retirée.
 3. **Administratif façon Drive et Réseaux façon Agenda** — à faire.
+
+### 4.17 Demandes du 2026-10-20 (en attente)
+
+- **Édition dans Administratif, sur tous les éléments** — pour corriger une
+  erreur de saisie : factures et devis (client, type, montant, échéance,
+  période, nom, remplacement du fichier), paiements sans facture (libellé,
+  client, montant, date) et documents de la société (catégorie, nom).
+  Arbitrage du client : un devis **signé** ou une facture **payée en ligne**
+  (Stripe, PayPal) reste modifiable, mais avec un **avertissement à
+  confirmer**, et la modification est inscrite dans l'**Audit**.
+- **Personnalisation complète par profil admin** — un logiciel entièrement
+  configurable visuellement : couleurs, affichages, colonnes visibles ou non,
+  etc. Arbitrage : **proposition d'abord** (maquette de l'écran « Mon
+  affichage » et liste des réglages), code après validation. Base déjà en
+  place : le profil d'affichage `Admin.preferences` (densité, § 4.16).
+- **Notes en pleine page, sans encadrés** — disposition « Google Docs »
+  retenue : toute la feuille, liste des notes et dossiers à gauche séparée
+  d'un simple filet, texte sur toute la hauteur sans cadre ; sur téléphone,
+  liste puis note en plein écran.
+
+Ordre convenu : livraison 2 de la refonte Workspace, puis l'édition
+Administratif, puis les notes ; la personnalisation suit sa validation.
 
 ## Passe de nettoyage du code (2026-09-22)
 
@@ -3199,3 +3235,4 @@ Le client a explicitement délégué ces choix :
 | 2026-10-14 | "Peux tu me faire un nouveau design mais uniquement pour le côté admin ? Quelque chose de très macOS" puis, après trois maquettes : "refonds les affichages bien comme ça en termes de design uniquement ! Garde toutes les fonctionnalités" — arbitrage : **pas d'inspecteur** à droite des tâches | **Livré** : refonte du back-office seul (site public et espace client inchangés) — police système, palette et rayons macOS, modes clair et sombre ; barre latérale façon Finder avec rubriques groupées, configuration visible, statuts et clients sous « Tâches » ; barre d'outils unifiée sur les 31 écrans ; commandes segmentées ; liste des tâches bord à bord avec statuts en pastilles et colonne Temps. Aucune fonction retirée. Défaut corrigé au passage : le chrono en cours forçait une reconstruction de la page côté navigateur. Détails section 4.14, tests dans `VALIDATION.md` |
 | 2026-10-14 | "J'ai essayé d'inviter un admin, mais impossible de faire marcher l'invitation… création de mot de passe impossible" | **Livré** : impasse reproduite — lien valable une heure seulement, erreur affichée après la saisie du mot de passe, et adresse impossible à réinviter (« compte existant »). Invitation désormais valable 7 jours ; renvoi possible (bouton « Renvoyer l'invitation » ou nouvelle saisie de l'adresse) tant que le compte n'est pas activé ; la page du lien annonce dès l'ouverture un lien expiré, remplacé ou déjà utilisé et propose une issue (admin et espace client). Détails section 4.15, tests dans `VALIDATION.md` |
 | 2026-10-20 | "Transformer l'interface en design Google Workspace, s'inspirer à fond de Google Drive, Gmail, Google Agenda… Ne pas toucher le site vitrine, les espaces clients… Vraiment que l'admin. Repenser la structure visuelle des données, plus compacte" — arbitrages : **jaune Mikko**, **Compact 32 px** par défaut, **statuts en onglets** | **Livraison 1 livrée** (coquille) : barre du haut avec recherche en pilule, tiroir avec bouton « Nouveau » contextuel et mode icônes, feuille blanche arrondie, Roboto auto-hébergée, palette Material clair/sombre ; configuration de retour sous la roue crantée ; remplace la refonte macOS. Livraisons 2 (listes compactes, densité par admin) et 3 (Administratif façon Drive, Réseaux façon Agenda) à suivre. Détails section 4.16, tests dans `VALIDATION.md` |
+| 2026-10-20 | "Ajouter des fonctions d'édition dans la partie administratif sur tous les items… pouvoir corriger si je me suis trompé" ; "une personnalisation complète du logiciel par profil admin… couleurs, affichages, afficher ou non des colonnes… un logiciel entièrement configurable visuellement" ; "Améliorer le système de note, qu'il prenne vraiment toute la page, pas de système d'encadrés" ; "Lance la livraison 2" — arbitrages : livraison 2 d'abord, puis édition, puis notes ; documents engagés **modifiables avec alerte** et trace d'audit ; personnalisation **proposée avant d'être codée** ; notes **façon Google Docs** | **Inscrit** (section 4.17) pour l'édition, la personnalisation et les notes. **Livraison 2 livrée** : densité des listes par admin (Compacte 32 px par défaut, Par défaut, Confortable) dans la roue crantée, profil d'affichage `Admin.preferences` ; onglets de statut des Tâches façon Gmail (remplacent les statuts du tiroir) ; lignes, survol et sélection façon Gmail sur Tâches, Clients, Prospection et Contacts. Détails section 4.16, tests dans `VALIDATION.md` |
