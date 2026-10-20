@@ -18,6 +18,8 @@ const SIZES = {
   sm: "h-9 w-9 text-xs",
   md: "h-12 w-12 text-sm",
   lg: "h-20 w-20 text-lg",
+  /** En-tête de la fiche client : plus petit sur téléphone. */
+  xl: "h-16 w-16 text-xl sm:h-24 sm:w-24 sm:text-3xl",
 } as const;
 
 export function ClientAvatar({

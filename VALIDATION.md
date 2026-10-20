@@ -1171,6 +1171,19 @@ Lint, `tsc --noEmit` et `npm run build` propres. Rejoué dans Chrome sans interf
 | Afficher aussi | Actions à cocher décoché | ✅ « Rapport mensuel » retiré, `actions=0`, le client décoché le reste | — | — | 2026-10-20 |
 | Espace client | — | — | Calendrier de l'espace client | ✅ Composant d'origine inchangé (`TaskCalendarView`), seul l'admin utilise le nouveau | 2026-10-20 |
 
+## Fiche client façon Google Contacts (2026-10-20)
+
+Lint, `tsc --noEmit` et `npm run build` propres. Rejoué dans Chrome sans interface avec une vraie session admin sur un client factice (2 contacts, 5 tâches, une facture impayée), supprimé ensuite.
+
+| Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |
+|---|---|---|---|---|---|
+| Modification par bloc | Règles de paiement, puis Coordonnées (e-mail, Drive), puis Notes | ✅ Chaque bloc enregistré ; en base, les champs des autres blocs inchangés (nom, raison sociale, adresse, SIRET, règle de paiement cochée conservée après la modification des notes) | E-mail de facturation « pas-un-email » | ✅ Envoi bloqué par le champ e-mail du navigateur, fenêtre ouverte, rien d'enregistré (le serveur refuse aussi : « Email de facturation invalide. ») | 2026-10-20 |
+| Chiffres clés | 5 tâches, facture de 240 € impayée | ✅ 5 en cours, 0 en retard, 240 € à encaisser en rouge, 240 € facturés dans l'année | — | — | 2026-10-20 |
+| En-tête | Client avec raison sociale et facture impayée | ✅ Raison sociale, « client depuis octobre 2026 », puce « 1 document en attente de paiement », Drive apparu après ajout du lien | Aucun contact avec espace actif | ✅ Bouton « Voir son espace client » absent | 2026-10-20 |
+| Menu ⋮ | Ouverture | ✅ Rapport PDF, Archiver, Supprimer ce client | — | — | 2026-10-20 |
+| Contacts | Colonne étroite | ✅ Nom, fonction et e-mail sur deux lignes, badge d'accès à droite, sans débordement | — | — | 2026-10-20 |
+| Téléphone | Fiche à 390 px | ✅ Pas de défilement horizontal (390/390), logo à côté du nom, colonnes empilées | — | — | 2026-10-20 |
+
 ## Points restant ouverts pour une prochaine passe de validation
 
 - Glisser-déposer et `<select>` natif du Kanban Prospection (limite outil, voir ci-dessus).
@@ -1259,3 +1272,4 @@ Lint, `tsc --noEmit` et `npm run build` propres. Rejoué dans Chrome sans interf
 - **Édition Administratif, remplacement du PDF d'une facture** (2026-10-20) : le remplacement a été exercé sur un document société (même code) mais pas sur une facture ; le refus d'un fichier non PDF n'a pas été rejoué dans la fenêtre (même contrôle que l'ajout).
 - **Mon affichage** (2026-10-20) : le glisser-déposer à la souris n'a pas été rejoué (les flèches, même fonction, l'ont été) ; la page d'accueil après une vraie connexion par mot de passe non rejouée (mot de passe local inconnu) ; colonnes de la Prospection vérifiées en compilation seulement, faute de prospect dans le jeu de test final.
 - **Livraison 3** (2026-10-20) : glisser-déposer d'une publication dans le nouveau calendrier non rejoué (même composant de dépôt qu'avant) ; vue Bacs et calendrier des Tâches vus en compilation seulement ; routines prévues absentes du jeu de test.
+- **Fiche client** (2026-10-20) : changement du logo dans sa nouvelle fenêtre, archivage et suppression depuis le menu ⋮ non rejoués (composants d'origine, déplacés) ; « Voir son espace client » non vu faute de contact avec espace actif.

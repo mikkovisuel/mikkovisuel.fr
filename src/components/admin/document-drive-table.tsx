@@ -115,12 +115,13 @@ export function DocumentSuggestions({ documents }: { documents: DriveDocument[] 
 export function DocumentDriveTable({
   documents,
   showClient = true,
+  inCard = false,
   ...shared
-}: { documents: DriveDocument[]; showClient?: boolean } & SharedProps) {
+}: { documents: DriveDocument[]; showClient?: boolean; inCard?: boolean } & SharedProps) {
   return (
     <>
       {/* Téléphone : lignes détaillées d'avant. */}
-      <div className="-mx-4 mt-4 divide-y divide-line border-y border-line sm:hidden">
+      <div className={`divide-y divide-line sm:hidden ${inCard ? "" : "-mx-4 mt-4 border-y border-line"}`}>
         {documents.map((document) => (
           <DocumentRow
             key={document.id}
@@ -132,8 +133,10 @@ export function DocumentDriveTable({
         ))}
       </div>
 
-      <div className="-mx-4 mt-4 hidden overflow-x-auto border-y border-line sm:-mx-6 sm:block lg:-mx-8 2xl:-mx-12">
-        <table className="ws-list w-full min-w-[920px] border-collapse text-sm">
+      <div
+        className={`hidden overflow-x-auto sm:block ${inCard ? "" : "-mx-4 mt-4 border-y border-line sm:-mx-6 lg:-mx-8 2xl:-mx-12"}`}
+      >
+        <table className={`ws-list w-full border-collapse text-sm ${showClient ? "min-w-[920px]" : "min-w-[760px]"}`}>
           <thead>
             <tr className="border-b border-line text-left text-xs font-medium text-ink-muted">
               <th className="py-2 pl-4 pr-4 font-medium sm:pl-6 lg:pl-8 2xl:pl-12">Nom</th>

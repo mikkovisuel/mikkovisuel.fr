@@ -79,6 +79,7 @@ export function TaskTable({
   emptyMessage = "Aucune tâche pour le moment.",
   basePath = "/admin/taches",
   columns = DEFAULT_TASK_COLUMNS,
+  inCard = false,
 }: {
   tasks: TaskTableTask[];
   statusOptions: { slug: string; label: string }[];
@@ -92,6 +93,9 @@ export function TaskTable({
   basePath?: string;
   /** Colonnes facultatives visibles, dans l'ordre (profil de l'admin). */
   columns?: string[];
+  /** Dans une carte (fiche client, 2026-10-20) : pas de débord sur les
+   * marges de la page, la carte porte déjà le cadre. */
+  inCard?: boolean;
 }) {
   const shownColumns = columns.filter((key) => key in TASK_COLUMN_DEFS);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -99,7 +103,7 @@ export function TaskTable({
   const [isPending, startTransition] = useTransition();
 
   if (tasks.length === 0) {
-    return <p className="mt-8 text-sm text-ink-muted">{emptyMessage}</p>;
+    return <p className={`${inCard ? "px-4 py-3" : "mt-8"} text-sm text-ink-muted`}>{emptyMessage}</p>;
   }
 
   const allSelected = selectedIds.size > 0 && selectedIds.size === tasks.length;
@@ -136,7 +140,7 @@ export function TaskTable({
   }
 
   return (
-    <div className="mt-8">
+    <div className={inCard ? "" : "mt-8"}>
       {selectedIds.size > 0 && (
         <div className="mb-3 flex min-h-12 flex-wrap items-center gap-3 rounded-3xl bg-select px-4 py-2 text-sm">
           <span className="font-medium text-ink">
@@ -175,7 +179,7 @@ export function TaskTable({
         </div>
       )}
       {/* Téléphone : cartes. Le tri reste accessible par « Filtres et tri ». */}
-      <ul className="-mx-4 divide-y divide-line border-y border-line sm:hidden">
+      <ul className={`divide-y divide-line sm:hidden ${inCard ? "" : "-mx-4 border-y border-line"}`}>
         {tasks.map((task) => (
           <TaskCard
             key={task.id}
@@ -188,7 +192,9 @@ export function TaskTable({
       </ul>
       {/* Bord à bord, comme la liste de Mail : le tableau annule les marges de
           la page et ses cellules extrêmes les reprennent. */}
-      <div className="-mx-4 hidden overflow-x-auto border-y border-line sm:-mx-6 sm:block lg:-mx-8 2xl:-mx-12">
+      <div
+        className={`hidden overflow-x-auto sm:block ${inCard ? "" : "-mx-4 border-y border-line sm:-mx-6 lg:-mx-8 2xl:-mx-12"}`}
+      >
         <table className="ws-list w-full min-w-[760px] border-collapse text-sm">
           <thead>
             <tr className="border-b border-line text-left text-xs font-medium text-ink-muted">

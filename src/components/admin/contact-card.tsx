@@ -25,6 +25,7 @@ export function ContactCard({
   deleteButton,
   resetPasswordButton,
   impersonateButton,
+  stacked = false,
 }: {
   contact: {
     id: string;
@@ -40,6 +41,9 @@ export function ContactCard({
   deleteButton: React.ReactNode;
   resetPasswordButton: React.ReactNode;
   impersonateButton: React.ReactNode;
+  /** Colonne étroite (fiche client façon Google Contacts, 2026-10-20) :
+   * fonction, e-mail et téléphone passent sous le nom. */
+  stacked?: boolean;
 }) {
   const [open, setOpen] = useState(false);
 
@@ -57,16 +61,25 @@ export function ContactCard({
             weight="bold"
             className={`shrink-0 text-ink-muted transition-transform ${open ? "rotate-90" : ""}`}
           />
-          <span className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1">
-            <span className="font-medium text-ink">{contact.name}</span>
-            {contact.role && <span className="text-sm text-ink-muted">{contact.role}</span>}
-          </span>
+          {stacked ? (
+            <span className="flex min-w-0 flex-1 flex-col">
+              <span className="truncate font-medium text-ink">{contact.name}</span>
+              <span className="truncate text-xs text-ink-muted">
+                {[contact.role, contact.email, contact.phone].filter(Boolean).join(" · ")}
+              </span>
+            </span>
+          ) : (
+            <span className="flex min-w-0 flex-1 flex-wrap items-center gap-x-3 gap-y-1">
+              <span className="font-medium text-ink">{contact.name}</span>
+              {contact.role && <span className="text-sm text-ink-muted">{contact.role}</span>}
+            </span>
+          )}
           {/* `mailto:`/`tel:` plutôt que du texte brut (demande du
               2026-07-31) : ouvre respectivement un brouillon dans le client
               mail par défaut et l'appli téléphone par défaut. `stopPropagation`
               empêche le clic de replier/déplier la ligne en même temps qu'il
               ouvre le lien. */}
-          <span className="hidden shrink-0 items-center gap-4 text-sm text-ink-muted sm:flex">
+          <span className={`hidden shrink-0 items-center gap-4 text-sm text-ink-muted ${stacked ? "" : "sm:flex"}`}>
             {contact.email && (
               <a
                 href={`mailto:${contact.email}`}

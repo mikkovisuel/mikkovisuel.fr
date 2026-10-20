@@ -1,10 +1,20 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { CaretLeft, EnvelopeSimple } from "@phosphor-icons/react/dist/ssr";
+import {
+  ArrowLeft,
+  DotsThreeVertical,
+  EnvelopeSimple,
+  GoogleDriveLogo,
+  IdentificationCard,
+  MapPin,
+} from "@phosphor-icons/react/dist/ssr";
 import { verifyAdminSession } from "@/lib/dal";
 import { db } from "@/lib/db";
-import { ClientInfoForm } from "@/components/admin/client-info-form";
+import { ClientAvatar } from "@/components/admin/client-avatar";
+import { ClientBlockEditButton, ModalTrigger } from "@/components/admin/client-block-editor";
+import { NewDocumentButton } from "@/components/admin/new-document-button";
+import { formatAmount } from "@/lib/documents";
 import { ClientAvatarForm } from "@/components/admin/client-avatar-form";
 import { ClientArchiveButton } from "@/components/admin/client-archive-button";
 import { ContactCard } from "@/components/admin/contact-card";
@@ -39,13 +49,19 @@ import {
 } from "@/lib/dropdown-lists";
 import {
   buildTaskOrderBy,
+  isTaskOverdue,
   isTaskSortField,
   taskDateFormatter,
   type TaskSortField,
   type TaskSortDir,
 } from "@/lib/tasks";
 import { contactAccessState, EXCLUDE_DEMO_CLIENT } from "@/lib/clients";
-import { DOCUMENT_TYPE_LIST_KEY } from "@/lib/dropdown-lists";
+import {
+  DOCUMENT_TYPE,
+  DOCUMENT_TYPE_LIST_KEY,
+  PALETTE_BADGE_CLASSES,
+  type PaletteColor,
+} from "@/lib/dropdown-lists";
 import { getMyPreferences } from "@/lib/admin-preferences-server";
 import { visibleColumns } from "@/lib/admin-preferences";
 import { getAppSettings } from "@/lib/settings";
@@ -183,96 +199,234 @@ export default async function ClientDetailPage({
     task.deliverables.map((deliverable) => ({ ...deliverable, taskTitle: task.title })),
   );
 
+  // Chiffres clés de l'en-tête (refonte « Google Contacts », 2026-10-20) :
+  // calculés sur toutes les tâches actives, même quand la liste n'affiche que
+  // les épinglées.
+  const year = new Date().getFullYear();
+  const activeTaskStates = await db.task.findMany({
+    where: { clientId: client.id, archivedAt: null },
+    select: { dueDate: true, status: { select: { slug: true } } },
+  });
+  const openTaskCount = activeTaskStates.filter((task) => task.status.slug !== TASK_STATUS.TERMINE).length;
+  const overdueTaskCount = activeTaskStates.filter((task) => isTaskOverdue(task)).length;
+  const unpaidDocuments = client.documents.filter(
+    (doc) => doc.paymentStatus === "unpaid" && doc.amountCents !== null,
+  );
+  const toCollectCents =
+    unpaidDocuments.reduce((sum, doc) => sum + (doc.amountCents ?? 0), 0) +
+    client.paymentRecords
+      .filter((record) => record.paymentStatus !== "paid")
+      .reduce((sum, record) => sum + record.amountCents, 0);
+  // Même règle que les Finances : les factures (pas les devis), rattachées à
+  // leur mois convenu quand elles sont mensuelles, plus les paiements sans
+  // facture.
+  const billedThisYearCents =
+    client.documents
+      .filter(
+        (doc) =>
+          doc.type.slug === DOCUMENT_TYPE.FACTURE &&
+          (doc.isMonthlyInvoice && doc.invoiceYear ? doc.invoiceYear : doc.uploadedAt.getFullYear()) === year,
+      )
+      .reduce((sum, doc) => sum + (doc.amountCents ?? 0), 0) +
+    client.paymentRecords
+      .filter((record) => record.date.getFullYear() === year)
+      .reduce((sum, record) => sum + record.amountCents, 0);
+  const category = categoryList?.items.find((item) => item.id === client.categoryId) ?? null;
+  // « Voir son espace client » : le premier contact dont l'espace est actif.
+  const portalContact = client.contacts.find((link) => contactAccessState(link) === "active");
+  const clientValues = {
+    name: client.name,
+    raisonSociale: client.raisonSociale,
+    notes: client.notes,
+    address: client.address,
+    siret: client.siret,
+    vatNumber: client.vatNumber,
+    billingEmail: client.billingEmail,
+    driveUrl: client.driveUrl,
+    categoryId: client.categoryId,
+    requirePaymentForDeliverables: client.requirePaymentForDeliverables,
+    requirePaymentBeforeWork: client.requirePaymentBeforeWork,
+  };
+  const editProps = { values: clientValues, categoryOptions, action: updateThisClient };
+  // Sur la fiche, la colonne « Client » des tâches ne dirait rien de plus.
+  const clientTaskColumns = taskColumns.filter((column) => column !== "client");
+  const money = (cents: number) => formatAmount(cents, "EUR");
+  const CARD = "rounded-xl border border-line bg-surface";
+  const PILL =
+    "inline-flex h-9 items-center gap-2 rounded-full border border-[var(--color-outline)] px-4 text-sm font-medium text-ink transition-colors hover:bg-ink/[0.04]";
+
+  // Fiche client façon Google Contacts (maquette A validée le 2026-10-20) :
+  // en-tête avec avatar et actions, coordonnées en lecture à gauche
+  // (modification par bloc), chiffres clés, tâches et documents à droite.
+  // Toutes les fonctions de l'ancienne fiche restent.
   return (
     <div className="px-4 pb-10 sm:px-6 lg:px-8 2xl:px-12">
-      <ClientInfoForm
-        back={
-          <Link
-            href="/admin/clients"
-            aria-label="Retour aux clients"
-            title="Retour aux clients"
-            className="-ml-1 flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-ink-muted transition-colors hover:bg-ink/5 hover:text-ink"
-          >
-            <CaretLeft size={16} weight="bold" />
-          </Link>
-        }
-        actions={
-          // Lien vers la boîte mail Gmail intégrée (2026-07-31) : sans lui,
-          // /emails ne serait plus atteignable que par une URL tapée à la main.
-          <Link
-            href={`/admin/clients/${client.id}/emails`}
-            className="inline-flex items-center gap-1.5 text-sm text-ink-muted transition-colors hover:text-ink"
-          >
-            <EnvelopeSimple size={14} weight="regular" />
-            Emails
-          </Link>
-        }
-        action={updateThisClient}
-        clientId={client.id}
-        clientName={client.name}
-        hasAvatar={Boolean(client.avatarStorageKey)}
-        archivedBanner={
-          client.archivedAt ? (
-            <p className="mt-4 flex flex-wrap items-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-ink">
-              <strong className="font-medium">Client archivé</strong>
-              <span className="text-ink-muted">
-                depuis le {archivedAtLabel}
-                {" — "}
-                masqué des listes et des sélecteurs, mais toujours compté dans les Finances et les
-                exports. Rien n&apos;a été supprimé.
+      <div className="pt-3">
+        <Link
+          href="/admin/clients"
+          className="inline-flex items-center gap-2 rounded-full py-1 pr-3 text-sm text-ink-muted transition-colors hover:text-ink"
+        >
+          <ArrowLeft size={18} />
+          Clients
+        </Link>
+      </div>
+
+      <header className="flex items-center gap-4 pb-5 pt-2 sm:gap-5">
+        <ModalTrigger
+          title="Logo du client"
+          label="Changer le logo du client"
+          className="w-fit shrink-0 rounded-full transition-opacity hover:opacity-80"
+          content={
+            <ClientAvatarForm
+              clientId={client.id}
+              clientName={client.name}
+              hasAvatar={Boolean(client.avatarStorageKey)}
+              action={updateAvatarForThisClient}
+            />
+          }
+        >
+          <ClientAvatar clientId={client.id} name={client.name} hasAvatar={Boolean(client.avatarStorageKey)} size="xl" />
+        </ModalTrigger>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-1">
+            <h1 className="text-2xl font-normal leading-tight text-ink sm:truncate sm:text-[32px]">{client.name}</h1>
+            <ClientBlockEditButton block="identite" {...editProps} />
+          </div>
+          <p className="mt-1 text-sm text-ink-muted">
+            {[client.raisonSociale, `client depuis ${MONTH_YEAR.format(client.createdAt)}`].filter(Boolean).join(" · ")}
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {category && (
+              <span
+                className={`inline-flex h-6 items-center rounded-full border px-2.5 text-xs font-medium ${
+                  PALETTE_BADGE_CLASSES[category.color as PaletteColor] ?? ""
+                }`}
+              >
+                {category.label}
               </span>
-            </p>
-          ) : null
-        }
-        prospectBanner={
-          prospectConversion === "no-email" ? (
-            <p className="mt-4 rounded-xl border border-line bg-surface-elevated px-4 py-3 text-sm text-ink-muted">
-              Client créé depuis un prospect. Aucun compte de connexion créé (le prospect n&apos;avait
-              pas d&apos;email) — ajoutez-en un ci-dessous.
-            </p>
-          ) : null
-        }
-        avatarForm={
-          <ClientAvatarForm
-            clientId={client.id}
-            clientName={client.name}
-            hasAvatar={Boolean(client.avatarStorageKey)}
-            action={updateAvatarForThisClient}
-          />
-        }
-        defaultValues={{
-          name: client.name,
-          raisonSociale: client.raisonSociale,
-          notes: client.notes,
-          address: client.address,
-          siret: client.siret,
-          vatNumber: client.vatNumber,
-          billingEmail: client.billingEmail,
-          driveUrl: client.driveUrl,
-          categoryId: client.categoryId,
-          requirePaymentForDeliverables: client.requirePaymentForDeliverables,
-          requirePaymentBeforeWork: client.requirePaymentBeforeWork,
-        }}
-        categoryOptions={categoryOptions}
-      />
-
-      <section className="mt-12">
-        {/* Bouton d'ajout en tête de section plutôt qu'un formulaire déplié
-            sous la liste (demande du 2026-07-30) : la création est un geste
-            occasionnel, la consultation est permanente. Texte de
-            présentation retiré le 2026-07-31 (demande explicite) : après
-            plusieurs mois d'usage, le rappel n'apportait plus rien. */}
-        <div className="flex flex-wrap items-center gap-3">
-          <h2 className="text-sm font-medium text-ink-muted">
-            Contacts ({client.contacts.length})
-          </h2>
-          <NewContactButton action={createContactForThisClient} existingContacts={assignableContacts} />
+            )}
+            {unpaidDocuments.length > 0 && (
+              <span className="inline-flex h-6 items-center rounded-full bg-red-500/10 px-2.5 text-xs font-medium text-danger">
+                {unpaidDocuments.length} document{unpaidDocuments.length > 1 ? "s" : ""} en attente de paiement
+              </span>
+            )}
+            {client.archivedAt && (
+              <span className="inline-flex h-6 items-center rounded-full bg-amber-500/15 px-2.5 text-xs font-medium text-ink">
+                Archivé le {archivedAtLabel}
+              </span>
+            )}
+          </div>
         </div>
+      </header>
 
-        {client.contacts.length > 0 ? (
-          <div className="mt-4 divide-y divide-line rounded-2xl border border-line">
+      <div className="flex flex-wrap items-center gap-2 border-b border-line pb-5">
+        <NewTaskButton
+          action={createTaskForThisClient}
+          typeOptions={typeList?.items ?? []}
+          formatOptions={formatList?.items ?? []}
+          label="Nouvelle tâche"
+          primary
+        />
+        {/* Boîte mail Gmail intégrée (2026-07-31). */}
+        <Link href={`/admin/clients/${client.id}/emails`} className={PILL}>
+          <EnvelopeSimple size={16} />
+          E-mails
+        </Link>
+        <NewDocumentButton clients={[{ id: client.id, name: client.name }]} types={editOptions.types} />
+        {client.driveUrl && (
+          <a href={client.driveUrl} target="_blank" rel="noopener noreferrer" className={PILL}>
+            <GoogleDriveLogo size={16} />
+            Drive
+          </a>
+        )}
+        {portalContact && (
+          <span title={`Ouvrir l'espace client comme ${portalContact.contact.name}`}>
+            <ImpersonateButton clientUserId={portalContact.id} />
+          </span>
+        )}
+        {/* Gestes rares et sensibles rangés derrière « ⋮ », comme dans
+            Google Contacts. */}
+        <details className="relative ml-auto">
+          <summary
+            aria-label="Plus d'actions"
+            className="flex h-9 w-9 cursor-pointer list-none items-center justify-center rounded-full border border-[var(--color-outline)] text-ink-muted hover:bg-ink/[0.04] [&::-webkit-details-marker]:hidden"
+          >
+            <DotsThreeVertical size={18} weight="bold" />
+          </summary>
+          <div className="absolute right-0 z-30 mt-2 flex w-64 flex-col items-start gap-3 rounded-xl bg-surface p-4 shadow-lg">
+            <a
+              href={`/api/exports/clients/${client.id}/rapport`}
+              className="text-sm text-ink transition-colors hover:underline"
+            >
+              Télécharger le rapport (PDF)
+            </a>
+            <ClientArchiveButton clientId={client.id} archived={Boolean(client.archivedAt)} />
+            <StepUpButton
+              action={deleteThisClient}
+              label="Supprimer ce client"
+              confirmMessage={`Confirmez votre mot de passe admin pour supprimer définitivement ${client.name} et toutes ses données (comptes, tâches, documents).`}
+              submitLabel="Supprimer définitivement"
+              danger
+            />
+          </div>
+        </details>
+      </div>
+
+      {client.archivedAt && (
+        <p className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-4 py-3 text-sm text-ink-muted">
+          Masqué des listes et des sélecteurs, mais toujours compté dans les Finances et les exports. Rien n&apos;a été
+          supprimé.
+        </p>
+      )}
+      {prospectConversion === "no-email" && (
+        <p className="mt-4 rounded-xl border border-line bg-surface-elevated px-4 py-3 text-sm text-ink-muted">
+          Client créé depuis un prospect. Aucun compte de connexion créé (le prospect n&apos;avait pas d&apos;email) —
+          ajoutez un contact ci-dessous.
+        </p>
+      )}
+
+      <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] 2xl:grid-cols-[minmax(0,26rem)_minmax(0,1fr)]">
+        {/* Colonne de gauche : la fiche en lecture. */}
+        <div className="grid min-w-0 content-start gap-4">
+          <section className={`${CARD} px-5 py-4`}>
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-medium text-ink">Coordonnées</h2>
+              <ClientBlockEditButton block="coordonnees" {...editProps} />
+            </div>
+            <dl className="mt-1 grid gap-3 text-sm">
+              <InfoLine icon={<MapPin size={18} />} value={client.address} empty="Ajouter l'adresse" />
+              <InfoLine
+                icon={<EnvelopeSimple size={18} />}
+                value={client.billingEmail}
+                hint="E-mail de facturation"
+                empty="Ajouter l'e-mail de facturation"
+              />
+              <InfoLine
+                icon={<IdentificationCard size={18} />}
+                value={[client.siret && `SIRET ${client.siret}`, client.vatNumber && `TVA ${client.vatNumber}`]
+                  .filter(Boolean)
+                  .join(" · ")}
+                empty="Ajouter le SIRET et la TVA"
+              />
+              <InfoLine
+                icon={<GoogleDriveLogo size={18} />}
+                value={client.driveUrl ? "Dossier Drive" : null}
+                href={client.driveUrl ?? undefined}
+                empty="Ajouter le lien Drive"
+              />
+            </dl>
+          </section>
+
+          <section className={CARD}>
+            <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-4">
+              <h2 className="text-base font-medium text-ink">Contacts ({client.contacts.length})</h2>
+              <NewContactButton action={createContactForThisClient} existingContacts={assignableContacts} />
+            </div>
+            {client.contacts.length > 0 ? (
+              <div className="divide-y divide-line border-t border-line">
             {client.contacts.map((link) => (
               <ContactCard
+                stacked
                 key={link.id}
                 contact={{
                   id: link.id,
@@ -295,30 +449,68 @@ export default async function ClientDetailPage({
                 }
               />
             ))}
-          </div>
-        ) : (
-          <p className="mt-4 text-sm text-ink-muted">Aucun contact pour ce client.</p>
-        )}
-      </section>
+              </div>
+            ) : (
+              <p className="px-5 pb-4 text-sm text-ink-muted">Aucun contact pour ce client.</p>
+            )}
+          </section>
 
-      <section className="mt-12">
-        <div className="flex flex-wrap items-center justify-between gap-4">
-          <div className="flex flex-wrap items-center gap-3">
-            <h2 className="text-sm font-medium text-ink-muted">Tâches ({client.tasks.length})</h2>
-            <NewTaskButton
-              action={createTaskForThisClient}
-              typeOptions={typeList?.items ?? []}
-              formatOptions={formatList?.items ?? []}
-            />
+          <section className={`${CARD} px-5 py-4`}>
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-medium text-ink">Règles de paiement</h2>
+              <ClientBlockEditButton block="paiement" {...editProps} />
+            </div>
+            <ul className="mt-1 grid gap-2 text-sm">
+              {[
+                { on: client.requirePaymentBeforeWork, label: "Paiement avant de commencer le travail" },
+                { on: client.requirePaymentForDeliverables, label: "Paiement avant les livrables finaux" },
+              ].map((rule) => (
+                <li key={rule.label} className="flex items-center gap-3">
+                  <span className={`h-2.5 w-2.5 shrink-0 rounded-full ${rule.on ? "bg-emerald-600" : "bg-slate-300"}`} />
+                  <span className="flex-1 text-ink">{rule.label}</span>
+                  <span className="text-xs text-ink-muted">{rule.on ? "Activé" : "Désactivé"}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+
+          <section className="rounded-xl border border-amber-400/40 bg-amber-300/10 px-5 py-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-base font-medium text-ink">Notes internes</h2>
+              <ClientBlockEditButton block="notes" {...editProps} />
+            </div>
+            {client.notes ? (
+              <p className="mt-1 whitespace-pre-line text-sm text-ink">{client.notes}</p>
+            ) : (
+              <p className="mt-1 text-sm text-ink-muted">Aucune note — jamais visible du client.</p>
+            )}
+          </section>
+        </div>
+
+        {/* Colonne de droite : l'activité. */}
+        <div className="grid min-w-0 content-start gap-5">
+          <div className="grid grid-cols-2 gap-3 xl:grid-cols-4">
+            {[
+              { label: "Tâches en cours", value: String(openTaskCount) },
+              { label: "En retard", value: String(overdueTaskCount), alert: overdueTaskCount > 0 },
+              { label: "À encaisser", value: money(toCollectCents), alert: toCollectCents > 0 },
+              { label: `Facturé en ${year}`, value: money(billedThisYearCents) },
+            ].map((kpi) => (
+              <div key={kpi.label} className="rounded-xl bg-surface-elevated px-4 py-3">
+                <p className="text-sm text-ink-muted">{kpi.label}</p>
+                <p className={`mt-1 text-2xl font-normal tabular-nums ${kpi.alert ? "text-danger" : "text-ink"}`}>
+                  {kpi.value}
+                </p>
+              </div>
+            ))}
           </div>
-          <div className="flex flex-wrap items-center gap-4">
-            <a
-              href={`/api/exports/clients/${client.id}/rapport`}
-              className="text-xs text-ink-muted transition-colors hover:text-ink"
-            >
-              Télécharger le rapport (PDF)
-            </a>
-            <MonthlyRecapButton clientId={client.id} />
+
+          <section className={`${CARD} overflow-hidden`}>
+            <div className="flex flex-wrap items-center gap-3 border-b border-line px-4 py-3">
+              <h2 className="flex-1 text-base font-medium text-ink">
+                Tâches <span className="font-normal text-ink-muted">({client.tasks.length})</span>
+              </h2>
+              <MonthlyRecapButton clientId={client.id} />
             <Link
               href={
                 pinnedOnly
@@ -333,59 +525,101 @@ export default async function ClientDetailPage({
             >
               Épinglées uniquement
             </Link>
-          </div>
-        </div>
+            </div>
+            {(() => {
+              const activeTasks = client.tasks.filter((task) => task.status.slug !== TASK_STATUS.TERMINE);
+              const doneTasks = client.tasks.filter((task) => task.status.slug === TASK_STATUS.TERMINE);
+              return (
+                <>
+                  <TaskTable
+                    inCard
+                    tasks={activeTasks}
+                    statusOptions={statusOptions}
+                    sortField={sortField}
+                    sortDir={sortDir}
+                    basePath={`/admin/clients/${client.id}`}
+                    columns={clientTaskColumns}
+                    emptyMessage={pinnedOnly ? "Aucune tâche épinglée." : "Aucune tâche en cours pour ce client."}
+                  />
+                  {doneTasks.length > 0 && (
+                    <div className="border-t border-line px-4 py-3">
+                      <CollapsibleSection title="Terminées" count={doneTasks.length}>
+                        <TaskTable
+                          inCard
+                          tasks={doneTasks}
+                          statusOptions={statusOptions}
+                          sortField={sortField}
+                          sortDir={sortDir}
+                          basePath={`/admin/clients/${client.id}`}
+                          columns={clientTaskColumns}
+                        />
+                      </CollapsibleSection>
+                    </div>
+                  )}
+                </>
+              );
+            })()}
+          </section>
 
-        {/* Même tableau que /admin/taches (demande du 2026-07-30) plutôt que
-            les cartes empilées d'autrefois : mêmes colonnes, même tri, mêmes
-            actions groupées. `basePath` garde les liens de tri sur la fiche.
-            Les terminées sont repliées, comme sur la liste globale. */}
-        {(() => {
-          const activeTasks = client.tasks.filter(
-            (task) => task.status.slug !== TASK_STATUS.TERMINE,
-          );
-          const doneTasks = client.tasks.filter(
-            (task) => task.status.slug === TASK_STATUS.TERMINE,
-          );
-          return (
-            <>
-              <TaskTable
-                tasks={activeTasks}
-                statusOptions={statusOptions}
-                sortField={sortField}
-                sortDir={sortDir}
-                basePath={`/admin/clients/${client.id}`}
-                columns={taskColumns}
-                emptyMessage={
-                  pinnedOnly ? "Aucune tâche épinglée." : "Aucune tâche en cours pour ce client."
-                }
+          <section className={`${CARD} overflow-hidden`}>
+            <div className="flex items-center gap-3 border-b border-line px-4 py-3">
+              <h2 className="flex-1 text-base font-medium text-ink">
+                Factures, devis, contrats <span className="font-normal text-ink-muted">({client.documents.length})</span>
+              </h2>
+              <Link href={`/admin/administratif?clientId=${client.id}&vue=detaille`} className="text-sm text-ink-muted hover:text-ink">
+                Tout voir dans Administratif →
+              </Link>
+            </div>
+            {client.documents.length > 0 ? (
+              <DocumentDriveTable
+                inCard
+                showClient={false}
+                documents={client.documents.map((doc) => ({
+                  ...doc,
+                  client: { name: client.name, billingEmail: client.billingEmail },
+                }))}
+                deleteAction={deleteDocument}
+                editOptions={editOptions}
+                companyDocuments={companyDocuments.map((d) => ({ id: d.id, fileName: d.fileName }))}
+                emailSubjectTemplate={settings.documentSentEmailSubject ?? DEFAULT_DOCUMENT_SENT_SUBJECT}
+                emailBodyTemplate={settings.documentSentEmailBody ?? DEFAULT_DOCUMENT_SENT_BODY}
               />
-              {doneTasks.length > 0 && (
-                <div className="mt-10">
-                  <CollapsibleSection title="Terminées" count={doneTasks.length}>
-                    <TaskTable
-                      tasks={doneTasks}
-                      statusOptions={statusOptions}
-                      sortField={sortField}
-                      sortDir={sortDir}
-                      basePath={`/admin/clients/${client.id}`}
-                columns={taskColumns}
-                    />
-                  </CollapsibleSection>
-                </div>
-              )}
-            </>
-          );
-        })()}
-      </section>
+            ) : (
+              <p className="px-4 py-3 text-sm text-ink-muted">Aucun document — « Ajouter un document » en haut de la fiche.</p>
+            )}
+          </section>
 
-      {/* Nouvelle section le 2026-07-31 (demande explicite) : vue agrégée de
-          tout ce que le client peut actuellement télécharger, tâche par
-          tâche, sans avoir à ouvrir chacune. Repliée par défaut — c'est une
-          consultation ponctuelle, pas une information qu'on veut voir à
-          chaque visite de la fiche. */}
-      <section className="mt-12">
-        <CollapsibleSection title="Livrables disponibles" count={availableDeliverables.length}>
+          {/* Paiements sans facture (2026-09-07). */}
+          {client.paymentRecords.length > 0 && (
+            <section className={`${CARD} overflow-hidden`}>
+              <h2 className="border-b border-line px-4 py-3 text-base font-medium text-ink">
+                Paiements sans facture <span className="font-normal text-ink-muted">({client.paymentRecords.length})</span>
+              </h2>
+              <div className="divide-y divide-line">
+            {client.paymentRecords.map((record) => (
+              <PaymentRecordRow
+                key={record.id}
+                editClients={editClients}
+                record={{
+                  id: record.id,
+                  clientId: record.clientId,
+                  clientName: client.name,
+                  label: record.label,
+                  amountCents: record.amountCents,
+                  currency: record.currency,
+                  paymentStatus: record.paymentStatus,
+                  date: record.date.toISOString().slice(0, 10),
+                }}
+              />
+            ))}
+              </div>
+            </section>
+          )}
+
+          {/* Livrables disponibles (2026-07-31), repliés : une consultation
+              ponctuelle. */}
+          <section className={`${CARD} px-4 py-3`}>
+            <CollapsibleSection title="Livrables disponibles" count={availableDeliverables.length}>
           {availableDeliverables.length === 0 ? (
             <p className="text-sm text-ink-muted">Aucun livrable final pour ce client.</p>
           ) : (
@@ -407,78 +641,47 @@ export default async function ClientDetailPage({
                 ))}
             </div>
           )}
-        </CollapsibleSection>
-      </section>
+            </CollapsibleSection>
+          </section>
+        </div>
+      </div>
+    </div>
+  );
+}
 
-      <section className="mt-12">
-        <h2 className="text-sm font-medium text-ink-muted">
-          Factures / Devis / Contrats ({client.documents.length})
-        </h2>
+const MONTH_YEAR = new Intl.DateTimeFormat("fr-FR", { month: "long", year: "numeric" });
 
-        {client.documents.length > 0 ? (
-          <DocumentDriveTable
-            showClient={false}
-            documents={client.documents.map((doc) => ({
-              ...doc,
-              client: { name: client.name, billingEmail: client.billingEmail },
-            }))}
-            deleteAction={deleteDocument}
-            editOptions={editOptions}
-            companyDocuments={companyDocuments.map((d) => ({ id: d.id, fileName: d.fileName }))}
-            emailSubjectTemplate={settings.documentSentEmailSubject ?? DEFAULT_DOCUMENT_SENT_SUBJECT}
-            emailBodyTemplate={settings.documentSentEmailBody ?? DEFAULT_DOCUMENT_SENT_BODY}
-          />
+/** Ligne de coordonnées, façon Google Contacts : icône, valeur, précision. */
+function InfoLine({
+  icon,
+  value,
+  hint,
+  href,
+  empty,
+}: {
+  icon: React.ReactNode;
+  value: string | null | undefined;
+  hint?: string;
+  href?: string;
+  empty: string;
+}) {
+  return (
+    <div className="flex items-start gap-4">
+      <dt className="mt-0.5 shrink-0 text-ink-muted">{icon}</dt>
+      <dd className="min-w-0">
+        {value ? (
+          href ? (
+            <a href={href} target="_blank" rel="noopener noreferrer" className="break-words text-ink hover:underline">
+              {value}
+            </a>
+          ) : (
+            <span className="whitespace-pre-line break-words text-ink">{value}</span>
+          )
         ) : (
-          <p className="mt-1 text-sm text-ink-muted">
-            Aucun document pour ce client. Ajoutez-en un depuis{" "}
-            <Link href="/admin/administratif" className="text-ink underline underline-offset-2">
-              la page Administratif
-            </Link>
-            .
-          </p>
+          <span className="text-ink-muted">{empty}</span>
         )}
-      </section>
-
-      {/* Section ajoutée le 2026-09-07 ("il faudrait également voir les
-          paiements sans facture de visible") — jusqu'ici uniquement
-          consultables globalement dans la section Finances de
-          /admin/administratif, pas depuis la fiche d'un client précis. */}
-      {client.paymentRecords.length > 0 && (
-        <section className="mt-12">
-          <h2 className="text-sm font-medium text-ink-muted">
-            Paiements sans facture ({client.paymentRecords.length})
-          </h2>
-          <div className="-mx-4 mt-4 divide-y divide-line border-y border-line sm:-mx-6 lg:-mx-8 2xl:-mx-12">
-            {client.paymentRecords.map((record) => (
-              <PaymentRecordRow
-                key={record.id}
-                editClients={editClients}
-                record={{
-                  id: record.id,
-                  clientId: record.clientId,
-                  clientName: client.name,
-                  label: record.label,
-                  amountCents: record.amountCents,
-                  currency: record.currency,
-                  paymentStatus: record.paymentStatus,
-                  date: record.date.toISOString().slice(0, 10),
-                }}
-              />
-            ))}
-          </div>
-        </section>
-      )}
-
-      <section className="mt-12 flex flex-wrap items-center gap-4 border-t border-line pt-8">
-        <ClientArchiveButton clientId={client.id} archived={Boolean(client.archivedAt)} />
-        <StepUpButton
-          action={deleteThisClient}
-          label="Supprimer ce client"
-          confirmMessage={`Confirmez votre mot de passe admin pour supprimer définitivement ${client.name} et toutes ses données (comptes, tâches, documents).`}
-          submitLabel="Supprimer définitivement"
-          danger
-        />
-      </section>
+        {value && hint && <span className="block text-xs text-ink-muted">{hint}</span>}
+      </dd>
     </div>
   );
 }

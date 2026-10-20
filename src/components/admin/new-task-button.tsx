@@ -18,10 +18,15 @@ export function NewTaskButton({
   action,
   typeOptions,
   formatOptions,
+  label = "Créer une tâche",
+  primary = false,
 }: {
   action: (state: TaskFormState, formData: FormData) => Promise<TaskFormState>;
   typeOptions: DropdownOption[];
   formatOptions: DropdownOption[];
+  label?: string;
+  /** Bouton principal jaune (en-tête de la fiche client, 2026-10-20). */
+  primary?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const close = useCallback(() => setOpen(false), []);
@@ -31,10 +36,14 @@ export function NewTaskButton({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-2 rounded-full border border-line px-4 py-2 text-sm font-medium text-ink transition-colors hover:border-accent hover:bg-accent hover:text-accent-ink"
+        className={
+          primary
+            ? "inline-flex items-center gap-2 rounded-full bg-accent px-4 py-2 text-sm font-medium text-accent-ink"
+            : "inline-flex items-center gap-2 rounded-full border border-line px-4 py-2 text-sm font-medium text-ink transition-colors hover:border-accent hover:bg-accent hover:text-accent-ink"
+        }
       >
         <Plus size={16} weight="bold" />
-        Créer une tâche
+        {label}
       </button>
 
       <Modal open={open} onClose={close} title="Nouvelle tâche">
