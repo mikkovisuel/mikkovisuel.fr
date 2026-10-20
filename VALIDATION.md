@@ -1230,6 +1230,19 @@ Touches simulées dans Chrome sans interface, vraie session admin.
 | Aller à | « g » puis « c » | ✅ `/admin/clients` | — | — | 2026-10-20 |
 | Aide | « ? » | ✅ Fenêtre « Raccourcis clavier » | — | — | 2026-10-20 |
 
+## Feuille de route — 4. Relance automatique des factures impayées (2026-10-20)
+
+Rejoué en appelant la tâche planifiée `/api/cron/invoice-reminders` en local (e-mails en mode console), avec une facture échue, une facture à J+3 et un devis échu.
+
+| Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |
+|---|---|---|---|---|---|
+| 1re relance | Activée, facture à J+10 | ✅ 1 envoi au contact (copie à l'adresse Cc), texte proposé avec montant et échéance, compteur à 1 | Désactivée (défaut) | ✅ `{"enabled":false,"sent":0}`, rien d'envoyé | 2026-10-20 |
+| Écart minimal | Nouvel appel le même jour | ✅ 0 envoi | — | — | 2026-10-20 |
+| 2e relance | 8 jours plus tard, J+20 | ✅ 1 envoi, compteur à 2 | 3e passage, 8 jours après | ✅ 0 envoi (deux relances au plus) | 2026-10-20 |
+| Périmètre | — | — | Devis échu depuis 30 jours ; facture à J+3 | ✅ Jamais relancés | 2026-10-20 |
+| Sécurité | — | — | Appel sans `CRON_SECRET` | ✅ HTTP 401 | 2026-10-20 |
+| Réglages | Page Réglages | ✅ Section, case « Activer » décochée, texte proposé prérempli | — | — | 2026-10-20 |
+
 ## Points restant ouverts pour une prochaine passe de validation
 
 - Glisser-déposer et `<select>` natif du Kanban Prospection (limite outil, voir ci-dessus).

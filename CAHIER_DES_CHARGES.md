@@ -2617,6 +2617,25 @@ pour aller aux Tâches, Clients, Réseaux, Administratif, Prospection, Tableau
 de bord ; « ? » affiche l'aide. Rien ne se déclenche pendant la saisie dans
 un champ ni dans une fenêtre ouverte (sauf ⌘K).
 
+**4. Relance automatique des factures impayées — livrée le 2026-10-20,
+désactivée par défaut.** Réglages → « Relance automatique des factures
+impayées » : case **Activer** (décochée tant que le client ne l'a pas cochée
+après relecture), sujet et texte modifiables, texte proposé :
+
+> Bonjour, Sauf erreur de ma part, la facture {fichier}{montant}, arrivée à
+> échéance le {echeance}, n'a pas encore été réglée. Vous la retrouverez dans
+> votre espace client, rubrique Administratif, avec les moyens de paiement
+> disponibles. Si le règlement est déjà parti, merci de ne pas tenir compte
+> de ce message. Bien cordialement, Mikko Visuel
+
+Règles : factures seulement (ni devis ni contrats), impayées, avec échéance,
+client ni archivé ni de démonstration ; 1re relance à partir de J+7 après
+l'échéance, 2e à partir de J+15, deux au plus ; jamais à moins de 7 jours
+d'une autre relance, manuelle comprise ; envoi aux contacts du client qui
+reçoivent les e-mails, copie à l'adresse « Cc » des e-mails de facturation.
+Tâche planifiée chaque jour à 7 h (ajoutée au créneau des rappels de notes,
+pour rester sous la limite de cinq tâches planifiées Scalingo).
+
 ## Passe de nettoyage du code (2026-09-22)
 
 Demande du client : "fais une passe globale sur le code et nettoie tout,

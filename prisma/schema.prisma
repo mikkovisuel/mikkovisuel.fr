@@ -641,6 +641,9 @@ model Document {
   paidAt                  DateTime?
   dueDate                 DateTime?
   lastReminderAt          DateTime?
+  // Nombre de relances automatiques déjà envoyées (0, 1 ou 2), voir
+  // `src/lib/invoice-auto-reminders.ts`.
+  autoReminderCount       Int          @default(0)
   // Date du dernier envoi manuel du document par email (bouton "Envoyer le
   // document" sur la fiche client / la liste des documents) — sert
   // uniquement d'indicateur "envoyé/non envoyé", pas un accusé de réception.
@@ -796,6 +799,12 @@ model AppSettings {
   // mettre en copie l'adresse mail mikko.visuel@gmail.com") — vide = pas de
   // copie.
   invoiceEmailCc                     String?  @default("mikko.visuel@gmail.com")
+  // Relance automatique des factures impayées (2026-10-20) : J+7 et J+15
+  // après l'échéance. Désactivée tant que l'admin ne l'a pas activée après
+  // avoir relu le texte (champs vides = texte proposé par défaut).
+  invoiceAutoReminderEnabled         Boolean  @default(false)
+  invoiceAutoReminderSubject         String?
+  invoiceAutoReminderBody            String?
   updatedAt                          DateTime @updatedAt
 }
 

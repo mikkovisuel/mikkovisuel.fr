@@ -52,6 +52,8 @@ export async function updateSettings(
   const paymentReminderEmailSubject = blankToNull(formData.get("paymentReminderEmailSubject"));
   const paymentReminderEmailBody = blankToNull(formData.get("paymentReminderEmailBody"));
   const invoiceEmailCc = blankToNull(formData.get("invoiceEmailCc"));
+  const invoiceAutoReminderSubject = blankToNull(formData.get("invoiceAutoReminderSubject"));
+  const invoiceAutoReminderBody = blankToNull(formData.get("invoiceAutoReminderBody"));
 
   const data = {
     deliverableRetentionAfterEventDays,
@@ -65,6 +67,9 @@ export async function updateSettings(
     paymentReminderEmailSubject,
     paymentReminderEmailBody,
     invoiceEmailCc,
+    invoiceAutoReminderEnabled: formData.get("invoiceAutoReminderEnabled") === "on",
+    invoiceAutoReminderSubject,
+    invoiceAutoReminderBody,
   };
 
   await db.appSettings.upsert({

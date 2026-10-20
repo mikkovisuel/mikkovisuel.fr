@@ -14,6 +14,9 @@ const DEFAULT_SETTINGS = {
   paymentReminderEmailSubject: null as string | null,
   paymentReminderEmailBody: null as string | null,
   invoiceEmailCc: "mikko.visuel@gmail.com" as string | null,
+  invoiceAutoReminderEnabled: false,
+  invoiceAutoReminderSubject: null as string | null,
+  invoiceAutoReminderBody: null as string | null,
 };
 
 // Lecture du singleton AppSettings, avec des valeurs par défaut tant que la

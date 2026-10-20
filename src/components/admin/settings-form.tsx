@@ -17,6 +17,9 @@ interface SettingsDefaults {
   paymentReminderEmailSubject: string;
   paymentReminderEmailBody: string;
   invoiceEmailCc: string;
+  invoiceAutoReminderEnabled: boolean;
+  invoiceAutoReminderSubject: string;
+  invoiceAutoReminderBody: string;
 }
 
 export function SettingsForm({ defaultValues }: { defaultValues: SettingsDefaults }) {
@@ -183,6 +186,51 @@ export function SettingsForm({ defaultValues }: { defaultValues: SettingsDefault
                 className="resize-none rounded-xl border border-line bg-surface-elevated px-4 py-2.5 text-sm text-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
               />
             </div>
+          </div>
+        </section>
+
+        {/* Relance automatique des factures impayées (2026-10-20) : coupée
+            par défaut, l'admin relit le texte proposé puis l'active. */}
+        <section className="grid gap-3">
+          <h2 className="text-sm font-medium text-ink">Relance automatique des factures impayées</h2>
+          <p className="text-xs text-ink-muted">
+            Un e-mail aux contacts du client 7 jours puis 15 jours après l&apos;échéance d&apos;une facture
+            impayée (deux relances au plus, jamais à moins de 7 jours d&apos;une autre relance, manuelle
+            comprise). Ni les devis ni les contrats, ni les clients archivés. Variables : {"{fichier}"},
+            {" {montant}"}, {"{echeance}"}, {"{jours}"} (jours de retard).
+          </p>
+          <label className="flex items-center gap-2 text-sm text-ink">
+            <input
+              type="checkbox"
+              name="invoiceAutoReminderEnabled"
+              defaultChecked={defaultValues.invoiceAutoReminderEnabled}
+              className="h-4 w-4"
+            />
+            Activer la relance automatique
+          </label>
+          <div className="flex flex-col gap-2">
+            <label htmlFor="invoiceAutoReminderSubject" className="text-sm text-ink-muted">
+              Sujet
+            </label>
+            <input
+              id="invoiceAutoReminderSubject"
+              name="invoiceAutoReminderSubject"
+              type="text"
+              defaultValue={defaultValues.invoiceAutoReminderSubject}
+              className="rounded-xl border border-line bg-surface-elevated px-4 py-2.5 text-sm text-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
+            />
+          </div>
+          <div className="flex flex-col gap-2">
+            <label htmlFor="invoiceAutoReminderBody" className="text-sm text-ink-muted">
+              Corps
+            </label>
+            <textarea
+              id="invoiceAutoReminderBody"
+              name="invoiceAutoReminderBody"
+              rows={9}
+              defaultValue={defaultValues.invoiceAutoReminderBody}
+              className="resize-y rounded-xl border border-line bg-surface-elevated px-4 py-2.5 text-sm text-ink focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
+            />
           </div>
         </section>
 

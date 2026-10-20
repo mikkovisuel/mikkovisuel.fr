@@ -42,3 +42,12 @@ export function renderInvoiceEmailBody(template: string, vars: Record<string, st
   const filled = fillEmailTemplate(escapeHtml(normalized), vars);
   return `<p>${filled.replace(/\n/g, "<br>")}</p>`;
 }
+
+// Relance automatique des factures impayées (2026-10-20), J+7 puis J+15 après
+// l'échéance. Texte proposé, modifiable dans Réglages ; la relance reste
+// coupée tant que l'admin ne l'a pas activée. Variables : {fichier},
+// {montant} (« , 680,00 € » ou vide), {echeance} (date), {jours} (jours de
+// retard).
+export const DEFAULT_INVOICE_AUTO_REMINDER_SUBJECT = "Rappel : facture {fichier} en attente de règlement";
+export const DEFAULT_INVOICE_AUTO_REMINDER_BODY =
+  "Bonjour,\n\nSauf erreur de ma part, la facture {fichier}{montant}, arrivée à échéance le {echeance}, n'a pas encore été réglée.\n\nVous la retrouverez dans votre espace client, rubrique Administratif, avec les moyens de paiement disponibles.\n\nSi le règlement est déjà parti, merci de ne pas tenir compte de ce message.\n\nBien cordialement,\nMikko Visuel";

@@ -22,6 +22,8 @@ import {
   DEFAULT_DOCUMENT_SENT_BODY,
   DEFAULT_PAYMENT_REMINDER_SUBJECT,
   DEFAULT_PAYMENT_REMINDER_BODY,
+  DEFAULT_INVOICE_AUTO_REMINDER_SUBJECT,
+  DEFAULT_INVOICE_AUTO_REMINDER_BODY,
 } from "@/lib/invoice-email-templates";
 import { PageToolbar, PAGE_BODY } from "@/components/admin/page-toolbar";
 
@@ -214,6 +216,10 @@ export default async function AdminSettingsPage({
                     settings.paymentReminderEmailSubject ?? DEFAULT_PAYMENT_REMINDER_SUBJECT,
                   paymentReminderEmailBody: settings.paymentReminderEmailBody ?? DEFAULT_PAYMENT_REMINDER_BODY,
                   invoiceEmailCc: settings.invoiceEmailCc ?? "",
+                  invoiceAutoReminderEnabled: settings.invoiceAutoReminderEnabled,
+                  invoiceAutoReminderSubject:
+                    settings.invoiceAutoReminderSubject ?? DEFAULT_INVOICE_AUTO_REMINDER_SUBJECT,
+                  invoiceAutoReminderBody: settings.invoiceAutoReminderBody ?? DEFAULT_INVOICE_AUTO_REMINDER_BODY,
                 }}
               />
             </SettingsCard>
