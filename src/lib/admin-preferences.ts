@@ -103,13 +103,11 @@ export const LIST_COLUMNS = {
   },
   prospects: {
     label: "Prospection",
+    // Refonte « carte + liste » (2026-10-20) : coordonnées regroupées en
+    // icônes dans « Contact », la ville passe sous le nom.
     columns: [
-      { key: "ville", label: "Ville" },
-      { key: "telephone", label: "Téléphone" },
-      { key: "email", label: "Email" },
-      { key: "instagram", label: "Instagram" },
-      { key: "whatsapp", label: "WhatsApp" },
       { key: "activite", label: "Activité" },
+      { key: "contact", label: "Contact" },
       { key: "relance", label: "Relance" },
       { key: "statut", label: "Statut" },
     ],

@@ -2672,6 +2672,33 @@ qui ne s'appuyaient que sur l'action qu'elles appellent.
 « Nouvelle tâche » (hauteur 40 px, sans ombre), icône alignée sur celles du
 menu.
 
+### 4.19 Refonte de la page Prospection (2026-10-20)
+
+Choix du client sur maquettes : **carte + liste façon Google Maps**, et
+liste **en lecture avec icônes, modification dans la fiche**.
+
+- **En-tête** : 4 chiffres — prospects actifs, relances dues (en rouge),
+  en discussion, convertis cette année (avec le taux).
+- **Onglets de statut** façon Gmail, recherche intégrée (`q`), bascule
+  Liste / Kanban (le Kanban prend toute la largeur).
+- **Panneau « Par région »** à droite : carte de France compacte et liste
+  des régions avec leur nombre. Un clic sur une bulle ou une région filtre
+  la liste (`region=`), un second clic retire le filtre ; une puce
+  « Région : … » rappelle le filtre actif.
+- **Liste en lecture** : nom (avec ville · entreprise et badge « IA »)
+  menant à la fiche, activité, contact en icônes cliquables (e-mail via
+  Gmail, appel, Instagram, WhatsApp, site), relance (« aujourd'hui »,
+  « hier », date ; en rouge si dépassée), statut modifiable d'un clic.
+  Sélection multiple conservée (changer le statut, supprimer).
+- **Saisie directe dans les cellules retirée** : tout se modifie dans la
+  fiche du prospect. Les actions serveur qui ne servaient qu'à cette
+  saisie (`updateProspectField`, `updateProspectReminderDate`) sont
+  supprimées.
+- **Recherche IA** et **Importer** s'ouvrent dans une fenêtre depuis la
+  barre d'outils, à côté de « Nouveau prospect ».
+- Colonnes masquables dans « Mon affichage » : activité, contact, relance,
+  statut.
+
 ## Passe de nettoyage du code (2026-09-22)
 
 Demande du client : "fais une passe globale sur le code et nettoie tout,
@@ -3440,3 +3467,4 @@ Le client a explicitement délégué ces choix :
 | 2026-10-20 | "Go pour les 5 premiers points de la feuille de route" — 1 travail à deux admins, 2 tableau de bord « Aujourd'hui », 3 raccourcis clavier, 4 relance automatique des factures impayées, 5 tests automatiques bloquant un déploiement cassé ; arbitrages : tâche attribuée par défaut **à l'admin qui la crée** (tâches client et existantes : non attribuées) ; relance auto avec **texte proposé, modifiable, désactivée par défaut** jusqu'à activation par le client ; **tests des règles critiques lancés avant chaque `git push scalingo`**, le déploiement ne part pas si un test échoue | **Livré** : les 5 points (section 4.18), plus une faille de sécurité trouvée et corrigée par les tests. |
 | 2026-10-20 | "Aligner le bouton Nouveau et le rendre comme le bouton Nouvelle tâche" | **Livré** : pilule identique, icône alignée sur les icônes du menu (section 4.18). |
 | 2026-10-20 | "Optimisation de l'affichage réseau calendrier, ajoute une vue jour et semaine. Ajoute les numéros de semaines" | **Livré** : calendrier (Réseaux, et Tâches qui partage le composant) en trois vues **Jour / Semaine / Mois** ; numéro de semaine ISO devant chaque semaine (grille du mois et petit mois, cliquable vers la vue Semaine) et à côté du titre en vues Jour et Semaine ; vue Semaine à 7 colonnes hautes, heure au-dessus du titre affiché en entier ; vue Jour en liste détaillée (heure, titre, client, statut) ; un clic sur un jour (grille ou petit mois) ouvre sa journée, « N autres » aussi ; navigation ‹ › par jour, semaine ou mois ; glisser-déposer conservé en vues Mois et Semaine ; routines et actions chargées pour la période affichée (semaines à cheval sur deux mois comprises). Adresse : `cal` + `jour`, l'ancien `mois` reste compris. |
+| 2026-10-20 | "Redesigner la page prospection" — choix : carte + liste façon Google Maps ; lecture + icônes, modification dans la fiche | **Livré** : chiffres clés, onglets de statut, filtre par région depuis la carte ou la liste des régions, liste en lecture avec icônes de contact, Recherche IA / Importer en fenêtre, saisie dans les cellules retirée (section 4.19). |

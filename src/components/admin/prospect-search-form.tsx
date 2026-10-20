@@ -6,7 +6,9 @@ import { searchProspectsWithAI } from "@/lib/actions/prospects";
 import type { ProspectSearchState } from "@/lib/validation/prospect";
 import { useFormSubmit } from "@/lib/use-form-submit";
 
-export function ProspectSearchForm() {
+/** `embedded` : dans une fenêtre (bouton de la barre d'outils, 2026-10-20),
+ * sans le cadre repliable d'origine. */
+export function ProspectSearchForm({ embedded = false }: { embedded?: boolean } = {}) {
   const [state, formAction, pending] = useActionState<ProspectSearchState, FormData>(
     searchProspectsWithAI,
     undefined,
@@ -14,7 +16,7 @@ export function ProspectSearchForm() {
   const { onSubmit: formSubmit } = useFormSubmit(formAction, { pending, state });
 
   return (
-    <details className="rounded-2xl border border-line p-4">
+    <details open={embedded || undefined} className={embedded ? "[&>summary]:hidden" : "rounded-2xl border border-line p-4"}>
       <summary className="flex cursor-pointer items-center gap-2 text-sm font-medium text-ink">
         <MagnifyingGlass size={16} weight="regular" />
         Rechercher des prospects (IA)

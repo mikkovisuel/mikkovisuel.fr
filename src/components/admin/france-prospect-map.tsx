@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import type { RegionStat } from "@/lib/prospects";
 import {
   FRANCE_REGION_GEOMETRY,
@@ -29,16 +30,41 @@ function bubbleRadius(total: number): number {
 // infobulle avec le détail par statut ; les 18 régions restent visibles
 // même à 0 prospect (petit point discret), pour que la carte reste "toutes
 // les régions définies", pas seulement celles qui ont déjà des prospects.
-export function FranceProspectMap({ regions }: { regions: RegionStat[] }) {
+/** `filter` (2026-10-20, refonte « carte + liste ») : un clic sur une région
+ * filtre la liste (`?region=…`, autres paramètres conservés) ; un second clic
+ * sur la région choisie retire le filtre. `compact` : sans cadre, pour le
+ * panneau latéral. */
+export function FranceProspectMap({
+  regions,
+  selectedSlug = null,
+  filter,
+  compact = false,
+}: {
+  regions: RegionStat[];
+  selectedSlug?: string | null;
+  filter?: { basePath: string; params: Record<string, string> };
+  compact?: boolean;
+}) {
+  const router = useRouter();
   const [hoveredSlug, setHoveredSlug] = useState<string | null>(null);
+  const choose = (slug: string) => {
+    if (filter) {
+      const search = new URLSearchParams(filter.params);
+      if (slug === selectedSlug) search.delete("region");
+      else search.set("region", slug);
+      const query = search.toString();
+      router.push(query ? `${filter.basePath}?${query}` : filter.basePath, { scroll: false });
+    }
+    else setHoveredSlug((current) => (current === slug ? null : slug));
+  };
 
   const statsBySlug = new Map(regions.map((region) => [region.slug, region]));
   const hoveredGeometry = FRANCE_REGION_GEOMETRY.find((region) => region.slug === hoveredSlug) ?? null;
   const hoveredStats = hoveredSlug ? statsBySlug.get(hoveredSlug) : undefined;
 
   return (
-    <div className="rounded-2xl border border-line p-5">
-      <div className="relative mx-auto max-w-md">
+    <div className={compact ? "" : "rounded-2xl border border-line p-5"}>
+      <div className={`relative mx-auto ${compact ? "" : "max-w-md"}`}>
         <svg
           viewBox={`0 0 ${FRANCE_MAP_VIEWBOX.width} ${FRANCE_MAP_VIEWBOX.height}`}
           className="w-full h-auto"
@@ -77,13 +103,15 @@ export function FranceProspectMap({ regions }: { regions: RegionStat[] }) {
                 d={geometry.path}
                 onMouseEnter={() => setHoveredSlug(geometry.slug)}
                 onMouseLeave={() => setHoveredSlug((current) => (current === geometry.slug ? null : current))}
-                onClick={() => setHoveredSlug((current) => (current === geometry.slug ? null : geometry.slug))}
+                onClick={() => choose(geometry.slug)}
                 className={
-                  isHovered
-                    ? "cursor-pointer fill-accent/10 stroke-accent"
-                    : "cursor-pointer fill-surface-elevated stroke-line"
+                  selectedSlug === geometry.slug
+                    ? "cursor-pointer fill-accent/25 stroke-[var(--color-accent-strong)]"
+                    : isHovered
+                      ? "cursor-pointer fill-accent/10 stroke-accent"
+                      : "cursor-pointer fill-surface-elevated stroke-line"
                 }
-                strokeWidth={isHovered ? 1.5 : 1}
+                strokeWidth={isHovered || selectedSlug === geometry.slug ? 1.5 : 1}
               />
             );
           })}
@@ -97,16 +125,16 @@ export function FranceProspectMap({ regions }: { regions: RegionStat[] }) {
                 key={`bubble-${geometry.slug}`}
                 onMouseEnter={() => setHoveredSlug(geometry.slug)}
                 onMouseLeave={() => setHoveredSlug((current) => (current === geometry.slug ? null : current))}
-                onClick={() => setHoveredSlug((current) => (current === geometry.slug ? null : geometry.slug))}
+                onClick={() => choose(geometry.slug)}
                 className="cursor-pointer"
               >
                 <circle
                   cx={geometry.cx}
                   cy={geometry.cy}
                   r={radius}
-                  className={total === 0 ? "fill-ink-muted/25" : isHovered ? "fill-accent" : "fill-accent/75"}
-                  stroke="var(--color-surface)"
-                  strokeWidth={1.5}
+                  className={total === 0 ? "fill-ink-muted/25" : isHovered || selectedSlug === geometry.slug ? "fill-accent" : "fill-accent/75"}
+                  stroke={selectedSlug === geometry.slug ? "var(--color-ink)" : "var(--color-surface)"}
+                  strokeWidth={selectedSlug === geometry.slug ? 2 : 1.5}
                 />
                 {total > 0 && (
                   <text
@@ -156,7 +184,7 @@ export function FranceProspectMap({ regions }: { regions: RegionStat[] }) {
           </div>
         )}
       </div>
-      <p className="mt-3 text-center text-xs text-ink-muted">
+      <p className={`mt-3 text-xs text-ink-muted ${compact ? "" : "text-center"}`}>
         Région devinée depuis la ville renseignée — approximatif, une ville non reconnue
         n&apos;apparaît pas sur la carte.
       </p>

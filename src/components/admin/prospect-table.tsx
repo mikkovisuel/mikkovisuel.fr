@@ -2,24 +2,32 @@
 
 import { useState, useTransition } from "react";
 import Link from "next/link";
-import { PencilSimple, InstagramLogo, WhatsappLogo, EnvelopeSimple } from "@phosphor-icons/react";
-import { ProspectInlineField } from "@/components/admin/prospect-inline-field";
-import { ProspectReminderField } from "@/components/admin/prospect-reminder-field";
+import { EnvelopeSimple, Globe, InstagramLogo, Phone, WhatsappLogo } from "@phosphor-icons/react";
 import { ProspectStatusSelect } from "@/components/admin/prospect-status-select";
 import { bulkSetProspectStatus, bulkDeleteProspects } from "@/lib/actions/prospects";
 import { isProspectReminderOverdue } from "@/lib/prospects";
 import { buildGmailComposeUrl } from "@/lib/mail-draft";
 import type { ProspectStatusSlug } from "@/lib/dropdown-lists";
 
+// Liste des prospects, refonte « carte + liste façon Google Maps »
+// (2026-10-20) : en lecture, une ligne par prospect — nom (avec ville et
+// entreprise), activité, contact en icônes cliquables (e-mail, appel,
+// Instagram, WhatsApp, site), relance, statut modifiable d'un clic. Le reste
+// se modifie dans la fiche du prospect (clic sur le nom) ; la saisie directe
+// dans les cellules a été retirée (choix du client). Sélection multiple
+// conservée (changer le statut, supprimer).
+
 interface TableProspect {
   id: string;
   name: string;
+  company: string | null;
   city: string | null;
   phone: string | null;
   email: string | null;
   instagram: string | null;
   instagramUrl: string | null;
   whatsappUrl: string | null;
+  website: string | null;
   activityLevel: string | null;
   nextReminderAt: Date | null;
   source: string;
@@ -27,84 +35,86 @@ interface TableProspect {
   convertedClient: { id: string; name: string } | null;
 }
 
-// Libellés des colonnes facultatives. Ordre et visibilité : profil de
-// l'admin (« Mon affichage », 2026-10-20) ; « Nom » est toujours affiché.
+// Colonnes facultatives (« Mon affichage ») ; le nom est toujours affiché.
 const COLUMN_LABELS: Record<string, string> = {
-  ville: "Ville",
-  telephone: "Téléphone",
-  email: "Email",
-  instagram: "Instagram",
-  whatsapp: "WhatsApp",
   activite: "Activité",
+  contact: "Contact",
   relance: "Relance",
   statut: "Statut",
 };
 const DEFAULT_COLUMNS = Object.keys(COLUMN_LABELS);
 
-// Petite icône de réseau cliquable affichée à côté d'une cellule URL
-// (Instagram/WhatsApp) quand elle est renseignée — la cellule reste éditable
-// en texte libre, l'icône évite juste un copier-coller pour l'ouvrir. Logo
-// du réseau plutôt qu'une flèche générique, pour reconnaître le lien d'un
-// coup d'œil sans lire la colonne.
-function CellOpenLink({
-  href,
-  label,
-  icon,
-}: {
-  href: string;
-  label: string;
-  icon: React.ReactNode;
-}) {
-  const url = /^https?:\/\//.test(href) ? href : `https://${href}`;
+const DATE = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "short" });
+
+function reminderLabel(date: Date | null) {
+  if (!date) return null;
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const day = new Date(date);
+  day.setHours(0, 0, 0, 0);
+  const diff = Math.round((day.getTime() - today.getTime()) / 86_400_000);
+  if (diff === 0) return "aujourd'hui";
+  if (diff === -1) return "hier";
+  if (diff === 1) return "demain";
+  return DATE.format(date);
+}
+
+function instagramHref(prospect: TableProspect) {
+  if (prospect.instagramUrl) return prospect.instagramUrl;
+  const handle = prospect.instagram?.replace(/^@/, "").trim();
+  return handle ? `https://www.instagram.com/${handle}` : null;
+}
+
+const ICON = "flex h-7 w-7 items-center justify-center rounded-full text-ink-muted transition-colors hover:bg-ink/[0.08] hover:text-ink";
+
+function ContactIcons({ prospect }: { prospect: TableProspect }) {
+  const instagram = instagramHref(prospect);
+  const website = prospect.website ? (/^https?:\/\//.test(prospect.website) ? prospect.website : `https://${prospect.website}`) : null;
   return (
-    <a
-      href={url}
-      target="_blank"
-      rel="noopener noreferrer"
-      title={label}
-      aria-label={label}
-      className="shrink-0 rounded p-1 text-ink-muted transition-colors hover:text-ink"
-    >
-      {icon}
-    </a>
+    <span className="flex items-center">
+      {prospect.email && (
+        <a href={buildGmailComposeUrl({ to: prospect.email })} target="_blank" rel="noopener noreferrer" title={`E-mail : ${prospect.email}`} aria-label={`Écrire à ${prospect.email}`} className={ICON}>
+          <EnvelopeSimple size={16} />
+        </a>
+      )}
+      {prospect.phone && (
+        <a href={`tel:${prospect.phone.replace(/\s/g, "")}`} title={`Appeler le ${prospect.phone}`} aria-label={`Appeler le ${prospect.phone}`} className={ICON}>
+          <Phone size={16} />
+        </a>
+      )}
+      {instagram && (
+        <a href={instagram} target="_blank" rel="noopener noreferrer" title={`Instagram ${prospect.instagram ?? ""}`} aria-label="Ouvrir le profil Instagram" className={ICON}>
+          <InstagramLogo size={16} />
+        </a>
+      )}
+      {prospect.whatsappUrl && (
+        <a href={prospect.whatsappUrl} target="_blank" rel="noopener noreferrer" title="WhatsApp" aria-label="Ouvrir la conversation WhatsApp" className={ICON}>
+          <WhatsappLogo size={16} />
+        </a>
+      )}
+      {website && (
+        <a href={website} target="_blank" rel="noopener noreferrer" title={website} aria-label="Ouvrir le site" className={ICON}>
+          <Globe size={16} />
+        </a>
+      )}
+      {!prospect.email && !prospect.phone && !instagram && !prospect.whatsappUrl && !website && (
+        <span className="text-ink-muted">—</span>
+      )}
+    </span>
   );
 }
 
-// Vue Liste de la prospection, façon tableur : chaque coordonnée s'édite
-// directement dans la cellule (ProspectInlineField/ProspectReminderField,
-// même pattern que PaymentRecordDateField pour les Finances) au lieu de
-// renvoyer vers la fiche pour un simple changement de téléphone ou d'email.
-// La pastille de statut reste le même ProspectStatusSelect que le Kanban.
-// La fiche complète (notes, email, historique, suppression) reste à un clic
-// via le crayon à côté du nom (demande du 2026-08-17 : avant en fin de
-// ligne, en icône flèche générique — déplacé en tête, à côté du nom, et
-// remplacé par un crayon, plus lisible comme action "éditer").
-//
-// Colonnes et espacements resserrés le 2026-08-17 (demande explicite :
-// "que tout soit bien à l'écran") : `instagram`/`instagramUrl` partagent
-// désormais une seule colonne (pseudo au-dessus, lien en dessous) au lieu
-// de deux, et chaque colonne a une largeur minimale réduite au strict
-// nécessaire plutôt qu'un `min-w-[1440px]` fixe sur la table entière —
-// tient maintenant dans le conteneur `max-w-7xl` de la page sur un écran
-// de bureau standard, le défilement horizontal (`overflow-x-auto`) restant
-// le filet de sécurité pour les écrans plus étroits.
-//
-// Sélection multi-lignes (2026-08-17, demande explicite "comme les
-// tâches") : même pattern que TaskTable (src/components/admin/task-table.tsx)
-// — case à cocher par ligne + "tout sélectionner" dans l'en-tête, barre
-// d'actions groupées (changer le statut / supprimer) qui n'apparaît que
-// si au moins une ligne est sélectionnée. Passage en composant client
-// pour porter cet état (déjà partiellement client via les champs éditables
-// en place ; seule la coquille du tableau était encore un Server Component).
 export function ProspectTable({
   prospects,
   statuses,
   columns: requestedColumns = DEFAULT_COLUMNS,
+  emptyMessage = "Aucun prospect pour le moment.",
 }: {
   prospects: TableProspect[];
   statuses: { slug: string; label: string }[];
   /** Colonnes visibles, dans l'ordre (profil de l'admin). */
   columns?: string[];
+  emptyMessage?: string;
 }) {
   const columns = requestedColumns.filter((key) => key in COLUMN_LABELS);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -112,7 +122,7 @@ export function ProspectTable({
   const [isPending, startTransition] = useTransition();
 
   if (prospects.length === 0) {
-    return <p className="mt-8 text-sm text-ink-muted">Aucun prospect pour le moment.</p>;
+    return <p className="px-4 py-8 text-center text-sm text-ink-muted">{emptyMessage}</p>;
   }
 
   const allSelected = selectedIds.size > 0 && selectedIds.size === prospects.length;
@@ -124,10 +134,6 @@ export function ProspectTable({
       else next.add(id);
       return next;
     });
-  }
-
-  function toggleSelectAll() {
-    setSelectedIds(allSelected ? new Set() : new Set(prospects.map((prospect) => prospect.id)));
   }
 
   function handleBulkStatus(slug: string) {
@@ -151,12 +157,11 @@ export function ProspectTable({
   }
 
   return (
-    <div className="mt-8">
+    <div>
       {selectedIds.size > 0 && (
-        <div className="mb-3 flex min-h-12 flex-wrap items-center gap-3 rounded-3xl bg-select px-4 py-2 text-sm">
+        <div className="mx-3 my-2 flex min-h-11 flex-wrap items-center gap-3 rounded-3xl bg-select px-4 py-1.5 text-sm">
           <span className="font-medium text-ink">
-            {selectedIds.size} prospect{selectedIds.size > 1 ? "s" : ""} sélectionné
-            {selectedIds.size > 1 ? "s" : ""}
+            {selectedIds.size} prospect{selectedIds.size > 1 ? "s" : ""} sélectionné{selectedIds.size > 1 ? "s" : ""}
           </span>
           <select
             key={bulkStatusKey}
@@ -180,203 +185,111 @@ export function ProspectTable({
           >
             Supprimer
           </button>
-          <button
-            type="button"
-            onClick={() => setSelectedIds(new Set())}
-            className="text-xs text-ink-muted transition-colors hover:text-ink"
-          >
+          <button type="button" onClick={() => setSelectedIds(new Set())} className="text-xs text-ink-muted hover:text-ink">
             Annuler la sélection
           </button>
         </div>
       )}
-      {/* Bord à bord comme la liste des tâches (refonte « Workspace », 2026-10-20). */}
-      <div className="-mx-4 overflow-x-auto border-y border-line sm:-mx-6 lg:-mx-8 2xl:-mx-12">
-        <table className="ws-list w-full border-collapse text-[13px]">
+      <div className="overflow-x-auto">
+        <table className="ws-list w-full min-w-[640px] border-collapse text-sm">
           <thead>
             <tr className="border-b border-line text-left text-xs font-medium text-ink-muted">
-              <th className="w-7 py-2 pl-4 sm:pl-6 lg:pl-8 2xl:pl-12 font-medium">
+              <th className="w-10 py-2 pl-4">
                 <input
                   type="checkbox"
                   aria-label="Tout sélectionner"
                   checked={allSelected}
-                  onChange={toggleSelectAll}
-                  className="h-3.5 w-3.5 accent-accent"
+                  onChange={() => setSelectedIds(allSelected ? new Set() : new Set(prospects.map((prospect) => prospect.id)))}
+                  className="h-4 w-4 accent-accent"
                 />
               </th>
-              <th className="px-1.5 py-2 font-medium">Nom</th>
+              <th className="py-2 pr-4 font-medium">Nom</th>
               {columns.map((key) => (
-                <th key={key} className="px-1.5 py-2 font-medium">
+                <th key={key} className="px-3 py-2 font-medium">
                   {COLUMN_LABELS[key]}
                 </th>
               ))}
-              <th aria-hidden className="w-0 pr-2 sm:pr-4 lg:pr-6 2xl:pr-10" />
             </tr>
           </thead>
           <tbody className="divide-y divide-line">
             {prospects.map((prospect) => {
-              const reminderOverdue = isProspectReminderOverdue(prospect);
+              const overdue = isProspectReminderOverdue(prospect);
+              const reminder = reminderLabel(prospect.nextReminderAt);
               return (
                 <tr key={prospect.id} className={selectedIds.has(prospect.id) ? "bg-select" : undefined}>
-                  <td className="py-1 pl-4 sm:pl-6 lg:pl-8 2xl:pl-12">
+                  <td className="w-10 pl-4">
                     <input
                       type="checkbox"
                       aria-label={`Sélectionner ${prospect.name}`}
                       checked={selectedIds.has(prospect.id)}
                       onChange={() => toggleSelect(prospect.id)}
-                      className="h-3.5 w-3.5 accent-accent"
+                      className="h-4 w-4 accent-accent"
                     />
                   </td>
-                  <td className="min-w-[9rem] py-1">
-                    <div className="flex items-center gap-1">
-                      <ProspectInlineField prospectId={prospect.id} field="name" defaultValue={prospect.name} />
-                      {prospect.source === "recherche_ia" && (
-                        <span
-                          title="Trouvé par la recherche IA"
-                          className="shrink-0 rounded-full border border-line px-1.5 py-0.5 text-[10px] text-ink-muted"
-                        >
-                          IA
-                        </span>
-                      )}
-                      <Link
-                        href={`/admin/prospection/${prospect.id}`}
-                        aria-label={`Ouvrir la fiche de ${prospect.name}`}
-                        title="Ouvrir la fiche"
-                        className="inline-flex shrink-0 items-center justify-center rounded-lg p-1 text-ink-muted transition-colors hover:text-ink"
-                      >
-                        <PencilSimple size={13} weight="regular" />
-                      </Link>
-                    </div>
+                  <td className="max-w-[18rem] py-1.5 pr-4">
+                    <Link href={`/admin/prospection/${prospect.id}`} className="block min-w-0 hover:underline">
+                      <span className="flex items-center gap-1.5">
+                        <span className="truncate font-medium text-ink">{prospect.name}</span>
+                        {prospect.source === "recherche_ia" && (
+                          <span title="Trouvé par la recherche IA" className="shrink-0 rounded-full border border-line px-1.5 text-[10px] text-ink-muted">
+                            IA
+                          </span>
+                        )}
+                      </span>
+                      <span className="block truncate text-xs text-ink-muted">
+                        {[prospect.city, prospect.company && prospect.company !== prospect.name ? prospect.company : null]
+                          .filter(Boolean)
+                          .join(" · ") || "Ville non renseignée"}
+                      </span>
+                    </Link>
                     {prospect.convertedClient && (
-                      <Link
-                        href={`/admin/clients/${prospect.convertedClient.id}`}
-                        className="ml-2 inline-block text-[10px] font-medium text-accent hover:underline"
-                      >
-                        Fiche client →
+                      <Link href={`/admin/clients/${prospect.convertedClient.id}`} className="text-[11px] font-medium text-emerald-700 hover:underline dark:text-emerald-400">
+                        Devenu client →
                       </Link>
                     )}
                   </td>
-                  {/* Colonnes dans l'ordre et la visibilité du profil (2026-10-20). */}
                   {columns.map((column) => {
                     switch (column) {
-                      case "ville":
-                        return (
-                      <td key="ville" className="min-w-[5.5rem] py-1">
-                        <ProspectInlineField prospectId={prospect.id} field="city" defaultValue={prospect.city ?? ""} />
-                      </td>
-                        );
-                      case "telephone":
-                        return (
-                      <td key="telephone" className="min-w-[6rem] py-1">
-                        <ProspectInlineField
-                          prospectId={prospect.id}
-                          field="phone"
-                          type="tel"
-                          defaultValue={prospect.phone ?? ""}
-                        />
-                      </td>
-                        );
-                      case "email":
-                        return (
-                      <td key="email" className="min-w-[9rem] py-1">
-                        <div className="flex items-center gap-0.5">
-                          <ProspectInlineField
-                            prospectId={prospect.id}
-                            field="email"
-                            type="email"
-                            defaultValue={prospect.email ?? ""}
-                          />
-                          {prospect.email && (
-                            <CellOpenLink
-                              href={buildGmailComposeUrl({ to: prospect.email })}
-                              label="Envoyer un mail (Gmail)"
-                              icon={<EnvelopeSimple size={14} weight="regular" />}
-                            />
-                          )}
-                        </div>
-                      </td>
-                        );
-                      case "instagram":
-                        return (
-                      <td key="instagram" className="min-w-[7.5rem] py-1">
-                        <ProspectInlineField
-                          prospectId={prospect.id}
-                          field="instagram"
-                          placeholder="Pseudo"
-                          defaultValue={prospect.instagram ?? ""}
-                        />
-                        <div className="flex items-center gap-0.5">
-                          <ProspectInlineField
-                            prospectId={prospect.id}
-                            field="instagramUrl"
-                            placeholder="Lien"
-                            dense
-                            defaultValue={prospect.instagramUrl ?? ""}
-                          />
-                          {prospect.instagramUrl && (
-                            <CellOpenLink
-                              href={prospect.instagramUrl}
-                              label="Ouvrir le profil Instagram"
-                              icon={<InstagramLogo size={14} weight="regular" />}
-                            />
-                          )}
-                        </div>
-                      </td>
-                        );
-                      case "whatsapp":
-                        return (
-                      <td key="whatsapp" className="min-w-[7.5rem] py-1">
-                        <div className="flex items-center gap-0.5">
-                          <ProspectInlineField
-                            prospectId={prospect.id}
-                            field="whatsappUrl"
-                            defaultValue={prospect.whatsappUrl ?? ""}
-                          />
-                          {prospect.whatsappUrl && (
-                            <CellOpenLink
-                              href={prospect.whatsappUrl}
-                              label="Ouvrir la conversation WhatsApp"
-                              icon={<WhatsappLogo size={14} weight="regular" />}
-                            />
-                          )}
-                        </div>
-                      </td>
-                        );
                       case "activite":
                         return (
-                      <td key="activite" className="min-w-[6.5rem] py-1">
-                        <ProspectInlineField
-                          prospectId={prospect.id}
-                          field="activityLevel"
-                          defaultValue={prospect.activityLevel ?? ""}
-                        />
-                      </td>
+                          <td key={column} className="whitespace-nowrap px-3 text-ink-muted">
+                            {prospect.activityLevel || "—"}
+                          </td>
+                        );
+                      case "contact":
+                        return (
+                          <td key={column} className="px-3">
+                            <ContactIcons prospect={prospect} />
+                          </td>
                         );
                       case "relance":
                         return (
-                      <td key="relance" className="min-w-[7rem] py-1">
-                        <ProspectReminderField
-                          prospectId={prospect.id}
-                          date={prospect.nextReminderAt ? prospect.nextReminderAt.toISOString().slice(0, 10) : ""}
-                        />
-                        {reminderOverdue && <p className="mt-0.5 text-[10px] font-medium text-danger">En retard</p>}
-                      </td>
+                          <td key={column} className="whitespace-nowrap px-3">
+                            {reminder ? (
+                              <span className={overdue ? "font-medium text-danger" : "text-ink"}>
+                                {overdue ? "⏰ " : ""}
+                                {reminder}
+                              </span>
+                            ) : (
+                              <span className="text-ink-muted">—</span>
+                            )}
+                          </td>
                         );
                       case "statut":
                         return (
-                      <td key="statut" className="py-1">
-                        <ProspectStatusSelect
-                          prospectId={prospect.id}
-                          currentSlug={prospect.status.slug}
-                          currentColor={prospect.status.color}
-                          statuses={statuses}
-                        />
-                      </td>
+                          <td key={column} className="px-3 pr-4">
+                            <ProspectStatusSelect
+                              prospectId={prospect.id}
+                              currentSlug={prospect.status.slug}
+                              currentColor={prospect.status.color}
+                              statuses={statuses}
+                            />
+                          </td>
                         );
                       default:
                         return null;
                     }
                   })}
-                  <td aria-hidden className="w-0 pr-2 sm:pr-4 lg:pr-6 2xl:pr-10" />
                 </tr>
               );
             })}

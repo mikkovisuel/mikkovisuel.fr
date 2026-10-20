@@ -1260,6 +1260,17 @@ Rejoué en appelant la tâche planifiée `/api/cron/invoice-reminders` en local 
 | Vue Jour | Mardi 20 octobre | ✅ Liste : action, puis 10:30, 15:00, 20:29, avec client et statut | Jour sans rien | ✅ « Rien de prévu ce jour-là. » (code) | 2026-10-20 |
 | Navigation | « Semaine suivante » | ✅ `cal=semaine&jour=2026-10-26` | Ancienne adresse `?mois=2026-10` | ✅ Comprise par `parseAgendaParams` (vue Mois) | 2026-10-20 |
 
+## Refonte de la page Prospection (2026-10-20)
+
+| Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |
+|---|---|---|---|---|---|
+| Filtre par région | 10 prospects de test, clic sur « Provence-Alpes-Côte d'Azur » | ✅ 2 prospects, puce « Région » affichée | Onglet « Discussions » + région, puis retrait de la région | ✅ 1, puis 2 | 2026-10-20 |
+| Carte | Clic sur une bulle de la carte compacte | ✅ `region=` ajouté à l'adresse, liste filtrée | Filtre sans résultat | ✅ Message « Aucun prospect ne correspond » au lieu d'un tableau vide | 2026-10-20 |
+| Recherche | « lyon » | ✅ 3 prospects | — | — | 2026-10-20 |
+| Kanban / fenêtres | Vue Kanban ; bouton « Importer » | ✅ Page 200, Kanban pleine largeur ; fenêtre d'import ouverte | — | — | 2026-10-20 |
+| Mobile | Largeur 390 px | ✅ Aucun défilement horizontal de la page | — | — | 2026-10-20 |
+| Actions retirées | Recherche d'usages de `updateProspectField` / `updateProspectReminderDate` | ✅ Aucun, supprimées ; types et lint OK | Test de sécurité des actions serveur | ✅ Toujours vert (aucune action sans garde) | 2026-10-21 |
+
 ## Points restant ouverts pour une prochaine passe de validation
 
 - Glisser-déposer et `<select>` natif du Kanban Prospection (limite outil, voir ci-dessus).
@@ -1350,3 +1361,4 @@ Rejoué en appelant la tâche planifiée `/api/cron/invoice-reminders` en local 
 - **Livraison 3** (2026-10-20) : glisser-déposer d'une publication dans le nouveau calendrier non rejoué (même composant de dépôt qu'avant) ; vue Bacs et calendrier des Tâches vus en compilation seulement ; routines prévues absentes du jeu de test.
 - **Fiche client** (2026-10-20) : changement du logo dans sa nouvelle fenêtre, archivage et suppression depuis le menu ⋮ non rejoués (composants d'origine, déplacés) ; « Voir son espace client » non vu faute de contact avec espace actif.
 - **Écran d'une tâche** (2026-10-20) : l'alerte de capacité à l'échéance n'a pas été vue (pas de capacité saisie en local) ; dupliquer / archiver / supprimer depuis « ⋮ », validation/refus et verrou « avant de travailler » non rejoués (composants d'origine, déplacés).
+- **Prospection** (2026-10-20) : la modification groupée du statut et la suppression groupée n'ont pas été rejouées après la refonte (code inchangé) ; Recherche IA dans sa fenêtre non lancée (coût d'API).

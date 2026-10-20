@@ -120,11 +120,13 @@ function GoogleSheetImport() {
   );
 }
 
-export function ProspectImportForm() {
+/** `embedded` : dans une fenêtre (bouton de la barre d'outils, 2026-10-20),
+ * sans le cadre repliable d'origine. */
+export function ProspectImportForm({ embedded = false }: { embedded?: boolean } = {}) {
   const [source, setSource] = useState<"fichier" | "sheet">("fichier");
 
   return (
-    <details className="rounded-2xl border border-line p-4">
+    <details open={embedded || undefined} className={embedded ? "[&>summary]:hidden" : "rounded-2xl border border-line p-4"}>
       <summary className="flex cursor-pointer items-center gap-2 text-sm font-medium text-ink">
         <UploadSimple size={16} weight="regular" />
         Importer des prospects
