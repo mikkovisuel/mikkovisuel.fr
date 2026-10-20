@@ -222,6 +222,12 @@ export default async function AdminAdministratifPage({
 
   const activeFilterCount = [clientId, typeId, status].filter(Boolean).length;
 
+  // Formulaires « Modifier » (2026-10-20) : tous les clients hors démo,
+  // archivés compris — un document d'un ancien client doit rester corrigeable.
+  const editOptions = {
+    clients: billingClients,
+    types: typeList?.items.map((item) => ({ id: item.id, label: item.label })) ?? [],
+  };
   const binGroups = (typeList?.items ?? []).map((type) => ({
     label: type.label,
     documents: documents.filter((doc) => doc.typeId === type.id),
@@ -472,6 +478,7 @@ export default async function AdminAdministratifPage({
                   showClient
                   billingEmail={doc.client.billingEmail}
                   deleteAction={deleteDocument}
+                  editOptions={editOptions}
                   companyDocuments={companyDocuments.map((d) => ({ id: d.id, fileName: d.fileName }))}
                   emailSubjectTemplate={settings.documentSentEmailSubject ?? DEFAULT_DOCUMENT_SENT_SUBJECT}
                   emailBodyTemplate={settings.documentSentEmailBody ?? DEFAULT_DOCUMENT_SENT_BODY}
@@ -534,6 +541,7 @@ export default async function AdminAdministratifPage({
               {paymentRecords.map((record) => (
                 <PaymentRecordRow
                   key={record.id}
+                  editClients={billingClients}
                   record={{
                     id: record.id,
                     clientId: record.clientId,

@@ -1114,6 +1114,20 @@ La détection est restée muette chez le client — aucun message, alors que le 
 | Lignes façon Gmail | Tâches, Clients, Contacts (sombre), Prospection | ✅ Listes bord à bord, ombre au survol, sélection jaune clair ; contacts : actions modifier/supprimer intactes | — | — | 2026-10-20 |
 | Téléphone | Tâches à 390 px | ✅ Onglets défilants, cartes sans cadre séparées d'un filet, statut, épingle, chrono et rappel présents | — | — | 2026-10-20 |
 
+## Édition dans Administratif (2026-10-20)
+
+`tsc --noEmit`, lint et `npm run build` propres. Rejoué dans Chrome sans interface avec une vraie session admin, sur un jeu factice (2 clients « ZZ », une facture, un devis accepté et signé, une facture payée par Stripe, un paiement sans facture, un document société), supprimé ensuite avec ses entrées d'audit et le fichier de test.
+
+| Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |
+|---|---|---|---|---|---|
+| Facture | Montant 450 → 480,50, client changé, nom « ZZ-facture-042-corrigee » | ✅ Enregistré en base (48 050 centimes, nouveau client, nom complété en « .pdf »), fenêtre refermée | Montant « abc » | ✅ « Montant invalide. », fenêtre ouverte, rien d'enregistré | 2026-10-20 |
+| Devis signé | « Enregistrer quand même » après l'avertissement | ✅ Montant 1 200 → 1 250 € enregistré, audit marqué « devis signé » | Premier envoi | ✅ Avertissement « Ce devis a été accepté et signé… », montant inchangé en base | 2026-10-20 |
+| Facture payée en ligne | Échéance ajoutée après confirmation | ✅ Échéance enregistrée, statut « payé » conservé, audit marqué « payée en ligne » | Premier envoi | ✅ Avertissement « Cette facture a été payée en ligne… » | 2026-10-20 |
+| Paiement sans facture | Montant 200 → 250 €, libellé « Acompte 1/2 » | ✅ Enregistré, audit « Paiement sans facture modifié » | Montant 0 | ✅ « Indiquez un montant supérieur à zéro. » | 2026-10-20 |
+| Document société | Renommé, catégorie Commercial → Société, fichier remplacé par un PDF | ✅ Enregistré, nouveau fichier écrit dans le stockage, audit avec « fichierRemplace : true » | — | — | 2026-10-20 |
+| Journal d'audit | 5 modifications | ✅ 5 entrées, avec l'avant/après des seuls champs changés | — | — | 2026-10-20 |
+| Fiche client | Client avec un devis et un paiement | ✅ 2 boutons « Modifier » | — | — | 2026-10-20 |
+
 ## Points restant ouverts pour une prochaine passe de validation
 
 - Glisser-déposer et `<select>` natif du Kanban Prospection (limite outil, voir ci-dessus).
@@ -1199,3 +1213,4 @@ La détection est restée muette chez le client — aucun message, alors que le 
 - **Campagnes programmées de la démo** (2026-09-28) : le processus `worker` est à zéro instance, aucun planificateur ne tourne. Un écran montrant une campagne programmée resterait figé, sans erreur visible. Non exercé.
 - **Démo `/demo` contre l'API de démonstration réelle** (2026-09-27) : non exercée, l'API de démonstration n'est pas encore en ligne sur Scalingo. Testée contre une API locale identique. À vérifier après sa mise en ligne : chargement de la configuration, « Essayer la démo », photos de la galerie.
 - **Coquille Workspace avec données** (2026-10-20) : la base locale ne contenait aucune donnée métier ; compteurs du tiroir, raccourcis statuts/clients sous « Tâches », chrono dans la barre du haut et résultats de la recherche n'ont pas été revus visuellement dans le nouveau style (logique inchangée). À regarder en production.
+- **Édition Administratif, remplacement du PDF d'une facture** (2026-10-20) : le remplacement a été exercé sur un document société (même code) mais pas sur une facture ; le refus d'un fichier non PDF n'a pas été rejoué dans la fenêtre (même contrôle que l'ajout).

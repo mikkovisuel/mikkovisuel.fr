@@ -2482,6 +2482,31 @@ Livraison en trois temps :
 Ordre convenu : livraison 2 de la refonte Workspace, puis l'édition
 Administratif, puis les notes ; la personnalisation suit sa validation.
 
+**Édition Administratif — livrée le 2026-10-20.** Bouton « Modifier »
+(crayon) sur chaque ligne, page Administratif et fiche client :
+
+- **Factures / devis / contrats** : nom du fichier (l'extension est remise
+  si on l'oublie), client (archivés compris), type, montant (vide = sans
+  montant), échéance, facture mensuelle et sa période, remplacement du
+  fichier PDF (facultatif ; l'ancien fichier est effacé une fois le
+  document à jour). Le statut de paiement suit le montant : un montant
+  ajouté rend le document « à payer », un montant retiré le rend « sans
+  objet », sinon le statut reste celui du document.
+- **Paiements sans facture** : client, montant (supérieur à zéro), libellé,
+  date.
+- **Documents de la société** : nom, catégorie (Commercial / Société),
+  remplacement du fichier (PDF, JPEG, PNG).
+- **Document engagé** (devis accepté et signé, facture payée en ligne par
+  Stripe ou PayPal) : premier envoi refusé avec un avertissement, puis
+  « Enregistrer quand même ».
+- **Audit** : chaque modification est inscrite (« Facture / devis modifié »,
+  « Paiement sans facture modifié », « Document société modifié ») avec
+  l'avant/après des champs changés, le remplacement éventuel du fichier et
+  la mention « devis signé » ou « payée en ligne ».
+- Aucun e-mail n'est envoyé au client : c'est une correction. Le bouton
+  « Préparer le mail » prend une icône d'enveloppe pour ne pas se confondre
+  avec le crayon « Modifier ».
+
 ## Passe de nettoyage du code (2026-09-22)
 
 Demande du client : "fais une passe globale sur le code et nettoie tout,
@@ -3236,3 +3261,4 @@ Le client a explicitement délégué ces choix :
 | 2026-10-14 | "J'ai essayé d'inviter un admin, mais impossible de faire marcher l'invitation… création de mot de passe impossible" | **Livré** : impasse reproduite — lien valable une heure seulement, erreur affichée après la saisie du mot de passe, et adresse impossible à réinviter (« compte existant »). Invitation désormais valable 7 jours ; renvoi possible (bouton « Renvoyer l'invitation » ou nouvelle saisie de l'adresse) tant que le compte n'est pas activé ; la page du lien annonce dès l'ouverture un lien expiré, remplacé ou déjà utilisé et propose une issue (admin et espace client). Détails section 4.15, tests dans `VALIDATION.md` |
 | 2026-10-20 | "Transformer l'interface en design Google Workspace, s'inspirer à fond de Google Drive, Gmail, Google Agenda… Ne pas toucher le site vitrine, les espaces clients… Vraiment que l'admin. Repenser la structure visuelle des données, plus compacte" — arbitrages : **jaune Mikko**, **Compact 32 px** par défaut, **statuts en onglets** | **Livraison 1 livrée** (coquille) : barre du haut avec recherche en pilule, tiroir avec bouton « Nouveau » contextuel et mode icônes, feuille blanche arrondie, Roboto auto-hébergée, palette Material clair/sombre ; configuration de retour sous la roue crantée ; remplace la refonte macOS. Livraisons 2 (listes compactes, densité par admin) et 3 (Administratif façon Drive, Réseaux façon Agenda) à suivre. Détails section 4.16, tests dans `VALIDATION.md` |
 | 2026-10-20 | "Ajouter des fonctions d'édition dans la partie administratif sur tous les items… pouvoir corriger si je me suis trompé" ; "une personnalisation complète du logiciel par profil admin… couleurs, affichages, afficher ou non des colonnes… un logiciel entièrement configurable visuellement" ; "Améliorer le système de note, qu'il prenne vraiment toute la page, pas de système d'encadrés" ; "Lance la livraison 2" — arbitrages : livraison 2 d'abord, puis édition, puis notes ; documents engagés **modifiables avec alerte** et trace d'audit ; personnalisation **proposée avant d'être codée** ; notes **façon Google Docs** | **Inscrit** (section 4.17) pour l'édition, la personnalisation et les notes. **Livraison 2 livrée** : densité des listes par admin (Compacte 32 px par défaut, Par défaut, Confortable) dans la roue crantée, profil d'affichage `Admin.preferences` ; onglets de statut des Tâches façon Gmail (remplacent les statuts du tiroir) ; lignes, survol et sélection façon Gmail sur Tâches, Clients, Prospection et Contacts. Détails section 4.16, tests dans `VALIDATION.md` |
+| 2026-10-20 | (suite) Édition des éléments de la page Administratif | **Livré** : bouton « Modifier » sur les factures/devis/contrats (nom, client, type, montant, échéance, période mensuelle, remplacement du PDF), les paiements sans facture (client, montant, libellé, date) et les documents de la société (nom, catégorie, fichier), sur la page Administratif et la fiche client ; devis signé ou facture payée en ligne : avertissement à confirmer ; chaque modification au journal d'audit avec l'avant/après ; aucun e-mail au client. Détails section 4.17, tests dans `VALIDATION.md` |

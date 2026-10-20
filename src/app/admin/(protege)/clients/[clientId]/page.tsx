@@ -44,7 +44,8 @@ import {
   type TaskSortField,
   type TaskSortDir,
 } from "@/lib/tasks";
-import { contactAccessState } from "@/lib/clients";
+import { contactAccessState, EXCLUDE_DEMO_CLIENT } from "@/lib/clients";
+import { DOCUMENT_TYPE_LIST_KEY } from "@/lib/dropdown-lists";
 import { getAppSettings } from "@/lib/settings";
 import {
   DEFAULT_DOCUMENT_SENT_SUBJECT,
@@ -69,7 +70,7 @@ export default async function ClientDetailPage({
   const sortDir: TaskSortDir = dir === "desc" ? "desc" : "asc";
   const pinnedOnly = epingle === "1";
 
-  const [client, statusList, typeList, formatList, categoryList, assignableContacts, companyDocuments, settings] =
+  const [client, statusList, typeList, formatList, categoryList, assignableContacts, companyDocuments, settings, editClients, documentTypeList] =
     await Promise.all([
     db.client.findUnique({
       where: { id: clientId },
@@ -138,9 +139,21 @@ export default async function ClientDetailPage({
     // /admin/administratif.
     db.companyDocument.findMany({ orderBy: { uploadedAt: "desc" } }),
     getAppSettings(),
+    // Formulaires « Modifier » des documents et paiements (2026-10-20) : on
+    // peut y rattacher l'élément à un autre client, archivé compris.
+    db.client.findMany({ where: EXCLUDE_DEMO_CLIENT, orderBy: { name: "asc" }, select: { id: true, name: true } }),
+    db.dropdownList.findUnique({
+      where: { key: DOCUMENT_TYPE_LIST_KEY },
+      include: { items: { orderBy: { sortOrder: "asc" } } },
+    }),
   ]);
 
   if (!client) notFound();
+
+  const editOptions = {
+    clients: editClients,
+    types: documentTypeList?.items.map((item) => ({ id: item.id, label: item.label })) ?? [],
+  };
 
   const statusOptions =
     statusList?.items.map((item) => ({ slug: item.slug, label: item.label })) ?? [];
@@ -403,6 +416,7 @@ export default async function ClientDetailPage({
                 document={doc}
                 billingEmail={client.billingEmail}
                 deleteAction={deleteDocument}
+                editOptions={editOptions}
                 companyDocuments={companyDocuments.map((d) => ({ id: d.id, fileName: d.fileName }))}
                 emailSubjectTemplate={settings.documentSentEmailSubject ?? DEFAULT_DOCUMENT_SENT_SUBJECT}
                 emailBodyTemplate={settings.documentSentEmailBody ?? DEFAULT_DOCUMENT_SENT_BODY}
@@ -433,6 +447,7 @@ export default async function ClientDetailPage({
             {client.paymentRecords.map((record) => (
               <PaymentRecordRow
                 key={record.id}
+                editClients={editClients}
                 record={{
                   id: record.id,
                   clientId: record.clientId,

@@ -1,7 +1,7 @@
 import {
   DownloadSimple,
   PaperPlaneTilt,
-  PencilSimpleLine,
+  EnvelopeSimple,
   CurrencyCircleDollar,
   BellSimple,
   Trash,
@@ -9,6 +9,7 @@ import {
 import { setDocumentPaymentStatus, sendPaymentReminder } from "@/lib/actions/payments";
 import { DeleteButton } from "@/components/admin/delete-button";
 import { SendDocumentDialog } from "@/components/admin/send-document-dialog";
+import { EditDocumentButton } from "@/components/admin/administratif-edit-dialogs";
 import { PaymentStatusBadge } from "@/components/payment-status-badge";
 import { formatAmount, isOverdue, dueDateFormatter } from "@/lib/documents";
 import { DOCUMENT_TYPE } from "@/lib/dropdown-lists";
@@ -37,6 +38,7 @@ interface DocumentRowProps {
   document: {
     id: string;
     clientId: string;
+    typeId: string;
     fileName: string;
     amountCents: number | null;
     currency: string;
@@ -66,6 +68,8 @@ interface DocumentRowProps {
   companyDocuments?: { id: string; fileName: string }[];
   emailSubjectTemplate?: string;
   emailBodyTemplate?: string;
+  /** Listes du formulaire « Modifier » (2026-10-20). Absent : pas de bouton. */
+  editOptions?: { clients: { id: string; name: string }[]; types: { id: string; label: string }[] };
 }
 
 // Toutes les actions sont passées en icônes (demande du 2026-07-31) — la
@@ -80,6 +84,7 @@ export function DocumentRow({
   companyDocuments = [],
   emailSubjectTemplate = DEFAULT_DOCUMENT_SENT_SUBJECT,
   emailBodyTemplate = DEFAULT_DOCUMENT_SENT_BODY,
+  editOptions,
 }: DocumentRowProps) {
   const overdue = isOverdue(document);
 
@@ -169,7 +174,7 @@ export function DocumentRow({
               aria-label="Préparer le mail"
               className={ICON_BUTTON}
             >
-              <PencilSimpleLine size={16} weight="regular" />
+              <EnvelopeSimple size={16} weight="regular" />
             </a>
           </>
         ) : (
@@ -183,6 +188,9 @@ export function DocumentRow({
           <DownloadSimple size={16} weight="regular" />
           Télécharger
         </a>
+        {editOptions && (
+          <EditDocumentButton document={document} clients={editOptions.clients} types={editOptions.types} />
+        )}
         {deleteAction && (
           <DeleteButton
             action={deleteAction.bind(null, document.id)}

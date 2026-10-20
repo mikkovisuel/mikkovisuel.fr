@@ -5,6 +5,7 @@ import { PaymentStatusBadge } from "@/components/payment-status-badge";
 import { PaymentRecordDateField } from "@/components/admin/payment-record-date-field";
 import { setPaymentRecordStatus, deletePaymentRecord } from "@/lib/actions/payment-records";
 import { formatAmount } from "@/lib/documents";
+import { EditPaymentRecordButton } from "@/components/admin/administratif-edit-dialogs";
 
 const ICON_BUTTON =
   "flex h-8 w-8 items-center justify-center rounded-full border border-line text-ink-muted transition-colors hover:border-accent hover:bg-accent hover:text-accent-ink";
@@ -14,6 +15,7 @@ const ICON_BUTTON =
 // cohérent avec `DocumentRow`, jamais en bouton texte.
 export function PaymentRecordRow({
   record,
+  editClients,
 }: {
   record: {
     id: string;
@@ -26,6 +28,8 @@ export function PaymentRecordRow({
     /** Format ISO `yyyy-mm-dd`, pour l'input date. */
     date: string;
   };
+  /** Clients proposés par « Modifier » (2026-10-20). Absent : pas de bouton. */
+  editClients?: { id: string; name: string }[];
 }) {
   return (
     <div className="flex flex-wrap items-center justify-between gap-3 px-6 py-3">
@@ -64,6 +68,7 @@ export function PaymentRecordRow({
             <CurrencyCircleDollar size={16} weight={record.paymentStatus === "paid" ? "fill" : "regular"} />
           </button>
         </form>
+        {editClients && <EditPaymentRecordButton record={record} clients={editClients} />}
         <DeleteButton
           action={deletePaymentRecord.bind(null, record.id)}
           confirmMessage={`Supprimer ce suivi de paiement pour ${record.clientName} ?`}

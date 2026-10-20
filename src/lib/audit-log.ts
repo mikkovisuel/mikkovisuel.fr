@@ -19,7 +19,10 @@ export type AuditAction =
   | "admin_revoked"
   | "data_export"
   | "client_portal_access_opened"
-  | "client_portal_access_closed";
+  | "client_portal_access_closed"
+  | "document_updated"
+  | "payment_record_updated"
+  | "company_document_updated";
 
 export async function logAuditEvent(input: {
   actorType: "ADMIN" | "SYSTEM";
@@ -60,4 +63,7 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   data_export: "Export de données",
   client_portal_access_opened: "Accès à l'espace client ouvert",
   client_portal_access_closed: "Accès à l'espace client fermé",
+  document_updated: "Facture / devis modifié",
+  payment_record_updated: "Paiement sans facture modifié",
+  company_document_updated: "Document société modifié",
 };
