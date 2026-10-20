@@ -2599,6 +2599,15 @@ aperçu en direct ; rien ne s'applique avant « Enregistrer ». Cinq onglets :
   attribué la tâche … », lien direct) — jamais quand on se l'attribue soi-même
   ni quand on retire l'attribution.
 
+**2. Tableau de bord « Aujourd'hui » — livré le 2026-10-20.** Premier bloc
+du tableau de bord (déplaçable et masquable dans « Mon affichage ») : une
+liste cliquable de ce qui attend une action — tâches à livrer aujourd'hui ou
+en retard, actions réseaux à cocher (case directement dans la liste),
+publications validées dont l'heure est passée, factures échues impayées.
+Retards en rouge. Bascule **« À moi »** (par défaut : ce qui est attribué à
+l'admin connecté ; les factures, sans responsable, y figurent toujours) /
+**« Tout »**.
+
 ## Passe de nettoyage du code (2026-09-22)
 
 Demande du client : "fais une passe globale sur le code et nettoie tout,

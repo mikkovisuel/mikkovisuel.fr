@@ -151,6 +151,7 @@ export type SortListKey = keyof typeof SORT_OPTIONS;
 
 /** Blocs du tableau de bord, dans l'ordre d'origine. */
 export const DASHBOARD_BLOCKS = [
+  { key: "aujourdhui", label: "Aujourd'hui (tâches, actions, publications, factures)" },
   { key: "chiffres", label: "Chiffres clés (clients, tâches, factures)" },
   { key: "activite", label: "Depuis votre dernière connexion" },
   { key: "reseaux", label: "Réseaux du jour" },

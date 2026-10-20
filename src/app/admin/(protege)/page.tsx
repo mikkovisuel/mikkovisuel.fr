@@ -14,6 +14,7 @@ import { ClientLoginJournal } from "@/components/admin/client-login-journal";
 import { InstallPwaCta } from "@/components/install-pwa-cta";
 import { SocialToday } from "@/components/admin/social-today";
 import { PageToolbar, PAGE_BODY } from "@/components/admin/page-toolbar";
+import { TodayPanel } from "@/components/admin/today-panel";
 import { getMyPreferences } from "@/lib/admin-preferences-server";
 import type { DashboardBlockKey } from "@/lib/admin-preferences";
 
@@ -23,8 +24,13 @@ export const metadata: Metadata = {
   title: "Tableau de bord — Admin Mikko Visuel",
 };
 
-export default async function AdminDashboardPage() {
+export default async function AdminDashboardPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ aujourdhui?: string }>;
+}) {
   const admin = await verifyAdminSession();
+  const { aujourdhui } = await searchParams;
   const since = admin.previousLoginAt;
 
   const [clientCount, taskCount, openTaskCount, unpaidCount, overdueCount, toValidateCount] =
@@ -196,6 +202,10 @@ export default async function AdminDashboardPage() {
   // Blocs du tableau de bord (« Mon affichage », 2026-10-20) : chacun peut
   // être masqué ou déplacé par l'admin.
   const dashboardBlocks: Record<DashboardBlockKey, { wide: boolean; node: React.ReactNode }> = {
+    aujourdhui: {
+      wide: true,
+      node: <TodayPanel adminId={admin.id} scope={aujourdhui === "tout" ? "tout" : "moi"} />,
+    },
     chiffres: {
       wide: true,
       node: (

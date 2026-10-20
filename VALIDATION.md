@@ -1211,6 +1211,13 @@ Lint, `tsc --noEmit` propres ; migration `assignment` appliquée en local. Rejou
 | Action réseaux | « Nouvelle action » | ✅ Responsable proposé = admin connecté, enregistré en base ; aucun e-mail (attribuée à soi-même) | — | — | 2026-10-20 |
 | Mes publications | Bascule sur Réseaux | ✅ Lien `?moi=1`, filtre posts et actions | — | — | 2026-10-20 |
 
+## Feuille de route — 2. Tableau de bord « Aujourd'hui » (2026-10-20)
+
+| Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |
+|---|---|---|---|---|---|
+| Bloc « À moi » | Tâche en retard, tâche du jour, action du jour, publication validée passée, facture échue | ✅ 5 lignes, retards en rouge, liens vers la tâche / la publication / Administratif filtré | Tâche du jour attribuée à l'autre admin | ✅ Absente de « À moi », présente dans « Tout » | 2026-10-20 |
+| Cocher une action | Case dans la liste | ✅ L'action disparaît, compteur 5 → 4 | — | — | 2026-10-20 |
+
 ## Points restant ouverts pour une prochaine passe de validation
 
 - Glisser-déposer et `<select>` natif du Kanban Prospection (limite outil, voir ci-dessus).
