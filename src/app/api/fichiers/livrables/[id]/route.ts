@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { clientOwnsFile } from "@/lib/file-access";
 import { getAdminSession, getClientSession } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { getStorageAdapter } from "@/lib/storage";
@@ -23,7 +24,7 @@ export async function GET(
 
   const [admin, clientUser] = await Promise.all([getAdminSession(), getClientSession()]);
   // Tâche interne (demandée depuis une publication réseaux) : jamais au client.
-  const isOwner = clientUser?.clientId === deliverable.task.clientId && !deliverable.task.internal;
+  const isOwner = clientOwnsFile(clientUser, { clientId: deliverable.task.clientId, hidden: deliverable.task.internal });
   if (!admin && !isOwner) {
     return new NextResponse(null, { status: 403 });
   }

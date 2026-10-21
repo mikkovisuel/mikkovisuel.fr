@@ -93,11 +93,6 @@ function monthWeeks(year: number, month: number) {
   return weeks;
 }
 
-export function monthParam(year: number, month: number) {
-  const date = new Date(year, month, 1);
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}`;
-}
-
 function hrefFor(basePath: string, params: Record<string, string>, mode: AgendaMode, date: Date) {
   const search = new URLSearchParams(params);
   search.delete("mois");

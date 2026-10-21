@@ -22,6 +22,7 @@ export type EmailTrigger =
   | "weekly_digest"
   | "devis_accepted"
   | "server_error"
+  | "payment_mismatch"
   | "social_post_to_validate"
   | "social_post_validated"
   | "social_post_refused"

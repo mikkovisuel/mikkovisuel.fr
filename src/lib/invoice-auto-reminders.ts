@@ -31,7 +31,7 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 const DATE = new Intl.DateTimeFormat("fr-FR", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Paris" });
 
 /** Décide si une facture doit être relancée maintenant (fonction pure,
- * testée dans `tests/invoice-auto-reminders.test.ts`). */
+ * testée dans `tests/rules.test.ts`). */
 export function dueAutoReminder(
   invoice: { dueDate: Date | null; autoReminderCount: number; lastReminderAt: Date | null },
   now: Date,

@@ -119,9 +119,8 @@ export async function setDocumentPaymentStatus(documentId: string, status: "paid
   revalidatePath("/espace-client/administratif");
 }
 
-// Manual reminder, since there's no cron/scheduled task infra in this
-// project - the admin decides when to nudge a client, rather than an
-// automatic recurring job.
+// Relance manuelle (bouton). La relance automatique J+7 / J+15 est à part :
+// src/lib/invoice-auto-reminders.ts, lancée chaque jour par le cron.
 export async function sendPaymentReminder(documentId: string) {
   await verifyAdminSession();
 

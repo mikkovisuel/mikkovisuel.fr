@@ -1,10 +1,11 @@
 import { NextResponse } from "next/server";
+import { clientOwnsFile } from "@/lib/file-access";
 import { getAdminSession, getClientSession } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { getStorageAdapter } from "@/lib/storage";
 
 export async function GET(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string }> },
 ) {
   const { id } = await params;
@@ -15,9 +16,20 @@ export async function GET(
   }
 
   const [admin, clientUser] = await Promise.all([getAdminSession(), getClientSession()]);
-  const isOwner = clientUser?.clientId === document.clientId;
+  const isOwner = clientOwnsFile(clientUser, document);
   if (!admin && !isOwner) {
     return new NextResponse(null, { status: 403 });
+  }
+
+  // Signature dessinée par le client sur un devis (preuve d'accord), pour l'admin.
+  if (new URL(request.url).searchParams.get("signature") === "1") {
+    const prefix = "data:image/png;base64,";
+    if (!admin || !document.signatureDataUrl?.startsWith(prefix)) {
+      return new NextResponse(null, { status: 404 });
+    }
+    return new NextResponse(new Uint8Array(Buffer.from(document.signatureDataUrl.slice(prefix.length), "base64")), {
+      headers: { "Content-Type": "image/png", "Cache-Control": "private, no-store" },
+    });
   }
 
   // Streamé plutôt que lu en entier (2026-08-23) : `storage.read` chargeait

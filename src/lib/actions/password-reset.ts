@@ -1,7 +1,6 @@
 "use server";
 
 import { redirect } from "next/navigation";
-import { randomBytes, createHash } from "node:crypto";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { hashPassword, verifyPassword } from "@/lib/password";
@@ -10,8 +9,8 @@ import {
   destroyOtherSessionsForSubject,
   type SubjectType,
 } from "@/lib/session";
-import { sendEmail } from "@/lib/email/service";
-import { sendClientPasswordResetEmail } from "@/lib/client-password-reset-email";
+import { sendClientPasswordResetEmail, sendPasswordResetEmail } from "@/lib/client-password-reset-email";
+import { hashResetToken } from "@/lib/password-reset-token";
 import { verifyClientSession, verifyAdminSession, assertNotDemo } from "@/lib/dal";
 import {
   isPasswordResetRateLimited,
@@ -22,15 +21,10 @@ import { logAuditEvent } from "@/lib/audit-log";
 import { getClientIp } from "@/lib/request-ip";
 import { ChangePasswordSchema, type ChangePasswordState } from "@/lib/validation/auth";
 
-const RESET_TOKEN_DURATION_MS = 60 * 60 * 1000;
 const GENERIC_MESSAGE =
   "Si ce compte existe, un email avec un lien de réinitialisation vient d'être envoyé.";
 
 const EmailSchema = z.string().trim().toLowerCase().email();
-
-function hashToken(token: string) {
-  return createHash("sha256").update(token).digest("hex");
-}
 
 async function requestReset(subjectType: SubjectType, rawEmail: string) {
   const parsed = EmailSchema.safeParse(rawEmail);
@@ -71,33 +65,7 @@ async function requestReset(subjectType: SubjectType, rawEmail: string) {
   }
 
   if (subject) {
-    // Invalide les liens de réinitialisation précédents non utilisés :
-    // sans ça, demander plusieurs fois laisse plusieurs tokens valides en
-    // parallèle jusqu'à leur expiration (1h chacun).
-    await db.passwordResetToken.deleteMany({
-      where: { subjectType, subjectId: subject.id, usedAt: null },
-    });
-
-    const token = randomBytes(32).toString("base64url");
-    await db.passwordResetToken.create({
-      data: {
-        subjectType,
-        subjectId: subject.id,
-        tokenHash: hashToken(token),
-        expiresAt: new Date(Date.now() + RESET_TOKEN_DURATION_MS),
-      },
-    });
-
-    const basePath = subjectType === "ADMIN" ? "/admin" : "/espace-client";
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-    const resetUrl = `${siteUrl}${basePath}/reinitialiser-mot-de-passe/${token}`;
-
-    await sendEmail({
-      trigger: "password_reset",
-      to: email,
-      subject: "Réinitialisation de votre mot de passe — Mikko Visuel",
-      html: `<p>Cliquez sur ce lien pour choisir un nouveau mot de passe (valable 1 heure) :</p><p><a href="${resetUrl}">${resetUrl}</a></p>`,
-    });
+    await sendPasswordResetEmail(subjectType, subject.id, email);
   }
 
   return { message: GENERIC_MESSAGE };
@@ -145,7 +113,7 @@ export async function resetPassword(
     return { error: parsed.error.issues[0]?.message ?? "Formulaire invalide." };
   }
 
-  const tokenHash = hashToken(token);
+  const tokenHash = hashResetToken(token);
   const resetToken = await db.passwordResetToken.findUnique({ where: { tokenHash } });
 
   if (!resetToken || resetToken.usedAt || resetToken.expiresAt < new Date()) {

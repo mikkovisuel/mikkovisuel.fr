@@ -21,7 +21,6 @@ export const SOCIAL_FORMATS = [
   { slug: "reel", label: "Reel / vidéo" },
 ] as const;
 
-export type SocialFormatSlug = (typeof SOCIAL_FORMATS)[number]["slug"];
 
 // Cycle standard du métier (voir CAHIER_DES_CHARGES.md, section 4) :
 // relecture interne avant la validation client, puis publication.
@@ -289,28 +288,3 @@ export function diffWords(before: string, after: string): DiffPart[] {
   return parts;
 }
 
-// --- Créneaux récurrents dans le calendrier --------------------------------
-
-/**
- * Occurrences d'un créneau (jour ISO + "HH:mm", heure de Paris) sur un mois
- * calendaire donné (`month` 0-11), à partir de `from` inclus.
- */
-export function slotOccurrencesInMonth(
-  weekday: number,
-  time: string,
-  year: number,
-  month: number,
-  from: Date,
-): Date[] {
-  if (!/^\d{2}:\d{2}$/.test(time)) return [];
-  const daysInMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
-  const result: Date[] = [];
-  for (let day = 1; day <= daysInMonth; day++) {
-    const date = new Date(Date.UTC(year, month, day));
-    const isoWeekday = date.getUTCDay() === 0 ? 7 : date.getUTCDay();
-    if (isoWeekday !== weekday) continue;
-    const occurrence = parseParisDateTimeLocal(`${year}-${pad(month + 1)}-${pad(day)}T${time}`);
-    if (occurrence && occurrence >= from) result.push(occurrence);
-  }
-  return result;
-}

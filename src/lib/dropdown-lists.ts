@@ -30,7 +30,6 @@ export const DOCUMENT_TYPE = {
   FACTURE: "facture",
 } as const;
 
-export type DocumentTypeSlug = (typeof DOCUMENT_TYPE)[keyof typeof DOCUMENT_TYPE];
 
 // Catégories de `CompanyDocument` (documents internes sans client associé,
 // ajoutés le 2026-07-31) — fixes, pas une `DropdownList` : contrairement à

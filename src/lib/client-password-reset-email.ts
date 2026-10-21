@@ -3,6 +3,7 @@ import { randomBytes } from "node:crypto";
 import { db } from "@/lib/db";
 import { sendEmail } from "@/lib/email/service";
 import { hashResetToken } from "@/lib/password-reset-token";
+import type { SubjectType } from "@/lib/session";
 
 // Déplacé hors de `src/lib/actions/password-reset.ts` le 2026-10-20 : dans un
 // fichier "use server", toute fonction exportée devient une action appelable
@@ -14,44 +15,54 @@ import { hashResetToken } from "@/lib/password-reset-token";
 
 const RESET_TOKEN_DURATION_MS = 60 * 60 * 1000;
 
-// Logique partagée entre le bouton "Réinitialiser" (step-up, ci-dessous) et
-// la conversion automatique d'un prospect en client
-// (convertProspectToClient dans src/lib/actions/prospects.ts), qui doit
-// envoyer le même email sans jamais avoir de mot de passe admin à
-// revérifier (c'est déjà une étape interne d'une action elle-même protégée
-// par verifyAdminSession).
-// Renvoie `false` sans rien envoyer si le contact n'a pas d'email (possible
-// depuis 2026-07-30 : un contact peut n'avoir qu'un téléphone). Les appelants
-// doivent traiter ce cas plutôt que de supposer l'envoi réussi.
-export async function sendClientPasswordResetEmail(clientUser: {
-  id: string;
-  email: string | null;
-}): Promise<boolean> {
-  if (!clientUser.email) return false;
-
-  await db.passwordResetToken.deleteMany({
-    where: { subjectType: "CLIENT_USER", subjectId: clientUser.id, usedAt: null },
-  });
+// Crée un lien de réinitialisation (1 h, les anciens liens non utilisés sont
+// annulés) et l'envoie. Seul endroit où ce lien est fabriqué : formulaire
+// « mot de passe oublié » (admin et client), bouton « Réinitialiser » de la
+// fiche client et conversion d'un prospect en client.
+export async function sendPasswordResetEmail(
+  subjectType: SubjectType,
+  subjectId: string,
+  email: string,
+  intro = "Cliquez sur ce lien pour choisir un nouveau mot de passe (valable 1 heure) :",
+) {
+  await db.passwordResetToken.deleteMany({ where: { subjectType, subjectId, usedAt: null } });
 
   const token = randomBytes(32).toString("base64url");
   await db.passwordResetToken.create({
     data: {
-      subjectType: "CLIENT_USER",
-      subjectId: clientUser.id,
+      subjectType,
+      subjectId,
       tokenHash: hashResetToken(token),
       expiresAt: new Date(Date.now() + RESET_TOKEN_DURATION_MS),
     },
   });
 
+  const basePath = subjectType === "ADMIN" ? "/admin" : "/espace-client";
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
-  const resetUrl = `${siteUrl}/espace-client/reinitialiser-mot-de-passe/${token}`;
+  const resetUrl = `${siteUrl}${basePath}/reinitialiser-mot-de-passe/${token}`;
 
   await sendEmail({
     trigger: "password_reset",
-    to: clientUser.email,
+    to: email,
     subject: "Réinitialisation de votre mot de passe — Mikko Visuel",
-    html: `<p>Un lien de réinitialisation de mot de passe a été généré pour vous par Mikko Visuel. Cliquez pour choisir un nouveau mot de passe (valable 1 heure) :</p><p><a href="${resetUrl}">${resetUrl}</a></p>`,
+    html: `<p>${intro}</p><p><a href="${resetUrl}">${resetUrl}</a></p>`,
   });
+}
 
+// Lien envoyé par Mikko Visuel à un client (bouton « Réinitialiser », conversion
+// d'un prospect). Renvoie `false` sans rien envoyer si le contact n'a pas
+// d'email (possible depuis 2026-07-30 : un contact peut n'avoir qu'un
+// téléphone). Les appelants doivent traiter ce cas.
+export async function sendClientPasswordResetEmail(clientUser: {
+  id: string;
+  email: string | null;
+}): Promise<boolean> {
+  if (!clientUser.email) return false;
+  await sendPasswordResetEmail(
+    "CLIENT_USER",
+    clientUser.id,
+    clientUser.email,
+    "Un lien de réinitialisation de mot de passe a été généré pour vous par Mikko Visuel. Cliquez pour choisir un nouveau mot de passe (valable 1 heure) :",
+  );
   return true;
 }

@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { clientOwnsFile } from "@/lib/file-access";
 import { getAdminSession, getClientSession } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { getStorageAdapter } from "@/lib/storage";
@@ -23,9 +24,10 @@ export async function GET(
   // Le client ne voit que ses publications, et jamais les brouillons
   // internes ("Idée", "Rédaction") — même règle que sa page Réseaux sociaux,
   // appliquée ici aussi pour qu'un lien direct ne la contourne pas.
-  const isOwner =
-    clientUser?.clientId === media.post.clientId &&
-    CLIENT_VISIBLE_STATUSES.includes(media.post.status as SocialPostStatus);
+  const isOwner = clientOwnsFile(clientUser, {
+    clientId: media.post.clientId,
+    hidden: !CLIENT_VISIBLE_STATUSES.includes(media.post.status as SocialPostStatus),
+  });
   if (!admin && !isOwner) return new NextResponse(null, { status: 403 });
 
   const storage = getStorageAdapter();

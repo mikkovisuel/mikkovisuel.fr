@@ -7,6 +7,7 @@ import { dueAutoReminder } from "@/lib/invoice-auto-reminders";
 import { accentInkFor, parseAdminPreferences, visibleColumns } from "@/lib/admin-preferences";
 import { denyUnauthorizedCron } from "@/lib/cron-auth";
 import { escapeHtml } from "@/lib/html-escape";
+import { clientOwnsFile } from "@/lib/file-access";
 
 const DAY = 24 * 60 * 60 * 1000;
 
@@ -114,5 +115,21 @@ describe("affichage et contenu", () => {
   });
   it("échappe le HTML des e-mails", () => {
     expect(escapeHtml('<script>"x"</script>')).not.toContain("<script>");
+  });
+});
+
+describe("accès aux fichiers", () => {
+  const client = { clientId: "c1" };
+  it("le client propriétaire peut télécharger", () => {
+    expect(clientOwnsFile(client, { clientId: "c1" })).toBe(true);
+  });
+  it("jamais le fichier d'un autre client", () => {
+    expect(clientOwnsFile(client, { clientId: "c2" })).toBe(false);
+  });
+  it("jamais un fichier caché (tâche interne, brouillon)", () => {
+    expect(clientOwnsFile(client, { clientId: "c1", hidden: true })).toBe(false);
+  });
+  it("personne sans session client", () => {
+    expect(clientOwnsFile(null, { clientId: "c1" })).toBe(false);
   });
 });

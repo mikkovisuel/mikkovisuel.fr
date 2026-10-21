@@ -2699,6 +2699,38 @@ liste **en lecture avec icônes, modification dans la fiche**.
 - Colonnes masquables dans « Mon affichage » : activité, contact, relance,
   statut.
 
+### 4.20 Corrections issues de l'audit du code (2026-10-21)
+
+Audit complet du dépôt (outil Ponytail), puis « corrige tout » :
+
+1. **E-mails en échec** : un refus de Resend (quota, clé, pièce jointe trop
+   lourde) est désormais noté « échec » dans le journal des e-mails ; avant,
+   tout était noté « réussi » et une relance automatique non partie comptait
+   comme envoyée.
+2. **Valider / refuser un BAT** : le client ne peut le faire que sur une
+   tâche « À valider » (page restée ouverte, double clic). Message « Cette
+   tâche n'est plus en attente de validation. » pour un refus.
+3. **Connexion Gmail** : jeton anti-détournement (`state`) entre le départ
+   vers Google et le retour ; un lien de retour forgé est refusé.
+4. **Pièces jointes envoyées par le client** : contenu vérifié (vrai PDF,
+   vraie image) comme côté admin ; une seule liste de types autorisés.
+5. **Signature des devis** : visible par l'admin (lien « Signé » dans
+   Administratif, « voir la signature » sur la fiche) ; taille limitée
+   (nom 200 caractères, dessin 500 Ko).
+6. **Paiement Stripe** : une facture n'est marquée payée que si le montant
+   payé est celui de la facture ; sinon elle reste impayée et les admins
+   reçoivent « Paiement Stripe à vérifier ».
+7. **Adresse IP** (journal d'audit, limite d'essais, preuve de signature) :
+   on garde la valeur ajoutée par Scalingo, pas celle fournie par le
+   visiteur.
+8. **Accès aux fichiers** : une seule règle partagée par les routes de
+   téléchargement, couverte par des tests.
+9. **Lien de réinitialisation du mot de passe** : fabriqué à un seul endroit.
+10. **Code mort supprimé** (ancien calcul de créneaux, fonction du calendrier,
+    types inutilisés).
+11. Pastille « Aujourd'hui » à la couleur d'accent (plus de bleu).
+12. Deux commentaires trompeurs corrigés.
+
 ## Passe de nettoyage du code (2026-09-22)
 
 Demande du client : "fais une passe globale sur le code et nettoie tout,
@@ -3468,3 +3500,4 @@ Le client a explicitement délégué ces choix :
 | 2026-10-20 | "Aligner le bouton Nouveau et le rendre comme le bouton Nouvelle tâche" | **Livré** : pilule identique, icône alignée sur les icônes du menu (section 4.18). |
 | 2026-10-20 | "Optimisation de l'affichage réseau calendrier, ajoute une vue jour et semaine. Ajoute les numéros de semaines" | **Livré** : calendrier (Réseaux, et Tâches qui partage le composant) en trois vues **Jour / Semaine / Mois** ; numéro de semaine ISO devant chaque semaine (grille du mois et petit mois, cliquable vers la vue Semaine) et à côté du titre en vues Jour et Semaine ; vue Semaine à 7 colonnes hautes, heure au-dessus du titre affiché en entier ; vue Jour en liste détaillée (heure, titre, client, statut) ; un clic sur un jour (grille ou petit mois) ouvre sa journée, « N autres » aussi ; navigation ‹ › par jour, semaine ou mois ; glisser-déposer conservé en vues Mois et Semaine ; routines et actions chargées pour la période affichée (semaines à cheval sur deux mois comprises). Adresse : `cal` + `jour`, l'ancien `mois` reste compris. |
 | 2026-10-20 | "Redesigner la page prospection" — choix : carte + liste façon Google Maps ; lecture + icônes, modification dans la fiche | **Livré** : chiffres clés, onglets de statut, filtre par région depuis la carte ou la liste des régions, liste en lecture avec icônes de contact, Recherche IA / Importer en fenêtre, saisie dans les cellules retirée (section 4.19). |
+| 2026-10-21 | Audit du code (Ponytail) puis "corrige tout" | **Livré** : 12 correctifs (e-mails en échec détectés, BAT validable seulement « À valider », jeton anti-détournement Gmail, contrôle du contenu des fichiers client, signature visible et limitée, montant Stripe vérifié, IP fiable, règle d'accès aux fichiers testée, lien de réinitialisation unique, code mort supprimé) — section 4.20. |

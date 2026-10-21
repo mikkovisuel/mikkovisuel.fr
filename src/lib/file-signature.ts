@@ -8,6 +8,10 @@ import sharp from "sharp";
 // par MIME déclaré uniquement, comme avant.
 const PDF_MAGIC = Buffer.from("%PDF-");
 
+// Pièces jointes des tâches (envoi admin comme client) : mêmes règles partout.
+export const MAX_ATTACHMENT_SIZE = 20 * 1024 * 1024;
+export const ALLOWED_ATTACHMENT_TYPES = new Set(["image/png", "image/jpeg", "image/webp", "application/pdf"]);
+
 async function looksLikeImage(buffer: Buffer): Promise<boolean> {
   try {
     const metadata = await sharp(buffer).metadata();

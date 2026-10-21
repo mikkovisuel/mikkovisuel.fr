@@ -178,7 +178,19 @@ export function DocumentDriveTable({
                   <td className="whitespace-nowrap px-4 py-2">
                     <span className={`inline-flex items-center gap-2 ${state.tone}`}>
                       <span className={`h-2 w-2 rounded-full ${state.dot}`} />
-                      {state.label}
+                      {state.label === "Signé" ? (
+                        <a
+                          href={`/api/fichiers/documents/${document.id}?signature=1`}
+                          target="_blank"
+                          rel="noopener"
+                          className="hover:underline"
+                          title={`Voir la signature${document.acceptedByName ? ` de ${document.acceptedByName}` : ""}`}
+                        >
+                          Signé
+                        </a>
+                      ) : (
+                        state.label
+                      )}
                     </span>
                   </td>
                   <td className="whitespace-nowrap px-4 py-2 text-ink-muted">

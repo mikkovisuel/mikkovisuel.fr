@@ -35,7 +35,11 @@ function getOAuth2Client() {
   return new google.auth.OAuth2(clientId, clientSecret, redirectUri);
 }
 
-export function getGmailAuthUrl(): string {
+// Jeton anti-détournement : sans lui, un lien de retour forgé avec le code
+// d'un autre compte Google relierait ce compte au profil de l'admin.
+export const GMAIL_OAUTH_STATE_COOKIE = "gmail_oauth_state";
+
+export function getGmailAuthUrl(state: string): string {
   const client = getOAuth2Client();
   return client.generateAuthUrl({
     access_type: "offline",
@@ -44,6 +48,7 @@ export function getGmailAuthUrl(): string {
     // autorisation, sauf avec ce paramètre).
     prompt: "consent",
     scope: GMAIL_SCOPES,
+    state,
   });
 }
 

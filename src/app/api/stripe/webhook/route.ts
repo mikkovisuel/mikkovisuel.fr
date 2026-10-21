@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { getStripeClient } from "@/lib/stripe";
+import { sendEmailToAdmins } from "@/lib/email/service";
+import { escapeHtml } from "@/lib/html-escape";
+import { formatAmount } from "@/lib/documents";
 
 export async function POST(request: Request) {
   const stripe = getStripeClient();
@@ -30,7 +33,15 @@ export async function POST(request: Request) {
     if (documentId) {
       const document = await db.document.findUnique({ where: { id: documentId } });
       // Idempotent: Stripe may redeliver the same event, so only apply once.
-      if (document && document.paymentStatus !== "paid") {
+      // Montant modifié pendant que le client était sur la page de paiement :
+      // on ne marque pas payé un montant différent, on prévient les admins.
+      if (document && document.paymentStatus !== "paid" && session.amount_total !== document.amountCents) {
+        await sendEmailToAdmins({
+          trigger: "payment_mismatch",
+          subject: `Paiement Stripe à vérifier — ${document.fileName}`,
+          html: `<p>Le client a payé <strong>${escapeHtml(formatAmount(session.amount_total, document.currency) ?? "?")}</strong> pour « ${escapeHtml(document.fileName)} », dont le montant est maintenant <strong>${escapeHtml(formatAmount(document.amountCents, document.currency) ?? "?")}</strong>. La facture reste « impayée » : corrigez-la à la main.</p>`,
+        });
+      } else if (document && document.paymentStatus !== "paid") {
         await db.document.update({
           where: { id: documentId },
           data: { paymentStatus: "paid", paidAt: new Date() },

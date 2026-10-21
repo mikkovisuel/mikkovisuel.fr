@@ -10,9 +10,11 @@ import { sendEmailToAdmins } from "@/lib/email/service";
 import { escapeHtml } from "@/lib/html-escape";
 
 const AcceptDevisSchema = z.object({
-  acceptedByName: z.string().trim().min(1, { message: "Nom requis." }),
+  acceptedByName: z.string().trim().min(1, { message: "Nom requis." }).max(200, { message: "Nom trop long." }),
+  // Une signature dessinée pèse quelques dizaines de Ko ; 500 Ko laisse de la marge.
   signatureDataUrl: z
     .string()
+    .max(500_000, { message: "Signature trop lourde." })
     .startsWith("data:image/png;base64,", { message: "Signature invalide." }),
 });
 

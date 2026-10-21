@@ -9,7 +9,7 @@ import { sendEmail } from "@/lib/email/service";
 import { escapeHtml } from "@/lib/html-escape";
 import { formatFileSize } from "@/lib/files";
 import { taskDateFormatterShort } from "@/lib/tasks";
-import { contentMatchesDeclaredType } from "@/lib/file-signature";
+import { ALLOWED_ATTACHMENT_TYPES, MAX_ATTACHMENT_SIZE, contentMatchesDeclaredType } from "@/lib/file-signature";
 import { notifiableEmailsFromContacts } from "@/lib/clients";
 
 const MAX_DOCUMENT_SIZE = 20 * 1024 * 1024;
@@ -34,7 +34,6 @@ const MAX_DELIVERABLE_SIZE = 50 * 1024 * 1024;
 // (~150 Mo) : on reste autour de 350 Mo sur les 512 Mo disponibles, avec de
 // la marge pour servir d'autres requêtes pendant l'envoi.
 const MAX_UPLOAD_TOTAL_SIZE = 80 * 1024 * 1024;
-const MAX_ATTACHMENT_SIZE = 20 * 1024 * 1024;
 // Marge de sécurité sous la limite réelle de Resend (~40 Mo par email, tout
 // compris) : l'encodage base64 des pièces jointes gonfle leur taille
 // d'environ un tiers, donc on plafonne bien en-dessous plutôt qu'au ras de
@@ -50,12 +49,6 @@ const ALLOWED_DELIVERABLE_TYPES = new Set([
   "video/mp4",
 ]);
 const ALLOWED_DOCUMENT_TYPES = new Set(["application/pdf"]);
-const ALLOWED_ATTACHMENT_TYPES = new Set([
-  "image/png",
-  "image/jpeg",
-  "image/webp",
-  "application/pdf",
-]);
 
 export type FileUploadState = { error?: string } | undefined;
 

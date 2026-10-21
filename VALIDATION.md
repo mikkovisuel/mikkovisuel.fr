@@ -1271,6 +1271,20 @@ Rejoué en appelant la tâche planifiée `/api/cron/invoice-reminders` en local 
 | Mobile | Largeur 390 px | ✅ Aucun défilement horizontal de la page | — | — | 2026-10-20 |
 | Actions retirées | Recherche d'usages de `updateProspectField` / `updateProspectReminderDate` | ✅ Aucun, supprimées ; types et lint OK | Test de sécurité des actions serveur | ✅ Toujours vert (aucune action sans garde) | 2026-10-21 |
 
+## Corrections de l'audit du code (2026-10-21)
+
+| Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |
+|---|---|---|---|---|---|
+| E-mails Resend | — | — | Envoi avec une clé Resend invalide (vrai appel) | ✅ Journal : succès = non, « API key is invalid » (avant : noté réussi) | 2026-10-21 |
+| Valider un BAT (client) | Tâche « À valider », clic « Valider » | ✅ Passe en « BAT validé », 1 ligne d'historique | Page ouverte, tâche passée « Terminé » entre-temps, clic « Valider » | ✅ Reste « Terminé », aucun historique ajouté | 2026-10-21 |
+| Refuser un BAT (client) | — | — | Même scénario, motif saisi, « Confirmer le refus » | ✅ « Cette tâche n'est plus en attente de validation. », statut inchangé | 2026-10-21 |
+| Connexion Gmail | Bouton « Connecter Gmail » | ✅ L'adresse Google contient `state` | Retour forgé (`code` sans `state`, ou `state` inventé) | ✅ Redirigé vers Réglages `gmail=error` | 2026-10-21 |
+| Pièces jointes client | Nouvelle demande avec un vrai PNG | ✅ Tâche créée, pièce `image/png` 70 o | Fichier HTML déclaré `image/png` | ✅ « le contenu du fichier ne correspond pas à son type déclaré » | 2026-10-21 |
+| Signature de devis | Admin, `?signature=1` | ✅ 200 `image/png` | Client propriétaire ; visiteur | ✅ 404 ; 403 | 2026-10-21 |
+| Paiement Stripe | Webhook signé, 150 € sur une facture de 150 € | ✅ Facture « payée » | 100 € payés sur une facture passée à 150 € ; signature fausse | ✅ Reste impayée + 1 alerte admin ; HTTP 400 | 2026-10-21 |
+| Accès aux fichiers | Tests : client propriétaire | ✅ Autorisé | Autre client, fichier caché, sans session ; document sans session (navigateur) | ✅ Refusés (4 tests) ; 403 | 2026-10-21 |
+| Vérifications | `npm run check` | ✅ Lint, types, 211 tests | — | — | 2026-10-21 |
+
 ## Points restant ouverts pour une prochaine passe de validation
 
 - Glisser-déposer et `<select>` natif du Kanban Prospection (limite outil, voir ci-dessus).
@@ -1362,3 +1376,4 @@ Rejoué en appelant la tâche planifiée `/api/cron/invoice-reminders` en local 
 - **Fiche client** (2026-10-20) : changement du logo dans sa nouvelle fenêtre, archivage et suppression depuis le menu ⋮ non rejoués (composants d'origine, déplacés) ; « Voir son espace client » non vu faute de contact avec espace actif.
 - **Écran d'une tâche** (2026-10-20) : l'alerte de capacité à l'échéance n'a pas été vue (pas de capacité saisie en local) ; dupliquer / archiver / supprimer depuis « ⋮ », validation/refus et verrou « avant de travailler » non rejoués (composants d'origine, déplacés).
 - **Prospection** (2026-10-20) : la modification groupée du statut et la suppression groupée n'ont pas été rejouées après la refonte (code inchangé) ; Recherche IA dans sa fenêtre non lancée (coût d'API).
+- **Audit 2026-10-21** : l'IP retenue derrière Scalingo (dernière valeur de `X-Forwarded-For`) n'a pas été vérifiée en production ; la connexion Gmail complète avec un vrai compte Google n'a pas été rejouée (seuls le départ avec `state` et le refus d'un retour forgé l'ont été) ; la pastille d'accent du bloc « Aujourd'hui » et le lien « Signé » vus en code seulement.

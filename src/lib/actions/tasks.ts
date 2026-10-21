@@ -14,14 +14,8 @@ import { isTaskOverdue, taskDateFormatter } from "@/lib/tasks";
 import { notifiableEmails, notifiableEmailsFromContacts } from "@/lib/clients";
 import { isWorkLocked } from "@/lib/payment-locks";
 import { importTaskDeliverablesIntoLinkedPosts } from "@/lib/social-task-link";
+import { ALLOWED_ATTACHMENT_TYPES, MAX_ATTACHMENT_SIZE, contentMatchesDeclaredType } from "@/lib/file-signature";
 
-const MAX_ATTACHMENT_SIZE = 20 * 1024 * 1024;
-const ALLOWED_ATTACHMENT_TYPES = new Set([
-  "image/png",
-  "image/jpeg",
-  "image/webp",
-  "application/pdf",
-]);
 import {
   TASK_FORMAT_LIST_KEY,
   TASK_STATUS,
@@ -124,6 +118,7 @@ export async function createTaskByClient(
   const attachmentFiles = formData
     .getAll("attachments")
     .filter((f): f is File => f instanceof File && f.size > 0);
+  const buffers = new Map<File, Buffer>();
   for (const file of attachmentFiles) {
     if (file.size > MAX_ATTACHMENT_SIZE) {
       return { error: `"${file.name}" est trop volumineux (20 Mo maximum).` };
@@ -131,6 +126,12 @@ export async function createTaskByClient(
     if (!ALLOWED_ATTACHMENT_TYPES.has(file.type)) {
       return { error: `"${file.name}" : type de fichier non autorisé.` };
     }
+    const buffer = Buffer.from(await file.arrayBuffer());
+    // Le type annoncé par le navigateur ne suffit pas : on regarde le contenu.
+    if (!(await contentMatchesDeclaredType(buffer, file.type))) {
+      return { error: `"${file.name}" : le contenu du fichier ne correspond pas à son type déclaré.` };
+    }
+    buffers.set(file, buffer);
   }
 
   const [statusItem, typeIds, formatIds] = await Promise.all([
@@ -166,8 +167,7 @@ export async function createTaskByClient(
   await Promise.all(
     attachmentFiles.map(async (file) => {
       const storageKey = `attachments/${randomUUID()}`;
-      const buffer = Buffer.from(await file.arrayBuffer());
-      await storage.save(storageKey, buffer);
+      await storage.save(storageKey, buffers.get(file)!);
 
       await db.attachment.create({
         data: {
@@ -550,8 +550,10 @@ export async function validateTask(taskId: string) {
   const clientUser = await verifyClientSession();
   assertNotDemo(clientUser);
 
-  const task = await db.task.findUnique({ where: { id: taskId }, include: { deliverables: true } });
+  const task = await db.task.findUnique({ where: { id: taskId }, include: { deliverables: true, status: true } });
   if (!task || task.clientId !== clientUser.clientId || task.internal) return;
+  // Page restée ouverte ou double clic : on ne valide qu'une tâche « À valider ».
+  if (task.status.slug !== TASK_STATUS.A_VALIDER) return;
 
   const statusItem = await getStatusItem(TASK_STATUS.BAT_VALIDE);
   const validatedAt = new Date();
@@ -683,9 +685,12 @@ export async function refuseTask(
     return { error: parsed.error.issues[0]?.message ?? "Le motif est requis." };
   }
 
-  const task = await db.task.findUnique({ where: { id: taskId } });
+  const task = await db.task.findUnique({ where: { id: taskId }, include: { status: true } });
   if (!task || task.clientId !== clientUser.clientId || task.internal) {
     return { error: "Tâche introuvable." };
+  }
+  if (task.status.slug !== TASK_STATUS.A_VALIDER) {
+    return { error: "Cette tâche n'est plus en attente de validation." };
   }
 
   const statusItem = await getStatusItem(TASK_STATUS.A_MODIFIER);

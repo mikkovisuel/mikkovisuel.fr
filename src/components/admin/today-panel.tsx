@@ -173,7 +173,7 @@ function Row({
     <li>
       <Link href={href} className="ws-row flex items-center gap-3 px-5 hover:bg-ink/[0.03]">
         <span className="flex w-5 shrink-0 justify-center" aria-hidden>
-          <span className={`h-2 w-2 rounded-full ${late ? "bg-red-600" : "bg-blue-600"}`} />
+          <span className={`h-2 w-2 rounded-full ${late ? "bg-red-600" : "bg-accent"}`} />
         </span>
         <span className="w-[4.5rem] shrink-0 text-xs text-ink-muted">{kind}</span>
         <span className="min-w-0 flex-1 truncate text-sm text-ink">

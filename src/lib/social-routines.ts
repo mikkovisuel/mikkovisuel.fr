@@ -15,7 +15,6 @@ export const ROUTINE_CADENCES = [
   { slug: "monthly_weekday", label: "Chaque mois, le Nième jour" },
 ] as const;
 
-export type RoutineCadence = (typeof ROUTINE_CADENCES)[number]["slug"];
 
 export const MONTH_WEEKS = [
   { value: 1, label: "1er" },

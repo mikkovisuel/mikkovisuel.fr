@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { clientOwnsFile } from "@/lib/file-access";
 import { getAdminSession, getClientSession } from "@/lib/dal";
 import { db } from "@/lib/db";
 import { getStorageAdapter } from "@/lib/storage";
@@ -30,7 +31,7 @@ export async function GET(
   }
 
   const [admin, clientUser] = await Promise.all([getAdminSession(), getClientSession()]);
-  const isOwner = clientUser?.clientId === clientId;
+  const isOwner = clientOwnsFile(clientUser, { clientId });
   if (!admin && !isOwner) {
     return new NextResponse(null, { status: 403 });
   }

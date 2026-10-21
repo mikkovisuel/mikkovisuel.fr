@@ -124,7 +124,10 @@ export function DocumentRow({
         {document.type.slug === DOCUMENT_TYPE.DEVIS && document.acceptedAt && (
           <p className="mt-1 text-sm text-emerald-700 dark:text-emerald-400">
             Accepté et signé le {SENT_AT_FORMATTER.format(document.acceptedAt)}
-            {document.acceptedByName && ` par ${document.acceptedByName}`}
+            {document.acceptedByName && ` par ${document.acceptedByName}`} ·{" "}
+            <a href={`/api/fichiers/documents/${document.id}?signature=1`} target="_blank" rel="noopener" className="underline">
+              voir la signature
+            </a>
           </p>
         )}
       </div>

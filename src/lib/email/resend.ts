@@ -6,7 +6,8 @@ const FROM_ADDRESS = "Mikko Visuel <no-reply@mikkovisuel.fr>";
 
 export async function sendWithResend(input: SendEmailInput) {
   const resend = new Resend(process.env.RESEND_API_KEY);
-  await resend.emails.send({
+  // Resend ne lève pas d'erreur en cas de refus : il renvoie `{ error }`.
+  const { error } = await resend.emails.send({
     from: FROM_ADDRESS,
     to: input.to,
     ...(input.cc ? { cc: input.cc } : {}),
@@ -17,4 +18,5 @@ export async function sendWithResend(input: SendEmailInput) {
       content: attachment.content,
     })),
   });
+  if (error) throw new Error(error.message);
 }
