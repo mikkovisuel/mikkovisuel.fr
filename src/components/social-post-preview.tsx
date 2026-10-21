@@ -13,6 +13,8 @@ const CAPTION_PREVIEW_LENGTH = 125; // coupure "… plus" d'Instagram dans le fi
 interface PreviewMedia {
   id: string;
   mimeType: string;
+  /** Adresse de l'image si elle n'est pas encore enregistrée (aperçu en direct). */
+  url?: string;
 }
 
 export function SocialPostPreview({
@@ -45,7 +47,7 @@ export function SocialPostPreview({
         {cover?.mimeType.startsWith("image/") ? (
           // eslint-disable-next-line @next/next/no-img-element -- fichier servi par une route authentifiée
           <img
-            src={`/api/fichiers/reseaux/${cover.id}?thumb=1`}
+            src={cover.url ?? `/api/fichiers/reseaux/${cover.id}?thumb=1`}
             alt=""
             className="h-full w-full object-cover"
           />

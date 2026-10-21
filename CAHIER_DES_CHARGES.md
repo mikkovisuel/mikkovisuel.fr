@@ -2850,6 +2850,34 @@ affichée. Le pointillé disparaît quand la vraie action est créée (occurrenc
 déjà traitée). Rangé sous « Routines prévues » (case à décocher dans le
 panneau) ; un clic ouvre la page des routines.
 
+### 4.26 Éditeur de publication façon Meta Business Suite (2026-10-21)
+
+Demandes : « redesign de la page d'édition des posts, il faudrait dès la
+création du post pouvoir mettre les visuels » puis « possible de proposer de
+créer un texte par rapport à l'image ». Choix du client sur maquettes :
+mise en page « A · façon Meta Business Suite », bouton « Enregistrer ».
+
+- **Même éditeur pour créer et modifier** : en tête client (création),
+  réseaux et format ; titre ; **visuels** (glisser-déposer ou « Ajouter »,
+  ordre par flèches, 1er = couverture, retrait) ; texte avec un onglet
+  « Commun » et un par réseau (remplace l'encart « Adapter le texte par
+  réseau ») ; hashtags et groupes du client. À droite : **aperçu Instagram
+  en direct** (visuels et texte au fil de la saisie), puis date, catégorie,
+  attribution, demande de création et bouton.
+- **Visuels dès la création** : gardés dans le navigateur jusqu'à « Créer la
+  publication », vérifiés (taille, format, contenu réel) avant que la
+  publication soit créée, puis enregistrés dans l'ordre. Sur une
+  publication existante, chaque dépôt est envoyé tout de suite.
+- **Texte d'après les visuels** : « Proposer un texte d'après les visuels »
+  envoie jusqu'à 4 images (réduites à 1 024 px dans le navigateur) avec le
+  titre, le texte déjà saisi et le ton du client ; Claude décrit ce qui est
+  visible et laisse des repères entre crochets pour le reste. Proposition
+  seulement : « Utiliser ce texte » / « Ajouter ces hashtags » / « Ignorer ».
+  Les vidéos ne sont pas envoyées.
+- Fiche d'une publication : l'éditeur passe en tête ; suivi, kit de
+  publication, comparaison des versions, création demandée, notes, échange
+  avec le client et duplication restent en dessous.
+
 ## Passe de nettoyage du code (2026-09-22)
 
 Demande du client : "fais une passe globale sur le code et nettoie tout,
@@ -3625,3 +3653,4 @@ Le client a explicitement délégué ces choix :
 | 2026-10-21 | "Mettre un chat Claude dans mon appli utilisant Sonnet" — niveau 3 (agit), toutes les familles d'actions, historique par admin, panneau et page | **Livré** : assistant Sonnet 5.5 (panneau barre du haut + rubrique Assistant), lectures automatiques, actions après confirmation, journal d'audit, historique par admin (section 4.23). |
 | 2026-10-21 | "Inclure un onglet et gérer l'intégralité de mes mails, avec toutes les fonctions de Gmail" — retenu : boîte et lecture, écrire / répondre, ranger, liens avec l'admin ; maquette validée | **Livré** : rubrique Mail (dossiers, libellés, recherche, actions groupées, conversation, réponse / transfert / brouillons / pièces jointes, liens client-prospect-tâche-note-assistant) ; droit Gmail « modify » à accorder en reconnectant Gmail (section 4.24). |
 | 2026-10-21 | "Lorsque je crée une routine, je ne vois pas les actions dans le calendrier (réseaux)" | **Corrigé** : actions prévues des routines affichées en pointillés dans le calendrier (routines client et internes), jusqu'à la création de la vraie action (section 4.25). |
+| 2026-10-21 | "Redesign de la page d'édition des posts, pouvoir mettre les visuels dès la création" + "proposer de créer un texte par rapport à l'image" — choix : A façon Meta Business Suite, bouton Enregistrer | **Livré** : éditeur unique (visuels en tête dès la création, onglets de texte par réseau, aperçu en direct, détails à droite) ; proposition de texte par l'IA d'après les visuels (section 4.26). |

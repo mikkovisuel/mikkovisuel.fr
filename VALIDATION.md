@@ -1333,6 +1333,15 @@ Rejoué en appelant la tâche planifiée `/api/cron/invoice-reminders` en local 
 | Routine client avec avance | « Chaque vendredi 18 h », action 2 jours avant | ✅ Pointillé le mercredi 28 oct. (pour le 30) ; 4 en novembre | Occurrence déjà traitée (vraie action posée) | ✅ Vraie action le 21 oct., pas de pointillé en double | 2026-10-21 |
 | Affichage | — | — | « Routines prévues » décoché | ✅ Pointillés masqués, vraie action toujours visible | 2026-10-21 |
 
+## Éditeur de publication (2026-10-21)
+
+| Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |
+|---|---|---|---|---|---|
+| Visuels à la création | 2 images déposées puis « Créer la publication » | ✅ 2 vignettes + aperçu en direct ; publication créée avec affiche.png (0) puis lineup.png (1) | Faux PNG (page HTML renommée) | ✅ « le contenu du fichier ne correspond pas à son type déclaré », aucune publication créée | 2026-10-21 |
+| Texte d'après les visuels | Vrai appel Claude avec 2 images texte (« SOIRÉE DJ / SAMEDI 24/10 / 21H », « BOKAO / LINE-UP ») | ✅ Légende reprenant date, heure, couleurs, repères [heure de fin] [adresse] [tarif] ; « Utiliser ce texte » remplit le texte commun | — | — | 2026-10-21 |
+| Visuels sur une publication existante | Dépôt d'une 3e image sur la fiche | ✅ Ajoutée tout de suite (3 vignettes, « 1/3 » dans l'aperçu) | — | — | 2026-10-21 |
+| Téléphone | Fiche avec 3 visuels, 390 px | ✅ Aucun défilement horizontal (après correctif : la rangée de visuels élargissait la page à 453 px) | — | — | 2026-10-21 |
+
 ## Points restant ouverts pour une prochaine passe de validation
 
 - Glisser-déposer et `<select>` natif du Kanban Prospection (limite outil, voir ci-dessus).
@@ -1428,3 +1437,4 @@ Rejoué en appelant la tâche planifiée `/api/cron/invoice-reminders` en local 
 - **Notes 2026-10-21** : glisser-déposer testé par évènements simulés dans Chrome, pas à la souris ; création d'une note par le survol d'un dossier et passage arborescence → éditeur → retour sur téléphone non rejoués.
 - **Assistant 2026-10-21** : seules les actions « créer une tâche », « créer une note » (carte) et « marquer une facture payée » (annulée) ont été rejouées ; les autres (modifier tâche / prospect, action et brouillon réseaux, relance de paiement par e-mail) sont vérifiées par compilation seulement. Comportement derrière le routeur Scalingo (réponses longues) non observé en production.
 - **Onglet Mail 2026-10-21** : aucune boîte Gmail connectée en local ; liste, lecture, rangement, envoi, transfert avec pièces jointes, brouillons, création de tâche / note et lecture d'e-mail par l'assistant sont à valider en production avec la vraie boîte, après reconnexion de Gmail.
+- **Éditeur de publication 2026-10-21** : réordonner et retirer un visuel (création et fiche), onglets de texte par réseau et enregistrement d'une modification vérifiés par compilation seulement ; dépôt d'une vidéo MP4 non rejoué.

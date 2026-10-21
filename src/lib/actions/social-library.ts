@@ -128,6 +128,7 @@ export async function suggestSocialCaption(input: {
   format: string;
   networks: string[];
   draft: string;
+  images?: { mediaType: "image/jpeg"; data: string }[];
 }): Promise<{ suggestion?: CaptionSuggestion; error?: string }> {
   await verifyAdminSession();
   if (!process.env.ANTHROPIC_API_KEY) {
@@ -157,6 +158,7 @@ export async function suggestSocialCaption(input: {
       networks: parsed.data.networks,
       draft: parsed.data.draft,
       hashtagSets: client.socialLibrary,
+      images: parsed.data.images,
     });
     return { suggestion };
   } catch (error) {

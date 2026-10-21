@@ -45,4 +45,10 @@ export const SocialCaptionRequestSchema = z.object({
   format: z.enum(FORMAT_SLUGS),
   networks: z.array(z.enum(NETWORK_SLUGS)).max(4),
   draft: z.string().trim().max(4000, { message: "Brouillon trop long (4 000 caractères maximum)." }),
+  // Visuels (2026-10-21, « proposer un texte par rapport à l'image ») :
+  // réduits en JPEG dans le navigateur avant l'envoi.
+  images: z
+    .array(z.object({ mediaType: z.literal("image/jpeg"), data: z.string().max(3_000_000) }))
+    .max(4)
+    .optional(),
 });

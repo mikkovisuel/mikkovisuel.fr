@@ -40,10 +40,7 @@ export default async function NewSocialPostPage({
     <>
       <PageToolbar title="Nouvelle publication" back={{ href: "/admin/reseaux", label: "Retour aux réseaux sociaux" }} />
       <div className={PAGE_BODY}>
-        <p className="text-sm text-ink-muted">
-          Les visuels s&apos;ajoutent juste après, sur la fiche de la publication.
-        </p>
-        <div className="mt-8 max-w-5xl">
+        <div className="max-w-7xl">
           <SocialPostForm
             action={createSocialPost}
             clients={clients}

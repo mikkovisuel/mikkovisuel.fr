@@ -150,6 +150,11 @@ export async function createSocialPost(
   if ("error" in assignee) return { error: assignee.error };
   const assignedAdminId = assignee.value === undefined ? admin.id : assignee.value;
 
+  // Visuels ajoutés dès la création (2026-10-21) : vérifiés avant de créer.
+  const mediaFiles = formData.getAll("media").filter((f): f is File => f instanceof File && f.size > 0);
+  const media = mediaFiles.length > 0 ? await readMediaFiles(mediaFiles) : { items: [] };
+  if ("error" in media) return { error: media.error };
+
   const post = await db.socialPost.create({
     data: {
       clientId,
@@ -171,6 +176,11 @@ export async function createSocialPost(
     assigneeId: assignedAdminId,
     byAdmin: { id: admin.id, email: admin.email },
   });
+
+  if (media.items.length > 0) {
+    // Panne de stockage : la publication existe, les visuels se rajoutent depuis sa fiche.
+    await storeMedia(post.id, media.items, 0).catch((error) => console.error("createSocialPost: visuels non enregistrés", error));
+  }
 
   if (requestTask) {
     const result = await createInternalTaskForPost({
@@ -468,23 +478,10 @@ export async function deleteSocialPost(postId: string) {
   redirect("/admin/reseaux");
 }
 
-class InvalidMediaContentError extends Error {
-  constructor(readonly fileName: string) {
-    super(`Invalid content for ${fileName}`);
-    this.name = "InvalidMediaContentError";
-  }
-}
-
-export async function uploadSocialPostMedia(
-  postId: string,
-  _prev: FileUploadState,
-  formData: FormData,
-): Promise<FileUploadState> {
-  await verifyAdminSession();
-
-  const files = formData.getAll("file").filter((f): f is File => f instanceof File && f.size > 0);
-  if (files.length === 0) return { error: "Choisissez au moins un fichier." };
-
+// Visuels d'une publication : validés en entier (taille, type, contenu réel)
+// avant le moindre enregistrement — utilisé à l'ajout sur la fiche et, depuis
+// le 2026-10-21, dès la création de la publication.
+async function readMediaFiles(files: File[]): Promise<{ error: string } | { items: { file: File; buffer: Buffer }[] }> {
   // Validation sur les métadonnées seules, avant de lire le moindre octet en
   // mémoire — même ordre que uploadDeliverable.
   let totalSize = 0;
@@ -502,6 +499,49 @@ export async function uploadSocialPostMedia(
       error: `Envoi trop volumineux au total (${formatFileSize(totalSize)}, ${formatFileSize(MAX_UPLOAD_TOTAL_SIZE)} maximum) — envoyez-les en plusieurs fois.`,
     };
   }
+  const items = await Promise.all(files.map(async (file) => ({ file, buffer: Buffer.from(await file.arrayBuffer()) })));
+  for (const item of items) {
+    if (!(await contentMatchesDeclaredType(item.buffer, item.file.type))) {
+      return { error: `"${item.file.name}" : le contenu du fichier ne correspond pas à son type déclaré.` };
+    }
+  }
+  return { items };
+}
+
+/** Enregistre des visuels déjà validés, à la suite (l'ordre d'envoi fait foi pour un carrousel). */
+async function storeMedia(postId: string, items: { file: File; buffer: Buffer }[], startOrder: number) {
+  const storage = getStorageAdapter();
+  await Promise.all(
+    items.map(async ({ file, buffer }, index) => {
+      const storageKey = `social-posts/${randomUUID()}`;
+      await storage.save(storageKey, buffer);
+      await db.socialPostMedia.create({
+        data: {
+          postId,
+          fileName: file.name,
+          storageKey,
+          mimeType: file.type,
+          sizeBytes: file.size,
+          storageBackend: storage.backend,
+          sortOrder: startOrder + index,
+        },
+      });
+    }),
+  );
+}
+
+export async function uploadSocialPostMedia(
+  postId: string,
+  _prev: FileUploadState,
+  formData: FormData,
+): Promise<FileUploadState> {
+  await verifyAdminSession();
+
+  const files = formData.getAll("file").filter((f): f is File => f instanceof File && f.size > 0);
+  if (files.length === 0) return { error: "Choisissez au moins un fichier." };
+
+  const media = await readMediaFiles(files);
+  if ("error" in media) return { error: media.error };
 
   const post = await db.socialPost.findUnique({
     where: { id: postId },
@@ -509,36 +549,9 @@ export async function uploadSocialPostMedia(
   });
   if (!post) return { error: "Publication introuvable." };
 
-  const storage = getStorageAdapter();
-  const startOrder = (post.media[0]?.sortOrder ?? -1) + 1;
-
   try {
-    await Promise.all(
-      files.map(async (file, index) => {
-        const buffer = Buffer.from(await file.arrayBuffer());
-        if (!(await contentMatchesDeclaredType(buffer, file.type))) {
-          throw new InvalidMediaContentError(file.name);
-        }
-        const storageKey = `social-posts/${randomUUID()}`;
-        await storage.save(storageKey, buffer);
-        await db.socialPostMedia.create({
-          data: {
-            postId,
-            fileName: file.name,
-            storageKey,
-            mimeType: file.type,
-            sizeBytes: file.size,
-            storageBackend: storage.backend,
-            // L'ordre d'envoi fait foi pour un carrousel.
-            sortOrder: startOrder + index,
-          },
-        });
-      }),
-    );
+    await storeMedia(postId, media.items, (post.media[0]?.sortOrder ?? -1) + 1);
   } catch (error) {
-    if (error instanceof InvalidMediaContentError) {
-      return { error: `"${error.fileName}" : le contenu du fichier ne correspond pas à son type déclaré.` };
-    }
     console.error("uploadSocialPostMedia failed", error);
     return {
       error:

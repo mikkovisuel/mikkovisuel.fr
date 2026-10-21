@@ -11,8 +11,6 @@ import { DeleteButton } from "@/components/admin/delete-button";
 import { SocialPostForm } from "@/components/admin/social-post-form";
 import { SocialPostWorkflow } from "@/components/admin/social-post-workflow";
 import { SocialPostStateToggles } from "@/components/admin/social-post-state-toggles";
-import { SocialPostMediaManager } from "@/components/admin/social-post-media-manager";
-import { SocialPostPreview } from "@/components/social-post-preview";
 import { updateSocialPost, deleteSocialPost } from "@/lib/actions/social-posts";
 import { loadSocialFormLists, loadSocialLibraries } from "@/lib/social-library";
 import {
@@ -170,6 +168,38 @@ export default async function SocialPostDetailPage({ params }: { params: Promise
           </p>
         )}
 
+        {/* Éditeur façon Meta Business Suite (refonte du 2026-10-21) : visuels,
+            texte et aperçu en tête de fiche ; le suivi et le reste en dessous. */}
+        {(post.status === "a_valider" || post.status === "valide") && (
+          <p className="mt-6 text-xs text-ink-muted">
+            Le client a déjà vu ou validé cette version : une modification importante mérite un nouvel envoi en validation.
+          </p>
+        )}
+        <div className="mt-6">
+          <SocialPostForm
+            action={updateSocialPost.bind(null, post.id)}
+            clientId={post.clientId}
+            clientName={post.client.name}
+            postId={post.id}
+            media={post.media.map((item) => ({ id: item.id, fileName: item.fileName, mimeType: item.mimeType }))}
+            libraries={await loadSocialLibraries([post.clientId])}
+            categories={categories}
+            admins={admins}
+            defaultAssigneeId={post.assignedAdminId}
+            defaultValues={{
+              categoryId: post.categoryId ?? undefined,
+              captionVariants: readCaptionVariants(post.captionVariants),
+              title: post.title,
+              networks: post.networks,
+              format: post.format,
+              caption: post.caption ?? "",
+              hashtags: post.hashtags ?? "",
+              scheduledAt: toParisDateTimeLocal(post.scheduledAt),
+            }}
+            submitLabel="Enregistrer"
+          />
+        </div>
+
         {/* Deux colonnes sur grand écran, comme la fiche tâche : le travail
             (suivi, contenu, visuels) à gauche, le contexte (aperçu, création
             demandée, notes) à droite. Une seule colonne en dessous. */}
@@ -224,59 +254,8 @@ export default async function SocialPostDetailPage({ params }: { params: Promise
                 </div>
               </section>
             )}
-            <section className={SECTION}>
-              <h2 className={SECTION_TITLE}>Contenu</h2>
-              {(post.status === "a_valider" || post.status === "valide") && (
-                <p className="mt-2 text-xs text-ink-muted">
-                  Le client a déjà vu ou validé cette version : une modification importante mérite un nouvel envoi en
-                  validation.
-                </p>
-              )}
-              <div className="mt-4">
-                <SocialPostForm
-                  action={updateSocialPost.bind(null, post.id)}
-                  clientId={post.clientId}
-                  libraries={await loadSocialLibraries([post.clientId])}
-                  categories={categories}
-                  admins={admins}
-                  defaultAssigneeId={post.assignedAdminId}
-                  defaultValues={{
-                    categoryId: post.categoryId ?? undefined,
-                    captionVariants: readCaptionVariants(post.captionVariants),
-                    title: post.title,
-                    networks: post.networks,
-                    format: post.format,
-                    caption: post.caption ?? "",
-                    hashtags: post.hashtags ?? "",
-                    scheduledAt: toParisDateTimeLocal(post.scheduledAt),
-                  }}
-                  submitLabel="Enregistrer"
-                />
-              </div>
-            </section>
-            <section className={SECTION}>
-              <h2 className={SECTION_TITLE}>Visuels ({post.media.length})</h2>
-              <div className="mt-4">
-                <SocialPostMediaManager
-                  postId={post.id}
-                  media={post.media.map((item) => ({ id: item.id, fileName: item.fileName, mimeType: item.mimeType }))}
-                />
-              </div>
-            </section>
           </div>
           <div className="grid min-w-0 grid-cols-1 gap-6">
-            <section className={SECTION}>
-              <h2 className={SECTION_TITLE}>Aperçu</h2>
-              <p className="mt-1 text-xs text-ink-muted">Rendu approximatif dans un fil Instagram — c&apos;est aussi ce que voit le client.</p>
-              <div className="mt-4 flex justify-center">
-                <SocialPostPreview
-                  clientName={post.client.name}
-                  caption={captionForNetwork(post, "instagram")}
-                  hashtags={post.hashtags}
-                  media={post.media.map((item) => ({ id: item.id, mimeType: item.mimeType }))}
-                />
-              </div>
-            </section>
             <section className={SECTION}>
               <h2 className={SECTION_TITLE}>Création</h2>
               {requestedTask ? (

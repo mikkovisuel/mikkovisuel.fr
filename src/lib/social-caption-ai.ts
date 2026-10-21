@@ -29,6 +29,8 @@ export interface CaptionBrief {
   draft: string;
   /** Groupes de hashtags du client, pour rester cohérent avec l'existant. */
   hashtagSets: { name: string; content: string }[];
+  /** Visuels de la publication (JPEG en base64), décrits par le modèle. */
+  images?: { mediaType: "image/jpeg"; data: string }[];
 }
 
 const SYSTEM_PROMPT = `Tu es community manager pour une agence de graphisme française (Mikko Visuel). Tu rédiges des légendes de publications pour les réseaux sociaux de ses clients, en français.
@@ -36,6 +38,7 @@ const SYSTEM_PROMPT = `Tu es community manager pour une agence de graphisme fran
 - Respecte à la lettre le ton de la marque et la ligne éditoriale fournis : ils priment sur tes habitudes.
 - Adapte la longueur et le style au format et aux réseaux (accroche forte en première ligne pour Instagram et TikTok, plus posé pour LinkedIn).
 - Si un brouillon ou des notes sont fournis, garde toutes les informations factuelles (dates, lieux, prix, noms) sans en inventer d'autres. N'invente jamais une information absente du brief : laisse plutôt un repère entre crochets, par ex. [horaire].
+- Si des visuels sont joints, appuie-toi sur ce qu'ils montrent réellement (sujet, ambiance, couleurs, texte lisible sur l'image) pour écrire la légende ; ne devine pas ce qui n'est pas visible.
 - "caption" : le texte de la légende seul, sans hashtags.
 - "hashtags" : 5 à 15 hashtags pertinents séparés par des espaces, en réutilisant en priorité ceux des groupes du client quand ils correspondent au sujet.`;
 
@@ -55,7 +58,11 @@ export async function suggestCaption(brief: CaptionBrief): Promise<CaptionSugges
     `Format : ${formatLabel(brief.format)}`,
     `Réseaux : ${brief.networks.map(networkLabel).join(", ") || "non précisés"}`,
     `Sujet de la publication : ${brief.title}`,
-    brief.draft ? `Brouillon / notes :\n${brief.draft}` : "Pas de brouillon : rédige à partir du sujet.",
+    brief.draft
+      ? `Brouillon / notes :\n${brief.draft}`
+      : brief.images?.length
+        ? "Pas de brouillon : rédige à partir des visuels joints et du sujet."
+        : "Pas de brouillon : rédige à partir du sujet.",
     brief.hashtagSets.length > 0
       ? `Groupes de hashtags du client :\n${brief.hashtagSets.map((set) => `- ${set.name} : ${set.content}`).join("\n")}`
       : "",
@@ -72,7 +79,18 @@ export async function suggestCaption(brief: CaptionBrief): Promise<CaptionSugges
     fallbacks: "default",
     output_config: { effort: "medium", format: betaZodOutputFormat(SuggestionSchema) },
     system: SYSTEM_PROMPT,
-    messages: [{ role: "user", content: context }],
+    messages: [
+      {
+        role: "user",
+        content: [
+          ...(brief.images ?? []).map((image) => ({
+            type: "image" as const,
+            source: { type: "base64" as const, media_type: image.mediaType, data: image.data },
+          })),
+          { type: "text" as const, text: context },
+        ],
+      },
+    ],
   });
 
   if (response.stop_reason === "refusal") {
