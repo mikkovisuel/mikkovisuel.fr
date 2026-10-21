@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, useSyncExternalStore, type DragEvent, type ReactNode } from "react";
 import {
   Plus,
   MagnifyingGlass,
@@ -13,6 +13,9 @@ import {
   X,
   NotePencil,
   CaretLeft,
+  CaretDown,
+  CaretRight,
+  Tray,
   Bell,
   FilePdf,
 } from "@phosphor-icons/react";
@@ -55,8 +58,6 @@ export interface ProspectOption {
   name: string;
 }
 
-type View = { type: "all" } | { type: "pinned" } | { type: "reminders" } | { type: "folder"; folderId: string };
-
 // Comparaison par date calendaire locale (année/mois/jour), pas par
 // timestamp brut — un rappel posé pour "aujourd'hui" est stocké en minuit
 // UTC (`new Date("2026-07-24")`), qui ne tombe pas au même instant que
@@ -92,11 +93,55 @@ function formatReminderDate(iso: string) {
   return new Date(iso).toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
 }
 
-// En dessous de `md`, les 3 colonnes n'ont pas la place de coexister : on
-// n'affiche qu'un panneau à la fois façon Apple Notes sur iPhone (dossiers
-// -> notes -> édition, avec retour). À partir de `md`, ignoré : les 3
-// colonnes restent côte à côte comme sur desktop.
-type MobilePane = "folders" | "list" | "editor";
+// Arborescence (refonte du 2026-10-21, choix du client sur maquette) : deux
+// colonnes au lieu de trois. À gauche, les dossiers se déplient avec un
+// petit triangle pour montrer leurs notes (plus de colonne « liste » à part),
+// précédés des groupes Épinglées et Rappels et suivis de « Sans dossier ».
+// Une note se range en la faisant glisser sur un dossier (ou avec le menu
+// du dossier dans l'éditeur). Dossiers ouverts / fermés mémorisés dans le
+// navigateur. Sur téléphone : l'arborescence, puis l'éditeur, avec retour.
+type MobilePane = "tree" | "editor";
+
+const OPEN_KEY = "notes-open-groups";
+const OPEN_EVENT = "notes-open-groups-change";
+// Repli en mémoire si le stockage du navigateur est indisponible.
+let memoryOpen: string | null = null;
+
+function readOpenGroups() {
+  try {
+    return localStorage.getItem(OPEN_KEY) ?? memoryOpen;
+  } catch {
+    return memoryOpen;
+  }
+}
+
+function writeOpenGroups(ids: string[]) {
+  const value = JSON.stringify(ids);
+  memoryOpen = value;
+  try {
+    localStorage.setItem(OPEN_KEY, value);
+  } catch {}
+  window.dispatchEvent(new Event(OPEN_EVENT));
+}
+
+function subscribeOpenGroups(callback: () => void) {
+  window.addEventListener(OPEN_EVENT, callback);
+  window.addEventListener("storage", callback);
+  return () => {
+    window.removeEventListener(OPEN_EVENT, callback);
+    window.removeEventListener("storage", callback);
+  };
+}
+const UNFILED = "__sans-dossier";
+const PINNED = "__epinglees";
+const REMINDERS = "__rappels";
+
+function sortNotes(list: NoteData[]) {
+  return [...list].sort((a, b) => {
+    if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
+    return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+  });
+}
 
 const SAVE_DELAY_MS = 600;
 
@@ -131,19 +176,38 @@ export function NotesApp({
 }) {
   const [folders, setFolders] = useState(initialFolders);
   const [notes, setNotes] = useState(initialNotes);
-  const [view, setView] = useState<View>({ type: "all" });
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(initialNotes[0]?.id ?? null);
-  const [mobilePane, setMobilePane] = useState<MobilePane>("folders");
+  const [mobilePane, setMobilePane] = useState<MobilePane>("tree");
   const [search, setSearch] = useState("");
-  // Encodé "client:<id>" / "prospect:<id>" / "" (aucun) — une note se
-  // rattache à l'un ou l'autre, jamais les deux (ajouté le 2026-07-31), donc
-  // un seul filtre/sélecteur suffit plutôt que deux menus indépendants. Voir
-  // `decodeAssignment`/`assignmentValue`.
+  // Encodé "client:<id>" / "prospect:<id>" / "" (aucun) — voir `decodeAssignment`.
   const [assignmentFilter, setAssignmentFilter] = useState<string>("");
   const [isAddingFolder, setIsAddingFolder] = useState(false);
   const [newFolderName, setNewFolderName] = useState("");
   const [editingFolderId, setEditingFolderId] = useState<string | null>(null);
   const [editingFolderName, setEditingFolderName] = useState("");
+  const [dropTarget, setDropTarget] = useState<string | null>(null);
+  // Groupes dépliés, mémorisés dans le navigateur. Par défaut (rien
+  // d'enregistré) : tous les dossiers et « Sans dossier ».
+  const savedOpen = useSyncExternalStore(subscribeOpenGroups, readOpenGroups, () => null);
+  const open = useMemo(() => {
+    try {
+      if (savedOpen) return new Set(JSON.parse(savedOpen) as string[]);
+    } catch {}
+    return new Set([...folders.map((f) => f.id), UNFILED]);
+  }, [savedOpen, folders]);
+
+  function setOpen(update: (prev: Set<string>) => Set<string>) {
+    writeOpenGroups([...update(open)]);
+  }
+
+  function toggleGroup(id: string) {
+    setOpen((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }
 
   const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
 
@@ -171,15 +235,9 @@ export function NotesApp({
     }
   }
 
-  const visibleNotes = useMemo(() => {
+  // Notes après recherche et filtre client / prospect.
+  const filteredNotes = useMemo(() => {
     let result = notes;
-    if (view.type === "pinned") {
-      result = result.filter((note) => note.pinned);
-    } else if (view.type === "reminders") {
-      result = result.filter((note) => note.reminderAt !== null);
-    } else if (view.type === "folder") {
-      result = result.filter((note) => note.folderId === view.folderId);
-    }
     if (assignmentFilter) {
       const { clientId, prospectId } = decodeAssignment(assignmentFilter);
       result = result.filter(
@@ -189,23 +247,12 @@ export function NotesApp({
     }
     const query = search.trim().toLowerCase();
     if (query) {
-      result = result.filter((note) => {
-        const haystack = `${note.title} ${snippet(note.content)}`.toLowerCase();
-        return haystack.includes(query);
-      });
+      result = result.filter((note) => `${note.title} ${snippet(note.content)}`.toLowerCase().includes(query));
     }
-    if (view.type === "reminders") {
-      // Rappel le plus proche en premier, plutôt que le tri épinglées/récence
-      // habituel — c'est une file d'attente par échéance, pas par activité.
-      return [...result].sort(
-        (a, b) => new Date(a.reminderAt!).getTime() - new Date(b.reminderAt!).getTime(),
-      );
-    }
-    return [...result].sort((a, b) => {
-      if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
-      return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
-    });
-  }, [notes, view, assignmentFilter, search]);
+    return result;
+  }, [notes, assignmentFilter, search]);
+
+  const filtering = Boolean(search.trim() || assignmentFilter);
 
   const dueReminderCount = useMemo(
     () => notes.filter((note) => note.reminderAt !== null && isReminderDue(note.reminderAt)).length,
@@ -214,8 +261,7 @@ export function NotesApp({
 
   const selectedNote = notes.find((note) => note.id === selectedNoteId) ?? null;
 
-  async function handleCreateNote() {
-    const folderId = view.type === "folder" ? view.folderId : null;
+  async function handleCreateNote(folderId: string | null) {
     const { clientId, prospectId } = decodeAssignment(assignmentFilter);
     const note = await createNote({ folderId, clientId, prospectId });
     const created: NoteData = {
@@ -230,6 +276,7 @@ export function NotesApp({
       updatedAt: note.updatedAt.toString(),
     };
     setNotes((prev) => [created, ...prev]);
+    setOpen((prev) => new Set([...prev, folderId ?? UNFILED]));
     setSelectedNoteId(created.id);
     setMobilePane("editor");
   }
@@ -240,19 +287,30 @@ export function NotesApp({
     setNotes((prev) => prev.filter((note) => note.id !== noteId));
     if (selectedNoteId === noteId) {
       setSelectedNoteId(null);
-      setMobilePane("list");
+      setMobilePane("tree");
     }
     await deleteNote(noteId);
-  }
-
-  function selectView(next: View) {
-    setView(next);
-    setMobilePane("list");
   }
 
   function selectNote(noteId: string) {
     setSelectedNoteId(noteId);
     setMobilePane("editor");
+  }
+
+  function moveNote(noteId: string, folderId: string | null) {
+    const note = notes.find((n) => n.id === noteId);
+    if (!note || note.folderId === folderId) return;
+    patchNote(noteId, { folderId }, true);
+    setOpen((prev) => new Set([...prev, folderId ?? UNFILED]));
+  }
+
+  // Dépôt d'une note sur un groupe : `data-drop-folder` = id du dossier, ""
+  // pour « Sans dossier ».
+  function handleDrop(event: DragEvent<HTMLDivElement>) {
+    event.preventDefault();
+    setDropTarget(null);
+    const noteId = event.dataTransfer.getData("text/note-id");
+    if (noteId) moveNote(noteId, event.currentTarget.dataset.dropFolder || null);
   }
 
   async function handleCreateFolder() {
@@ -263,6 +321,7 @@ export function NotesApp({
     }
     const folder = await createFolder(name);
     setFolders((prev) => [...prev, { id: folder.id, name: folder.name }]);
+    setOpen((prev) => new Set([...prev, folder.id]));
     setNewFolderName("");
     setIsAddingFolder(false);
   }
@@ -280,201 +339,167 @@ export function NotesApp({
       return;
     setFolders((prev) => prev.filter((f) => f.id !== folderId));
     setNotes((prev) => prev.map((n) => (n.folderId === folderId ? { ...n, folderId: null } : n)));
-    if (view.type === "folder" && view.folderId === folderId) setView({ type: "all" });
     await deleteFolder(folderId);
   }
 
-  const viewLabel =
-    view.type === "all"
-      ? "Toutes les notes"
-      : view.type === "pinned"
-        ? "Épinglées"
-        : view.type === "reminders"
-          ? "Rappels"
-          : (folders.find((f) => f.id === view.folderId)?.name ?? "Dossier");
-
-  return (
-    // Pleine page façon Google Docs (demande du 2026-10-20 : « qu'il prenne
-    // vraiment toute la page, pas de système d'encadrés ») : l'application
-    // occupe toute la feuille sous la barre d'outils, sans bordure ni fond
-    // propre ; les volets ne sont séparés que d'un filet. Hauteur = écran
-    // moins la barre du haut (64 px), la barre d'outils (57 px) et, sur
-    // ordinateur, la marge basse de la feuille (16 px).
-    <div className="flex h-[calc(100dvh-121px)] overflow-hidden bg-surface lg:h-[calc(100dvh-137px)] lg:rounded-b-2xl">
-      {/* Dossiers */}
-      <aside
-        className={`w-full shrink-0 flex-col gap-0.5 overflow-y-auto border-r border-line py-3 pr-3 md:flex md:w-60 ${
-          mobilePane === "folders" ? "flex" : "hidden"
-        }`}
-      >
+  // Ligne d'une note dans l'arborescence (déplaçable vers un dossier).
+  function renderNoteRow(note: NoteData, showReminder = false) {
+    const selected = selectedNoteId === note.id;
+    return (
+      <li key={note.id}>
         <button
-          onClick={() => selectView({ type: "all" })}
-          className={`flex h-8 items-center rounded-r-full pl-4 pr-3 text-left text-sm transition-colors ${
-            view.type === "all" ? "bg-select font-semibold text-ink" : "text-ink hover:bg-ink/[0.08]"
+          type="button"
+          draggable
+          onDragStart={(event) => {
+            event.dataTransfer.setData("text/note-id", note.id);
+            event.dataTransfer.effectAllowed = "move";
+          }}
+          onClick={() => selectNote(note.id)}
+          title={snippet(note.content)}
+          className={`flex h-8 w-full items-center gap-2 rounded-r-full pl-11 pr-3 text-left text-sm transition-colors ${
+            selected ? "bg-select font-medium text-ink" : "text-ink-muted hover:bg-ink/[0.06] hover:text-ink"
           }`}
         >
-          Toutes les notes
-        </button>
-        <button
-          onClick={() => selectView({ type: "pinned" })}
-          className={`flex items-center gap-1.5 flex h-8 items-center rounded-r-full pl-4 pr-3 text-left text-sm transition-colors ${
-            view.type === "pinned" ? "bg-select font-semibold text-ink" : "text-ink hover:bg-ink/[0.08]"
-          }`}
-        >
-          <PushPin size={14} weight="fill" /> Épinglées
-        </button>
-        <button
-          onClick={() => selectView({ type: "reminders" })}
-          className={`flex items-center justify-between flex h-8 items-center rounded-r-full pl-4 pr-3 text-left text-sm transition-colors ${
-            view.type === "reminders" ? "bg-select font-semibold text-ink" : "text-ink hover:bg-ink/[0.08]"
-          }`}
-        >
-          <span className="flex items-center gap-1.5">
-            <Bell size={14} weight="fill" /> Rappels
-          </span>
-          {dueReminderCount > 0 && (
+          <span className="min-w-0 flex-1 truncate">{note.title.trim() || "Sans titre"}</span>
+          {note.pinned && !showReminder && <PushPin size={11} weight="fill" className="shrink-0 text-ink-muted" />}
+          {note.reminderAt && (showReminder || isReminderDue(note.reminderAt)) && (
             <span
-              className={`inline-flex h-4 min-w-4 items-center justify-center rounded-full px-1 text-[10px] font-medium ${
-                "bg-accent text-accent-ink"
+              className={`flex shrink-0 items-center gap-1 text-[11px] ${
+                isReminderDue(note.reminderAt) ? "font-medium text-danger" : "text-ink-muted"
               }`}
             >
-              {dueReminderCount}
+              <Bell size={11} weight="fill" />
+              {formatReminderDate(note.reminderAt)}
             </span>
           )}
         </button>
+      </li>
+    );
+  }
 
-        <div className="mb-1 mt-4 flex items-center justify-between pl-4 pr-1">
-          <span className="text-xs font-medium text-ink-muted">Dossiers</span>
+  // Groupe dépliable : triangle, icône, nom, nombre de notes. `dropFolder`
+  // (dossier ou null pour « Sans dossier ») le rend cible du glisser-déposer.
+  function renderGroup({
+    id,
+    icon,
+    label,
+    items,
+    dropFolder,
+    actions,
+    badge,
+    showReminder,
+  }: {
+    id: string;
+    icon: ReactNode;
+    label: ReactNode;
+    items: NoteData[];
+    dropFolder?: string | null;
+    actions?: ReactNode;
+    badge?: ReactNode;
+    showReminder?: boolean;
+  }) {
+    const isOpen = filtering || open.has(id);
+    const droppable = dropFolder !== undefined;
+    if (filtering && items.length === 0) return null;
+    return (
+      <div
+        key={id}
+        onDragOver={
+          droppable
+            ? (event) => {
+                event.preventDefault();
+                setDropTarget(id);
+              }
+            : undefined
+        }
+        onDragLeave={droppable ? () => setDropTarget((current) => (current === id ? null : current)) : undefined}
+        data-drop-folder={droppable ? (dropFolder ?? "") : undefined}
+        onDrop={droppable ? handleDrop : undefined}
+        className={`rounded-r-2xl ${dropTarget === id ? "bg-accent/15 ring-1 ring-inset ring-accent" : ""}`}
+      >
+        <div className="group flex h-8 items-center rounded-r-full pr-2 text-sm text-ink hover:bg-ink/[0.06]">
           <button
-            onClick={() => setIsAddingFolder(true)}
-            aria-label="Nouveau dossier"
-            className="text-ink-muted hover:text-ink"
+            type="button"
+            onClick={() => toggleGroup(id)}
+            aria-expanded={isOpen}
+            className="flex min-w-0 flex-1 items-center gap-1.5 self-stretch pl-3 text-left"
           >
-            <Plus size={14} weight="bold" />
+            {isOpen ? (
+              <CaretDown size={12} weight="fill" className="shrink-0 text-ink-muted" />
+            ) : (
+              <CaretRight size={12} weight="fill" className="shrink-0 text-ink-muted" />
+            )}
+            <span className="shrink-0 text-ink-muted">{icon}</span>
+            <span className="truncate font-medium">{label}</span>
           </button>
+          {actions && <span className="hidden shrink-0 items-center gap-1.5 group-hover:flex">{actions}</span>}
+          {badge ?? <span className="ml-2 shrink-0 text-xs text-ink-muted">{items.length}</span>}
         </div>
-
-        {folders.map((folder) =>
-          editingFolderId === folder.id ? (
-            <div key={folder.id} className="flex items-center gap-1 px-2">
-              <input
-                autoFocus
-                value={editingFolderName}
-                onChange={(e) => setEditingFolderName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") handleRenameFolder(folder.id);
-                  if (e.key === "Escape") setEditingFolderId(null);
-                }}
-                className="w-full rounded border border-line bg-surface px-1.5 py-1 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent"
-              />
-              <button onClick={() => handleRenameFolder(folder.id)} className="text-ink-muted hover:text-ink">
-                <Check size={14} />
-              </button>
-            </div>
-          ) : (
-            <div
-              key={folder.id}
-              className={`group flex h-8 items-center justify-between rounded-r-full pl-4 pr-3 text-sm transition-colors ${
-                view.type === "folder" && view.folderId === folder.id
-                  ? "bg-select font-semibold text-ink"
-                  : "text-ink hover:bg-ink/[0.08]"
-              }`}
-            >
-              <button
-                onClick={() => selectView({ type: "folder", folderId: folder.id })}
-                className="flex flex-1 items-center gap-1.5 truncate text-left"
-              >
-                <FolderSimple size={14} weight="regular" />
-                <span className="truncate">{folder.name}</span>
-              </button>
-              <div className="hidden items-center gap-1 group-hover:flex">
-                <button
-                  onClick={() => {
-                    setEditingFolderId(folder.id);
-                    setEditingFolderName(folder.name);
-                  }}
-                  aria-label="Renommer"
-                  className="opacity-70 hover:opacity-100"
-                >
-                  <PencilSimple size={13} />
-                </button>
-                <button
-                  onClick={() => handleDeleteFolder(folder.id)}
-                  aria-label="Supprimer le dossier"
-                  className="opacity-70 hover:opacity-100"
-                >
-                  <Trash size={13} />
-                </button>
-              </div>
-            </div>
-          ),
+        {isOpen && (
+          <ul>
+            {items.length === 0 ? (
+              <li className="py-1 pl-11 text-xs text-ink-muted/70">Vide — glissez une note ici</li>
+            ) : (
+              items.map((note) => renderNoteRow(note, showReminder))
+            )}
+          </ul>
         )}
+      </div>
+    );
+  }
 
-        {isAddingFolder && (
-          <div className="flex items-center gap-1 px-2">
-            <input
-              autoFocus
-              value={newFolderName}
-              onChange={(e) => setNewFolderName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleCreateFolder();
-                if (e.key === "Escape") setIsAddingFolder(false);
-              }}
-              placeholder="Nom du dossier"
-              className="w-full rounded border border-line bg-surface px-1.5 py-1 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent"
-            />
-            <button onClick={handleCreateFolder} className="text-ink-muted hover:text-ink">
-              <Check size={14} />
-            </button>
-            <button onClick={() => setIsAddingFolder(false)} className="text-ink-muted hover:text-ink">
-              <X size={14} />
-            </button>
-          </div>
-        )}
-      </aside>
+  const pinnedNotes = sortNotes(filteredNotes.filter((note) => note.pinned));
+  const reminderNotes = filteredNotes
+    .filter((note) => note.reminderAt !== null)
+    .sort((a, b) => new Date(a.reminderAt!).getTime() - new Date(b.reminderAt!).getTime());
+  const folderIds = new Set(folders.map((f) => f.id));
+  const unfiled = sortNotes(filteredNotes.filter((note) => !note.folderId || !folderIds.has(note.folderId)));
+  const iconButton = "text-ink-muted transition-colors hover:text-ink";
 
-      {/* Liste des notes */}
-      <section
+  return (
+    // Pleine page façon Google Docs (2026-10-20) : hauteur = écran moins la
+    // barre du haut (64 px), la barre d'outils (57 px) et, sur ordinateur,
+    // la marge basse de la feuille (16 px).
+    <div className="flex h-[calc(100dvh-121px)] overflow-hidden bg-surface lg:h-[calc(100dvh-137px)] lg:rounded-b-2xl">
+      {/* Arborescence */}
+      <aside
         className={`w-full shrink-0 flex-col border-r border-line md:flex md:w-72 xl:w-80 ${
-          mobilePane === "list" ? "flex" : "hidden"
+          mobilePane === "tree" ? "flex" : "hidden"
         }`}
       >
-        <div className="space-y-2 border-b border-line px-4 py-3">
-          <button
-            onClick={() => setMobilePane("folders")}
-            className="flex items-center gap-1 text-sm text-ink-muted hover:text-ink md:hidden"
-          >
-            <CaretLeft size={14} /> Dossiers
-          </button>
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-semibold text-ink">{viewLabel}</h2>
+        <div className="space-y-2 px-3 py-3">
+          <div className="flex items-center gap-2">
+            <div className="relative min-w-0 flex-1">
+              <MagnifyingGlass
+                size={14}
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted"
+              />
+              <input
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Rechercher"
+                aria-label="Rechercher dans les notes"
+                className="h-9 w-full rounded-full bg-search pl-8 pr-3 text-sm text-ink focus:bg-surface focus:outline-none focus:ring-1 focus:ring-line"
+              />
+            </div>
             <button
-              onClick={handleCreateNote}
+              type="button"
+              onClick={() => handleCreateNote(selectedNote?.folderId ?? null)}
               aria-label="Nouvelle note"
-              className="rounded-md p-1 text-ink-muted hover:bg-surface hover:text-ink"
+              title="Nouvelle note (dans le dossier de la note ouverte)"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-accent text-accent-ink transition-transform active:scale-95"
             >
-              <NotePencil size={17} weight="regular" />
+              <Plus size={16} weight="bold" />
             </button>
-          </div>
-          <div className="relative">
-            <MagnifyingGlass
-              size={14}
-              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-ink-muted"
-            />
-            <input
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              placeholder="Rechercher"
-              className="h-9 w-full rounded-full bg-search pl-8 pr-3 text-sm text-ink focus:bg-surface focus:outline-none focus:ring-1 focus:ring-line"
-            />
           </div>
           {(clients.length > 0 || prospects.length > 0) && (
             <select
               value={assignmentFilter}
               onChange={(e) => setAssignmentFilter(e.target.value)}
+              aria-label="Filtrer par client ou prospect"
               className="h-8 w-full rounded-full border border-line bg-surface px-3 text-xs text-ink-muted focus:outline-none focus:ring-1 focus:ring-accent"
             >
-              <option value="">Tous</option>
+              <option value="">Tous les clients et prospects</option>
               {clients.length > 0 && (
                 <optgroup label="Clients">
                   {clients.map((client) => (
@@ -496,44 +521,124 @@ export function NotesApp({
             </select>
           )}
         </div>
-        <ul className="flex-1 overflow-y-auto">
-          {visibleNotes.length === 0 && (
-            <li className="p-4 text-sm text-ink-muted">Aucune note.</li>
+
+        <nav className="flex-1 space-y-0.5 overflow-y-auto pb-4 pr-2" aria-label="Notes">
+          {pinnedNotes.length > 0 && (
+            renderGroup({ id: PINNED, icon: <PushPin size={14} weight="fill" />, label: "Épinglées", items: pinnedNotes })
           )}
-          {visibleNotes.map((note) => (
-            <li key={note.id}>
-              <button
-                onClick={() => selectNote(note.id)}
-                className={`ws-row w-full border-b border-line px-4 py-2 text-left transition-colors ${
-                  selectedNoteId === note.id ? "bg-select" : ""
-                }`}
-              >
-                <div className="flex items-center gap-1.5">
-                  {note.pinned && <PushPin size={11} weight="fill" className="shrink-0 text-accent" />}
-                  <span className="truncate text-sm font-medium text-ink">
-                    {note.title.trim() || "Sans titre"}
+          {reminderNotes.length > 0 && (
+            renderGroup({
+              id: REMINDERS,
+              icon: <Bell size={14} weight="fill" />,
+              label: "Rappels",
+              items: reminderNotes,
+              showReminder: true,
+              badge:
+                dueReminderCount > 0 ? (
+                  <span className="ml-2 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-accent px-1 text-[10px] font-medium text-accent-ink">
+                    {dueReminderCount}
                   </span>
-                </div>
-                <div className="mt-0.5 flex items-center gap-1.5 text-xs text-ink-muted">
-                  {note.reminderAt ? (
-                    <span
-                      className={`flex shrink-0 items-center gap-1 ${
-                        isReminderDue(note.reminderAt) ? "font-medium text-danger" : ""
-                      }`}
-                    >
-                      <Bell size={11} weight="fill" />
-                      {formatReminderDate(note.reminderAt)}
-                    </span>
-                  ) : (
-                    <span className="shrink-0">{formatNoteDate(note.updatedAt)}</span>
-                  )}
-                  <span className="truncate">{snippet(note.content)}</span>
-                </div>
+                ) : undefined,
+            })
+          )}
+
+          <div className="flex items-center justify-between pb-1 pl-4 pr-1 pt-3">
+            <span className="text-xs font-medium text-ink-muted">Dossiers</span>
+            <button type="button" onClick={() => setIsAddingFolder(true)} aria-label="Nouveau dossier" className={iconButton}>
+              <Plus size={14} weight="bold" />
+            </button>
+          </div>
+
+          {isAddingFolder && (
+            <div className="flex items-center gap-1 pl-4 pr-1">
+              <input
+                autoFocus
+                value={newFolderName}
+                onChange={(e) => setNewFolderName(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleCreateFolder();
+                  if (e.key === "Escape") setIsAddingFolder(false);
+                }}
+                placeholder="Nom du dossier"
+                className="w-full rounded border border-line bg-surface px-1.5 py-1 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent"
+              />
+              <button type="button" onClick={handleCreateFolder} aria-label="Créer le dossier" className={iconButton}>
+                <Check size={14} />
               </button>
-            </li>
-          ))}
-        </ul>
-      </section>
+              <button type="button" onClick={() => setIsAddingFolder(false)} aria-label="Annuler" className={iconButton}>
+                <X size={14} />
+              </button>
+            </div>
+          )}
+
+          {folders.map((folder) =>
+            editingFolderId === folder.id ? (
+              <div key={folder.id} className="flex items-center gap-1 pl-4 pr-1">
+                <input
+                  autoFocus
+                  value={editingFolderName}
+                  onChange={(e) => setEditingFolderName(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleRenameFolder(folder.id);
+                    if (e.key === "Escape") setEditingFolderId(null);
+                  }}
+                  aria-label="Nom du dossier"
+                  className="w-full rounded border border-line bg-surface px-1.5 py-1 text-sm text-ink focus:outline-none focus:ring-1 focus:ring-accent"
+                />
+                <button type="button" onClick={() => handleRenameFolder(folder.id)} aria-label="Renommer" className={iconButton}>
+                  <Check size={14} />
+                </button>
+              </div>
+            ) : (
+              renderGroup({
+                id: folder.id,
+                icon: <FolderSimple size={15} />,
+                label: folder.name,
+                items: sortNotes(filteredNotes.filter((note) => note.folderId === folder.id)),
+                dropFolder: folder.id,
+                actions: (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => handleCreateNote(folder.id)}
+                      aria-label={`Nouvelle note dans ${folder.name}`}
+                      title="Nouvelle note ici"
+                      className={iconButton}
+                    >
+                      <NotePencil size={14} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setEditingFolderId(folder.id);
+                        setEditingFolderName(folder.name);
+                      }}
+                      aria-label="Renommer le dossier"
+                      className={iconButton}
+                    >
+                      <PencilSimple size={13} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteFolder(folder.id)}
+                      aria-label="Supprimer le dossier"
+                      className="text-ink-muted transition-colors hover:text-danger"
+                    >
+                      <Trash size={13} />
+                    </button>
+                  </>
+                ),
+              })
+            ),
+          )}
+
+          {renderGroup({ id: UNFILED, icon: <Tray size={15} />, label: "Sans dossier", items: unfiled, dropFolder: null })}
+
+          {filtering && filteredNotes.length === 0 && (
+            <p className="px-4 py-6 text-sm text-ink-muted">Aucune note ne correspond.</p>
+          )}
+        </nav>
+      </aside>
 
       {/* Éditeur */}
       <div
@@ -546,7 +651,7 @@ export function NotesApp({
             <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2 md:px-6">
               <div className="flex items-center gap-3 md:hidden">
                 <button
-                  onClick={() => setMobilePane("list")}
+                  onClick={() => setMobilePane("tree")}
                   aria-label="Retour aux notes"
                   className="shrink-0 text-ink-muted hover:text-ink md:hidden"
                 >

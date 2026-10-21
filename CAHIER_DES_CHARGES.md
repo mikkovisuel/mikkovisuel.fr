@@ -2748,6 +2748,27 @@ Appliqué aux calendriers Réseaux et Tâches (même composant).
   courant surligné à la couleur d'accent, jours passés atténués (numéro et
   publications), jours à venir en gras.
 
+### 4.22 Actions réseaux pour tout client, notes en arborescence (2026-10-21)
+
+**Actions réseaux** : « Nouvelle action » et « Modifier » proposent tous les
+clients actifs, pas seulement ceux qui ont déjà une publication (cause de la
+demande « une action peut être affectée à un client »). Dans le calendrier,
+une action affiche le nom de son client (ou « Interne ») et prend la couleur
+de son agenda.
+
+**Notes** (maquette validée) : deux colonnes au lieu de trois.
+- À gauche, une arborescence : recherche, bouton « + » (nouvelle note dans le
+  dossier de la note ouverte), filtre client / prospect, groupes
+  « Épinglées » et « Rappels », puis les dossiers qui se déplient avec un
+  petit triangle pour montrer leurs notes, et « Sans dossier ».
+- Survol d'un dossier : nouvelle note dedans, renommer, supprimer.
+- **Glisser-déposer** d'une note sur un dossier pour l'y ranger (le menu du
+  dossier dans l'éditeur reste disponible).
+- Dossiers ouverts / fermés mémorisés dans le navigateur ; pendant une
+  recherche, tout s'ouvre et les groupes vides disparaissent.
+- Un seul niveau de dossiers (pas de sous-dossiers, choix du client).
+- À droite, l'éditeur pleine largeur, inchangé.
+
 ## Passe de nettoyage du code (2026-09-22)
 
 Demande du client : "fais une passe globale sur le code et nettoie tout,
@@ -3519,3 +3540,5 @@ Le client a explicitement délégué ces choix :
 | 2026-10-20 | "Redesigner la page prospection" — choix : carte + liste façon Google Maps ; lecture + icônes, modification dans la fiche | **Livré** : chiffres clés, onglets de statut, filtre par région depuis la carte ou la liste des régions, liste en lecture avec icônes de contact, Recherche IA / Importer en fenêtre, saisie dans les cellules retirée (section 4.19). |
 | 2026-10-21 | Audit du code (Ponytail) puis "corrige tout" | **Livré** : 12 correctifs (e-mails en échec détectés, BAT validable seulement « À valider », jeton anti-détournement Gmail, contrôle du contenu des fichiers client, signature visible et limitée, montant Stripe vérifié, IP fiable, règle d'accès aux fichiers testée, lien de réinitialisation unique, code mort supprimé) — section 4.20. |
 | 2026-10-21 | "Optimiser l'affichage du calendrier" — gênes : ne remplit pas l'écran, trop d'espace perdu, lisibilité ; Réseaux et Tâches | **Livré** : grille plein écran (Mois, Semaine), panneau de gauche repliable sur Réseaux, week-ends / hors mois teintés, aujourd'hui surligné, passé atténué (section 4.21). |
+\n
+| 2026-10-21 | "Une action peut être affectée à un client (Réseaux)" + "optimiser la vue des notes : dossiers avec sous-notes et petit triangle" — choix : tous les clients ; maquette arborescence ; glisser-déposer | **Livré** : actions ouvertes à tous les clients actifs (nom et couleur dans le calendrier) ; Notes en deux colonnes avec dossiers dépliables, Épinglées / Rappels, glisser-déposer, ouverture mémorisée (section 4.22). |

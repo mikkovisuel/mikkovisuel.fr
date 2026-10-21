@@ -279,7 +279,7 @@ export default async function SocialPostsPage({
   };
 
   const now = new Date();
-  const [posts, clients, actions, admins] = await Promise.all([
+  const [posts, clients, actions, admins, actionClients] = await Promise.all([
     db.socialPost.findMany({
       where,
       include: POST_ROW_INCLUDE,
@@ -304,6 +304,14 @@ export default async function SocialPostsPage({
       orderBy: { dueAt: "asc" },
     }),
     listAssignableAdmins(),
+    // Une action peut viser n'importe quel client actif, même sans
+    // publication (demande du 2026-10-21) ; `clients` ci-dessus ne garde que
+    // ceux qui ont des publications (filtres, panneau du calendrier).
+    db.client.findMany({
+      where: { ...EXCLUDE_DEMO_CLIENT, archivedAt: null },
+      select: { id: true, name: true },
+      orderBy: { name: "asc" },
+    }),
   ]);
 
   const activeFilterCount = [clientId, network, status, category].filter(Boolean).length;
@@ -362,7 +370,8 @@ export default async function SocialPostsPage({
   // (ordre alphabétique), comme la couleur d'un agenda.
   const clientColor = (id: string) => {
     const index = clients.findIndex((client) => client.id === id);
-    return AGENDA_COLORS[(index === -1 ? 0 : index) % AGENDA_COLORS.length];
+    // Client sans publication (cible d'une action seulement) : gris neutre.
+    return index === -1 ? "bg-slate-500" : AGENDA_COLORS[index % AGENDA_COLORS.length];
   };
 
   // Mois affiché, bornes en heure de Paris (calendrier, cases fantômes,
@@ -518,7 +527,7 @@ export default async function SocialPostsPage({
           </Link>
         )}
         <NewSocialActionButton
-          clients={clients}
+          clients={actionClients}
           admins={admins}
           currentAdminId={me.id}
           defaultDueAt={`${toParisDateTimeLocal(now).slice(0, 10)}T09:00`}
@@ -665,7 +674,7 @@ export default async function SocialPostsPage({
         )}
 
         {view === "afaire" ? (
-          <SocialActionsBoard actions={actions} clients={clients} now={now} admins={admins} />
+          <SocialActionsBoard actions={actions} clients={actionClients} now={now} admins={admins} />
         ) : view === "grille" ? (
           <InstagramGrid posts={posts} clientChosen={Boolean(clientId)} />
         ) : view === "calendrier" ? (
@@ -780,9 +789,10 @@ export default async function SocialPostsPage({
                   .filter((entry) => !entry.clientId || !hiddenClients.includes(entry.clientId))
                   .map((entry) => ({
                     id: entry.id,
-                    title: entry.title,
+                    // Nom du client (ou « interne ») dans le titre, couleur de son agenda.
+                    title: `${entry.title} · ${entry.details[0]}`,
                     date: entry.eventDate,
-                    dotClass: entry.done ? "bg-emerald-600" : "bg-slate-500",
+                    dotClass: entry.done ? "bg-emerald-600" : entry.clientId ? clientColor(entry.clientId) : "bg-slate-500",
                     href: entry.href,
                     tooltip: `${entry.status.label} · ${entry.details.join(", ")}`,
                   })),

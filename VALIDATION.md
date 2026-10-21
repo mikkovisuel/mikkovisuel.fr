@@ -1294,6 +1294,17 @@ Rejoué en appelant la tâche planifiée `/api/cron/invoice-reminders` en local 
 | Panneau repliable | Bouton panneau | ✅ Panneau masqué, grille pleine largeur ; « Semaine suivante » garde `panneau=0` ; le bouton rouvre | Téléphone 390 px | ✅ Bouton masqué (pas de panneau), aucun défilement horizontal | 2026-10-21 |
 | Lisibilité | Thèmes clair et sombre | ✅ Week-ends et hors mois teintés, 21 oct. surligné, jours passés atténués | — | — | 2026-10-21 |
 
+## Actions réseaux pour tout client, notes en arborescence (2026-10-21)
+
+| Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |
+|---|---|---|---|---|---|
+| Client d'une action | « Nouvelle action » avec un client sans publication en base | ✅ Proposé dans la liste (3 options : interne + 2 clients) | Client inconnu envoyé au serveur | ✅ « Client introuvable. » (contrôle existant, inchangé) | 2026-10-21 |
+| Arborescence des notes | 2 dossiers, 4 notes (1 épinglée, 1 rappel, 1 sans dossier) | ✅ Épinglées 1, Rappels 1 (pastille), dossiers dépliés avec leurs notes, Sans dossier | Dossier vide | ✅ « Vide — glissez une note ici » | 2026-10-21 |
+| Glisser-déposer | « ZZ Note en vrac » déposée sur « ZZ Idées » | ✅ Rangée dans ZZ Idées (vérifié en base) | — | — | 2026-10-21 |
+| Ouverture mémorisée | Repli de « ZZ Clients » | ✅ `aria-expanded=false`, enregistré dans le navigateur | — | — | 2026-10-21 |
+| Recherche | « reels » | ✅ La note trouvée (dans Rappels et son dossier) | Mot introuvable | ✅ « Aucune note ne correspond. » | 2026-10-21 |
+| Téléphone | 390 px | ✅ Arborescence seule, aucun défilement horizontal | — | — | 2026-10-21 |
+
 ## Points restant ouverts pour une prochaine passe de validation
 
 - Glisser-déposer et `<select>` natif du Kanban Prospection (limite outil, voir ci-dessus).
@@ -1386,3 +1397,4 @@ Rejoué en appelant la tâche planifiée `/api/cron/invoice-reminders` en local 
 - **Écran d'une tâche** (2026-10-20) : l'alerte de capacité à l'échéance n'a pas été vue (pas de capacité saisie en local) ; dupliquer / archiver / supprimer depuis « ⋮ », validation/refus et verrou « avant de travailler » non rejoués (composants d'origine, déplacés).
 - **Prospection** (2026-10-20) : la modification groupée du statut et la suppression groupée n'ont pas été rejouées après la refonte (code inchangé) ; Recherche IA dans sa fenêtre non lancée (coût d'API).
 - **Audit 2026-10-21** : l'IP retenue derrière Scalingo (dernière valeur de `X-Forwarded-For`) n'a pas été vérifiée en production ; la connexion Gmail complète avec un vrai compte Google n'a pas été rejouée (seuls le départ avec `state` et le refus d'un retour forgé l'ont été) ; la pastille d'accent du bloc « Aujourd'hui » et le lien « Signé » vus en code seulement.
+- **Notes 2026-10-21** : glisser-déposer testé par évènements simulés dans Chrome, pas à la souris ; création d'une note par le survol d'un dossier et passage arborescence → éditeur → retour sur téléphone non rejoués.
