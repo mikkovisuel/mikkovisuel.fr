@@ -1305,6 +1305,17 @@ Rejoué en appelant la tâche planifiée `/api/cron/invoice-reminders` en local 
 | Recherche | « reels » | ✅ La note trouvée (dans Rappels et son dossier) | Mot introuvable | ✅ « Aucune note ne correspond. » | 2026-10-21 |
 | Téléphone | 390 px | ✅ Arborescence seule, aucun défilement horizontal | — | — | 2026-10-21 |
 
+## Assistant Claude (2026-10-21)
+
+| Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |
+|---|---|---|---|---|---|
+| Accès | Admin connecté | ✅ Réponse en flux | Sans session ; conversation d'un autre (id inconnu) ; demande vide | ✅ 403 ; 404 « Conversation introuvable. » ; 400 « Demande invalide. » | 2026-10-21 |
+| Lecture | « Quelles factures de ZZ Assist Bokao sont en retard ? » (vrai appel Sonnet 5.5) | ✅ « A lu : clients », « A lu : factures » ; 450 €, échue le 02/10, 19 jours de retard | — | — | 2026-10-21 |
+| Action confirmée | Carte « Créer une tâche », échéance demain → Confirmer | ✅ Tâche créée en base avec échéance 22/10, lien cliquable, 1 entrée au journal d'audit | — | — | 2026-10-21 |
+| Action annulée | — | — | « Marque cette facture payée » → Annuler | ✅ Facture toujours impayée, aucune entrée d'audit ajoutée, Claude le dit | 2026-10-21 |
+| Panneau | Bouton étoiles depuis le tableau de bord, demande de note | ✅ Carte « Créer une note » avec client et texte (après correctif : la 1re question d'une conversation neuve était refusée) | Téléphone 390 px | ✅ Panneau plein écran, aucun défilement horizontal | 2026-10-21 |
+| Historique | Page Assistant, clic sur la conversation | ✅ Fil rechargé : lectures, cartes « Faite » / « Annulée », réponses | — | — | 2026-10-21 |
+
 ## Points restant ouverts pour une prochaine passe de validation
 
 - Glisser-déposer et `<select>` natif du Kanban Prospection (limite outil, voir ci-dessus).
@@ -1398,3 +1409,4 @@ Rejoué en appelant la tâche planifiée `/api/cron/invoice-reminders` en local 
 - **Prospection** (2026-10-20) : la modification groupée du statut et la suppression groupée n'ont pas été rejouées après la refonte (code inchangé) ; Recherche IA dans sa fenêtre non lancée (coût d'API).
 - **Audit 2026-10-21** : l'IP retenue derrière Scalingo (dernière valeur de `X-Forwarded-For`) n'a pas été vérifiée en production ; la connexion Gmail complète avec un vrai compte Google n'a pas été rejouée (seuls le départ avec `state` et le refus d'un retour forgé l'ont été) ; la pastille d'accent du bloc « Aujourd'hui » et le lien « Signé » vus en code seulement.
 - **Notes 2026-10-21** : glisser-déposer testé par évènements simulés dans Chrome, pas à la souris ; création d'une note par le survol d'un dossier et passage arborescence → éditeur → retour sur téléphone non rejoués.
+- **Assistant 2026-10-21** : seules les actions « créer une tâche », « créer une note » (carte) et « marquer une facture payée » (annulée) ont été rejouées ; les autres (modifier tâche / prospect, action et brouillon réseaux, relance de paiement par e-mail) sont vérifiées par compilation seulement. Comportement derrière le routeur Scalingo (réponses longues) non observé en production.

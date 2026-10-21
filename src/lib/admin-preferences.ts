@@ -72,6 +72,7 @@ export const NAV_ITEMS = [
   { key: "administratif", href: "/admin/administratif", label: "Administratif", group: "Gestion" },
   { key: "notes", href: "/admin/notes", label: "Notes", group: "Gestion" },
   { key: "portfolio", href: "/admin/portfolio", label: "Portfolio", group: "Gestion" },
+  { key: "assistant", href: "/admin/assistant", label: "Assistant", group: "Gestion" },
 ] as const;
 export type NavKey = (typeof NAV_ITEMS)[number]["key"];
 export const NAV_KEYS = NAV_ITEMS.map((item) => item.key) as NavKey[];

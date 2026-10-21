@@ -50,6 +50,7 @@ model Admin {
   assignedTasks     Task[]          @relation("TaskAssignee")
   assignedPosts     SocialPost[]    @relation("SocialPostAssignee")
   assignedActions   SocialAction[]  @relation("SocialActionAssignee")
+  assistantConversations AssistantConversation[]
 }
 
 model Client {
@@ -1434,4 +1435,21 @@ model SocialMonthlyStats {
   updatedAt    DateTime @updatedAt
 
   @@unique([clientId, year, month])
+}
+
+// Assistant Claude du back-office (2026-10-21) : une conversation par fil,
+// propre à chaque admin. `messages` = l'historique tel qu'envoyé à l'API
+// (blocs de réflexion et d'outils compris, jamais réécrit) ; `pending` = les
+// actions proposées par l'assistant qui attendent « Confirmer » / « Annuler ».
+model AssistantConversation {
+  id        String   @id @default(cuid())
+  adminId   String
+  admin     Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  title     String   @default("")
+  messages  Json     @default("[]")
+  pending   Json?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([adminId, updatedAt])
 }

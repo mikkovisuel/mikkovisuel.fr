@@ -12,6 +12,7 @@ import {
   House,
   Images,
   NotePencil,
+  Sparkle,
   Target,
   Users,
 } from "@phosphor-icons/react/dist/ssr";
@@ -62,6 +63,7 @@ const NAV_GROUPS: { title: string | null; items: NavItem[] }[] = [
       { href: "/admin/administratif", label: "Administratif", icon: FileText },
       { href: "/admin/notes", label: "Notes", icon: NotePencil },
       { href: "/admin/portfolio", label: "Portfolio", icon: Images },
+      { href: "/admin/assistant", label: "Assistant", icon: Sparkle },
     ],
   },
 ];

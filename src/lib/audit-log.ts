@@ -22,7 +22,8 @@ export type AuditAction =
   | "client_portal_access_closed"
   | "document_updated"
   | "payment_record_updated"
-  | "company_document_updated";
+  | "company_document_updated"
+  | "assistant_action";
 
 export async function logAuditEvent(input: {
   actorType: "ADMIN" | "SYSTEM";
@@ -66,4 +67,5 @@ export const AUDIT_ACTION_LABELS: Record<AuditAction, string> = {
   document_updated: "Facture / devis modifié",
   payment_record_updated: "Paiement sans facture modifié",
   company_document_updated: "Document société modifié",
+  assistant_action: "Action confirmée via l'assistant",
 };

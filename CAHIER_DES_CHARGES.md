@@ -2769,6 +2769,41 @@ de son agenda.
 - Un seul niveau de dossiers (pas de sous-dossiers, choix du client).
 - À droite, l'éditeur pleine largeur, inchangé.
 
+### 4.23 Assistant Claude dans le back-office (2026-10-21)
+
+Demande : « mettre un chat Claude dans mon appli utilisant Sonnet », niveau 3
+(l'assistant lit les données et peut agir). Choix du client : toutes les
+familles d'actions, historique gardé par admin, panneau **et** page dédiée.
+
+- **Accès** : bouton étoiles dans la barre du haut (panneau à droite, gardé
+  ouvert d'une page à l'autre ; plein écran sur téléphone) et rubrique
+  « Assistant » du menu (page avec l'historique à gauche). Réservé aux
+  admins ; chaque admin ne voit que ses conversations.
+- **Modèle** : Claude Sonnet 5.5 (`claude-sonnet-5-5`, modifiable par la
+  variable `ASSISTANT_MODEL`), effort moyen, réponses au fil de l'eau. En cas
+  de refus de sécurité, l'API relance automatiquement la demande sur un autre
+  modèle (`fallbacks: "default"`).
+- **Lectures automatiques** : clients (liste, fiche), tâches (filtres : client,
+  statut, les miennes, en retard), détail d'une tâche, factures, prospects,
+  notes, publications et actions réseaux. Le fil montre « A lu : … ».
+- **Actions, toujours après « Confirmer »** : créer / modifier une tâche
+  (statut, échéance, attribution), créer une note, modifier un prospect
+  (statut, relance), créer une action réseaux, créer un brouillon de
+  publication, marquer une facture payée, envoyer une relance de paiement.
+  La carte de confirmation est construite depuis la base (noms, montants),
+  pas recopiée du texte du modèle ; l'exécution réutilise les actions
+  existantes (mêmes contrôles). « Annuler », ou écrire un nouveau message
+  sans décider, n'exécute rien. Chaque action confirmée est inscrite au
+  journal d'audit (« Action confirmée via l'assistant »).
+- **Garde-fous** : le contenu lu (commentaires de clients, notes, fiches
+  prospects) est traité comme une donnée, jamais comme une consigne ; 10
+  étapes au plus par demande ; chemins « /admin/… » rendus cliquables.
+- **Coût** : environ 2 $ par million de mots-jetons lus et 10 $ par million
+  écrits (Sonnet 5.5), soit de l'ordre du centime par échange courant, sur le
+  compte Anthropic déjà utilisé par la recherche de prospects.
+- Hors périmètre de cette version : suppression de données, envoi d'e-mails
+  autres que la relance de paiement, pièces jointes.
+
 ## Passe de nettoyage du code (2026-09-22)
 
 Demande du client : "fais une passe globale sur le code et nettoie tout,
@@ -3541,3 +3576,4 @@ Le client a explicitement délégué ces choix :
 | 2026-10-21 | Audit du code (Ponytail) puis "corrige tout" | **Livré** : 12 correctifs (e-mails en échec détectés, BAT validable seulement « À valider », jeton anti-détournement Gmail, contrôle du contenu des fichiers client, signature visible et limitée, montant Stripe vérifié, IP fiable, règle d'accès aux fichiers testée, lien de réinitialisation unique, code mort supprimé) — section 4.20. |
 | 2026-10-21 | "Optimiser l'affichage du calendrier" — gênes : ne remplit pas l'écran, trop d'espace perdu, lisibilité ; Réseaux et Tâches | **Livré** : grille plein écran (Mois, Semaine), panneau de gauche repliable sur Réseaux, week-ends / hors mois teintés, aujourd'hui surligné, passé atténué (section 4.21). |
 | 2026-10-21 | "Une action peut être affectée à un client (Réseaux)" + "optimiser la vue des notes : dossiers avec sous-notes et petit triangle" — choix : tous les clients ; maquette arborescence ; glisser-déposer | **Livré** : actions ouvertes à tous les clients actifs (nom et couleur dans le calendrier) ; Notes en deux colonnes avec dossiers dépliables, Épinglées / Rappels, glisser-déposer, ouverture mémorisée (section 4.22). |
+| 2026-10-21 | "Mettre un chat Claude dans mon appli utilisant Sonnet" — niveau 3 (agit), toutes les familles d'actions, historique par admin, panneau et page | **Livré** : assistant Sonnet 5.5 (panneau barre du haut + rubrique Assistant), lectures automatiques, actions après confirmation, journal d'audit, historique par admin (section 4.23). |

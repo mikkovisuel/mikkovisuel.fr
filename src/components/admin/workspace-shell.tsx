@@ -3,9 +3,10 @@
 import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { List, Plus, X } from "@phosphor-icons/react/dist/ssr";
+import { List, Plus, Sparkle, X } from "@phosphor-icons/react/dist/ssr";
 import { BrandLogo } from "@/components/brand-logo";
 import { KeyboardShortcuts } from "@/components/admin/keyboard-shortcuts";
+import { AssistantChat } from "@/components/admin/assistant-chat";
 import { GlobalSearchBar } from "@/components/admin/global-search-bar";
 import {
   AdminSidebarNav,
@@ -125,6 +126,10 @@ export function WorkspaceShell({
   // referme sans effet à synchroniser (même schéma que l'ancien menu).
   const [openedOn, setOpenedOn] = useState<string | null>(null);
   const mobileOpen = openedOn === pathname;
+  // Assistant Claude (2026-10-21) : panneau à droite, gardé ouvert d'une page
+  // à l'autre ; inutile sur sa propre page.
+  const [assistantOpen, setAssistantOpen] = useState(false);
+  const assistantVisible = assistantOpen && !pathname.startsWith("/admin/assistant");
 
   useEffect(() => {
     // Préférence lue après le montage : le serveur ne connaît pas le
@@ -177,7 +182,21 @@ export function WorkspaceShell({
         </div>
         <div className="ml-auto flex items-center gap-1">
           {timer && <div className="hidden md:block">{timer}</div>}
-          <div className="ws-icons flex items-center gap-0.5">{actions}</div>
+          <div className="ws-icons flex items-center gap-0.5">
+            {!pathname.startsWith("/admin/assistant") && (
+              <button
+                type="button"
+                onClick={() => setAssistantOpen((open) => !open)}
+                aria-label="Assistant"
+                aria-pressed={assistantOpen}
+                title="Assistant (Claude)"
+                className={assistantOpen ? "bg-select" : undefined}
+              >
+                <Sparkle size={20} weight={assistantOpen ? "fill" : "regular"} />
+              </button>
+            )}
+            {actions}
+          </div>
         </div>
       </header>
       {timer && <div className="px-4 pb-2 md:hidden">{timer}</div>}
@@ -198,6 +217,14 @@ export function WorkspaceShell({
         <main className="min-w-0 flex-1 bg-surface lg:mb-4 lg:mr-4 lg:overflow-y-auto lg:rounded-2xl">
           {children}
         </main>
+        {assistantVisible && (
+          <aside
+            aria-label="Assistant"
+            className="fixed inset-0 z-50 flex flex-col bg-surface lg:static lg:z-auto lg:mb-4 lg:mr-4 lg:w-[400px] lg:shrink-0 lg:overflow-hidden lg:rounded-2xl"
+          >
+            <AssistantChat variant="panel" onClose={() => setAssistantOpen(false)} />
+          </aside>
+        )}
       </div>
 
       {mobileOpen && (
