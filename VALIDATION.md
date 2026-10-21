@@ -1285,6 +1285,15 @@ Rejoué en appelant la tâche planifiée `/api/cron/invoice-reminders` en local 
 | Accès aux fichiers | Tests : client propriétaire | ✅ Autorisé | Autre client, fichier caché, sans session ; document sans session (navigateur) | ✅ Refusés (4 tests) ; 403 | 2026-10-21 |
 | Vérifications | `npm run check` | ✅ Lint, types, 211 tests | — | — | 2026-10-21 |
 
+## Calendrier : plein écran, panneau repliable, lisibilité (2026-10-21)
+
+| Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |
+|---|---|---|---|---|---|
+| Plein écran | Réseaux, Mois, fenêtre 1880×1080, 10 publications de test | ✅ Grille jusqu'en bas (plus de vide dessous), 5 semaines de même hauteur | Écran bas 1440×700 | ✅ Hauteur minimale, la page défile | 2026-10-21 |
+| Vue Semaine / Tâches | Semaine du 19 oct. ; calendrier des Tâches | ✅ Colonnes pleine hauteur, titres en entier ; Tâches plein écran sous le pense-bête | — | — | 2026-10-21 |
+| Panneau repliable | Bouton panneau | ✅ Panneau masqué, grille pleine largeur ; « Semaine suivante » garde `panneau=0` ; le bouton rouvre | Téléphone 390 px | ✅ Bouton masqué (pas de panneau), aucun défilement horizontal | 2026-10-21 |
+| Lisibilité | Thèmes clair et sombre | ✅ Week-ends et hors mois teintés, 21 oct. surligné, jours passés atténués | — | — | 2026-10-21 |
+
 ## Points restant ouverts pour une prochaine passe de validation
 
 - Glisser-déposer et `<select>` natif du Kanban Prospection (limite outil, voir ci-dessus).

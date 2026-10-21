@@ -2731,6 +2731,23 @@ Audit complet du dépôt (outil Ponytail), puis « corrige tout » :
 11. Pastille « Aujourd'hui » à la couleur d'accent (plus de bleu).
 12. Deux commentaires trompeurs corrigés.
 
+### 4.21 Calendrier : plein écran, panneau repliable, lisibilité (2026-10-21)
+
+Demande « optimiser l'affichage du calendrier » ; gênes retenues par le
+client : ne remplit pas l'écran, trop d'espace perdu, lisibilité générale.
+Appliqué aux calendriers Réseaux et Tâches (même composant).
+
+- **Plein écran** : en vues Mois et Semaine, la grille descend jusqu'en bas
+  de la zone de contenu (grand écran) ; les semaines se partagent la hauteur.
+  Hauteur minimale 480 px sur un écran bas (la page défile alors).
+- **Panneau repliable** (Réseaux) : bouton à gauche de « Aujourd'hui »,
+  comme Google Agenda ; le panneau (petit mois, clients, « Afficher aussi »)
+  se replie et la grille prend toute la largeur. Choix gardé en changeant de
+  période (`panneau=0` dans l'adresse).
+- **Lisibilité** : week-ends et jours hors du mois légèrement teintés, jour
+  courant surligné à la couleur d'accent, jours passés atténués (numéro et
+  publications), jours à venir en gras.
+
 ## Passe de nettoyage du code (2026-09-22)
 
 Demande du client : "fais une passe globale sur le code et nettoie tout,
@@ -3501,3 +3518,4 @@ Le client a explicitement délégué ces choix :
 | 2026-10-20 | "Optimisation de l'affichage réseau calendrier, ajoute une vue jour et semaine. Ajoute les numéros de semaines" | **Livré** : calendrier (Réseaux, et Tâches qui partage le composant) en trois vues **Jour / Semaine / Mois** ; numéro de semaine ISO devant chaque semaine (grille du mois et petit mois, cliquable vers la vue Semaine) et à côté du titre en vues Jour et Semaine ; vue Semaine à 7 colonnes hautes, heure au-dessus du titre affiché en entier ; vue Jour en liste détaillée (heure, titre, client, statut) ; un clic sur un jour (grille ou petit mois) ouvre sa journée, « N autres » aussi ; navigation ‹ › par jour, semaine ou mois ; glisser-déposer conservé en vues Mois et Semaine ; routines et actions chargées pour la période affichée (semaines à cheval sur deux mois comprises). Adresse : `cal` + `jour`, l'ancien `mois` reste compris. |
 | 2026-10-20 | "Redesigner la page prospection" — choix : carte + liste façon Google Maps ; lecture + icônes, modification dans la fiche | **Livré** : chiffres clés, onglets de statut, filtre par région depuis la carte ou la liste des régions, liste en lecture avec icônes de contact, Recherche IA / Importer en fenêtre, saisie dans les cellules retirée (section 4.19). |
 | 2026-10-21 | Audit du code (Ponytail) puis "corrige tout" | **Livré** : 12 correctifs (e-mails en échec détectés, BAT validable seulement « À valider », jeton anti-détournement Gmail, contrôle du contenu des fichiers client, signature visible et limitée, montant Stripe vérifié, IP fiable, règle d'accès aux fichiers testée, lien de réinitialisation unique, code mort supprimé) — section 4.20. |
+| 2026-10-21 | "Optimiser l'affichage du calendrier" — gênes : ne remplit pas l'écran, trop d'espace perdu, lisibilité ; Réseaux et Tâches | **Livré** : grille plein écran (Mois, Semaine), panneau de gauche repliable sur Réseaux, week-ends / hors mois teintés, aujourd'hui surligné, passé atténué (section 4.21). |

@@ -244,6 +244,7 @@ export default async function SocialPostsPage({
     jour?: string;
     /** Calendrier façon Agenda : clients décochés, actions et routines masquées. */
     masquer?: string;
+    panneau?: string;
     actions?: string;
     routines?: string;
     /** « Mes publications » : attribuées à l'admin connecté (2026-10-20). */
@@ -253,7 +254,7 @@ export default async function SocialPostsPage({
   const me = await verifyAdminSession();
   const params = await searchParams;
   const mineOnly = params.moi === "1";
-  const { clientId, reseau, statut, categorie, mois, cal, jour, masquer, actions: actionsParam, routines: routinesParam } = params;
+  const { clientId, reseau, statut, categorie, mois, cal, jour, masquer, panneau, actions: actionsParam, routines: routinesParam } = params;
   // Vue par défaut du profil (« Mon affichage », 2026-10-20), seulement en
   // arrivant sur la page sans aucun paramètre.
   const vue = params.vue ?? (Object.keys(params).length === 0 ? (await getMyPreferences()).views.reseaux : undefined);
@@ -337,12 +338,15 @@ export default async function SocialPostsPage({
   const hiddenClients = (masquer ?? "").split(",").filter(Boolean);
   const showActions = actionsParam !== "0";
   const showRoutines = routinesParam !== "0";
+  // Panneau de gauche du calendrier repliable (2026-10-21), ouvert par défaut.
+  const showPanel = panneau !== "0";
   const calendarParams: Record<string, string> = {
     ...filterParams,
     vue: "calendrier",
     ...(hiddenClients.length ? { masquer: hiddenClients.join(",") } : {}),
     ...(showActions ? {} : { actions: "0" }),
     ...(showRoutines ? {} : { routines: "0" }),
+    ...(showPanel ? {} : { panneau: "0" }),
   };
   const calendarHref = (overrides: Record<string, string | undefined>) => {
     const search = new URLSearchParams(calendarParams);
@@ -668,8 +672,8 @@ export default async function SocialPostsPage({
           // Calendrier façon Google Agenda (livraison 3 de la refonte
           // Workspace, 2026-10-20) : panneau de gauche avec le petit mois, les
           // clients comme des agendas qu'on coche et les éléments facultatifs.
-          <div className="mt-2 lg:grid lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-6">
-            <aside className="mt-4 hidden flex-col gap-6 lg:flex">
+          <div className={`mt-2 ${showPanel ? "lg:grid lg:grid-cols-[15rem_minmax(0,1fr)] lg:gap-6" : ""}`}>
+            <aside className={`mt-4 hidden flex-col gap-6 ${showPanel ? "lg:flex" : ""}`}>
               <AgendaMiniMonth
                 mode={calendarMode}
                 selected={calendarAnchor}
@@ -791,6 +795,7 @@ export default async function SocialPostsPage({
               basePath="/admin/reseaux"
               params={calendarParams}
               undatedLabel="Sans date de publication"
+              panelToggle={{ href: calendarHref({ panneau: showPanel ? "0" : undefined }), open: showPanel }}
             />
           </div>
         ) : posts.length === 0 ? (

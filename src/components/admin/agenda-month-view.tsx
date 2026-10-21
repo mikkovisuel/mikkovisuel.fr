@@ -1,8 +1,9 @@
 import Link from "next/link";
-import { CaretLeft, CaretRight } from "@phosphor-icons/react/dist/ssr";
+import { CaretLeft, CaretRight, SidebarSimple } from "@phosphor-icons/react/dist/ssr";
 import { dueDateKey, isoWeekNumber } from "@/lib/tasks";
 import { toParisWallClockDate } from "@/lib/social-posts";
 import { CalendarDraggable, CalendarDropZone } from "@/components/admin/calendar-dnd";
+import { AgendaFill } from "@/components/admin/agenda-fill";
 
 // Calendrier à la manière de Google Agenda (refonte « Workspace », livraison
 // 3, 2026-10-20 ; vues Jour et Semaine et numéros de semaine ajoutés le même
@@ -15,6 +16,11 @@ import { CalendarDraggable, CalendarDropZone } from "@/components/admin/calendar
 //  - Jour : la liste de la journée, heure par heure, avec le détail.
 // Adresse : `cal` (mois | semaine | jour) et `jour` (AAAA-MM-JJ, un jour de la
 // période) ; l'ancien paramètre `mois` (AAAA-MM) reste compris.
+//
+// Lisibilité (2026-10-21) : la grille descend jusqu'en bas de l'écran
+// (`AgendaFill`), week-ends et jours hors du mois teintés, jour courant
+// surligné, jours passés atténués ; bouton pour replier le panneau de gauche
+// quand la page en a un (`panelToggle`).
 //
 // Réservé au back-office : l'espace client garde `TaskCalendarView`.
 
@@ -187,6 +193,7 @@ export function AgendaMonthView({
   params = {},
   onMove,
   undatedLabel = "Sans date",
+  panelToggle,
 }: {
   items: AgendaItem[];
   mode?: AgendaMode;
@@ -201,6 +208,8 @@ export function AgendaMonthView({
   /** Glisser-déposer d'un jour à l'autre (publications réseaux). */
   onMove?: (id: string, day: string) => Promise<{ error?: string }>;
   undatedLabel?: string;
+  /** Bouton « panneau » (page avec un panneau latéral) : lien qui l'ouvre ou le replie. */
+  panelToggle?: { href: string; open: boolean };
 }) {
   const day = anchor ?? new Date(year, month, 1);
   // « Aujourd'hui » à l'heure de Paris, comme les dates des évènements.
@@ -224,6 +233,17 @@ export function AgendaMonthView({
   return (
     <div className="mt-4">
       <div className="flex flex-wrap items-center gap-2">
+        {panelToggle && (
+          <Link
+            href={panelToggle.href}
+            aria-label={panelToggle.open ? "Replier le panneau" : "Afficher le panneau"}
+            title={panelToggle.open ? "Replier le panneau" : "Afficher le panneau"}
+            aria-pressed={panelToggle.open}
+            className={`${ICON_LINK} hidden lg:flex`}
+          >
+            <SidebarSimple size={20} />
+          </Link>
+        )}
         <Link
           href={hrefFor(basePath, params, mode, now)}
           className="inline-flex h-9 items-center rounded-full border border-[var(--color-outline)] px-4 text-sm font-medium text-ink transition-colors hover:bg-ink/[0.04]"
@@ -256,18 +276,25 @@ export function AgendaMonthView({
       </div>
 
       {mode === "mois" && (
-        <div className="mt-3 overflow-x-auto rounded-xl border border-line">
-          <div className="min-w-[760px]">
+        <AgendaFill className="mt-3 overflow-x-auto rounded-xl border border-line">
+          <div className="flex h-full min-w-[760px] flex-col">
             <div className="grid grid-cols-[2.5rem_repeat(7,minmax(0,1fr))] border-b border-line">
               <div className="py-1.5 text-center text-[10px] font-medium text-ink-muted" title="Numéro de semaine">
                 S.
               </div>
-              {WEEKDAYS.map((label) => (
-                <div key={label} className="border-l border-line py-1.5 text-center text-[11px] font-medium text-ink-muted">
+              {WEEKDAYS.map((label, index) => (
+                <div
+                  key={label}
+                  className={`border-l border-line py-1.5 text-center text-[11px] font-medium ${index >= 5 ? "text-ink-muted/70" : "text-ink-muted"}`}
+                >
                   {label}
                 </div>
               ))}
             </div>
+            <div
+              className="grid flex-1"
+              style={{ gridTemplateRows: `repeat(${monthWeeks(year, month).length}, minmax(6.5rem, 1fr))` }}
+            >
             {monthWeeks(year, month).map((week, weekIndex) => (
               <div
                 key={weekIndex}
@@ -286,7 +313,12 @@ export function AgendaMonthView({
                   const dayItems = inMonth ? (byDay.get(key) ?? []) : [];
                   const visible = dayItems.slice(0, VISIBLE_PER_DAY);
                   const more = dayItems.slice(VISIBLE_PER_DAY);
-                  const cellClass = "flex min-h-28 min-w-0 flex-col gap-0.5 border-l border-line p-1";
+                  const isToday = key === today;
+                  const isPast = key < today;
+                  const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+                  const cellClass = `flex min-w-0 flex-col gap-0.5 overflow-hidden border-l border-line p-1 ${
+                    isToday ? "bg-accent/[0.08]" : !inMonth || isWeekend ? "bg-ink/[0.045]" : ""
+                  }`;
                   const content = (
                     <>
                       <span className="mb-0.5 flex justify-center">
@@ -294,18 +326,22 @@ export function AgendaMonthView({
                           href={hrefFor(basePath, params, "jour", date)}
                           title="Voir la journée"
                           className={`flex h-6 min-w-6 items-center justify-center rounded-full px-1 text-xs transition-colors ${
-                            key === today
+                            isToday
                               ? "bg-accent font-medium text-accent-ink"
-                              : inMonth
-                                ? "text-ink hover:bg-ink/[0.08]"
-                                : "text-ink-muted/60 hover:bg-ink/[0.08]"
+                              : !inMonth
+                                ? "text-ink-muted/50 hover:bg-ink/[0.08]"
+                                : isPast
+                                  ? "text-ink-muted hover:bg-ink/[0.08]"
+                                  : "font-medium text-ink hover:bg-ink/[0.08]"
                           }`}
                         >
                           {date.getDate()}
                         </Link>
                       </span>
                       {visible.map((item) => (
-                        <Draggable key={item.id} item={item} onMove={Boolean(onMove)} />
+                        <div key={item.id} className={isPast ? "opacity-60" : undefined}>
+                          <Draggable item={item} onMove={Boolean(onMove)} />
+                        </div>
                       ))}
                       {more.length > 0 && (
                         <Link
@@ -329,25 +365,28 @@ export function AgendaMonthView({
                 })}
               </div>
             ))}
+            </div>
           </div>
-        </div>
+        </AgendaFill>
       )}
 
       {mode === "semaine" && (
-        <div className="mt-3 overflow-x-auto rounded-xl border border-line">
-          <div className="grid min-w-[840px] grid-cols-7">
+        <AgendaFill className="mt-3 overflow-x-auto rounded-xl border border-line">
+          <div className="grid h-full min-h-[60vh] min-w-[840px] grid-cols-7">
             {Array.from({ length: 7 }, (_, index) => addDays(weekStart, index)).map((date, index) => {
               const key = dueDateKey(date);
               const dayItems = byDay.get(key) ?? [];
+              const isToday = key === today;
+              const isPast = key < today;
               const header = (
                 <Link
                   href={hrefFor(basePath, params, "jour", date)}
                   className="flex flex-col items-center gap-1 border-b border-line py-2 transition-colors hover:bg-ink/[0.03]"
                 >
-                  <span className="text-[11px] font-medium text-ink-muted">{WEEKDAYS[index]}</span>
+                  <span className={`text-[11px] font-medium ${isToday ? "text-ink" : "text-ink-muted"}`}>{WEEKDAYS[index]}</span>
                   <span
                     className={`flex h-9 w-9 items-center justify-center rounded-full text-lg ${
-                      key === today ? "bg-accent font-medium text-accent-ink" : "text-ink"
+                      isToday ? "bg-accent font-medium text-accent-ink" : isPast ? "text-ink-muted" : "text-ink"
                     }`}
                   >
                     {date.getDate()}
@@ -355,13 +394,15 @@ export function AgendaMonthView({
                 </Link>
               );
               const list = (
-                <div className="flex flex-col gap-1 p-1.5">
+                <div className={`flex flex-col gap-1 overflow-y-auto p-1.5 ${isPast ? "opacity-60" : ""}`}>
                   {dayItems.map((item) => (
                     <Draggable key={item.id} item={item} onMove={Boolean(onMove)} full />
                   ))}
                 </div>
               );
-              const cellClass = `flex min-h-[60vh] min-w-0 flex-col ${index > 0 ? "border-l border-line" : ""}`;
+              const cellClass = `flex min-h-0 min-w-0 flex-col ${index > 0 ? "border-l border-line" : ""} ${
+                isToday ? "bg-accent/[0.08]" : index >= 5 ? "bg-ink/[0.045]" : ""
+              }`;
               return onMove ? (
                 <CalendarDropZone key={key} day={key} onMove={onMove} className={cellClass}>
                   {header}
@@ -375,7 +416,7 @@ export function AgendaMonthView({
               );
             })}
           </div>
-        </div>
+        </AgendaFill>
       )}
 
       {mode === "jour" &&
