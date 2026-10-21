@@ -464,6 +464,51 @@ export default async function SocialPostsPage({
         })()
       : [];
 
+  // Actions que les routines poseront plus tard (2026-10-21, « je ne vois
+  // pas les actions de ma routine ») : la tâche horaire ne crée l'action
+  // qu'à J - `actionLeadDays`, et les routines internes (sans client)
+  // n'avaient aucune case prévue. Pointillés à la date où l'action sera
+  // posée ; une occurrence déjà traitée (`lastRunFor`) a sa vraie action.
+  const plannedActionEntries =
+    view === "calendrier" && showRoutines
+      ? await (async () => {
+          const routines = await db.socialRoutine.findMany({
+            where: {
+              active: true,
+              createsAction: true,
+              set: {
+                active: true,
+                isTemplate: false,
+                ...(clientId ? { OR: [{ clientId }, { clientId: null }] } : {}),
+              },
+            },
+            include: { set: { include: { client: { select: { id: true, name: true } } } } },
+          });
+          const DAY_MS = 86_400_000;
+          return routines.flatMap((routine) => {
+            const lead = (routine.actionLeadDays ?? 0) * DAY_MS;
+            const months: [number, number][] = [];
+            const last = new Date(rangeEnd.getTime() + lead);
+            for (let y = rangeStart.getUTCFullYear(), m = rangeStart.getUTCMonth(); y < last.getUTCFullYear() || (y === last.getUTCFullYear() && m <= last.getUTCMonth()); m === 11 ? ((m = 0), y++) : m++) {
+              months.push([y, m]);
+            }
+            const client = routine.set.client;
+            return months
+              .flatMap(([year, month]) => routineOccurrencesInMonth(routine, year, month, now))
+              .filter((occurrence) => !routine.lastRunFor || occurrence > routine.lastRunFor)
+              .map((occurrence) => new Date(occurrence.getTime() - lead))
+              .filter((dueAt) => dueAt >= rangeStart && dueAt < rangeEnd)
+              .map((dueAt) => ({
+                id: `planned-${routine.id}-${dueAt.getTime()}`,
+                title: `${routine.title} · ${client?.name ?? "interne"}`,
+                date: toParisWallClockDate(dueAt),
+                clientId: client?.id ?? null,
+                tooltip: "Action prévue par une routine : elle sera ajoutée automatiquement à « À faire ».",
+              }));
+          });
+        })()
+      : [];
+
   // Actions du mois affiché : elles apparaissent dans les cases du
   // calendrier à côté des publications (choix du client : les deux vues).
   const actionEntries =
@@ -783,6 +828,17 @@ export default async function SocialPostsPage({
                     dotClass: clientColor(entry.clientId),
                     href: entry.href,
                     tooltip: `${entry.title} — ${entry.status.label}`,
+                    ghost: true,
+                  })),
+                ...plannedActionEntries
+                  .filter((entry) => !entry.clientId || !hiddenClients.includes(entry.clientId))
+                  .map((entry) => ({
+                    id: entry.id,
+                    title: `Action prévue · ${entry.title}`,
+                    date: entry.date,
+                    dotClass: entry.clientId ? clientColor(entry.clientId) : "bg-slate-500",
+                    href: "/admin/reseaux/routines",
+                    tooltip: entry.tooltip,
                     ghost: true,
                   })),
                 ...(showActions ? actionEntries : [])

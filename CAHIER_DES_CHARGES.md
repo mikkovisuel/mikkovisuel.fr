@@ -2835,6 +2835,21 @@ Gmail » sur chaque conversation.
   suppression définitive). Une connexion plus ancienne affiche un bandeau
   « Reconnecter Gmail ». Chaque admin voit sa propre boîte.
 
+### 4.25 Calendrier Réseaux : actions prévues par les routines (2026-10-21)
+
+Signalement : « lorsque je crée une routine, je ne vois pas les actions dans
+le calendrier ». Cause : la tâche horaire ne crée l'action d'une routine
+qu'à J − « jours d'avance » de chaque occurrence ; avant, rien ne
+l'annonçait, et les routines internes (sans client) n'avaient aucune case
+prévue.
+
+Correctif : chaque routine active qui « crée une action » affiche dans le
+calendrier, en pointillés, « Action prévue · titre · client (ou interne) »
+à la date où l'action sera posée, pour toutes les occurrences de la période
+affichée. Le pointillé disparaît quand la vraie action est créée (occurrence
+déjà traitée). Rangé sous « Routines prévues » (case à décocher dans le
+panneau) ; un clic ouvre la page des routines.
+
 ## Passe de nettoyage du code (2026-09-22)
 
 Demande du client : "fais une passe globale sur le code et nettoie tout,
@@ -3609,3 +3624,4 @@ Le client a explicitement délégué ces choix :
 | 2026-10-21 | "Une action peut être affectée à un client (Réseaux)" + "optimiser la vue des notes : dossiers avec sous-notes et petit triangle" — choix : tous les clients ; maquette arborescence ; glisser-déposer | **Livré** : actions ouvertes à tous les clients actifs (nom et couleur dans le calendrier) ; Notes en deux colonnes avec dossiers dépliables, Épinglées / Rappels, glisser-déposer, ouverture mémorisée (section 4.22). |
 | 2026-10-21 | "Mettre un chat Claude dans mon appli utilisant Sonnet" — niveau 3 (agit), toutes les familles d'actions, historique par admin, panneau et page | **Livré** : assistant Sonnet 5.5 (panneau barre du haut + rubrique Assistant), lectures automatiques, actions après confirmation, journal d'audit, historique par admin (section 4.23). |
 | 2026-10-21 | "Inclure un onglet et gérer l'intégralité de mes mails, avec toutes les fonctions de Gmail" — retenu : boîte et lecture, écrire / répondre, ranger, liens avec l'admin ; maquette validée | **Livré** : rubrique Mail (dossiers, libellés, recherche, actions groupées, conversation, réponse / transfert / brouillons / pièces jointes, liens client-prospect-tâche-note-assistant) ; droit Gmail « modify » à accorder en reconnectant Gmail (section 4.24). |
+| 2026-10-21 | "Lorsque je crée une routine, je ne vois pas les actions dans le calendrier (réseaux)" | **Corrigé** : actions prévues des routines affichées en pointillés dans le calendrier (routines client et internes), jusqu'à la création de la vraie action (section 4.25). |

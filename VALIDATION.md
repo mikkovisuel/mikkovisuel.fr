@@ -1325,6 +1325,14 @@ Rejoué en appelant la tâche planifiée `/api/cron/invoice-reminders` en local 
 | Accès | Rubrique « Mail » dans le menu | ✅ Présente | Gmail non connecté (local) | ✅ « Gmail n'est pas connecté » + bouton « Connecter Gmail », aucune erreur | 2026-10-21 |
 | Vraie boîte (liste, conversation, rangement, envoi, brouillon, liens) | — | ⏳ À valider en production après reconnexion de Gmail par le client | — | — | — |
 
+## Calendrier Réseaux : actions prévues par les routines (2026-10-21)
+
+| Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |
+|---|---|---|---|---|---|
+| Routine interne (sans client) | « Chaque lundi 9 h », action le jour même | ✅ « Action prévue · … · interne » le lundi 26 oct. ; 5 lundis en novembre | Routine désactivée | ✅ Rien d'affiché | 2026-10-21 |
+| Routine client avec avance | « Chaque vendredi 18 h », action 2 jours avant | ✅ Pointillé le mercredi 28 oct. (pour le 30) ; 4 en novembre | Occurrence déjà traitée (vraie action posée) | ✅ Vraie action le 21 oct., pas de pointillé en double | 2026-10-21 |
+| Affichage | — | — | « Routines prévues » décoché | ✅ Pointillés masqués, vraie action toujours visible | 2026-10-21 |
+
 ## Points restant ouverts pour une prochaine passe de validation
 
 - Glisser-déposer et `<select>` natif du Kanban Prospection (limite outil, voir ci-dessus).
