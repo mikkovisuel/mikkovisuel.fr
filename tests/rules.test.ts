@@ -133,3 +133,39 @@ describe("accès aux fichiers", () => {
     expect(clientOwnsFile(null, { clientId: "c1" })).toBe(false);
   });
 });
+
+describe("onglet Mail", () => {
+  it("fabrique un e-mail avec copie, objet accentué et pièce jointe", async () => {
+    const { buildRaw } = await import("@/lib/gmail");
+    const raw = Buffer.from(
+      buildRaw(
+        {
+          to: "client@exemple.fr",
+          cc: "copie@exemple.fr",
+          subject: "Devis été",
+          bodyHtml: "<p>Bonjour</p>",
+          attachments: [{ filename: "devis.pdf", mimeType: "application/pdf", content: Buffer.alloc(200, 7) }],
+        },
+        "moi@exemple.fr",
+      ),
+      "base64url",
+    ).toString("utf8");
+    expect(raw).toContain("Cc: copie@exemple.fr");
+    expect(raw).toContain("Subject: =?UTF-8?B?");
+    expect(raw).toMatch(/multipart\/mixed; boundary="(mv-[^"]+)"/);
+    expect(raw).toContain('Content-Disposition: attachment; filename="devis.pdf"');
+    const base64Lines = raw.split("\r\n").filter((line) => /^[A-Za-z0-9+/=]{20,}$/.test(line));
+    expect(base64Lines.length).toBeGreaterThan(1);
+    expect(base64Lines.every((line) => line.length <= 76)).toBe(true);
+  });
+  it("sans pièce jointe, reste un simple e-mail HTML", async () => {
+    const { buildRaw } = await import("@/lib/gmail");
+    const raw = Buffer.from(buildRaw({ to: "a@b.fr", subject: "Hello", bodyHtml: "<p>x</p>" }, "moi@b.fr"), "base64url").toString("utf8");
+    expect(raw).toContain('Content-Type: text/html; charset="UTF-8"');
+    expect(raw).not.toContain("multipart");
+  });
+  it("décode les entités des extraits Gmail", async () => {
+    const { decodeEntities } = await import("@/lib/mail-folders");
+    expect(decodeEntities("l&#39;affiche &amp; le &quot;logo&quot;")).toBe('l\'affiche & le "logo"');
+  });
+});

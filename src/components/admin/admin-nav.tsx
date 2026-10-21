@@ -8,6 +8,7 @@ import {
   CalendarBlank,
   ChatCircleText,
   CheckSquare,
+  EnvelopeSimple,
   FileText,
   House,
   Images,
@@ -47,6 +48,7 @@ const NAV_GROUPS: { title: string | null; items: NavItem[] }[] = [
       { href: "/admin/clients", label: "Clients", icon: Users },
       { href: "/admin/contacts", label: "Contacts", icon: AddressBook },
       { href: "/admin/prospection", label: "Prospection", icon: Target },
+      { href: "/admin/mail", label: "Mail", icon: EnvelopeSimple },
     ],
   },
   {

@@ -46,12 +46,21 @@ function RichText({ text }: { text: string }) {
   );
 }
 
-export function AssistantChat({ variant, onClose }: { variant: "panel" | "page"; onClose?: () => void }) {
+export function AssistantChat({
+  variant,
+  onClose,
+  seed,
+}: {
+  variant: "panel" | "page";
+  onClose?: () => void;
+  /** Demande préremplie dans une nouvelle conversation, à relire avant envoi. */
+  seed?: string;
+}) {
   const router = useRouter();
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [items, setItems] = useState<Item[]>([]);
-  const [input, setInput] = useState("");
+  const [input, setInput] = useState(seed ?? "");
   const [busy, setBusy] = useState(false);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [decisions, setDecisions] = useState<Record<string, "confirm" | "cancel">>({});

@@ -129,6 +129,17 @@ export function WorkspaceShell({
   // Assistant Claude (2026-10-21) : panneau à droite, gardé ouvert d'une page
   // à l'autre ; inutile sur sa propre page.
   const [assistantOpen, setAssistantOpen] = useState(false);
+  // Demande préremplie (ex. « Résumer cet e-mail » depuis l'onglet Mail).
+  const [assistantSeed, setAssistantSeed] = useState<{ text: string; at: number } | null>(null);
+
+  useEffect(() => {
+    function onAsk(event: Event) {
+      setAssistantSeed({ text: (event as CustomEvent<string>).detail, at: Date.now() });
+      setAssistantOpen(true);
+    }
+    window.addEventListener("assistant:ask", onAsk);
+    return () => window.removeEventListener("assistant:ask", onAsk);
+  }, []);
   const assistantVisible = assistantOpen && !pathname.startsWith("/admin/assistant");
 
   useEffect(() => {
@@ -222,7 +233,7 @@ export function WorkspaceShell({
             aria-label="Assistant"
             className="fixed inset-0 z-50 flex flex-col bg-surface lg:static lg:z-auto lg:mb-4 lg:mr-4 lg:w-[400px] lg:shrink-0 lg:overflow-hidden lg:rounded-2xl"
           >
-            <AssistantChat variant="panel" onClose={() => setAssistantOpen(false)} />
+            <AssistantChat key={assistantSeed?.at} variant="panel" seed={assistantSeed?.text} onClose={() => setAssistantOpen(false)} />
           </aside>
         )}
       </div>

@@ -1316,6 +1316,15 @@ Rejoué en appelant la tâche planifiée `/api/cron/invoice-reminders` en local 
 | Panneau | Bouton étoiles depuis le tableau de bord, demande de note | ✅ Carte « Créer une note » avec client et texte (après correctif : la 1re question d'une conversation neuve était refusée) | Téléphone 390 px | ✅ Panneau plein écran, aucun défilement horizontal | 2026-10-21 |
 | Historique | Page Assistant, clic sur la conversation | ✅ Fil rechargé : lectures, cartes « Faite » / « Annulée », réponses | — | — | 2026-10-21 |
 
+## Onglet Mail (2026-10-21)
+
+| Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |
+|---|---|---|---|---|---|
+| Fabrication des e-mails | Test : copie, objet accentué, pièce jointe | ✅ En-tête Cc, objet encodé, multipart, lignes base64 ≤ 76 caractères | Sans pièce jointe | ✅ Simple e-mail HTML (test) | 2026-10-21 |
+| Extraits Gmail | Test : `l&#39;affiche &amp; …` | ✅ Décodé | — | — | 2026-10-21 |
+| Accès | Rubrique « Mail » dans le menu | ✅ Présente | Gmail non connecté (local) | ✅ « Gmail n'est pas connecté » + bouton « Connecter Gmail », aucune erreur | 2026-10-21 |
+| Vraie boîte (liste, conversation, rangement, envoi, brouillon, liens) | — | ⏳ À valider en production après reconnexion de Gmail par le client | — | — | — |
+
 ## Points restant ouverts pour une prochaine passe de validation
 
 - Glisser-déposer et `<select>` natif du Kanban Prospection (limite outil, voir ci-dessus).
@@ -1410,3 +1419,4 @@ Rejoué en appelant la tâche planifiée `/api/cron/invoice-reminders` en local 
 - **Audit 2026-10-21** : l'IP retenue derrière Scalingo (dernière valeur de `X-Forwarded-For`) n'a pas été vérifiée en production ; la connexion Gmail complète avec un vrai compte Google n'a pas été rejouée (seuls le départ avec `state` et le refus d'un retour forgé l'ont été) ; la pastille d'accent du bloc « Aujourd'hui » et le lien « Signé » vus en code seulement.
 - **Notes 2026-10-21** : glisser-déposer testé par évènements simulés dans Chrome, pas à la souris ; création d'une note par le survol d'un dossier et passage arborescence → éditeur → retour sur téléphone non rejoués.
 - **Assistant 2026-10-21** : seules les actions « créer une tâche », « créer une note » (carte) et « marquer une facture payée » (annulée) ont été rejouées ; les autres (modifier tâche / prospect, action et brouillon réseaux, relance de paiement par e-mail) sont vérifiées par compilation seulement. Comportement derrière le routeur Scalingo (réponses longues) non observé en production.
+- **Onglet Mail 2026-10-21** : aucune boîte Gmail connectée en local ; liste, lecture, rangement, envoi, transfert avec pièces jointes, brouillons, création de tâche / note et lecture d'e-mail par l'assistant sont à valider en production avec la vraie boîte, après reconnexion de Gmail.

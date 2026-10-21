@@ -2804,6 +2804,37 @@ familles d'actions, historique gardé par admin, panneau **et** page dédiée.
 - Hors périmètre de cette version : suppression de données, envoi d'e-mails
   autres que la relance de paiement, pièces jointes.
 
+### 4.24 Onglet Mail : la boîte Gmail dans l'admin (2026-10-21)
+
+Demande : « inclure un onglet et gérer l'intégralité de mes mails, avec
+toutes les fonctions de Gmail ». Périmètre retenu avec le client (maquette
+validée) : boîte et lecture, écrire et répondre, ranger, liens avec l'admin.
+Ce que Gmail fait mieux lui-même (filtres automatiques, envoi programmé,
+mise en attente, réglages du compte) reste dans Gmail : lien « Ouvrir dans
+Gmail » sur chaque conversation.
+
+- **Rubrique « Mail »** (Relation client) : bouton « Nouveau message »,
+  dossiers Boîte de réception (nombre de non lus), Suivis, Importants,
+  Envoyés, Brouillons, Tous les messages, Spam, Corbeille, puis les
+  libellés de l'admin. Recherche avec la syntaxe Gmail (`from:`,
+  `has:attachment`…), pages de 25 conversations.
+- **Liste** : cases à cocher et actions groupées (archiver, remettre dans la
+  boîte, supprimer → corbeille Gmail, restaurer, lu / non lu, ajouter un
+  libellé), étoile, repère « client » / « prospect » selon l'adresse.
+- **Conversation** : messages affichés dans un cadre isolé (comme avant),
+  pièces jointes téléchargeables, ouverture = marquée lue ; barre :
+  archiver, supprimer, non lu, étoile, libellé ; Répondre, Répondre à tous,
+  Transférer (pièces jointes d'origine comprises) ; pièces jointes à
+  l'envoi (20 Mo) ; « Enregistrer le brouillon » (dans Gmail).
+- **Liens avec l'admin** : fiche client / prospect de l'expéditeur, « Créer
+  une tâche » (titre = objet, texte = message), « Créer une note »,
+  « Résumer / répondre avec l'assistant » (ouvre le panneau avec la demande
+  prête). L'assistant sait lire un e-mail et proposer un brouillon de
+  réponse, enregistré dans Gmail après confirmation (jamais envoyé seul).
+- **Droit Gmail ajouté** : « modify » (ranger, brouillons ; jamais de
+  suppression définitive). Une connexion plus ancienne affiche un bandeau
+  « Reconnecter Gmail ». Chaque admin voit sa propre boîte.
+
 ## Passe de nettoyage du code (2026-09-22)
 
 Demande du client : "fais une passe globale sur le code et nettoie tout,
@@ -3577,3 +3608,4 @@ Le client a explicitement délégué ces choix :
 | 2026-10-21 | "Optimiser l'affichage du calendrier" — gênes : ne remplit pas l'écran, trop d'espace perdu, lisibilité ; Réseaux et Tâches | **Livré** : grille plein écran (Mois, Semaine), panneau de gauche repliable sur Réseaux, week-ends / hors mois teintés, aujourd'hui surligné, passé atténué (section 4.21). |
 | 2026-10-21 | "Une action peut être affectée à un client (Réseaux)" + "optimiser la vue des notes : dossiers avec sous-notes et petit triangle" — choix : tous les clients ; maquette arborescence ; glisser-déposer | **Livré** : actions ouvertes à tous les clients actifs (nom et couleur dans le calendrier) ; Notes en deux colonnes avec dossiers dépliables, Épinglées / Rappels, glisser-déposer, ouverture mémorisée (section 4.22). |
 | 2026-10-21 | "Mettre un chat Claude dans mon appli utilisant Sonnet" — niveau 3 (agit), toutes les familles d'actions, historique par admin, panneau et page | **Livré** : assistant Sonnet 5.5 (panneau barre du haut + rubrique Assistant), lectures automatiques, actions après confirmation, journal d'audit, historique par admin (section 4.23). |
+| 2026-10-21 | "Inclure un onglet et gérer l'intégralité de mes mails, avec toutes les fonctions de Gmail" — retenu : boîte et lecture, écrire / répondre, ranger, liens avec l'admin ; maquette validée | **Livré** : rubrique Mail (dossiers, libellés, recherche, actions groupées, conversation, réponse / transfert / brouillons / pièces jointes, liens client-prospect-tâche-note-assistant) ; droit Gmail « modify » à accorder en reconnectant Gmail (section 4.24). |

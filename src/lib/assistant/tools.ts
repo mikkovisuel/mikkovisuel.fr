@@ -19,6 +19,7 @@ import { createNote, updateNote } from "@/lib/actions/notes";
 import { setProspectStatus } from "@/lib/actions/prospects";
 import { createSocialAction } from "@/lib/actions/social-actions";
 import { sendPaymentReminder, setDocumentPaymentStatus } from "@/lib/actions/payments";
+import { createDraft, getThread } from "@/lib/gmail";
 
 // Outils de l'assistant Claude du back-office (2026-10-21).
 //  - « read » : exécutés tout de suite, en lecture seule.
@@ -342,7 +343,56 @@ const TOOLS = {
     },
   },
 
+  lire_email: {
+    kind: "read",
+    description: "Lit une conversation Gmail de l'admin (expéditeurs, dates, texte des messages) à partir de son identifiant de fil.",
+    schema: z.object({ fil_id: z.string() }),
+    label: () => "e-mail",
+    run: async ({ fil_id }: { fil_id: string }) => {
+      const messages = await getThread(fil_id);
+      return messages.map((m) => ({
+        de: m.from,
+        a: m.to,
+        cc: m.cc,
+        date: m.date?.toISOString() ?? null,
+        objet: m.subject,
+        texte: (m.bodyText ?? m.bodyHtml?.replace(/<style[\s\S]*?<\/style>/gi, "").replace(/<[^>]*>/g, " ") ?? "")
+          .replace(/\s+/g, " ")
+          .slice(0, 6000),
+        pieces_jointes: m.attachments.map((a) => a.filename),
+      }));
+    },
+  },
+
   // --- Actions (confirmation obligatoire) -------------------------------
+  enregistrer_brouillon_reponse: {
+    kind: "write",
+    description: "Propose d'enregistrer dans Gmail un brouillon de réponse à une conversation (rien n'est envoyé).",
+    schema: z.object({ fil_id: z.string(), texte: z.string().min(1).max(20000) }),
+    describe: async ({ fil_id, texte }: { fil_id: string; texte: string }) => {
+      const messages = await getThread(fil_id).catch(() => []);
+      const last = messages[messages.length - 1];
+      if (!last) return { error: "Conversation introuvable." };
+      return {
+        title: "Enregistrer un brouillon de réponse (non envoyé)",
+        details: [`Re: ${last.subject}`, `À : ${last.from}`, texte.length > 600 ? `${texte.slice(0, 600)}…` : texte],
+      };
+    },
+    execute: async ({ fil_id, texte }: { fil_id: string; texte: string }) => {
+      const messages = await getThread(fil_id);
+      const last = messages[messages.length - 1];
+      if (!last) throw new Error("Conversation introuvable.");
+      await createDraft({
+        to: last.from,
+        subject: /^re:/i.test(last.subject) ? last.subject : `Re: ${last.subject}`,
+        bodyHtml: escapeHtml(texte).replace(/\n/g, "<br>"),
+        threadId: fil_id,
+        inReplyToMessageId: last.messageIdHeader || undefined,
+        referencesHeader: [last.referencesHeader, last.messageIdHeader].filter(Boolean).join(" ") || undefined,
+      });
+      return `Brouillon enregistré dans Gmail : /admin/mail/${fil_id}`;
+    },
+  },
   creer_tache: {
     kind: "write",
     description: "Propose de créer une tâche pour un client (attribuée à l'admin connecté).",
@@ -610,6 +660,7 @@ export const ACTION_TITLES: Record<string, string> = {
   creer_brouillon_publication: "Créer un brouillon de publication",
   marquer_facture_payee: "Marquer une facture payée",
   envoyer_relance_paiement: "Envoyer une relance de paiement",
+  enregistrer_brouillon_reponse: "Enregistrer un brouillon de réponse",
 };
 
 export function getTool(name: string): ReadTool | WriteTool | null {
