@@ -33,7 +33,7 @@ export const metadata: Metadata = {
   title: "Réglages réseaux — Admin Mikko Visuel",
 };
 
-const SECTION = "rounded-2xl border border-line p-6";
+const SECTION = "rounded-2xl border border-line p-4";
 const SECTION_TITLE = "text-xs font-medium uppercase tracking-wide text-ink-muted";
 const ICON_DELETE =
   "flex h-7 w-7 items-center justify-center rounded-full border border-line text-ink-muted transition-colors hover:border-danger hover:bg-danger hover:text-white";

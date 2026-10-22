@@ -33,7 +33,7 @@ export const metadata: Metadata = {
   title: "Programmation — Admin Mikko Visuel",
 };
 
-const SECTION = "rounded-2xl border border-line p-6";
+const SECTION = "rounded-2xl border border-line p-4";
 const SECTION_TITLE = "text-xs font-medium uppercase tracking-wide text-ink-muted";
 const ICON_BUTTON =
   "flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-line text-ink-muted transition-colors hover:border-danger hover:bg-danger hover:text-white";
@@ -94,11 +94,10 @@ export default async function SocialRoutinesPage() {
       <PageToolbar title="Programmation" back={{ href: "/admin/reseaux", label: "Retour aux réseaux sociaux" }} />
       <div className={PAGE_BODY}>
         <p className="text-sm text-ink-muted">
-          Les routines produisent toutes seules ce que vous décidez : un rappel, un brouillon de publication, une tâche
-          de travail. Elles tournent avec la tâche planifiée horaire — rien à lancer à la main.
+          Ce que chaque routine produit (rappel, brouillon, tâche, action) arrive tout seul, chaque heure.
         </p>
         {/* --- Semaine type ------------------------------------------------ */}
-        <section className={`mt-8 ${SECTION}`}>
+        <section className={`mt-5 ${SECTION}`}>
           <h2 className={SECTION_TITLE}>Semaine type</h2>
           {weekly.length === 0 && monthly.length === 0 ? (
             <p className="mt-2 text-sm text-ink-muted">
@@ -190,14 +189,17 @@ export default async function SocialRoutinesPage() {
                 </div>
               </div>
 
-              <div className="mt-4">
-                <RoutineSetForm
-                  action={renameRoutineSet.bind(null, set.id)}
-                  placeholder="Nom du calendrier"
-                  submitLabel="Renommer"
-                  defaultValue={set.name}
-                />
-              </div>
+              <details className="mt-2">
+                <summary className="cursor-pointer text-xs text-ink-muted hover:text-ink">Renommer</summary>
+                <div className="mt-2">
+                  <RoutineSetForm
+                    action={renameRoutineSet.bind(null, set.id)}
+                    placeholder="Nom du calendrier"
+                    submitLabel="Renommer"
+                    defaultValue={set.name}
+                  />
+                </div>
+              </details>
 
               {set.routines.length > 0 && (
                 <ul className="mt-4 grid gap-3">

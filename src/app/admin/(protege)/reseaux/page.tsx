@@ -64,7 +64,7 @@ function requestedTaskStatus(post: PostRow) {
 
 function PostList({ posts, now }: { posts: PostRow[]; now: Date }) {
   return (
-    <ul className="divide-y divide-line rounded-2xl border border-line">
+    <ul className="ws-list divide-y divide-line overflow-hidden rounded-2xl border border-line">
       {posts.map((post) => {
         const meta = isSocialPostStatus(post.status) ? SOCIAL_POST_STATUS_META[post.status] : null;
         const cover = post.media[0];
@@ -79,64 +79,45 @@ function PostList({ posts, now }: { posts: PostRow[]; now: Date }) {
           <li key={post.id}>
             <Link
               href={`/admin/reseaux/${post.id}`}
-              className="flex items-center gap-4 px-4 py-3 transition-colors hover:bg-surface-elevated"
+              className="ws-row flex items-center gap-3 px-3 text-sm transition-colors hover:bg-surface-elevated"
             >
-              <span className="flex h-14 w-11 shrink-0 items-center justify-center overflow-hidden rounded-lg border border-line bg-surface-elevated text-ink-muted">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-md border border-line bg-surface-elevated text-ink-muted">
                 {cover?.mimeType.startsWith("image/") ? (
                   // eslint-disable-next-line @next/next/no-img-element -- vignette servie par une route authentifiée
-                  <img
-                    src={`/api/fichiers/reseaux/${cover.id}?thumb=1`}
-                    alt=""
-                    loading="lazy"
-                    className="h-full w-full object-cover"
-                  />
+                  <img src={`/api/fichiers/reseaux/${cover.id}?thumb=1`} alt="" loading="lazy" className="h-full w-full object-cover" />
                 ) : cover ? (
-                  <FileVideo size={18} weight="regular" />
+                  <FileVideo size={14} />
                 ) : (
-                  <Images size={18} weight="regular" />
+                  <Images size={14} />
                 )}
               </span>
-              <span className="min-w-0 flex-1">
-                <span className="block truncate font-medium text-ink">{post.title}</span>
-                <span className="block truncate text-sm text-ink-muted">
+              <span className="flex min-w-0 flex-1 items-center gap-2">
+                <span className="truncate font-medium text-ink">{post.title}</span>
+                <span className="hidden min-w-0 truncate text-ink-muted md:inline">
                   {post.client.name} · {post.networks.map(networkLabel).join(", ")} · {formatLabel(post.format)}
                 </span>
-                {(post.category || requestedTaskStatus(post) || post._count.notes > 0 || post.readyAt) && (
-                  <span className="mt-1 flex flex-wrap items-center gap-2 text-xs">
-                    {post.category && <StatusBadge label={post.category.label} color={post.category.color} />}
-                    {requestedTaskStatus(post) && (
-                      <span className="inline-flex items-center gap-1.5 text-ink-muted">
-                        <span
-                          className={`h-1.5 w-1.5 rounded-full ${
-                            PALETTE_SWATCH_CLASSES[requestedTaskStatus(post)!.color as PaletteColor] ??
-                            PALETTE_SWATCH_CLASSES.slate
-                          }`}
-                        />
-                        Création : {requestedTaskStatus(post)!.label}
-                      </span>
-                    )}
-                        {post.readyAt && post.status !== SOCIAL_POST_STATUS.PUBLIE && (
-                      <span className="inline-flex items-center gap-1 text-ink-muted">
-                        <Check size={12} weight="bold" className="text-accent" />
-                        Prête
-                      </span>
-                    )}
+                {post.category && <span className="hidden shrink-0 lg:inline"><StatusBadge label={post.category.label} color={post.category.color} /></span>}
+                {requestedTaskStatus(post) && (
+                  <span title={`Création : ${requestedTaskStatus(post)!.label}`} className="hidden shrink-0 items-center gap-1 text-xs text-ink-muted lg:inline-flex">
+                    <span className={`h-1.5 w-1.5 rounded-full ${PALETTE_SWATCH_CLASSES[requestedTaskStatus(post)!.color as PaletteColor] ?? PALETTE_SWATCH_CLASSES.slate}`} />
+                    Création
+                  </span>
+                )}
+                {post.readyAt && post.status !== SOCIAL_POST_STATUS.PUBLIE && (
+                  <span title="Prête" className="shrink-0 text-accent-strong"><Check size={13} weight="bold" /></span>
+                )}
                 {post._count.notes > 0 && (
-                      <span className="inline-flex items-center gap-1 text-ink-muted">
-                        <NotePencil size={12} weight="regular" />
-                        {post._count.notes} note{post._count.notes > 1 ? "s" : ""}
-                      </span>
-                    )}
+                  <span title={`${post._count.notes} note(s)`} className="inline-flex shrink-0 items-center gap-0.5 text-xs text-ink-muted">
+                    <NotePencil size={12} />
+                    {post._count.notes}
                   </span>
                 )}
               </span>
-              <span className="hidden shrink-0 text-right text-sm sm:block">
-                <span className={late ? "font-medium text-danger" : "text-ink-muted"}>
-                  {formatSchedule(post.scheduledAt)}
-                </span>
-                {late && <span className="block text-xs text-danger">En retard</span>}
+              <span className={`hidden shrink-0 text-xs sm:block ${late ? "font-medium text-danger" : "text-ink-muted"}`}>
+                {formatSchedule(post.scheduledAt)}
+                {late && " · en retard"}
                 {post.status === SOCIAL_POST_STATUS.PUBLIE && !post.publishedUrl && (
-                  <span className="block text-xs text-amber-600 dark:text-amber-400">Lien manquant</span>
+                  <span className="text-amber-600 dark:text-amber-400"> · lien manquant</span>
                 )}
               </span>
               {meta && <StatusBadge label={meta.label} color={meta.color} />}
@@ -154,11 +135,30 @@ function PostList({ posts, now }: { posts: PostRow[]; now: Date }) {
 // gauche comme sur Instagram, date de référence = date de publication
 // réelle, sinon date prévue. Les stories n'apparaissent pas sur une grille,
 // ni les publications sans date (impossible de les placer).
-function InstagramGrid({ posts, clientChosen }: { posts: PostRow[]; clientChosen: boolean }) {
+function InstagramGrid({
+  posts,
+  clientChosen,
+  clients,
+}: {
+  posts: PostRow[];
+  clientChosen: boolean;
+  clients: { id: string; name: string }[];
+}) {
   if (!clientChosen) {
     return (
       <div className="mt-8 rounded-2xl border border-dashed border-line p-10 text-center">
-        <p className="text-sm text-ink-muted">Choisissez un client dans les filtres pour afficher sa grille Instagram.</p>
+        <p className="text-sm text-ink-muted">Grille Instagram de quel client ?</p>
+        <div className="mt-4 flex flex-wrap justify-center gap-2">
+          {clients.map((client) => (
+            <Link
+              key={client.id}
+              href={`/admin/reseaux?vue=grille&clientId=${client.id}`}
+              className="inline-flex h-8 items-center rounded-full border border-line px-3 text-sm text-ink transition-colors hover:border-accent"
+            >
+              {client.name}
+            </Link>
+          ))}
+        </div>
       </div>
     );
   }
@@ -553,20 +553,20 @@ export default async function SocialPostsPage({
       <PageToolbar title="Réseaux sociaux">
         <Link
           href="/admin/reseaux/routines"
-          className="rounded-full border border-line px-5 py-2.5 text-sm text-ink transition-colors hover:border-accent"
+          className="inline-flex h-9 items-center rounded-full border border-line px-4 text-sm text-ink transition-colors hover:border-accent"
         >
           Programmation
         </Link>
         <Link
           href="/admin/reseaux/plans"
-          className="rounded-full border border-line px-5 py-2.5 text-sm text-ink transition-colors hover:border-accent"
+          className="inline-flex h-9 items-center rounded-full border border-line px-4 text-sm text-ink transition-colors hover:border-accent"
         >
           Plans
         </Link>
         {clientId && (
           <Link
             href={`/admin/reseaux/clients/${clientId}`}
-            className="rounded-full border border-line px-5 py-2.5 text-sm text-ink transition-colors hover:border-accent"
+            className="inline-flex h-9 items-center rounded-full border border-line px-4 text-sm text-ink transition-colors hover:border-accent"
           >
             Réglages du client
           </Link>
@@ -579,16 +579,13 @@ export default async function SocialPostsPage({
         />
         <Link
           href={clientId ? `/admin/reseaux/nouveau?clientId=${clientId}` : "/admin/reseaux/nouveau"}
-          className="rounded-full bg-accent px-5 py-2.5 text-sm font-medium text-accent-ink transition-transform active:scale-[0.98]"
+          className="inline-flex h-9 items-center rounded-full bg-accent px-4 text-sm font-medium text-accent-ink transition-transform active:scale-[0.98]"
         >
           Nouvelle publication
         </Link>
       </PageToolbar>
       <div className={PAGE_BODY}>
-        <p className="text-sm text-ink-muted">
-          Calendrier éditorial de vos clients : préparation, validation, publication.
-        </p>
-        <div className="mt-6 flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3">
           <div className="flex flex-wrap items-center gap-2">
           {/* Travail à deux admins (2026-10-20) : bascule « Mes publications ». */}
           <Link
@@ -721,7 +718,7 @@ export default async function SocialPostsPage({
         {view === "afaire" ? (
           <SocialActionsBoard actions={actions} clients={actionClients} now={now} admins={admins} />
         ) : view === "grille" ? (
-          <InstagramGrid posts={posts} clientChosen={Boolean(clientId)} />
+          <InstagramGrid posts={posts} clientChosen={Boolean(clientId)} clients={clients} />
         ) : view === "calendrier" ? (
           // Calendrier façon Google Agenda (livraison 3 de la refonte
           // Workspace, 2026-10-20) : panneau de gauche avec le petit mois, les

@@ -25,7 +25,7 @@ export const metadata: Metadata = {
   title: "Plans de communication — Admin Mikko Visuel",
 };
 
-const SECTION = "rounded-2xl border border-line p-6";
+const SECTION = "rounded-2xl border border-line p-4";
 const SECTION_TITLE = "text-xs font-medium uppercase tracking-wide text-ink-muted";
 const ICON_BUTTON =
   "flex h-7 w-7 shrink-0 items-center justify-center rounded-full border border-line text-ink-muted transition-colors hover:border-danger hover:bg-danger hover:text-white";
@@ -71,12 +71,11 @@ export default async function SocialPlansPage() {
       </PageToolbar>
       <div className={PAGE_BODY}>
         <p className="text-sm text-ink-muted">
-          Des séquences prêtes à appliquer autour d&apos;un évènement : J-30, J-7, J+1… Un plan ne produit rien tant
-          qu&apos;il n&apos;est pas appliqué à une date.
+          Séquences autour d&apos;un évènement (J-30, J-7, J+1…), appliquées à une date.
         </p>
         {/* --- Appliquer --------------------------------------------------- */}
         {plans.some((plan) => plan.steps.length > 0) && clients.length > 0 && (
-          <section className={`mt-8 ${SECTION}`}>
+          <section className={`mt-5 ${SECTION}`}>
             <h2 className={SECTION_TITLE}>Appliquer un plan</h2>
             <p className="mt-1 text-xs text-ink-muted">
               Vous verrez l&apos;aperçu des étapes avec leurs vraies dates avant que quoi que ce soit ne soit créé.

@@ -1342,6 +1342,15 @@ Rejoué en appelant la tâche planifiée `/api/cron/invoice-reminders` en local 
 | Visuels sur une publication existante | Dépôt d'une 3e image sur la fiche | ✅ Ajoutée tout de suite (3 vignettes, « 1/3 » dans l'aperçu) | — | — | 2026-10-21 |
 | Téléphone | Fiche avec 3 visuels, 390 px | ✅ Aucun défilement horizontal (après correctif : la rangée de visuels élargissait la page à 453 px) | — | — | 2026-10-21 |
 
+## Module Réseaux plus compact (2026-10-22)
+
+| Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |
+|---|---|---|---|---|---|
+| Liste | 12 publications de test (6 statuts), écran 1512×900 | ✅ Une ligne chacune ; 10 « à venir » visibles sans défiler (7 avant) ; retard et lien manquant sur la ligne | Téléphone 390 px | ✅ Aucun défilement horizontal | 2026-10-22 |
+| À faire | 5 actions (4 à faire, 1 faite) | ✅ Groupes En retard / Aujourd'hui / Demain / Cette semaine en listes d'une ligne, « Faites (1) » replié | — | — | 2026-10-22 |
+| Grille Instagram | Aucun client choisi | ✅ Boutons des 2 clients dans l'écran, lien vers leur grille | — | — | 2026-10-22 |
+| Programmation | Calendrier de routines | ✅ Introduction en une ligne, « Renommer » replié | — | — | 2026-10-22 |
+
 ## Points restant ouverts pour une prochaine passe de validation
 
 - Glisser-déposer et `<select>` natif du Kanban Prospection (limite outil, voir ci-dessus).

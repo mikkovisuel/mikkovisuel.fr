@@ -55,7 +55,7 @@ export const metadata: Metadata = {
   title: "Publication — Admin Mikko Visuel",
 };
 
-const SECTION = "rounded-2xl border border-line p-6";
+const SECTION = "rounded-2xl border border-line p-4";
 const SECTION_TITLE = "text-xs font-medium uppercase tracking-wide text-ink-muted";
 
 export default async function SocialPostDetailPage({ params }: { params: Promise<{ id: string }> }) {

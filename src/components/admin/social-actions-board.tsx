@@ -21,7 +21,7 @@ export interface ActionRow {
   assignedAdmin?: { id: string; email: string } | null;
 }
 
-const SECTION = "rounded-2xl border border-line p-6";
+const SECTION = "rounded-2xl border border-line p-4";
 
 /** Découpe en groupes lisibles, calculée en heure de Paris. */
 function groupByDay(actions: ActionRow[], now: Date) {
@@ -61,21 +61,24 @@ function ActionItem({
   admins?: AdminOption[];
 }) {
   return (
-    <li className="flex items-start gap-3 rounded-xl border border-line p-3">
-      <div className="pt-0.5">
+    <li className="ws-row flex items-center gap-3 px-3 py-1.5">
+      <div>
         <SocialActionCheckbox actionId={action.id} done={action.doneAt !== null} label={action.title} />
       </div>
       <div className={`min-w-0 flex-1 ${action.doneAt ? "opacity-60" : ""}`}>
-        <p className={`text-sm font-medium text-ink ${action.doneAt ? "line-through" : ""}`}>{action.title}</p>
-        <p className="mt-1 text-xs text-ink-muted">
+        <p className="truncate text-sm">
+          <span className={`font-medium text-ink ${action.doneAt ? "line-through" : ""}`}>{action.title}</span>
+          <span className="text-xs text-ink-muted">
+            {" · "}
           {formatSchedule(action.dueAt)}
           {action.client ? ` · ${action.client.name}` : " · interne"}
           {action.routineId ? " · routine" : ""}
           {action.assignedAdmin ? ` · ${action.assignedAdmin.email.split("@")[0]}` : ""}
           {action.doneAt ? ` · fait le ${formatSchedule(action.doneAt)}` : ""}
+          </span>
         </p>
         {action.description && (
-          <p className="mt-1 whitespace-pre-wrap break-words text-xs text-ink-muted">{action.description}</p>
+          <p title={action.description} className="truncate text-xs text-ink-muted">{action.description}</p>
         )}
       </div>
       <EditSocialActionButton
@@ -117,18 +120,18 @@ export function SocialActionsBoard({
   const groups = groupByDay(todo, now);
 
   return (
-    <div className="mt-8 grid gap-6">
+    <div className="mt-6 grid gap-4">
       {groups.length === 0 ? (
         <section className={SECTION}>
           <p className="text-sm text-ink-muted">Rien à faire pour l&apos;instant.</p>
         </section>
       ) : (
         groups.map((group) => (
-          <section key={group.key} className={SECTION}>
-            <h2 className="text-sm font-medium text-ink">
+          <section key={group.key}>
+            <h2 className="px-1 pb-1 text-xs font-medium uppercase tracking-wide text-ink-muted">
               {group.title} ({group.actions.length})
             </h2>
-            <ul className="mt-3 grid gap-2">
+            <ul className="divide-y divide-line overflow-hidden rounded-2xl border border-line">
               {group.actions.map((action) => (
                 <ActionItem key={action.id} action={action} clients={clients} admins={admins} />
               ))}
@@ -141,7 +144,7 @@ export function SocialActionsBoard({
         <section className={SECTION}>
           <details>
             <summary className="cursor-pointer text-sm font-medium text-ink">Faites ({done.length})</summary>
-            <ul className="mt-3 grid gap-2">
+            <ul className="mt-3 divide-y divide-line overflow-hidden rounded-xl border border-line">
               {done.slice(0, 50).map((action) => (
                 <ActionItem key={action.id} action={action} clients={clients} admins={admins} />
               ))}

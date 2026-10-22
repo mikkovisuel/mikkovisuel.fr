@@ -2878,6 +2878,21 @@ mise en page « A · façon Meta Business Suite », bouton « Enregistrer ».
   publication, comparaison des versions, création demandée, notes, échange
   avec le client et duplication restent en dessous.
 
+### 4.27 Module Réseaux plus compact (2026-10-22)
+
+Demande : « optimiser l'affichage plus compact de tout le module réseaux ».
+
+- Page Réseaux : phrase d'introduction retirée, boutons d'en-tête plus bas
+  (36 px) ; **liste sur une ligne par publication** (vignette 32 px, titre,
+  client · réseaux · format, repères création / prête / notes en icônes,
+  date « · en retard », statut) — 10 publications visibles au lieu de 7.
+- « À faire » : une liste par jour (titre de groupe discret), une ligne par
+  action, description tronquée, au lieu de cadres imbriqués.
+- Grille Instagram sans client choisi : choix du client directement dans
+  l'écran (au lieu de passer par les filtres).
+- Programmation et Plans : introduction en une ligne, cadres et espacements
+  resserrés ; « Renommer » un calendrier replié comme pour les modèles.
+
 ## Passe de nettoyage du code (2026-09-22)
 
 Demande du client : "fais une passe globale sur le code et nettoie tout,
@@ -3665,3 +3680,4 @@ Le client a explicitement délégué ces choix :
 | 2026-10-21 | "Lorsque je crée une routine, je ne vois pas les actions dans le calendrier (réseaux)" | **Corrigé** : actions prévues des routines affichées en pointillés dans le calendrier (routines client et internes), jusqu'à la création de la vraie action (section 4.25). |
 | 2026-10-21 | "Redesign de la page d'édition des posts, pouvoir mettre les visuels dès la création" + "proposer de créer un texte par rapport à l'image" — choix : A façon Meta Business Suite, bouton Enregistrer | **Livré** : éditeur unique (visuels en tête dès la création, onglets de texte par réseau, aperçu en direct, détails à droite) ; proposition de texte par l'IA d'après les visuels (section 4.26). |
 | 2026-10-22 | "Publier automatiquement les posts sur Instagram ?" puis "vérifie les offres d'une plateforme avec une bonne API" puis "pour le moment laisse de côté la connexion" | **Mis de côté** : comparatif des offres et délais Meta notés dans « Points encore ouverts », rien de développé. |
+| 2026-10-22 | "Optimiser l'affichage plus compact de tout le module réseaux" | **Livré** : liste en une ligne par publication, « À faire » en listes simples, grille avec choix du client sur place, en-têtes et cadres resserrés (section 4.27). |

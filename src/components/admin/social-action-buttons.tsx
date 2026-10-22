@@ -32,7 +32,7 @@ export function NewSocialActionButton({
       <button
         type="button"
         onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-2 rounded-full border border-line px-5 py-2.5 text-sm font-medium text-ink transition-colors hover:border-accent hover:bg-accent hover:text-accent-ink"
+        className="inline-flex h-9 items-center gap-2 rounded-full border border-line px-4 text-sm font-medium text-ink transition-colors hover:border-accent hover:bg-accent hover:text-accent-ink"
       >
         <Plus size={16} weight="bold" />
         Nouvelle action
