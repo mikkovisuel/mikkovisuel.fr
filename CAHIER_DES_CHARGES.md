@@ -3152,6 +3152,16 @@ Le client a explicitement délégué ces choix :
 
 ## Points encore ouverts
 
+- **Publication automatique sur Instagram / Facebook — mise de côté le
+  2026-10-22** (choix du client, « laisse de côté la connexion »). Pistes
+  étudiées : service intermédiaire sans validation Meta, avec connexion des
+  comptes clients par l'API (Upload-Post Professional ≈ 33–50 $/mois pour 25
+  clients ; Zernio ≈ 78 $/mois pour 20 comptes ; Ayrshare dès 599 $/mois
+  pour plusieurs clients), ou Meta en direct (gratuit, 3 à 6 semaines de
+  vérification d'entreprise et d'examen de l'application, renouvellement des
+  connexions tous les 60 jours). Recommandé le jour venu : Upload-Post tout
+  de suite, Meta en direct en parallèle si l'abonnement doit disparaître.
+
 - ~~**Formulaires qui perdent la saisie après une erreur**~~ — **corrigé
   le 2026-09-18** (voir le journal) : 44 formulaires passent par
   `useFormSubmit` (`src/lib/use-form-submit.ts`).
@@ -3654,3 +3664,4 @@ Le client a explicitement délégué ces choix :
 | 2026-10-21 | "Inclure un onglet et gérer l'intégralité de mes mails, avec toutes les fonctions de Gmail" — retenu : boîte et lecture, écrire / répondre, ranger, liens avec l'admin ; maquette validée | **Livré** : rubrique Mail (dossiers, libellés, recherche, actions groupées, conversation, réponse / transfert / brouillons / pièces jointes, liens client-prospect-tâche-note-assistant) ; droit Gmail « modify » à accorder en reconnectant Gmail (section 4.24). |
 | 2026-10-21 | "Lorsque je crée une routine, je ne vois pas les actions dans le calendrier (réseaux)" | **Corrigé** : actions prévues des routines affichées en pointillés dans le calendrier (routines client et internes), jusqu'à la création de la vraie action (section 4.25). |
 | 2026-10-21 | "Redesign de la page d'édition des posts, pouvoir mettre les visuels dès la création" + "proposer de créer un texte par rapport à l'image" — choix : A façon Meta Business Suite, bouton Enregistrer | **Livré** : éditeur unique (visuels en tête dès la création, onglets de texte par réseau, aperçu en direct, détails à droite) ; proposition de texte par l'IA d'après les visuels (section 4.26). |
+| 2026-10-22 | "Publier automatiquement les posts sur Instagram ?" puis "vérifie les offres d'une plateforme avec une bonne API" puis "pour le moment laisse de côté la connexion" | **Mis de côté** : comparatif des offres et délais Meta notés dans « Points encore ouverts », rien de développé. |
