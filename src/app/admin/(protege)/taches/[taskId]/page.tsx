@@ -30,6 +30,8 @@ import { formatSchedule } from "@/lib/social-posts";
 import { PlanApplyStartForm } from "@/components/admin/social-plan-forms";
 import { createSocialPostFromTask } from "@/lib/actions/social-posts";
 import { FileGrid } from "@/components/file-grid";
+import { BatReview } from "@/components/bat-review";
+import { BAT_DELIVERABLES_INCLUDE, toBatFiles } from "@/lib/bat";
 import { TaskCommentThread } from "@/components/task-comment-thread";
 import { CollapsibleSection } from "@/components/admin/collapsible-section";
 import {
@@ -81,7 +83,7 @@ export default async function TaskDetailPage({
         status: true,
         types: true,
         formats: true,
-        deliverables: true,
+        deliverables: { include: BAT_DELIVERABLES_INCLUDE },
         socialPosts: {
           select: { id: true, title: true, scheduledAt: true, status: true },
           orderBy: { createdAt: "desc" },
@@ -291,11 +293,7 @@ export default async function TaskDetailPage({
                   </h3>
                   <div className="mt-3">
                     {batDeliverables.length > 0 ? (
-                      <FileGrid
-                        files={batDeliverables}
-                        downloadBasePath="/api/fichiers/livrables"
-                        deleteAction={deleteDeliverable}
-                      />
+                      <BatReview files={toBatFiles(batDeliverables)} canAnnotate={false} deleteAction={deleteDeliverable} />
                     ) : (
                       <p className="text-sm text-ink-muted">Aucun BAT en attente.</p>
                     )}

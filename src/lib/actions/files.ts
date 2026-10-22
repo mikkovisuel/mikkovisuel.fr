@@ -103,6 +103,9 @@ export async function uploadDeliverable(
   });
   if (!task) return { error: "Tâche introuvable." };
 
+  // Tour de BAT : V1, puis +1 après chaque refus du client (2026-10-22).
+  const version = kind === "bat" ? 1 + (await db.taskRefusalHistory.count({ where: { taskId } })) : 1;
+
   const storage = getStorageAdapter();
   // En parallèle plutôt que fichier par fichier : avec plusieurs livrables
   // en un envoi, un upload séquentiel vers le stockage S3 peut prendre assez
@@ -141,6 +144,7 @@ export async function uploadDeliverable(
             sizeBytes: file.size,
             storageBackend: storage.backend,
             kind,
+            version,
           },
         });
       }),

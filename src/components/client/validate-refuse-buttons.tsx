@@ -29,9 +29,8 @@ export function ValidateRefuseButtons({
       <form action={formAction} onSubmit={formSubmit} className="mt-3 flex flex-col gap-2">
         <textarea
           name="reason"
-          required
           rows={2}
-          placeholder="Motif du refus (obligatoire)"
+          placeholder="Motif du refus (facultatif si vous avez annoté les images)"
           className="resize-none rounded-xl border border-line bg-surface px-3 py-2 text-sm text-ink placeholder:text-ink-muted/70 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/30"
         />
         {state?.error && (

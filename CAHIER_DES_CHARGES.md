@@ -2916,6 +2916,30 @@ directement dans la fiche ».
   création, notes, échange avec le client, duplication) en cartes rangées
   en colonnes qui se remplissent, sans trous.
 
+### 4.29 BAT : annotation sur l'image et versions (2026-10-22)
+
+Demande (lot de 7 améliorations, étape 1/3) : « annoter un BAT sur l'image »
+et « versions des livrables : V1, V2, V3 côte à côte ». Choix : annotation
+sur les images seulement (PDF et vidéos gardent le commentaire écrit),
+pas de maquette.
+
+- **Versions** : chaque BAT déposé reçoit un numéro de version : V1 au
+  premier envoi, +1 après chaque refus du client. À la validation, seule la
+  dernière version devient livrable final ; les précédentes restent
+  consultables (« Versions précédentes », repliées).
+- **Annotation par le client** (espace client, fiche de la tâche et page
+  « À valider ») : clic sur une image → grande vue ; un clic à l'endroit à
+  corriger pose un point numéroté et un commentaire. Liste des corrections
+  à côté ; le client peut retirer les siennes. Seulement sur un BAT image de
+  sa propre tâche « À valider », jamais en démonstration.
+- **Refus** : le motif devient facultatif s'il y a des annotations ; elles
+  sont ajoutées au motif (« 1. affiche.png : ce texte plus grand »), donc à
+  l'historique des refus, à l'e-mail de confirmation et à la fiche admin.
+- **Comparer avec la version précédente** : images côte à côte, avec les
+  points posés sur chacune.
+- Côté admin : même affichage (version, points, comparaison) ; la
+  suppression des fichiers reste dans « Gérer les fichiers de la V… ».
+
 ## Passe de nettoyage du code (2026-09-22)
 
 Demande du client : "fais une passe globale sur le code et nettoie tout,
@@ -3706,3 +3730,4 @@ Le client a explicitement délégué ces choix :
 | 2026-10-22 | "Optimiser l'affichage plus compact de tout le module réseaux" | **Livré** : liste en une ligne par publication, « À faire » en listes simples, grille avec choix du client sur place, en-têtes et cadres resserrés (section 4.27). |
 | 2026-10-22 | "Optimise l'affichage, voir en un coup d'œil le parcours du post" + "validation à la place du client directement dans la fiche" | **Livré** : frise Idée → Rédaction → Création → Validation client → Prête → Publiée en tête de fiche, validation au nom du client depuis la frise et en brouillon, cartes du bas sans trous (section 4.28). |
 | 2026-10-22 | "Supprimer l'onglet mail, il me sert à rien finalement (juste le point de menu)" | **Fait** : entrée « Mail » retirée du menu ; les pages /admin/mail restent en place, joignables par leur adresse (section 4.24). |
+| 2026-10-22 | Lot de 7 améliorations (annotation BAT, versions, kit de marque, avis Google, modèles de tâches, note vocale, étude de cas portfolio) — choix : annotation sur images, kit en consultation pour le client, avis Google automatique 1 fois + bouton, pas de maquette | **Étape 1 livrée** : annotation des BAT sur l'image et versions V1/V2 avec comparaison (section 4.29). Étapes 2 et 3 en cours. |

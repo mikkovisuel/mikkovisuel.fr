@@ -597,9 +597,30 @@ model Deliverable {
   // filigrané). Les lignes existantes migrent en "final" par défaut : rien
   // n'est filigrané rétroactivement sans action de l'admin.
   kind           String   @default("final")
+  // Tour de BAT (2026-10-22) : 1 au premier envoi, +1 après chaque refus du
+  // client. Les versions précédentes restent consultables pour comparer.
+  version        Int      @default(1)
   uploadedAt     DateTime @default(now())
+  annotations    DeliverableAnnotation[]
 
   @@index([taskId])
+}
+
+// Annotation posée par le client sur une image de BAT (2026-10-22) : position
+// en fraction de l'image (0 à 1), donc indépendante de la taille d'affichage.
+model DeliverableAnnotation {
+  id            String      @id @default(cuid())
+  deliverableId String
+  deliverable   Deliverable @relation(fields: [deliverableId], references: [id], onDelete: Cascade)
+  x             Float
+  y             Float
+  body          String
+  authorType    String
+  authorId      String
+  authorName    String
+  createdAt     DateTime    @default(now())
+
+  @@index([deliverableId])
 }
 
 // Fichiers de référence fournis par le client à la création d'une tâche

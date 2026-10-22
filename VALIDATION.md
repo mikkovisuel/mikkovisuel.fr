@@ -1359,6 +1359,16 @@ Rejoué en appelant la tâche planifiée `/api/cron/invoice-reminders` en local 
 | Validation au nom du client | Clic sur « Modification demandée » dans la frise, confirmation | ✅ Statut « validée », « Mikko (au nom du client) », demande de modification effacée | « Publiée » sur un brouillon | ✅ Non cliquable avant validation (l'ancienne case « Faite » le permettait) | 2026-10-22 |
 | Mise en page | Fiche complète | ✅ Frise et actions en tête, cartes du bas en colonnes | Téléphone 390 px | ✅ Aucun défilement horizontal | 2026-10-22 |
 
+## BAT : annotation sur l'image et versions (2026-10-22)
+
+| Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |
+|---|---|---|---|---|---|
+| Annotation (client) | Tâche « À valider », V2 de 2 images, clic à 30 % / 40 % de l'affiche + « Ce texte plus grand » | ✅ Point n°1 à l'endroit cliqué, enregistré (0,30 ; 0,40), nom du client affiché | Refus sans motif ni annotation | ✅ « Le motif est requis. », tâche toujours « à valider » | 2026-10-22 |
+| Refus avec annotations | « Refuser » sans motif écrit | ✅ Statut « à modifier », motif « Voir les corrections annotées… 1. affiche-v2.png : Ce texte plus grand » | — | — | 2026-10-22 |
+| Versions | V1 (2 images) après un refus, puis V2 | ✅ Pastille V2, « Versions précédentes (V1) » replié, « Comparer avec V1 » côte à côte avec les points | — | — | 2026-10-22 |
+| Admin | Fiche tâche après le refus | ✅ V2 avec pastille « 1 », comparaison, V1 repliée, gestion des fichiers | — | — | 2026-10-22 |
+| Téléphone | Grande vue d'annotation, 390 px | ✅ Image puis liste des corrections, aucun défilement horizontal | — | — | 2026-10-22 |
+
 ## Points restant ouverts pour une prochaine passe de validation
 
 - Glisser-déposer et `<select>` natif du Kanban Prospection (limite outil, voir ci-dessus).
@@ -1455,3 +1465,4 @@ Rejoué en appelant la tâche planifiée `/api/cron/invoice-reminders` en local 
 - **Assistant 2026-10-21** : seules les actions « créer une tâche », « créer une note » (carte) et « marquer une facture payée » (annulée) ont été rejouées ; les autres (modifier tâche / prospect, action et brouillon réseaux, relance de paiement par e-mail) sont vérifiées par compilation seulement. Comportement derrière le routeur Scalingo (réponses longues) non observé en production.
 - **Onglet Mail 2026-10-21** : aucune boîte Gmail connectée en local ; liste, lecture, rangement, envoi, transfert avec pièces jointes, brouillons, création de tâche / note et lecture d'e-mail par l'assistant sont à valider en production avec la vraie boîte, après reconnexion de Gmail.
 - **Éditeur de publication 2026-10-21** : réordonner et retirer un visuel (création et fiche), onglets de texte par réseau et enregistrement d'une modification vérifiés par compilation seulement ; dépôt d'une vidéo MP4 non rejoué.
+- **BAT 2026-10-22** : numérotation V3 après un 2e refus et passage en livrable final de la seule dernière version vérifiés par lecture du code ; refus d'une annotation par le serveur hors « À valider » non rejoué (l'écran ne la propose plus).

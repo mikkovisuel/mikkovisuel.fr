@@ -52,11 +52,26 @@ async function getStatusItem(slug: TaskStatusSlug) {
 // (`validateTask`, `validateTaskByAdmin`, et `setTaskStatus` — glissé-déposé
 // Kanban ou changement direct du menu de statut) plutôt que dupliquée,
 // pour qu'aucun des trois n'oublie la bascule.
+// Seule la dernière version validée devient livrable final ; les versions
+// précédentes restent des BAT consultables (comparaison, 2026-10-22).
 async function promoteBatDeliverablesToFinal(taskId: string) {
+  const latest = await db.deliverable.aggregate({ where: { taskId, kind: "bat" }, _max: { version: true } });
   await db.deliverable.updateMany({
-    where: { taskId, kind: "bat" },
+    where: { taskId, kind: "bat", version: latest._max.version ?? 1 },
     data: { kind: "final" },
   });
+}
+
+/** Annotations du client sur la dernière version des BAT, en texte (motif de refus). */
+async function batAnnotationsText(taskId: string): Promise<string> {
+  const latest = await db.deliverable.aggregate({ where: { taskId, kind: "bat" }, _max: { version: true } });
+  const annotations = await db.deliverableAnnotation.findMany({
+    where: { deliverable: { taskId, kind: "bat", version: latest._max.version ?? 1 } },
+    include: { deliverable: { select: { fileName: true } } },
+    orderBy: { createdAt: "asc" },
+  });
+  if (annotations.length === 0) return "";
+  return `\n\nAnnotations sur les visuels :\n${annotations.map((a, i) => `${i + 1}. ${a.deliverable.fileName} : ${a.body}`).join("\n")}`;
 }
 
 // Audit trail des changements de statut (qui, quand, vers quel statut) —
@@ -680,10 +695,8 @@ export async function refuseTask(
   const clientUser = await verifyClientSession();
   assertNotDemo(clientUser);
 
-  const parsed = RefusalSchema.safeParse({ reason: formData.get("reason") });
-  if (!parsed.success) {
-    return { error: parsed.error.issues[0]?.message ?? "Le motif est requis." };
-  }
+  // Motif facultatif si le client a annoté les visuels (2026-10-22).
+  const rawReason = String(formData.get("reason") ?? "").trim().slice(0, 4000);
 
   const task = await db.task.findUnique({ where: { id: taskId }, include: { status: true } });
   if (!task || task.clientId !== clientUser.clientId || task.internal) {
@@ -695,15 +708,18 @@ export async function refuseTask(
 
   const statusItem = await getStatusItem(TASK_STATUS.A_MODIFIER);
   const refusedAt = new Date();
+  const annotations = await batAnnotationsText(taskId);
+  if (!rawReason && !annotations) return { error: "Le motif est requis." };
+  const reason = `${rawReason || "Voir les corrections annotées sur les visuels."}${annotations}`;
   await db.task.update({
     where: { id: taskId },
-    data: { statusId: statusItem.id, refusalReason: parsed.data.reason, refusedAt },
+    data: { statusId: statusItem.id, refusalReason: reason, refusedAt },
   });
   // Conservé même après que le motif courant soit effacé au passage en "BAT
   // validé" (voir `setTaskStatus`/`validateTask`) — trace en historique,
   // jamais réécrite ni supprimée.
   await db.taskRefusalHistory.create({
-    data: { taskId, reason: parsed.data.reason, refusedAt },
+    data: { taskId, reason, refusedAt },
   });
   await logTaskStatusChange(taskId, statusItem, {
     type: "CLIENT_USER",
@@ -719,7 +735,7 @@ export async function refuseTask(
       trigger: "refusal_confirmed",
       to: clientUser.email,
       subject: `Refus enregistré — ${task.title}`,
-      html: `<p>Votre refus concernant "${escapeHtml(task.title)}" a bien été enregistré avec le motif suivant :</p><blockquote>${escapeHtml(parsed.data.reason)}</blockquote>`,
+      html: `<p>Votre refus concernant "${escapeHtml(task.title)}" a bien été enregistré avec le motif suivant :</p><blockquote style="white-space:pre-wrap">${escapeHtml(reason)}</blockquote>`,
     });
   }
 

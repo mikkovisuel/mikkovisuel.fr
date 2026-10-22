@@ -8,6 +8,8 @@ import { TASK_STATUS } from "@/lib/dropdown-lists";
 import { TaskStatusTimeline } from "@/components/client/task-status-timeline";
 import { ValidateRefuseButtons } from "@/components/client/validate-refuse-buttons";
 import { FileGrid } from "@/components/file-grid";
+import { BatReview } from "@/components/bat-review";
+import { BAT_DELIVERABLES_INCLUDE, toBatFiles } from "@/lib/bat";
 import { LinkifiedText } from "@/components/linkified-text";
 import { TaskCommentThread } from "@/components/task-comment-thread";
 import { postClientComment } from "@/lib/actions/comments";
@@ -28,7 +30,7 @@ export default async function ClientTaskDetailPage({
     where: { id: taskId },
     include: {
       status: true,
-      deliverables: true,
+      deliverables: { include: BAT_DELIVERABLES_INCLUDE },
       comments: { orderBy: { createdAt: "asc" } },
     },
   });
@@ -61,8 +63,11 @@ export default async function ClientTaskDetailPage({
       {task.status.slug === TASK_STATUS.A_VALIDER && (
         <>
           {task.deliverables.length > 0 && (
-            <div className="mt-6">
-              <FileGrid files={task.deliverables} downloadBasePath="/api/fichiers/livrables" />
+            <div className="mt-6 grid gap-4">
+              <BatReview files={toBatFiles(task.deliverables, clientUser.id)} canAnnotate={!clientUser.client.isDemo} />
+              {task.deliverables.some((d) => d.kind !== "bat") && (
+                <FileGrid files={task.deliverables.filter((d) => d.kind !== "bat")} downloadBasePath="/api/fichiers/livrables" />
+              )}
             </div>
           )}
           <div className="mt-4">

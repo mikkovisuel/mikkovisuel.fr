@@ -5,6 +5,8 @@ import { db } from "@/lib/db";
 import { TASK_STATUS } from "@/lib/dropdown-lists";
 import { ValidateRefuseButtons } from "@/components/client/validate-refuse-buttons";
 import { FileGrid } from "@/components/file-grid";
+import { BatReview } from "@/components/bat-review";
+import { BAT_DELIVERABLES_INCLUDE, toBatFiles } from "@/lib/bat";
 import { LinkifiedText } from "@/components/linkified-text";
 
 export const metadata: Metadata = {
@@ -16,7 +18,7 @@ export default async function ClientToValidatePage() {
 
   const tasks = await db.task.findMany({
     where: { clientId: clientUser.clientId, internal: false, status: { slug: TASK_STATUS.A_VALIDER }, archivedAt: null },
-    include: { deliverables: true },
+    include: { deliverables: { include: BAT_DELIVERABLES_INCLUDE } },
     orderBy: { createdAt: "desc" },
   });
 
@@ -45,8 +47,11 @@ export default async function ClientToValidatePage() {
                 </p>
               )}
               {task.deliverables.length > 0 && (
-                <div className="mt-4">
-                  <FileGrid files={task.deliverables} downloadBasePath="/api/fichiers/livrables" />
+                <div className="mt-4 grid gap-3">
+                  <BatReview files={toBatFiles(task.deliverables, clientUser.id)} canAnnotate={!clientUser.client.isDemo} />
+                  {task.deliverables.some((d) => d.kind !== "bat") && (
+                    <FileGrid files={task.deliverables.filter((d) => d.kind !== "bat")} downloadBasePath="/api/fichiers/livrables" />
+                  )}
                 </div>
               )}
               <div className="mt-4">
