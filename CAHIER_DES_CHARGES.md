@@ -2893,6 +2893,27 @@ Demande : « optimiser l'affichage plus compact de tout le module réseaux ».
 - Programmation et Plans : introduction en une ligne, cadres et espacements
   resserrés ; « Renommer » un calendrier replié comme pour les modèles.
 
+### 4.28 Fiche publication : parcours en un coup d'œil (2026-10-22)
+
+Demandes : « optimise l'affichage, trop de place perdue ; voir en un coup
+d'œil le parcours du post : idée, rédaction, création, modification, prêt,
+publié » puis « ajoute une possibilité de validation à la place du client
+directement dans la fiche ».
+
+- **Frise du parcours** en tête de fiche : Idée → Rédaction → Création →
+  Validation client (« Modification demandée » en rouge quand le client
+  refuse) → Prête → Publiée. Étapes faites cochées avec leur date, étape en
+  cours entourée, « Création non demandée » en pointillés. Clic : Idée /
+  Rédaction (brouillon), Création (ouvre la tâche), Validation client (au
+  nom du client, avec confirmation), Prête, Publiée (seulement une fois
+  validée). Remplace le bloc « Suivi » et ses cases Prête / Faite.
+- Sous la frise, les actions de l'étape : envoyer / renvoyer en
+  validation, **« Valider au nom du client » désormais aussi en brouillon et
+  après une demande de modification**, lien du post publié.
+- Le reste de la fiche (kit de publication, comparaison des versions,
+  création, notes, échange avec le client, duplication) en cartes rangées
+  en colonnes qui se remplissent, sans trous.
+
 ## Passe de nettoyage du code (2026-09-22)
 
 Demande du client : "fais une passe globale sur le code et nettoie tout,
@@ -3681,3 +3702,4 @@ Le client a explicitement délégué ces choix :
 | 2026-10-21 | "Redesign de la page d'édition des posts, pouvoir mettre les visuels dès la création" + "proposer de créer un texte par rapport à l'image" — choix : A façon Meta Business Suite, bouton Enregistrer | **Livré** : éditeur unique (visuels en tête dès la création, onglets de texte par réseau, aperçu en direct, détails à droite) ; proposition de texte par l'IA d'après les visuels (section 4.26). |
 | 2026-10-22 | "Publier automatiquement les posts sur Instagram ?" puis "vérifie les offres d'une plateforme avec une bonne API" puis "pour le moment laisse de côté la connexion" | **Mis de côté** : comparatif des offres et délais Meta notés dans « Points encore ouverts », rien de développé. |
 | 2026-10-22 | "Optimiser l'affichage plus compact de tout le module réseaux" | **Livré** : liste en une ligne par publication, « À faire » en listes simples, grille avec choix du client sur place, en-têtes et cadres resserrés (section 4.27). |
+| 2026-10-22 | "Optimise l'affichage, voir en un coup d'œil le parcours du post" + "validation à la place du client directement dans la fiche" | **Livré** : frise Idée → Rédaction → Création → Validation client → Prête → Publiée en tête de fiche, validation au nom du client depuis la frise et en brouillon, cartes du bas sans trous (section 4.28). |

@@ -1351,6 +1351,14 @@ Rejoué en appelant la tâche planifiée `/api/cron/invoice-reminders` en local 
 | Grille Instagram | Aucun client choisi | ✅ Boutons des 2 clients dans l'écran, lien vers leur grille | — | — | 2026-10-22 |
 | Programmation | Calendrier de routines | ✅ Introduction en une ligne, « Renommer » replié | — | — | 2026-10-22 |
 
+## Fiche publication : parcours en un coup d'œil (2026-10-22)
+
+| Fonction | Cas passant | Résultat | Cas bloquant | Résultat | Dernière validation |
+|---|---|---|---|---|---|
+| Frise | 4 publications : rédaction + création en cours ; à modifier ; validée et prête ; publiée | ✅ « Création En cours » ; « ! Modification demandée » ; « Validation client 20 oct. · Prête 21 oct. » ; « Publiée 19 oct. » | Création jamais demandée | ✅ « Création non demandée » en pointillés | 2026-10-22 |
+| Validation au nom du client | Clic sur « Modification demandée » dans la frise, confirmation | ✅ Statut « validée », « Mikko (au nom du client) », demande de modification effacée | « Publiée » sur un brouillon | ✅ Non cliquable avant validation (l'ancienne case « Faite » le permettait) | 2026-10-22 |
+| Mise en page | Fiche complète | ✅ Frise et actions en tête, cartes du bas en colonnes | Téléphone 390 px | ✅ Aucun défilement horizontal | 2026-10-22 |
+
 ## Points restant ouverts pour une prochaine passe de validation
 
 - Glisser-déposer et `<select>` natif du Kanban Prospection (limite outil, voir ci-dessus).

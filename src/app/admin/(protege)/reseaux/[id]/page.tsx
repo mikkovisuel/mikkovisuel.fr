@@ -10,7 +10,7 @@ import { StatusBadge } from "@/components/status-badge";
 import { DeleteButton } from "@/components/admin/delete-button";
 import { SocialPostForm } from "@/components/admin/social-post-form";
 import { SocialPostWorkflow } from "@/components/admin/social-post-workflow";
-import { SocialPostStateToggles } from "@/components/admin/social-post-state-toggles";
+import { SocialPostJourney } from "@/components/admin/social-post-journey";
 import { updateSocialPost, deleteSocialPost } from "@/lib/actions/social-posts";
 import { loadSocialFormLists, loadSocialLibraries } from "@/lib/social-library";
 import {
@@ -36,7 +36,6 @@ import {
 } from "@/lib/actions/social-posts";
 import { ACTIVE_CLIENTS } from "@/lib/clients";
 import {
-  SOCIAL_POST_STATUS,
   CLIENT_VISIBLE_STATUSES,
   captionForNetwork,
   networkLabel,
@@ -168,14 +167,42 @@ export default async function SocialPostDetailPage({ params }: { params: Promise
           </p>
         )}
 
+        {/* Parcours en un coup d'œil (2026-10-22) et actions de l'étape. */}
+        <section className="mt-4 rounded-2xl border border-line p-4">
+          <SocialPostJourney
+            postId={post.id}
+            status={post.status}
+            readyAt={post.readyAt?.toISOString() ?? null}
+            validatedAt={post.validatedAt?.toISOString() ?? null}
+            publishedAt={post.publishedAt?.toISOString() ?? null}
+            creation={
+              requestedTask
+                ? {
+                    label: requestedTask.status.label,
+                    done: requestedTask.status.slug === TASK_STATUS.TERMINE || post.taskMediaImportedAt !== null,
+                    href: `/admin/taches/${requestedTask.id}`,
+                  }
+                : null
+            }
+          />
+          <div className="mt-3 border-t border-line pt-3">
+            <SocialPostWorkflow
+              postId={post.id}
+              status={post.status}
+              hasContactsToNotify={hasContactsToNotify}
+              publishedUrl={post.publishedUrl}
+            />
+          </div>
+        </section>
+
         {/* Éditeur façon Meta Business Suite (refonte du 2026-10-21) : visuels,
             texte et aperçu en tête de fiche ; le suivi et le reste en dessous. */}
         {(post.status === "a_valider" || post.status === "valide") && (
-          <p className="mt-6 text-xs text-ink-muted">
+          <p className="mt-3 text-xs text-ink-muted">
             Le client a déjà vu ou validé cette version : une modification importante mérite un nouvel envoi en validation.
           </p>
         )}
-        <div className="mt-6">
+        <div className="mt-4">
           <SocialPostForm
             action={updateSocialPost.bind(null, post.id)}
             clientId={post.clientId}
@@ -200,32 +227,8 @@ export default async function SocialPostDetailPage({ params }: { params: Promise
           />
         </div>
 
-        {/* Deux colonnes sur grand écran, comme la fiche tâche : le travail
-            (suivi, contenu, visuels) à gauche, le contexte (aperçu, création
-            demandée, notes) à droite. Une seule colonne en dessous. */}
-        <div className="mt-6 grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,1fr)_26rem] xl:items-start">
-          <div className="grid min-w-0 grid-cols-1 gap-6">
-            <section className={SECTION}>
-              <h2 className={SECTION_TITLE}>Suivi</h2>
-              {/* Repères internes (2026-09-25), indépendants du cycle client :
-                  où en est le contenu, et est-ce en ligne. */}
-              <div className="mt-3">
-                <SocialPostStateToggles
-                  postId={post.id}
-                  ready={post.readyAt !== null}
-                  done={post.status === SOCIAL_POST_STATUS.PUBLIE}
-                />
-              </div>
-              <div className="mt-4">
-                <SocialPostWorkflow
-                  postId={post.id}
-                  status={post.status}
-                  hasContactsToNotify={hasContactsToNotify}
-                  publishedUrl={post.publishedUrl}
-                />
-              </div>
-            </section>
-
+        {/* Le reste de la fiche en cartes qui se rangent côte à côte (2026-10-22). */}
+        <div className="mt-6 gap-4 lg:columns-2 2xl:columns-3 [&>*]:mb-4 [&>*]:break-inside-avoid">
             {(post.status === "valide" || post.status === "publie") && (publishTexts.length > 0 || post.media.length > 0) && (
               <section className={SECTION}>
                 <h2 className={SECTION_TITLE}>Kit de publication</h2>
@@ -254,8 +257,6 @@ export default async function SocialPostDetailPage({ params }: { params: Promise
                 </div>
               </section>
             )}
-          </div>
-          <div className="grid min-w-0 grid-cols-1 gap-6">
             <section className={SECTION}>
               <h2 className={SECTION_TITLE}>Création</h2>
               {requestedTask ? (
@@ -466,10 +467,9 @@ export default async function SocialPostDetailPage({ params }: { params: Promise
                 />
               </div>
             </section>
-          </div>
         </div>
 
-        <div className="mt-8 flex justify-end">
+        <div className="mt-6 flex justify-end">
           <DeleteButton
             action={deleteSocialPost.bind(null, post.id)}
             confirmMessage={`Supprimer définitivement "${post.title}" et ses visuels ?`}

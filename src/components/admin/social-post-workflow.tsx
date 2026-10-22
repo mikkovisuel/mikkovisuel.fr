@@ -9,7 +9,7 @@ import {
   markSocialPostPublished,
   setSocialPostPublishedUrl,
 } from "@/lib/actions/social-posts";
-import { SOCIAL_POST_STATUS_META, type SocialPostStatus } from "@/lib/social-posts";
+import type { SocialPostStatus } from "@/lib/social-posts";
 import { useFormSubmit } from "@/lib/use-form-submit";
 
 const PRIMARY =
@@ -53,28 +53,7 @@ export function SocialPostWorkflow({
   const isDraft = status === "idee" || status === "redaction";
 
   return (
-    <div className="grid gap-4">
-      {isDraft && (
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm text-ink-muted">Étape :</span>
-          {(["idee", "redaction"] as const).map((draft) => (
-            <button
-              key={draft}
-              type="button"
-              disabled={isPending || status === draft}
-              onClick={() => startTransition(() => setSocialPostDraftStatus(postId, draft))}
-              className={`rounded-full border px-3 py-1.5 text-xs font-medium transition-colors ${
-                status === draft
-                  ? "border-accent bg-accent text-accent-ink"
-                  : "border-line text-ink-muted hover:text-ink"
-              }`}
-            >
-              {SOCIAL_POST_STATUS_META[draft].label}
-            </button>
-          ))}
-        </div>
-      )}
-
+    <div className="grid gap-3">
       {(isDraft || status === "a_modifier") && (
         <div className="flex flex-wrap items-center gap-3">
           <button
@@ -95,6 +74,20 @@ export function SocialPostWorkflow({
           >
             <PaperPlaneTilt size={16} weight="bold" />
             {status === "a_modifier" ? "Renvoyer en validation" : "Envoyer au client pour validation"}
+          </button>
+          {/* Accord obtenu hors de l'app (2026-10-22) : sans passer par l'envoi. */}
+          <button
+            type="button"
+            disabled={isPending}
+            onClick={() => {
+              if (window.confirm("Valider cette publication au nom du client (accord obtenu hors de l'app) ?")) {
+                startTransition(() => validateSocialPostByAdmin(postId));
+              }
+            }}
+            className={SECONDARY}
+          >
+            <CheckCircle size={16} weight="regular" />
+            Valider au nom du client
           </button>
           {!hasContactsToNotify && (
             <span className="text-xs text-ink-muted">Aucun contact notifiable pour ce client.</span>
