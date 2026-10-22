@@ -66,7 +66,6 @@ export const NAV_ITEMS = [
   { key: "clients", href: "/admin/clients", label: "Clients", group: "Relation client" },
   { key: "contacts", href: "/admin/contacts", label: "Contacts", group: "Relation client" },
   { key: "prospection", href: "/admin/prospection", label: "Prospection", group: "Relation client" },
-  { key: "mail", href: "/admin/mail", label: "Mail", group: "Relation client" },
   { key: "taches", href: "/admin/taches", label: "Tâches", group: "Production" },
   { key: "reseaux", href: "/admin/reseaux", label: "Réseaux", group: "Production" },
   { key: "planning", href: "/admin/planning", label: "Planning", group: "Production" },

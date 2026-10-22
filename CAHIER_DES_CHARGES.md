@@ -2806,6 +2806,8 @@ familles d'actions, historique gardé par admin, panneau **et** page dédiée.
 
 ### 4.24 Onglet Mail : la boîte Gmail dans l'admin (2026-10-21)
 
+> **2026-10-22** : entrée « Mail » retirée du menu à la demande du client (pages conservées, accessibles par /admin/mail).
+
 Demande : « inclure un onglet et gérer l'intégralité de mes mails, avec
 toutes les fonctions de Gmail ». Périmètre retenu avec le client (maquette
 validée) : boîte et lecture, écrire et répondre, ranger, liens avec l'admin.
@@ -3703,3 +3705,4 @@ Le client a explicitement délégué ces choix :
 | 2026-10-22 | "Publier automatiquement les posts sur Instagram ?" puis "vérifie les offres d'une plateforme avec une bonne API" puis "pour le moment laisse de côté la connexion" | **Mis de côté** : comparatif des offres et délais Meta notés dans « Points encore ouverts », rien de développé. |
 | 2026-10-22 | "Optimiser l'affichage plus compact de tout le module réseaux" | **Livré** : liste en une ligne par publication, « À faire » en listes simples, grille avec choix du client sur place, en-têtes et cadres resserrés (section 4.27). |
 | 2026-10-22 | "Optimise l'affichage, voir en un coup d'œil le parcours du post" + "validation à la place du client directement dans la fiche" | **Livré** : frise Idée → Rédaction → Création → Validation client → Prête → Publiée en tête de fiche, validation au nom du client depuis la frise et en brouillon, cartes du bas sans trous (section 4.28). |
+| 2026-10-22 | "Supprimer l'onglet mail, il me sert à rien finalement (juste le point de menu)" | **Fait** : entrée « Mail » retirée du menu ; les pages /admin/mail restent en place, joignables par leur adresse (section 4.24). |
